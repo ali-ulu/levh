@@ -1,7 +1,9 @@
                                                          # LEVH
 
 
-<img width="363" height="359" alt="levh" src="https://github.com/user-attachments/assets/2e6c311c-8507-4ebd-99f5-8a4f827167b8" />
+<p align="center">
+  <img width="363" height="359" alt="LEVH logo" src="docs/assets/levh-logo.png" />
+</p>
 
 
 <p align="center">
