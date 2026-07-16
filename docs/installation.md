@@ -1,4 +1,4 @@
-# StackMemory Installation
+# LEVH Installation
 
 ## Quick Start (5 minutes)
 
@@ -6,8 +6,8 @@
 
 ```bash
 # Clone the repo
-git clone https://github.com/your-org/stackmemory-new.git
-cd stackmemory-new
+git clone https://github.com/your-org/levh-new.git
+cd levh-new
 
 # Install in editable mode (recommended for development)
 pip install -e .
@@ -19,22 +19,22 @@ pip install .
 ### 2. Verify
 
 ```bash
-stackmemory doctor
+levh doctor
 ```
 
 Expected output:
 
 ```
-  StackMemory Doctor
+  LEVH Doctor
   ==================================================
   Python                    PASS   3.12.x
   Package import            PASS
-  Database path             PASS   /path/to/stackmemory-new
+  Database path             PASS   /path/to/levh-new
   Embedder mode             PASS   hash (default)
   API import                PASS
   MCP import                PASS
   MCP SSE import            PASS
-  Frontend dir              PASS   /path/to/stackmemory-new/frontend
+  Frontend dir              PASS   /path/to/levh-new/frontend
   Config generator          PASS
   Env vars                  PASS   Defaults used
 
@@ -44,7 +44,7 @@ Expected output:
 ### 3. Initialize
 
 ```bash
-stackmemory init
+levh init
 ```
 
 Creates `.stackmemory/config.json` with sensible defaults:
@@ -62,9 +62,9 @@ Creates `.stackmemory/config.json` with sensible defaults:
 ### 4. Run the server
 
 ```bash
-stackmemory serve
+levh serve
 # or with auto-reload for development
-stackmemory serve --reload
+levh serve --reload
 ```
 
 The API is available at `http://127.0.0.1:8000`. The dashboard frontend can be built and served separately (see Frontend section below).
@@ -87,13 +87,13 @@ npm run dev
 
 ## Embedder Modes
 
-StackMemory supports three embedding modes, controlled by the `EMBEDDER_MODE` environment variable:
+LEVH supports three embedding modes, controlled by the `EMBEDDER_MODE` environment variable:
 
 | Mode | Command | Requirements | Quality |
 |------|---------|-------------|---------|
-| `hash` | `EMBEDDER_MODE=hash stackmemory serve` | None (built-in) | Deterministic, non-semantic |
-| `local` | `EMBEDDER_MODE=local stackmemory serve` | `pip install -e ".[local]"` + torch | Good semantic similarity |
-| `openai` | `EMBEDDER_MODE=openai stackmemory serve` | `OPENAI_API_KEY` env var | Best quality, requires API key |
+| `hash` | `EMBEDDER_MODE=hash levh serve` | None (built-in) | Deterministic, non-semantic |
+| `local` | `EMBEDDER_MODE=local levh serve` | `pip install -e ".[local]"` + torch | Good semantic similarity |
+| `openai` | `EMBEDDER_MODE=openai levh serve` | `OPENAI_API_KEY` env var | Best quality, requires API key |
 
 For quick demos and testing, `hash` mode works with zero additional dependencies.
 
@@ -136,5 +136,5 @@ pip install mcp fastmcp
 ### Port already in use
 
 ```bash
-stackmemory serve --port 8001
+levh serve --port 8001
 ```

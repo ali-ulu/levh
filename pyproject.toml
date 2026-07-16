@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "levh"
-version = "2.26.8"
+version = "2.27.0"
 description = "Shared memory layer for AI coding tools — memory that forgets like you do, unless it matters"
 readme = "README.md"
 license = "MIT"
@@ -40,10 +40,11 @@ secure = ["cryptography>=42"]
 dev = ["pytest", "pytest-asyncio", "build", "twine"]
 
 [project.urls]
-Homepage = "https://github.com/agiulucom42-del/stackmemory-new"
-Repository = "https://github.com/agiulucom42-del/stackmemory-new"
+Homepage = "https://github.com/ali-ulu/levh"
+Repository = "https://github.com/ali-ulu/levh"
 
 [project.scripts]
+levh = "server.cli:main"
 stackmemory = "server.cli:main"
 
 [tool.setuptools.packages.find]

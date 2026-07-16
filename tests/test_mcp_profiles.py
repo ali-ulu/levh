@@ -126,12 +126,12 @@ def test_generated_config_defaults_to_work_profile():
     from server.configs import generate_config
 
     cfg = generate_config("cursor", project_path=".")
-    env = cfg["mcpServers"]["stackmemory"]["env"]
-    assert env["STACKMEMORY_MCP_PROFILE"] == "work"
+    env = cfg["mcpServers"]["levh"]["env"]
+    assert env["LEVH_MCP_PROFILE"] == "work"
 
 
 def test_generated_config_honors_explicit_profile():
     from server.configs import generate_config
 
     cfg = generate_config("cursor", project_path=".", profile="full")
-    assert cfg["mcpServers"]["stackmemory"]["env"]["STACKMEMORY_MCP_PROFILE"] == "full"
+    assert cfg["mcpServers"]["levh"]["env"]["LEVH_MCP_PROFILE"] == "full"

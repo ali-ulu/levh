@@ -4,11 +4,11 @@ Generates MCP configuration JSON for each AI-coding platform.
 All platforms use stdio transport with ``python -m server.mcp_stdio``.
 
 Usage (CLI):
-    python -m server.configs --output ./configs --project /path/to/stackmemory
+    python -m server.configs --output ./configs --project /path/to/levh
 
 Usage (programmatic):
     from server.configs import generate_config, generate_all_configs
-    cfg = generate_config("claude_desktop", project_path="/path/to/stackmemory")
+    cfg = generate_config("claude_desktop", project_path="/path/to/levh")
 """
 
 from __future__ import annotations
@@ -88,7 +88,7 @@ def _build_server_entry(
 ) -> dict[str, Any]:
     """Build the inner server config dict shared by all platforms.
 
-    ``profile`` sets STACKMEMORY_MCP_PROFILE so the client advertises a focused
+    ``profile`` sets LEVH_MCP_PROFILE so the client advertises a focused
     tool surface (default ``work``) instead of all 59 tools — better
     tool-selection accuracy. Pass ``full`` to opt back into everything.
     """
@@ -96,16 +96,13 @@ def _build_server_entry(
     runtime = resolve_runtime_config(cwd=abs_project)
     env: dict[str, str] = {
         **runtime_env(runtime),
-        "STACKMEMORY_MCP_PROFILE": resolve_profile(profile),
+        "LEVH_MCP_PROFILE": resolve_profile(profile),
     }
     env.update({k: str(v) for k, v in env_overrides.items()})
 
-    # Determine the Python executable to use
-    python = sys.executable or "python"
-
     return {
-        "command": python,
-        "args": ["-m", "server.mcp_stdio"],
+        "command": "levh",
+        "args": ["mcp", "stdio"],
         "cwd": abs_project,
         "env": env,
     }
@@ -122,7 +119,7 @@ def generate_config(
     Args:
         platform: One of ``claude_desktop``, ``cursor``, ``claude_code``,
                   ``vscode``, ``windsurf``, ``cline``.
-        project_path: Path to the StackMemory project root.
+        project_path: Path to the LEVH project root.
         profile: MCP tool profile (minimal / work / admin / full). Default
                  ``work`` keeps the advertised tool surface small.
         **env_overrides: Extra environment variables for the server process.
@@ -141,7 +138,7 @@ def generate_config(
     # Claude Desktop and Claude Code use "mcpServers" top-level key
     return {
         "mcpServers": {
-            "stackmemory": server_entry,
+            "levh": server_entry,
         },
     }
 
@@ -200,7 +197,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--project",
         default=".",
-        help="Path to StackMemory project root (default: .)",
+        help="Path to LEVH project root (default: .)",
     )
     args = parser.parse_args()
 

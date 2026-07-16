@@ -40,9 +40,9 @@ const MCP_SNIPPET = (cwd: string) =>
   JSON.stringify(
     {
       mcpServers: {
-        stackmemory: {
-          command: "python",
-          args: ["-m", "server.mcp_stdio"],
+        levh: {
+          command: "levh",
+          args: ["mcp", "stdio"],
           cwd,
           env: { EMBEDDER_MODE: "local" },
         },
@@ -82,7 +82,7 @@ export default function SettingsPage() {
   const [config, setConfig] = useState<ServerConfig | null>(null);
   const [connectors, setConnectors] = useState<Connector[]>([]);
   const [client, setClient] = useState("claude_desktop");
-  const [installPath, setInstallPath] = useState("/path/to/stackmemory-new");
+  const [installPath, setInstallPath] = useState("/path/to/levh-new");
 
   // Connector import
   const [selConnector, setSelConnector] = useState("local_files");
@@ -222,7 +222,7 @@ export default function SettingsPage() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `stackmemory-export-${new Date().toISOString().slice(0, 10)}.json`;
+      a.download = `levh-export-${new Date().toISOString().slice(0, 10)}.json`;
       a.click();
       URL.revokeObjectURL(url);
     } catch {}
@@ -530,7 +530,8 @@ export default function SettingsPage() {
             </Button>
           </div>
           <p className="text-xs text-muted-foreground">
-            Only needed when this server was started with STACKMEMORY_TOKEN. Stored locally in
+              Only needed when this server was started with LEVH_TOKEN. Legacy STACKMEMORY_TOKEN
+              is still accepted. Stored locally in
             your browser.
           </p>
         </CardContent>
@@ -785,7 +786,7 @@ export default function SettingsPage() {
               </Select>
             </div>
             <div className="space-y-1 flex-1 min-w-56">
-              <Label className="text-xs text-muted-foreground">StackMemory install path</Label>
+              <Label className="text-xs text-muted-foreground">LEVH install path</Label>
               <Input value={installPath} onChange={(e) => setInstallPath(e.target.value)} />
             </div>
             <CopyButton text={MCP_SNIPPET(installPath)} />
@@ -796,7 +797,7 @@ export default function SettingsPage() {
           <pre className="text-xs bg-muted rounded-lg p-3 overflow-auto">{MCP_SNIPPET(installPath)}</pre>
           <p className="text-xs text-muted-foreground">
             Or generate configs from the CLI:{" "}
-            <code className="bg-muted px-1 rounded">stackmemory mcp config {client}</code>
+            <code className="bg-muted px-1 rounded">levh mcp config {client}</code>
           </p>
         </CardContent>
       </Card>

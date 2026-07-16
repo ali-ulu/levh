@@ -48,7 +48,7 @@ class TestDoctor:
     def test_doctor_exits_zero(self):
         result = _run_cli("doctor")
         assert result.returncode == 0, f"doctor failed:\nstdout: {result.stdout}\nstderr: {result.stderr}"
-        assert "StackMemory Doctor" in result.stdout
+        assert "LEVH Doctor" in result.stdout
         assert "Verdict: OK" in result.stdout
 
     def test_doctor_checks_all_components(self):
@@ -57,6 +57,13 @@ class TestDoctor:
         # Verify key check names appear
         for name in ["Python", "Package import", "Database path", "API import", "MCP import", "Embedder mode"]:
             assert name in result.stdout, f"Missing check: {name}"
+
+    def test_stackmemory_alias_warns(self, monkeypatch, capsys):
+        from server.cli import main
+
+        monkeypatch.setattr(sys, "argv", ["stackmemory", "doctor"])
+        assert main() == 0
+        assert "'stackmemory' is deprecated; use 'levh'" in capsys.readouterr().err
 
 
 class TestInit:
@@ -126,9 +133,9 @@ class TestMcpConfig:
         """Assert the output is valid MCP config JSON."""
         data = json.loads(output)
         assert "mcpServers" in data, "Missing mcpServers key"
-        assert "stackmemory" in data["mcpServers"], "Missing stackmemory server entry"
+        assert "levh" in data["mcpServers"], "Missing levh server entry"
 
-        server = data["mcpServers"]["stackmemory"]
+        server = data["mcpServers"]["levh"]
         assert "command" in server, "Missing 'command' in server entry"
         assert "args" in server, "Missing 'args' in server entry"
         assert "cwd" in server, "Missing 'cwd' in server entry"
@@ -156,7 +163,7 @@ class TestMcpConfig:
             result = _run_cli("mcp", "config", platform)
             assert result.returncode == 0
             data = json.loads(result.stdout)
-            env = data["mcpServers"]["stackmemory"]["env"]
+            env = data["mcpServers"]["levh"]["env"]
             assert env.get("EMBEDDER_MODE") == "hash", (
                 f"{platform} config: expected EMBEDDER_MODE=hash, got {env.get('EMBEDDER_MODE')}"
             )
@@ -166,24 +173,23 @@ class TestMcpConfig:
         result = _run_cli("mcp", "config", "claude")
         assert result.returncode == 0
         data = json.loads(result.stdout)
-        command = data["mcpServers"]["stackmemory"]["command"]
-        # Should be sys.executable, not just "python"
-        assert command == sys.executable, f"Expected {sys.executable}, got {command}"
+        command = data["mcpServers"]["levh"]["command"]
+        assert command == "levh", f"Expected levh, got {command}"
 
     def test_config_uses_mcp_stdio_args(self):
         """Args should reference server.mcp_stdio module."""
         result = _run_cli("mcp", "config", "claude")
         assert result.returncode == 0
         data = json.loads(result.stdout)
-        args = data["mcpServers"]["stackmemory"]["args"]
-        assert args == ["-m", "server.mcp_stdio"], f"Expected ['-m', 'server.mcp_stdio'], got {args}"
+        args = data["mcpServers"]["levh"]["args"]
+        assert args == ["mcp", "stdio"], f"Expected ['mcp', 'stdio'], got {args}"
 
     def test_config_custom_embedder_override(self):
         """--embedder-mode flag should override the default."""
         result = _run_cli("mcp", "config", "claude", "--embedder-mode", "local")
         assert result.returncode == 0
         data = json.loads(result.stdout)
-        env = data["mcpServers"]["stackmemory"]["env"]
+        env = data["mcpServers"]["levh"]["env"]
         assert env.get("EMBEDDER_MODE") == "local"
 
     def test_config_unknown_platform_fails(self):

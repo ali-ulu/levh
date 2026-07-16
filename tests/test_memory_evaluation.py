@@ -60,7 +60,7 @@ async def test_evaluation_run_is_deterministic(report):
 
 def test_report_is_versioned_and_labels_its_surfaces(report):
     assert report["evaluation_version"] == EVALUATION_VERSION
-    assert report["stackmemory_version"]
+    assert report["levh_version"]
     # Bare "accuracy" is banned — each surface is named for what it measures.
     serialized = json.dumps(report)
     assert '"accuracy"' not in serialized

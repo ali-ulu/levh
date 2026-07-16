@@ -1,4 +1,4 @@
-# StackMemory in 5 minutes
+# LEVH in 5 minutes
 
 A guided, fully-offline walkthrough. No API key, no LLM, no network: the demo
 uses the deterministic hash embedder and a local SQLite database.
@@ -6,8 +6,8 @@ uses the deterministic hash embedder and a local SQLite database.
 ## 0. Install
 
 ```bash
-pip install stackmemory
-stackmemory doctor
+pip install levh
+levh doctor
 ```
 
 A zero-memory database is a first-run warning, not an installation failure.
@@ -17,7 +17,7 @@ A zero-memory database is a first-run warning, not an installation failure.
 Run the idempotent setup command:
 
 ```bash
-stackmemory setup --demo --client claude --profile work
+levh setup --demo --client claude --profile work
 ```
 
 This performs the real product path:
@@ -43,7 +43,7 @@ memories carry `metadata.demo=true` and display a **Demo data** badge.
 ## 2. Open the dashboard
 
 ```bash
-stackmemory serve
+levh serve
 ```
 
 Open <http://localhost:8000>. The first-run card shows real backend readiness,
@@ -55,7 +55,7 @@ not a fake completion flag. Walk these surfaces:
 3. **Trust breakdown**: source, corroboration, review, recency, and risk. This is
    provenance/confidence, not a truth verdict.
 4. **Conflicts**: one Atlas deadline candidate (`2026-03-15` vs `2026-04-02`).
-   StackMemory asks for review; it does not auto-resolve or delete.
+   LEVH asks for review; it does not auto-resolve or delete.
 5. **Insights**: deterministic forgetting and reinforcement behavior.
 
 ## 3. Connect an AI client
@@ -67,8 +67,8 @@ MCP profiles reduce the advertised tool surface; they are **not** an
 authorization or security boundary.
 
 ```bash
-stackmemory mcp profiles
-stackmemory mcp config claude --profile work
+levh mcp profiles
+levh mcp config claude --profile work
 ```
 
 Profile counts are read from the live registry:
@@ -94,9 +94,9 @@ with its provenance.
 The real-data path does not seed anything:
 
 ```bash
-stackmemory setup --real --client claude --profile work
-stackmemory capture "Atlas uses PostgreSQL in production."
-stackmemory serve
+levh setup --real --client claude --profile work
+levh capture "Atlas uses PostgreSQL in production."
+levh serve
 ```
 
 The first memory passes through the ordinary admission and storage pipeline. It
@@ -105,11 +105,11 @@ is not silently pinned and its trust score is not artificially increased.
 ## 5. Local dogfood metrics
 
 Usage measurement is local and disabled by default. When explicitly enabled,
-StackMemory records only whitelisted events in a local JSONL journal. Raw memory
+LEVH records only whitelisted events in a local JSONL journal. Raw memory
 and query content are not recorded, and nothing is sent over the network.
 
 ```bash
-STACKMEMORY_DOGFOOD_ENABLED=true stackmemory serve
+LEVH_DOGFOOD_ENABLED=true levh serve
 ```
 
 A process started without the flag must be restarted to enable collection. Old

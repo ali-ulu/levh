@@ -1,10 +1,10 @@
 # LEVH
 
-> **Brand transition:** LEVH is the product name. The PyPI package is published as `levh`. The CLI command, environment variables, and database format remain `stackmemory` in this release for compatibility.
+> Formerly StackMemory. The `stackmemory` command and `STACKMEMORY_*` env vars still work but are deprecated.
 
 
 <p align="center">
-  <strong>StackMemory</strong><br>
+  <strong>LEVH</strong><br>
   Shared Memory Layer for AI Coding Workflows<br>
   <em>Memory that forgets like you do — unless it matters.</em>
 </p>
@@ -21,15 +21,15 @@
 
 ---
 
-## What is StackMemory?
+## What is LEVH?
 
-StackMemory gives your AI coding agents a **persistent, searchable memory** across sessions, projects, and tools. Instead of starting from scratch every time, your AI remembers what you discussed, decisions you made, and context from every workspace.
+LEVH gives your AI coding agents a **persistent, searchable memory** across sessions, projects, and tools. Instead of starting from scratch every time, your AI remembers what you discussed, decisions you made, and context from every workspace.
 
-Most memory tools optimize for **perfect recall** — store everything, retrieve everything, let noise pile up forever. StackMemory instead models memory the way **human memory actually works**: every memory has its own decay curve; unused memories fade; memories you actually rely on get reinforced and become durable, automatically, with no manual curation. Signal rises to the top on its own.
+Most memory tools optimize for **perfect recall** — store everything, retrieve everything, let noise pile up forever. LEVH instead models memory the way **human memory actually works**: every memory has its own decay curve; unused memories fade; memories you actually rely on get reinforced and become durable, automatically, with no manual curation. Signal rises to the top on its own.
 
 It works as an **MCP (Model Context Protocol) server** — plug it into Claude Desktop, Cursor, Claude Code, VS Code (Cline), Windsurf, or any MCP-compatible client. It also exposes a **REST API + WebSocket** for custom integrations and ships with a built-in **dashboard** with a real-time activity feed.
 
-**Key insight**: Your AI tools (Claude, Cursor, Copilot) are stateless. StackMemory makes them stateful — and self-curating.
+**Key insight**: Your AI tools (Claude, Cursor, Copilot) are stateless. LEVH makes them stateful — and self-curating.
 
 ---
 
@@ -68,22 +68,22 @@ stability_hours(negative feedback) = max(stability × weaken_factor, 1h)
 - **Encrypted Backup & Restore**: full portable snapshot (every memory *with its decay state* + every session), optionally encrypted at rest with a passphrase (PBKDF2 + Fernet/AES). `/api/backup` + `/api/restore`, `create_backup`/`restore_backup` MCP tools, and a Settings → **Backup & Restore** panel with merge/replace.
 - **Meeting Prep**: the proactive "before you walk in" brief — your next meeting, who's attending, what you last discussed with each of them, plus relevant open commitments and decisions. Deterministic, offline. `/api/meeting-prep`, the `meeting_prep` MCP tool, and a dashboard **Meeting Prep** page.
 - **Memory Consolidation**: sleep-like compression — clusters of related, aged, unpinned memories collapse into one durable summary each (the raw episodes archived inside it, not lost). `/api/memories/consolidate-similar`, the `consolidate_similar` MCP tool, and Settings → Data Management buttons.
-- **Spaced-Repetition Review**: the fading queue as an active review flow — keep / reinforce / weaken / pin / snooze / forget each memory losing strength, every decision recorded in its history. Closes the lifecycle loop. `/api/memories/review`, `list_review_memories`/`review_memory` MCP tools, `stackmemory review` CLI, and a dashboard **Review** page.
-- **Memory Admission Gate**: decides what happens to an incoming memory *before* it's stored — admit / review / reject (duplicates) / redact (strips secrets like API keys & passwords; keeps emails). Deterministic, offline. `/api/memories/admit` + `/api/memories/evaluate-admission`, `admit_memory`/`evaluate_admission` MCP tools, `stackmemory admit` CLI, and a Settings preview card.
-- **Connector Framework v2**: gate-integrated, incremental ingest — every fetched item is routed through the admission gate (dedupe + secret redaction) with per-item error isolation, and each run is recorded so re-syncing is incremental and reportable. `/api/connectors/sync` + `/api/connectors/sync-state`, `sync_connector`/`connector_sync_status` MCP tools, `stackmemory sync` CLI, and a Settings gate toggle + sync history.
-- **Hard-delete Audit & Redaction**: deletes a memory from the tracked primary stores and reports any detected residue (`purge_memory`), and finds + strips secrets stored before the gate existed (`audit_secrets` / `redact_secrets`, logged to each memory's redaction history). Full derived-state cascade is verified by the 2.26.x privacy-hardening gates before public RC. `/api/memories/audit-secrets` + `/redact-all` + `/{id}/redact` + `/{id}/purge`, matching MCP tools, `stackmemory audit-secrets`/`redact-secrets`/`purge` CLI, and a Settings **Privacy & Redaction** card.
-- **Entity Knowledge Graph**: memories indexed into persistent `entities` + `memory_entities` tables — person / organization / event / document / task — so "which memories mention X" and "which entities co-occur with X" are real joins. `/api/entities` (reindex / stats / list / detail), `reindex_entities`/`list_entities`/`about_entity` MCP tools, `stackmemory entities` CLI, and a dashboard **Graph** page.
-- **Provenance / Trust Score**: a deterministic, explainable *reliability* signal per memory — source type + entity-graph corroboration (how many independent sources back it) + review lifecycle + recency − risk flags → a `confidence` with a label and a human-readable breakdown. Separate from the H-score; never changes recall ranking; not a "truth" claim. `/api/memories/{id}/trust` + `/trust/recompute` + `/low-trust`, `memory_trust`/`recompute_trust_scores`/`list_low_trust_memories` MCP tools, `stackmemory trust` CLI, and a Settings **Trust & provenance** card.
-- **Conflict Candidates**: deterministic flagging of memories that *might* disagree (share an entity + an opposing surface pattern: antonym / negation / same-attribute-different-value) — a **review signal, never a verdict**, never auto-deletes; an open candidate adds a small risk to the trust score. Not LLM contradiction detection. `/api/conflicts` (detect / list / review), `detect_conflict_candidates`/`list_conflict_candidates`/`review_conflict_candidate` MCP tools, `stackmemory conflicts` CLI, and a dashboard **Conflicts** page.
+- **Spaced-Repetition Review**: the fading queue as an active review flow — keep / reinforce / weaken / pin / snooze / forget each memory losing strength, every decision recorded in its history. Closes the lifecycle loop. `/api/memories/review`, `list_review_memories`/`review_memory` MCP tools, `levh review` CLI, and a dashboard **Review** page.
+- **Memory Admission Gate**: decides what happens to an incoming memory *before* it's stored — admit / review / reject (duplicates) / redact (strips secrets like API keys & passwords; keeps emails). Deterministic, offline. `/api/memories/admit` + `/api/memories/evaluate-admission`, `admit_memory`/`evaluate_admission` MCP tools, `levh admit` CLI, and a Settings preview card.
+- **Connector Framework v2**: gate-integrated, incremental ingest — every fetched item is routed through the admission gate (dedupe + secret redaction) with per-item error isolation, and each run is recorded so re-syncing is incremental and reportable. `/api/connectors/sync` + `/api/connectors/sync-state`, `sync_connector`/`connector_sync_status` MCP tools, `levh sync` CLI, and a Settings gate toggle + sync history.
+- **Hard-delete Audit & Redaction**: deletes a memory from the tracked primary stores and reports any detected residue (`purge_memory`), and finds + strips secrets stored before the gate existed (`audit_secrets` / `redact_secrets`, logged to each memory's redaction history). Full derived-state cascade is verified by the 2.26.x privacy-hardening gates before public RC. `/api/memories/audit-secrets` + `/redact-all` + `/{id}/redact` + `/{id}/purge`, matching MCP tools, `levh audit-secrets`/`redact-secrets`/`purge` CLI, and a Settings **Privacy & Redaction** card.
+- **Entity Knowledge Graph**: memories indexed into persistent `entities` + `memory_entities` tables — person / organization / event / document / task — so "which memories mention X" and "which entities co-occur with X" are real joins. `/api/entities` (reindex / stats / list / detail), `reindex_entities`/`list_entities`/`about_entity` MCP tools, `levh entities` CLI, and a dashboard **Graph** page.
+- **Provenance / Trust Score**: a deterministic, explainable *reliability* signal per memory — source type + entity-graph corroboration (how many independent sources back it) + review lifecycle + recency − risk flags → a `confidence` with a label and a human-readable breakdown. Separate from the H-score; never changes recall ranking; not a "truth" claim. `/api/memories/{id}/trust` + `/trust/recompute` + `/low-trust`, `memory_trust`/`recompute_trust_scores`/`list_low_trust_memories` MCP tools, `levh trust` CLI, and a Settings **Trust & provenance** card.
+- **Conflict Candidates**: deterministic flagging of memories that *might* disagree (share an entity + an opposing surface pattern: antonym / negation / same-attribute-different-value) — a **review signal, never a verdict**, never auto-deletes; an open candidate adds a small risk to the trust score. Not LLM contradiction detection. `/api/conflicts` (detect / list / review), `detect_conflict_candidates`/`list_conflict_candidates`/`review_conflict_candidate` MCP tools, `levh conflicts` CLI, and a dashboard **Conflicts** page.
 - **59 MCP Tools**: Store, admit, evaluate-admission, recall, ask, forget, purge, audit-secrets, redact-secrets, search, update, list, stats, consolidate, consolidate-similar, sessions, export/import, backup/restore, connectors, connector-sync, pinning, reinforcement, feedback, fading review, spaced-repetition review, projects, people, organizations, decisions, timeline, briefing, meeting prep, context files, dedupe, related memories, session summarization
 - **Auto-Capture Summaries**: `summarize_session` distills a session's memories into one durable memory — LLM-powered when `OPENAI_API_KEY` is set, deterministic offline fallback otherwise; can run automatically on `end_session` (`AUTO_SUMMARIZE_SESSIONS=true`)
 - **Related Memories**: live nearest-neighbour "see also" for any memory, computed from embedding similarity — no manual linking, no extra schema
-- **Recall Quality Benchmark**: `stackmemory benchmark` / Settings panel reports hit@1/hit@3/hit@5/MRR on a labelled query set, so recall quality is measurable, not just claimed
+- **Recall Quality Benchmark**: `levh benchmark` / Settings panel reports hit@1/hit@3/hit@5/MRR on a labelled query set, so recall quality is measurable, not just claimed
 - **Project Memory**: Namespace memories per repo/workspace; filter recall by project
 - **Source Tracking**: Know which AI client (claude-code, cursor, ...) stored each memory
 - **Pinned Memories**: Rules and decisions that never decay and always surface
 - **Context File Generation**: Compile memories into `CLAUDE.md` / `.cursorrules` so every session starts pre-loaded — from the UI, the CLI, or an MCP tool
-- **Auto-Capture**: `stackmemory hook install` captures every git commit message as a memory; `stackmemory capture` for one-liners (auto-detects your repo as the project)
+- **Auto-Capture**: `levh hook install` captures every git commit message as a memory; `levh capture` for one-liners (auto-detects your repo as the project)
 - **4 Embedding Modes**: OpenAI `text-embedding-3-small`, local `all-MiniLM-L6-v2`, **Ollama** (fully offline), or deterministic hash fallback — the system always works
 - **App Connectors**: Import from Calendar (.ics), Email (.mbox/.eml), Meeting transcripts (.vtt/.srt), Notion, Obsidian, GitHub repos, local files
 - **Live Dashboard**: Next.js dashboard served by the API itself (one process, one port) with a real-time WebSocket activity feed, semantic search, insights charts, and full memory management
@@ -115,17 +115,17 @@ cp .env.example .env
 
 ```bash
 pip install levh
-stackmemory setup --demo --client claude --profile work
-stackmemory serve
+levh setup --demo --client claude --profile work
+levh serve
 ```
 
 **Start with real data**
 
 ```bash
 pip install levh
-stackmemory setup --real --client claude --profile work
-stackmemory capture "Atlas uses PostgreSQL in production."
-stackmemory serve
+levh setup --real --client claude --profile work
+levh capture "Atlas uses PostgreSQL in production."
+levh serve
 ```
 
 The first-run dashboard offers the same two paths, shows real readiness state,
@@ -136,7 +136,7 @@ measurement. See [Getting Started](docs/getting-started.md) and the
 ### 3. Run
 
 ```bash
-stackmemory serve            # or: uvicorn server.api:app --port 8000
+levh serve            # or: uvicorn server.api:app --port 8000
 # Dashboard + API on http://localhost:8000
 # MCP SSE stream endpoint: http://localhost:8000/api/mcp/sse
 ```
@@ -152,7 +152,7 @@ decisions and tasks, meetings, and one real conflict candidate — so every view
 something to show:
 
 ```bash
-stackmemory seed-demo        # or click "Load demo data" on the empty dashboard
+levh seed-demo        # or click "Load demo data" on the empty dashboard
 ```
 
 Then open the dashboard and explore **Briefing** (daily digest), **Meeting Prep**
@@ -168,9 +168,9 @@ Open **Settings** in the dashboard for copy-paste MCP configs, or see
 ### 5. (Optional) Auto-capture your work
 
 ```bash
-stackmemory hook install               # capture every git commit message
-stackmemory capture "we use pnpm, not npm" --pin
-stackmemory context -o CLAUDE.md       # compile memory into a context file
+levh hook install               # capture every git commit message
+levh capture "we use pnpm, not npm" --pin
+levh context -o CLAUDE.md       # compile memory into a context file
 ```
 
 ---
@@ -178,7 +178,7 @@ stackmemory context -o CLAUDE.md       # compile memory into a context file
 ## Platform Setup
 
 All clients use the same stdio server. Generate any config with
-`stackmemory mcp config <claude|claude_code|cursor|windsurf|vscode|cline>`.
+`levh mcp config <claude|claude_code|cursor|windsurf|vscode|cline>`.
 
 ### Claude Desktop
 
@@ -187,10 +187,10 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) o
 ```json
 {
   "mcpServers": {
-    "stackmemory": {
+    "levh": {
       "command": "python",
       "args": ["-m", "server.mcp_stdio"],
-      "cwd": "/path/to/stackmemory-new",
+      "cwd": "/path/to/levh-new",
       "env": {
         "EMBEDDER_MODE": "local"
       }
@@ -221,7 +221,7 @@ Same server block in `~/.codeium/windsurf/mcp_config.json`.
 
 ```
                     ┌─────────────────────────────────────────────┐
-                    │           StackMemory Server                │
+                    │           LEVH Server                │
                     │                                             │
   Claude Desktop ───┤  ┌─────────┐    ┌──────────┐    ┌──────┐   │
   Cursor IDE     ───┤  │   MCP   │    │  Memory  │    │Embed │   │
@@ -248,10 +248,10 @@ instantly visible in the dashboard's live feed, and vice versa.
 ## 59 MCP Tools
 
 > **Tool profiles.** Advertising all 59 tools to a client hurts tool-selection
-> accuracy, so StackMemory groups them into cumulative profiles —
+> accuracy, so LEVH groups them into cumulative profiles —
 > `minimal` (5) ⊂ `work` (15) ⊂ `admin` (54) ⊂ `full` (59). Generated configs
-> default to **`work`**; run `stackmemory mcp profiles` to see the bands, or set
-> `STACKMEMORY_MCP_PROFILE` / `mcp config --profile <name>` to change it. The
+> default to **`work`**; run `levh mcp profiles` to see the bands, or set
+> `LEVH_MCP_PROFILE` / `mcp config --profile <name>` to change it. The
 > full table below is the `full` surface. Profiles only filter which tools a
 > client sees — they are **not** an authentication or authorization boundary;
 > every profile talks to the same engine instance with the same access.
@@ -323,23 +323,23 @@ instantly visible in the dashboard's live feed, and vice versa.
 ## CLI
 
 ```bash
-stackmemory serve                     # API + dashboard on :8000
-stackmemory doctor                    # health checks
-stackmemory setup --status            # computed first-run readiness
-stackmemory setup --demo --client claude --profile work
-stackmemory setup --real --client cursor --profile minimal
-stackmemory seed-demo                 # load a demo corpus into an empty store
-stackmemory capture "note" --pin      # store a memory (auto-detects git repo as project)
-stackmemory context -o CLAUDE.md      # generate a context file from memories
-stackmemory hook install              # git post-commit auto-capture
-stackmemory summarize <session_id>    # distill a session into one summary memory
-stackmemory benchmark                 # recall-quality harness (hit@k / MRR)
-stackmemory mcp config cursor         # print MCP config for a client
-stackmemory mcp stdio                 # run the MCP stdio server
-stackmemory eval run                  # golden-fixture memory evaluation → eval_report.json
-stackmemory eval report               # print the last written evaluation report
-stackmemory dogfood status            # aggregate view of the local usage journal
-stackmemory dogfood export -o out.json  # write the aggregate dogfood report (explicit)
+levh serve                     # API + dashboard on :8000
+levh doctor                    # health checks
+levh setup --status            # computed first-run readiness
+levh setup --demo --client claude --profile work
+levh setup --real --client cursor --profile minimal
+levh seed-demo                 # load a demo corpus into an empty store
+levh capture "note" --pin      # store a memory (auto-detects git repo as project)
+levh context -o CLAUDE.md      # generate a context file from memories
+levh hook install              # git post-commit auto-capture
+levh summarize <session_id>    # distill a session into one summary memory
+levh benchmark                 # recall-quality harness (hit@k / MRR)
+levh mcp config cursor         # print MCP config for a client
+levh mcp stdio                 # run the MCP stdio server
+levh eval run                  # golden-fixture memory evaluation → eval_report.json
+levh eval report               # print the last written evaluation report
+levh dogfood status            # aggregate view of the local usage journal
+levh dogfood export -o out.json  # write the aggregate dogfood report (explicit)
 ```
 
 ---
@@ -413,7 +413,7 @@ H(x,ψ) = α·(1-similarity) + β·(1-decay_factor) + γ·(1-importance) + δ·(
 
 ## App Connectors
 
-Import data from your existing tools directly into StackMemory's memory layer.
+Import data from your existing tools directly into LEVH's memory layer.
 Every import can be namespaced under a project.
 
 ```python
@@ -468,9 +468,9 @@ client configs:
 explicit CLI/API override > environment > .stackmemory/config.json > defaults
 ```
 
-`stackmemory init` and `stackmemory setup` create `.stackmemory/config.json`.
+`levh init` and `levh setup` create `.stackmemory/config.json`.
 Relative database paths in that file are resolved from the working directory.
-StackMemory does not load `.env` implicitly; export environment variables in
+LEVH does not load `.env` implicitly; export environment variables in
 the process that launches it when environment overrides are required.
 
 | Variable | Default | Description |
@@ -494,20 +494,20 @@ the process that launches it when environment overrides are required.
 | `INTERFERENCE_FACTOR` | `0.6` | Stability multiplier applied to superseded memories |
 | `AUTO_SUMMARIZE_SESSIONS` | `false` | Auto-summarize a session's memories on `end_session` |
 | `SUMMARY_MODEL` | `gpt-4o-mini` | OpenAI chat model used for session summaries |
-| `STACKMEMORY_TOKEN` | — | Optional shared-secret gate on `/api/*` (except `/api/health`) and the WebSocket |
-| `STACKMEMORY_CORS_ORIGINS` | localhost only | Comma-separated allowed browser origins (`*` for wildcard) |
-| `STACKMEMORY_AUTH_RATE_LIMIT` | `10` | Failed token attempts allowed per rate-limit window, per client/process |
-| `STACKMEMORY_API_RATE_LIMIT` | `120` | Authenticated API requests allowed per window, per client/process |
-| `STACKMEMORY_RATE_LIMIT_WINDOW_SECONDS` | `60` | In-process rate-limit window; not a distributed quota system |
-| `STACKMEMORY_SQLITE_BUSY_TIMEOUT_MS` | `5000` | SQLite lock wait before failing; file databases use WAL mode |
-| `STACKMEMORY_SAFETY_BACKUP_DIR` | DB sibling `safety-backups/` | Location for automatic pre-replace SQLite safety backups |
+| `LEVH_TOKEN` | — | Optional shared-secret gate on `/api/*` (except `/api/health`) and the WebSocket |
+| `LEVH_CORS_ORIGINS` | localhost only | Comma-separated allowed browser origins (`*` for wildcard) |
+| `LEVH_AUTH_RATE_LIMIT` | `10` | Failed token attempts allowed per rate-limit window, per client/process |
+| `LEVH_API_RATE_LIMIT` | `120` | Authenticated API requests allowed per window, per client/process |
+| `LEVH_RATE_LIMIT_WINDOW_SECONDS` | `60` | In-process rate-limit window; not a distributed quota system |
+| `LEVH_SQLITE_BUSY_TIMEOUT_MS` | `5000` | SQLite lock wait before failing; file databases use WAL mode |
+| `LEVH_SAFETY_BACKUP_DIR` | DB sibling `safety-backups/` | Location for automatic pre-replace SQLite safety backups |
 
 ---
 
 ## Security
 
-StackMemory binds to loopback by default. `stackmemory serve --host 0.0.0.0`
-(or any non-loopback host) is refused unless `STACKMEMORY_TOKEN` is set. The
+LEVH binds to loopback by default. `levh serve --host 0.0.0.0`
+(or any non-loopback host) is refused unless `LEVH_TOKEN` is set. The
 Docker Compose default publishes only `127.0.0.1:8000`; deployments that widen
 the bind must set a strong token. CORS is not an authorization boundary.
 
@@ -517,15 +517,15 @@ Rejected/review candidates are not stored; secrets are redacted. An explicit
 `admit_memory(force=true)` operation is the audited administrative override.
 
 
-StackMemory is designed as a **local, single-user tool** — no accounts, no
+LEVH is designed as a **local, single-user tool** — no accounts, no
 multi-tenancy. Two lightweight controls harden the default local deployment:
 
 - **CORS defaults to localhost origins**, not `*` — without this, any website
   open in your browser could `fetch()` your entire memory store from a
-  service running on `localhost:8000`. Widen it with `STACKMEMORY_CORS_ORIGINS`
+  service running on `localhost:8000`. Widen it with `LEVH_CORS_ORIGINS`
   only if you know what you're exposing.
-- **Optional shared-secret token** (`STACKMEMORY_TOKEN`) gates every `/api/*`
-  route and the WebSocket behind an `X-StackMemory-Token` header (or `?token=`
+- **Optional shared-secret token** (`LEVH_TOKEN`) gates every `/api/*`
+  route and the WebSocket behind an `X-LEVH-Token` header (or `?token=`
   for the socket). When enabled, failed token attempts and authenticated API
   traffic are limited in-process. Unset by default so local use stays zero-config.
 
@@ -535,7 +535,7 @@ reverse proxy if you expose the service beyond localhost.
 SQLite file databases use WAL mode, a 5-second busy timeout, numbered
 `PRAGMA user_version` migrations, and an FTS5 text index when the local SQLite
 build supports it. Full-text search falls back to `LIKE` if FTS5 is unavailable.
-Before `restore --replace` changes an existing file database, StackMemory creates
+Before `restore --replace` changes an existing file database, LEVH creates
 a consistent online SQLite safety backup in a local `safety-backups/` directory.
 
 ---
@@ -545,20 +545,20 @@ a consistent online SQLite safety backup in a local `safety-backups/` directory.
 Two offline tools for judging whether the memory system is actually working,
 distinct from the H(x,ψ) recall benchmark above.
 
-- **`stackmemory eval run [--fixtures DIR] [--embedder-mode hash|local|...] [--output FILE]`**
+- **`levh eval run [--fixtures DIR] [--embedder-mode hash|local|...] [--output FILE]`**
   runs the golden-fixture evaluation (`tests/fixtures/evaluation/*.json`)
   through the real admission → store → trust → conflict → recall → review
   pipeline and writes a JSON report (default `eval_report.json`). Deterministic
   for a fixed fixture set + embedder mode.
-- **`stackmemory eval report [--output FILE]`** prints the last written report.
-- **`stackmemory dogfood status`** prints the aggregate view of the local
+- **`levh eval report [--output FILE]`** prints the last written report.
+- **`levh dogfood status`** prints the aggregate view of the local
   usage journal (event counts, time-to-first-value, recall-feedback rate,
   review distribution).
-- **`stackmemory dogfood export --output report.json`** is an explicit user
+- **`levh dogfood export --output report.json`** is an explicit user
   action that writes the *aggregate* journal report to a file.
 
 Live instrumentation (2.25.1) is **opt-in**: set
-`STACKMEMORY_DOGFOOD_ENABLED=true` and every transport that uses the shared
+`LEVH_DOGFOOD_ENABLED=true` and every transport that uses the shared
 engine (REST API / `serve`, MCP stdio, MCP SSE) journals coarse usage events
 automatically — store, recall, briefing opened, meeting prep opened, trust
 viewed, review keep/reinforce/weaken/forget, conflict confirm/dismiss, seed
@@ -571,7 +571,7 @@ Privacy rules, both tools:
 - **Local-only, no network.** Neither module performs any network I/O; the
   evaluation report and the dogfood journal are plain local files.
 - **No default telemetry.** Nothing is collected or sent anywhere unless the
-  user explicitly sets `STACKMEMORY_DOGFOOD_ENABLED=true`; there is no
+  user explicitly sets `LEVH_DOGFOOD_ENABLED=true`; there is no
   opt-out because there's no opt-in by default.
 - **No raw memory content.** The evaluation report contains fixture keys,
   scenario names, labels, and numbers only. The dogfood journal accepts only
@@ -582,7 +582,7 @@ Privacy rules, both tools:
   lines; you decide if and when a report leaves the machine.
 
 Do not quote evaluation numbers (hit@1, hit@3, MRR, precision/recall, etc.)
-from anything other than a real `stackmemory eval run` against a known
+from anything other than a real `levh eval run` against a known
 fixture set — every report is tagged with its `evaluation_version`
 (currently `memory-eval-v1`) so a number is only meaningful alongside the
 fixture set that produced it.
@@ -605,7 +605,7 @@ non-returned candidates), env-configurable weights, mixed embedding dimensions,
 v1 → v2 schema migration, dedupe, context file generation, related memories,
 session summarization, the recall-quality benchmark harness, and the REST API.
 
-Benchmark recall quality directly with `stackmemory benchmark`. Source-tree users
+Benchmark recall quality directly with `levh benchmark`. Source-tree users
 can also run `python scripts/benchmark_recall.py`; the runtime implementation is
 packaged under `server.core.benchmark` so wheel installs do not depend on the
 non-package `scripts/` directory. Run with `EMBEDDER_MODE=local`, `ollama`, or

@@ -1,21 +1,24 @@
-// Client-side storage for the optional StackMemory server access token.
+// Client-side storage for the optional LEVH server access token.
 //
-// The FastAPI backend can be started with STACKMEMORY_TOKEN set, which gates
-// every /api/* request (except /api/health) behind an X-StackMemory-Token
+// The FastAPI backend can be started with LEVH_TOKEN set, which gates
+// every /api/* request (except /api/health) behind an X-LEVH-Token
 // header, and the /ws/memory socket behind that header or a ?token= param.
 // This module is the single source of truth for that token in the browser.
 //
 // SSR-safe: this app uses static export, so module code and effects can run
 // in a non-DOM context. Every window/localStorage access is guarded.
 
-const STORAGE_KEY = "stackmemory_token";
-const CHANGE_EVENT = "stackmemory-token-changed";
+const STORAGE_KEY = "levh_token";
+const LEGACY_STORAGE_KEY = "stackmemory_token";
+const CHANGE_EVENT = "levh-token-changed";
 
 /** Returns the stored token, or "" when none is set / not in a browser. */
 export function getToken(): string {
   if (typeof window === "undefined") return "";
   try {
-    return window.localStorage.getItem(STORAGE_KEY) ?? "";
+    return window.localStorage.getItem(STORAGE_KEY)
+      ?? window.localStorage.getItem(LEGACY_STORAGE_KEY)
+      ?? "";
   } catch {
     return "";
   }

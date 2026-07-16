@@ -1,4 +1,4 @@
-"""Local Files Connector — Import local files into StackMemory.
+"""Local Files Connector — Import local files into LEVH.
 
 Supports: .md, .txt, .json, .py, .js, .ts, .rs, .go, .java, .yaml, .yml,
 .toml, .cfg, .ini, .sh, .bash, .html, .css, .sql, .r, .jl, .ex, .exs,

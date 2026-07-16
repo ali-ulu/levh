@@ -1,12 +1,12 @@
 # LEVH Brand Transition
 
-LEVH is the product-facing name for the local-first context continuity system previously presented as StackMemory.
+LEVH is the product-facing name for the local-first context continuity system previously presented as LEVH.
 
 Compatibility is intentionally preserved in 2.26.8:
 
-- Python package: `stackmemory`
-- CLI: `stackmemory`
-- Environment variables: `STACKMEMORY_*`
+- Python package: `levh`
+- CLI: `levh`
+- Environment variables: `LEVH_*` (legacy `STACKMEMORY_*` aliases remain supported with deprecation warnings)
 - Docker service and volume names: unchanged
 - Database and export formats: unchanged
 

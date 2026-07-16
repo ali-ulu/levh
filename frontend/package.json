@@ -1,6 +1,6 @@
 {
-  "name": "stackmemory-frontend",
-  "version": "2.26.8",
+  "name": "levh-frontend",
+  "version": "2.27.0",
   "private": true,
   "scripts": {
     "dev": "next dev",

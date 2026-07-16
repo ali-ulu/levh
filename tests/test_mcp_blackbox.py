@@ -23,7 +23,7 @@ def _env(db_path: Path) -> dict[str, str]:
         {
             "SQLITE_DB_PATH": str(db_path),
             "EMBEDDER_MODE": "hash",
-            "STACKMEMORY_MCP_PROFILE": "minimal",
+            "LEVH_MCP_PROFILE": "minimal",
             "PYTHONPATH": str(ROOT),
         }
     )

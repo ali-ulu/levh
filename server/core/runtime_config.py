@@ -1,4 +1,4 @@
-"""Canonical runtime configuration resolution for StackMemory.
+"""Canonical runtime configuration resolution for LEVH.
 
 Precedence is intentionally uniform across CLI, API, MCP and background
 providers:
@@ -17,9 +17,11 @@ import os
 from pathlib import Path
 from typing import Any, Mapping
 
+from server.core.env import get_env
+
 CONFIG_DIR = ".stackmemory"
 CONFIG_FILE = "config.json"
-CONFIG_PATH_ENV = "STACKMEMORY_CONFIG_PATH"
+CONFIG_PATH_ENV = "LEVH_CONFIG_PATH"
 
 DEFAULTS: dict[str, Any] = {
     "database_path": "stackmemory.db",
@@ -67,7 +69,7 @@ class RuntimeConfig:
 
 
 def _config_path(*, cwd: str | os.PathLike[str] | None, environ: Mapping[str, str]) -> Path:
-    explicit = (environ.get(CONFIG_PATH_ENV) or "").strip()
+    explicit = (get_env(CONFIG_PATH_ENV, "", environ=environ) or "").strip()
     if explicit:
         return Path(explicit).expanduser()
     root = Path(cwd or os.getcwd())
@@ -91,9 +93,9 @@ def load_config_file(
     try:
         raw = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
-        raise RuntimeConfigError(f"Invalid StackMemory config at {path}: {exc}") from exc
+        raise RuntimeConfigError(f"Invalid LEVH config at {path}: {exc}") from exc
     if not isinstance(raw, dict):
-        raise RuntimeConfigError(f"Invalid StackMemory config at {path}: root must be an object")
+        raise RuntimeConfigError(f"Invalid LEVH config at {path}: root must be an object")
     return raw, path
 
 
@@ -137,8 +139,9 @@ def resolve_runtime_config(
         if key in file_cfg and file_cfg[key] is not None:
             merged[key] = file_cfg[key]
     for env_name, key in _ENV_TO_KEY.items():
-        if env_name in env and str(env[env_name]).strip() != "":
-            merged[key] = env[env_name]
+        value = get_env(env_name, None, environ=env)
+        if value is not None and str(value).strip() != "":
+            merged[key] = value
     if explicit:
         for key, value in explicit.items():
             if key in DEFAULTS and value is not None:

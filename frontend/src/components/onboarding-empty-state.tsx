@@ -222,7 +222,7 @@ export function OnboardingEmptyState({ status, onChanged }: OnboardingEmptyState
               Dogfood metrics: <strong>{status.dogfood_enabled ? "On" : "Off"}</strong> · Journal: {status.dogfood_journal.name} ({status.dogfood_journal.scope})
             </p>
             {!status.dogfood_enabled && (
-              <code className="block rounded bg-muted px-2 py-1 text-xs">STACKMEMORY_DOGFOOD_ENABLED=true stackmemory serve</code>
+              <code className="block rounded bg-muted px-2 py-1 text-xs">LEVH_DOGFOOD_ENABLED=true levh serve</code>
             )}
             <p className="text-xs text-muted-foreground">
               A process started without the flag must be restarted. Historical journals are not migrated automatically.
@@ -244,7 +244,7 @@ export function OnboardingEmptyState({ status, onChanged }: OnboardingEmptyState
         {error && <p className="text-sm text-destructive">{error}</p>}
 
         <p className="text-xs text-muted-foreground">
-          Terminal path: <code className="rounded bg-muted px-1 py-0.5 font-mono">stackmemory setup --demo --client claude --profile work</code>. See{" "}
+          Terminal path: <code className="rounded bg-muted px-1 py-0.5 font-mono">levh setup --demo --client claude --profile work</code>. See{" "}
           <Link href="/settings" className="underline underline-offset-4">Settings</Link> for the full local configuration surface.
         </p>
       </CardContent>

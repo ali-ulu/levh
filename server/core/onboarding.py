@@ -15,22 +15,23 @@ from pathlib import Path
 from typing import Any
 
 from server.configs import PLATFORM_ALIASES, PLATFORMS
+from server.core.env import get_env
 from server.tools.profiles import DEFAULT_PROFILE, profile_counts
 
 ONBOARDING_VERSION = "onboarding-v1"
-RECEIPT_ENV = "STACKMEMORY_ONBOARDING_RECEIPT_PATH"
+RECEIPT_ENV = "LEVH_ONBOARDING_RECEIPT_PATH"
 DEFAULT_RECEIPT_PATH = ".stackmemory/onboarding-receipt.json"
 
 
-def stackmemory_version() -> str:
+def levh_version() -> str:
     try:
-        return package_version("stackmemory")
+        return package_version("levh")
     except PackageNotFoundError:
-        return os.getenv("STACKMEMORY_VERSION", "unknown")
+        return get_env("LEVH_VERSION", "unknown")
 
 
 def receipt_path(explicit_path: str | os.PathLike | None = None) -> Path:
-    return Path(explicit_path or os.getenv(RECEIPT_ENV, DEFAULT_RECEIPT_PATH))
+    return Path(explicit_path or get_env(RECEIPT_ENV, DEFAULT_RECEIPT_PATH))
 
 
 def read_receipt(path: str | os.PathLike | None = None) -> dict[str, Any] | None:
@@ -58,7 +59,7 @@ def write_receipt(
     """Write a privacy-safe local onboarding receipt."""
     receipt = {
         "onboarding_version": ONBOARDING_VERSION,
-        "stackmemory_version": stackmemory_version(),
+        "levh_version": levh_version(),
         "database_ready": bool(database_ready),
         "first_memory_ready": bool(first_memory_ready),
         "mcp_client": mcp_client,

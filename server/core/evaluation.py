@@ -43,7 +43,7 @@ def _package_version() -> str:
     try:
         from importlib.metadata import version
 
-        return version("stackmemory")
+        return version("levh")
     except Exception:
         return "unknown"
 
@@ -293,7 +293,7 @@ async def run_evaluation(
 
     return {
         "evaluation_version": EVALUATION_VERSION,
-        "stackmemory_version": _package_version(),
+        "levh_version": _package_version(),
         "embedder_mode": embedder_mode,
         "fixture_count": len(fixtures),
         "fixtures": fixture_results,

@@ -65,10 +65,10 @@ def _write_min_tree(root, version, minor, dashboard_badge):
     )
     (root / "frontend" / "package-lock.json").write_text(
         json.dumps({
-            "name": "stackmemory-frontend",
+            "name": "levh-frontend",
             "version": version,
             "lockfileVersion": 3,
-            "packages": {"": {"name": "stackmemory-frontend", "version": version}},
+            "packages": {"": {"name": "levh-frontend", "version": version}},
         }, indent=2) + "\n",
         encoding="utf-8",
     )
@@ -76,10 +76,10 @@ def _write_min_tree(root, version, minor, dashboard_badge):
         f'app = FastAPI(version="{version}")\n', encoding="utf-8"
     )
     (root / "frontend" / "src" / "components" / "layout" / "sidebar.tsx").write_text(
-        f"Memory Engine v{minor}\n", encoding="utf-8"
+        f"LEVH Engine v{minor}\n", encoding="utf-8"
     )
     (root / "server" / "dashboard" / "index.html").write_text(
-        f"<footer>Memory Engine v{dashboard_badge}</footer>", encoding="utf-8"
+        f"<footer>LEVH Engine v{dashboard_badge}</footer>", encoding="utf-8"
     )
 
 
@@ -113,7 +113,7 @@ def test_bump_rewrites_temp_tree(tmp_path, monkeypatch):
     sidebar = (
         tmp_path / "frontend" / "src" / "components" / "layout" / "sidebar.tsx"
     ).read_text()
-    assert "Memory Engine v2.23" in sidebar
+    assert "LEVH Engine v2.23" in sidebar
     assert "v2.22" not in sidebar
 
 
@@ -129,7 +129,7 @@ def test_bump_raises_when_site_pattern_missing(tmp_path, monkeypatch):
 
 def test_release_excludes_build_and_egg_info_artifacts():
     assert release._is_excluded(Path("build/lib/server/api.py"))
-    assert release._is_excluded(Path("stackmemory.egg-info/PKG-INFO"))
+    assert release._is_excluded(Path("levh.egg-info/PKG-INFO"))
     assert release._is_excluded(Path("other-package.egg-info/PKG-INFO"))
     assert not release._is_excluded(Path("server/dashboard/index.html"))
 
@@ -147,7 +147,7 @@ def test_frontend_lock_supports_react_19_without_legacy_peer_bypass():
         root / "scripts" / "release.py",
         root / "README.md",
     ):
-        assert "legacy-peer-deps" not in path.read_text(), f"legacy peer bypass remains in {path}"
+            assert "legacy-peer-deps" not in path.read_text(encoding="utf-8"), f"legacy peer bypass remains in {path}"
 
 
 def test_frontend_runtime_versions_are_pinned_to_supported_major():

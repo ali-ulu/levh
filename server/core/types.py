@@ -1,4 +1,4 @@
-"""StackMemory Type Definitions — Pydantic models for all data structures."""
+"""LEVH Type Definitions — Pydantic models for all data structures."""
 
 from __future__ import annotations
 

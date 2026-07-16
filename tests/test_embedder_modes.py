@@ -17,4 +17,4 @@ def test_local_missing_dependency_falls_back_with_actionable_reason():
     embedder = Embedder("local")
     if embedder.mode == "hash":
         assert embedder.fallback_reason
-        assert "stackmemory[local]" in embedder.fallback_reason
+        assert "levh[local]" in embedder.fallback_reason

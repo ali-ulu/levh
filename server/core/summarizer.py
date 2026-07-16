@@ -2,7 +2,7 @@
 consolidated memory.
 
 This closes the biggest product gap versus managed memory services (Mem0/Zep):
-those auto-distill conversations into facts; StackMemory otherwise relies on
+those auto-distill conversations into facts; LEVH otherwise relies on
 explicit `store` calls. `summarize_session` gives the same "auto-capture on
 session end" behavior.
 

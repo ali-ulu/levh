@@ -24,6 +24,8 @@ import os
 from datetime import datetime, timezone
 from pathlib import Path
 
+from server.core.env import get_env
+
 EVENT_TYPES = frozenset(
     {
         "memory_stored",
@@ -51,7 +53,7 @@ DEFAULT_JOURNAL_PATH = "./dogfood_events.jsonl"
 
 # Live wiring is OPT-IN: nothing is journaled unless the user sets this env
 # var to a truthy value. This is the "no default telemetry" rule in code.
-ENABLED_ENV = "STACKMEMORY_DOGFOOD_ENABLED"
+ENABLED_ENV = "LEVH_DOGFOOD_ENABLED"
 
 # The first of these marks "setup done"; deltas to the first occurrence of the
 # others are the time-to-first-value product metrics.
@@ -94,7 +96,7 @@ def journal_path() -> str:
 
 def dogfood_enabled() -> bool:
     """Live instrumentation flag. Defaults to OFF."""
-    return os.getenv(ENABLED_ENV, "").strip().lower() in ("1", "true", "yes", "on")
+    return get_env(ENABLED_ENV, "").strip().lower() in ("1", "true", "yes", "on")
 
 
 def default_journal_path_for(db_path: str | os.PathLike | None) -> str:

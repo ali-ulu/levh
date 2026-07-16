@@ -1,4 +1,4 @@
-"""Tool: Connectors — Import data from external apps into StackMemory.
+"""Tool: Connectors — Import data from external apps into LEVH.
 
 Registers three MCP tools:
     - import_from_app: Run a connector to pull data into memory.

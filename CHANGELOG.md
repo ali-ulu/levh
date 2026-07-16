@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.27.0
+
+### Full rename to LEVH
+
+- Added the `levh` CLI as the primary command; `stackmemory` remains a
+  deprecated compatibility alias with a warning.
+- Added `LEVH_*` environment variables with `STACKMEMORY_*` fallback support.
+- Updated generated MCP configs, dashboard text, README, and documentation to
+  use LEVH-facing names.
+
 ## 2.26.8
 
 ### Release consistency and operational hardening

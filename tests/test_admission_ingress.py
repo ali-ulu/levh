@@ -150,14 +150,14 @@ def test_non_loopback_serve_requires_token(monkeypatch):
     import server.cli as cli
     import uvicorn
 
-    monkeypatch.delenv("STACKMEMORY_TOKEN", raising=False)
+    monkeypatch.delenv("LEVH_TOKEN", raising=False)
     called = []
     monkeypatch.setattr(uvicorn, "run", lambda *a, **kw: called.append((a, kw)))
     args = argparse.Namespace(host="0.0.0.0", port=8000, reload=False)
     assert cli.cmd_serve(args) == 1
     assert called == []
 
-    monkeypatch.setenv("STACKMEMORY_TOKEN", "test-token")
+    monkeypatch.setenv("LEVH_TOKEN", "test-token")
     assert cli.cmd_serve(args) == 0
     assert len(called) == 1
 

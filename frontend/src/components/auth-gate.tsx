@@ -77,7 +77,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
           <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground">
               Ask the server operator for the access token, or check the
-              STACKMEMORY_TOKEN value on the server.
+              LEVH_TOKEN value on the server.
             </p>
             <form
               className="flex items-center gap-2"

@@ -1,16 +1,16 @@
-"""StackMemory CLI — installer, doctor, init, MCP config generator, and server launcher.
+"""LEVH CLI — installer, doctor, init, MCP config generator, and server launcher.
 
 Commands:
-    stackmemory doctor         Check system health and dependencies
-    stackmemory init           Create local config directory and defaults
-    stackmemory serve          Launch the API server (uvicorn)
-    stackmemory capture <txt>  Store a memory from the command line
-    stackmemory context        Generate CLAUDE.md / .cursorrules from memories
-    stackmemory hook install   Install a git post-commit hook that captures commits
-    stackmemory summarize <session_id>  Distill a session into one summary memory
-    stackmemory benchmark      Run the recall-quality benchmark (hit@k / MRR)
-    stackmemory mcp config <platform>  Print MCP config JSON for a client
-    stackmemory mcp stdio      Launch MCP stdio server (for Claude Desktop etc.)
+    levh doctor         Check system health and dependencies
+    levh init           Create local config directory and defaults
+    levh serve          Launch the API server (uvicorn)
+    levh capture <txt>  Store a memory from the command line
+    levh context        Generate CLAUDE.md / .cursorrules from memories
+    levh hook install   Install a git post-commit hook that captures commits
+    levh summarize <session_id>  Distill a session into one summary memory
+    levh benchmark      Run the recall-quality benchmark (hit@k / MRR)
+    levh mcp config <platform>  Print MCP config JSON for a client
+    levh mcp stdio      Launch MCP stdio server (for Claude Desktop etc.)
 """
 
 from __future__ import annotations
@@ -34,6 +34,7 @@ from server.core.runtime_config import (
     resolve_runtime_config,
     runtime_env,
 )
+from server.core.env import get_env
 
 # ── Constants ─────────────────────────────────────────────────────
 
@@ -77,7 +78,7 @@ def cmd_doctor(_args: argparse.Namespace) -> int:
         db_path = runtime.database_path
     except Exception as exc:
         checks.append(("Runtime config", "FAIL", str(exc)))
-        print("\n  StackMemory Doctor")
+        print("\n  LEVH Doctor")
         print("  " + "=" * 50)
         for name, status, detail in checks:
             detail_str = f"  {detail}" if detail else ""
@@ -207,7 +208,7 @@ def cmd_doctor(_args: argparse.Namespace) -> int:
         import sqlite3
 
         if not os.path.exists(db_path):
-            checks.append(("Memory store", "WARN", "not initialized; run `stackmemory setup`"))
+            checks.append(("Memory store", "WARN", "not initialized; run `levh setup`"))
         else:
             with sqlite3.connect(db_path) as conn:
                 row = conn.execute("SELECT COUNT(*) FROM memories").fetchone()
@@ -301,14 +302,14 @@ def cmd_doctor(_args: argparse.Namespace) -> int:
         checks.append(("SQLite runtime", "WARN", f"could not inspect: {e}"))
 
     recommendation = (
-        "run `stackmemory setup --demo --client claude --profile work`"
+        "run `levh setup --demo --client claude --profile work`"
         if not memory_count
         else "generate an MCP config and test recall"
     )
     checks.append(("Onboarding", "PASS", recommendation))
 
     # Print report
-    print("\n  StackMemory Doctor")
+    print("\n  LEVH Doctor")
     print("  " + "=" * 50)
     for name, status, detail in checks:
         detail_str = f"  {detail}" if detail else ""
@@ -415,7 +416,7 @@ def cmd_setup(args: argparse.Namespace) -> int:
         dogfood_enabled=dogfood_enabled(),
     )
 
-    print("\n  StackMemory setup")
+    print("\n  LEVH setup")
     print("  " + "=" * 50)
     print(f"  Mode:          {mode}")
     print(f"  Database:      ready ({status.get('memory_count', 0)} memories)")
@@ -432,8 +433,8 @@ def cmd_setup(args: argparse.Namespace) -> int:
     print(f"  Dogfood:       {'ON' if receipt['dogfood_enabled'] else 'OFF (local default)'}")
     print("\n  MCP profiles narrow tool discovery; they are not an authorization boundary.")
     if mode == "real" and not status.get("memory_count"):
-        print('  Next: stackmemory capture "Atlas uses PostgreSQL in production."')
-    print("  Next: stackmemory serve")
+        print('  Next: levh capture "Atlas uses PostgreSQL in production."')
+    print("  Next: levh serve")
     print("  Then test recall from your configured AI client.")
     return 0
 
@@ -484,14 +485,14 @@ def cmd_serve(args: argparse.Namespace) -> int:
         is_loopback = host.lower() == "localhost" or ipaddress.ip_address(host).is_loopback
     except ValueError:
         is_loopback = False
-    if not is_loopback and not os.getenv("STACKMEMORY_TOKEN", "").strip():
+    if not is_loopback and not get_env("LEVH_TOKEN", "").strip():
         print(
-            "  Refusing non-loopback bind without STACKMEMORY_TOKEN. "
+            "  Refusing non-loopback bind without LEVH_TOKEN. "
             "Set a strong token or bind to 127.0.0.1.",
             file=sys.stderr,
         )
         return 1
-    print(f"  Starting StackMemory API on {host}:{port}")
+    print(f"  Starting LEVH API on {host}:{port}")
     print(f"  Dashboard: http://{host}:{port}/   API docs: http://{host}:{port}/docs")
     uvicorn.run("server.api:app", host=host, port=port, reload=args.reload)
     return 0
@@ -631,8 +632,8 @@ def cmd_sync(args: argparse.Namespace) -> int:
         return 0
 
     if not args.connector:
-        print("  Usage: stackmemory sync <connector> [--project P] [--config KEY=VALUE ...] [--no-gate]", file=sys.stderr)
-        print("         stackmemory sync --status", file=sys.stderr)
+        print("  Usage: levh sync <connector> [--project P] [--config KEY=VALUE ...] [--no-gate]", file=sys.stderr)
+        print("         levh sync --status", file=sys.stderr)
         return 1
 
     config: dict = {}
@@ -725,12 +726,12 @@ def cmd_context(args: argparse.Namespace) -> int:
 
 # ── hook install (git auto-capture) ──────────────────────────────
 
-_HOOK_MARKER = "# stackmemory-hook"
+_HOOK_MARKER = "# levh-hook"
 
 _HOOK_TEMPLATE = """#!/bin/sh
 {marker}
-# Auto-capture the latest commit message into StackMemory.
-# Installed by `stackmemory hook install`. Remove with `stackmemory hook uninstall`.
+# Auto-capture the latest commit message into LEVH.
+# Installed by `levh hook install`. Remove with `levh hook uninstall`.
 MSG=$(git log -1 --pretty=%B)
 HASH=$(git log -1 --pretty=%h)
 {python} -m server.cli capture "commit ${{HASH}}: ${{MSG}}" --source git-hook --tags git,commit >/dev/null 2>&1 || true
@@ -764,7 +765,7 @@ def cmd_hook(args: argparse.Namespace) -> int:
             hook_file.unlink()
             print(f"  Removed {hook_file}")
             return 0
-        print("  No StackMemory hook installed.")
+        print("  No LEVH hook installed.")
         return 0
 
     # install
@@ -774,7 +775,7 @@ def cmd_hook(args: argparse.Namespace) -> int:
             print(f"  Hook already installed: {hook_file}")
             return 0
         print(f"  A post-commit hook already exists: {hook_file}", file=sys.stderr)
-        print("  Append the StackMemory capture line manually, or remove it first.", file=sys.stderr)
+        print("  Append the LEVH capture line manually, or remove it first.", file=sys.stderr)
         return 1
 
     hooks.mkdir(parents=True, exist_ok=True)
@@ -828,7 +829,7 @@ def cmd_benchmark(args: argparse.Namespace) -> int:
     mode = args.embedder_mode or resolve_runtime_config().embedder_mode
     metrics = asyncio.run(run_benchmark(embedder_mode=mode, top_k=args.top_k))
 
-    print("\n  StackMemory recall benchmark")
+    print("\n  LEVH recall benchmark")
     print("  " + "=" * 38)
     for k, v in metrics.items():
         print(f"  {k:14} {v}")
@@ -866,7 +867,7 @@ def cmd_review(args: argparse.Namespace) -> int:
                     print(f"  [{it['id'][:8]}] retention {it['retention']}  {it['content']}")
                     print(f"           {it['reason']}")
                 print("  " + "=" * 44)
-                print("  Apply: stackmemory review apply <id> --action "
+                print("  Apply: levh review apply <id> --action "
                       "keep|reinforce|weaken|forget|pin|snooze")
                 return 0
             if args.review_command == "apply":
@@ -882,7 +883,7 @@ def cmd_review(args: argparse.Namespace) -> int:
                     return 1
                 print(f"  Applied '{args.action}' to {args.memory_id[:8]}: {result}")
                 return 0
-            print("  Usage: stackmemory review list | review apply <id> --action ...",
+            print("  Usage: levh review list | review apply <id> --action ...",
                   file=sys.stderr)
             return 1
         finally:
@@ -917,7 +918,7 @@ def cmd_entities(args: argparse.Namespace) -> int:
                     entity_type=args.type or None, limit=args.limit
                 )
                 if not entities:
-                    print("  No entities. Run `stackmemory entities reindex` first.")
+                    print("  No entities. Run `levh entities reindex` first.")
                     return 0
                 print(f"\n  {len(entities)} entities")
                 print("  " + "=" * 44)
@@ -948,7 +949,7 @@ def cmd_entities(args: argparse.Namespace) -> int:
                         print(f"    … and {len(memories) - 8} more")
                 return 0
             print(
-                "  Usage: stackmemory entities reindex | entities list [--type T] "
+                "  Usage: levh entities reindex | entities list [--type T] "
                 "[--limit N] | entities about <query>",
                 file=sys.stderr,
             )
@@ -1002,7 +1003,7 @@ def cmd_trust(args: argparse.Namespace) -> int:
             if args.trust_command == "low":
                 items = await engine.list_low_trust(threshold=args.threshold, limit=args.limit)
                 if not items:
-                    print("  No low-trust memories. Run `stackmemory trust recompute` first.")
+                    print("  No low-trust memories. Run `levh trust recompute` first.")
                     return 0
                 print(f"\n  {len(items)} low-trust memories (threshold {args.threshold})")
                 print("  " + "=" * 44)
@@ -1011,7 +1012,7 @@ def cmd_trust(args: argparse.Namespace) -> int:
                 print("  " + "=" * 44)
                 return 0
             print(
-                "  Usage: stackmemory trust show <id> | trust recompute | "
+                "  Usage: levh trust show <id> | trust recompute | "
                 "trust low [--threshold T] [--limit N]",
                 file=sys.stderr,
             )
@@ -1073,7 +1074,7 @@ def cmd_conflicts(args: argparse.Namespace) -> int:
                 )
                 return 0
             print(
-                "  Usage: stackmemory conflicts detect | conflicts list [--status S] | "
+                "  Usage: levh conflicts detect | conflicts list [--status S] | "
                 "conflicts review <id> --action A",
                 file=sys.stderr,
             )
@@ -1108,7 +1109,7 @@ def cmd_audit_secrets(args: argparse.Namespace) -> int:
     for item in audit["items"]:
         secrets = ", ".join(item["secrets"])
         print(f"  [{item['id'][:8]}] {secrets} — {item['preview']}")
-    print("  Use `stackmemory redact-secrets --apply` to strip them.")
+    print("  Use `levh redact-secrets --apply` to strip them.")
     return 0
 
 
@@ -1198,7 +1199,7 @@ def cmd_seed_demo(args: argparse.Namespace) -> int:
         f"{result['trust_scored']} trust-scored, "
         f"{result['conflict_candidates']} conflict candidate(s)."
     )
-    print("  Open the dashboard (`stackmemory serve`) to explore it.")
+    print("  Open the dashboard (`levh serve`) to explore it.")
     return 0
 
 
@@ -1267,7 +1268,7 @@ def cmd_mcp_profiles(_args: argparse.Namespace) -> int:
         print(f"  {name:8s} {count:3d} tools{marker}")
     print("  " + "=" * 52)
     print("  minimal ⊂ work ⊂ admin ⊂ full")
-    print(f"  Set STACKMEMORY_MCP_PROFILE or `mcp config --profile <name>`.\n")
+    print(f"  Set LEVH_MCP_PROFILE or `mcp config --profile <name>`.\n")
     # Show the minimal set explicitly — it's short and clarifies the core loop.
     print("  minimal tools: " + ", ".join(sorted(tools_for_profile("minimal"))))
     return 0
@@ -1299,7 +1300,7 @@ def cmd_eval_run(args: argparse.Namespace) -> int:
         json.dump(report, fh, indent=2, ensure_ascii=False)
     passed = sum(1 for f in report["fixtures"] if f["passed"])
     print(f"\n  Memory evaluation ({report['evaluation_version']}, "
-          f"stackmemory {report['stackmemory_version']}, embedder={report['embedder_mode']})")
+          f"levh {report['levh_version']}, embedder={report['embedder_mode']})")
     print(f"  fixtures: {passed}/{report['fixture_count']} passed")
     r = report["recall"]
     print(f"  recall:   hit@1 {r['hit_at_1']}  hit@3 {r['hit_at_3']}  MRR {r['mrr']}")
@@ -1316,7 +1317,7 @@ def cmd_eval_report(args: argparse.Namespace) -> int:
     import os
 
     if not os.path.exists(args.output):
-        print(f"No evaluation report at {args.output}. Run `stackmemory eval run` first.")
+        print(f"No evaluation report at {args.output}. Run `levh eval run` first.")
         return 1
     with open(args.output, encoding="utf-8") as fh:
         print(json.dumps(json.load(fh), indent=2, ensure_ascii=False))
@@ -1369,9 +1370,13 @@ def cmd_mcp_stdio(_args: argparse.Namespace) -> int:
 # ── main ────────────────────────────────────────────────────────
 
 def main() -> int:
+    invoked_as = Path(sys.argv[0]).stem.lower()
+    legacy_invocation = invoked_as == "stackmemory"
+    if legacy_invocation:
+        print("'stackmemory' is deprecated; use 'levh'", file=sys.stderr)
     parser = argparse.ArgumentParser(
-        prog="stackmemory",
-        description="StackMemory — Shared Memory Layer for AI Coding Workflows",
+        prog="stackmemory" if legacy_invocation else "levh",
+        description="LEVH — Shared Memory Layer for AI Coding Workflows",
     )
     sub = parser.add_subparsers(dest="command", help="Available commands")
 

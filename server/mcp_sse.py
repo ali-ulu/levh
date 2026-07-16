@@ -27,6 +27,7 @@ from mcp.server.fastmcp import FastMCP
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from server.core import engine_provider
+from server.core.env import get_env
 from server.tools.register import register_all_tools
 
 # ── Lifecycle: open/close the DB around the server's run ────────────
@@ -42,12 +43,12 @@ async def _lifespan(_server: FastMCP) -> AsyncIterator[None]:
         await engine.shutdown()
 
 
-mcp_sse = FastMCP("StackMemory", lifespan=_lifespan)
+mcp_sse = FastMCP("LEVH", lifespan=_lifespan)
 
 # Register tools at import time so they are advertised on initialize. Tool
-# surface is controlled by STACKMEMORY_MCP_PROFILE (minimal / work / admin /
+# surface is controlled by LEVH_MCP_PROFILE (minimal / work / admin /
 # full); unset defaults to "full" for backward compatibility.
-_MCP_PROFILE = os.getenv("STACKMEMORY_MCP_PROFILE", "full")
+_MCP_PROFILE = get_env("LEVH_MCP_PROFILE", "full")
 register_all_tools(mcp_sse, engine_provider.get_engine(), profile=_MCP_PROFILE)
 
 # ── ASGI app (returned by .sse_app()) ────────────────────────────────
