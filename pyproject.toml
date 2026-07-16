@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "levh"
-version = "2.27.0"
+version = "2.27.1"
 description = "Shared memory layer for AI coding tools — memory that forgets like you do, unless it matters"
 readme = "README.md"
 license = "AGPL-3.0-or-later"

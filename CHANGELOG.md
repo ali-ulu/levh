@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.27.1
+
+### License metadata alignment
+
+- Published the project metadata under GNU Affero General Public License v3.0
+  or later (AGPL-3.0-or-later), matching the repository license.
+
 ## 2.27.0
 
 ### Full rename to LEVH
