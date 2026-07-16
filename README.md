@@ -19,6 +19,12 @@
   <img src="https://img.shields.io/badge/License-AGPL--3.0--or--later-green" alt="License">
 </p>
 
+<p align="center">
+  <a href="https://pypi.org/project/levh/"><img src="https://img.shields.io/pypi/v/levh?logo=pypi&logoColor=white" alt="PyPI version"></a>
+  <a href="https://ali-ulu.github.io/levh/"><img src="https://img.shields.io/badge/docs-GitHub%20Pages-222?logo=github" alt="Documentation"></a>
+  <a href="https://github.com/ali-ulu/levh/discussions"><img src="https://img.shields.io/badge/community-Discussions-0969da?logo=github" alt="GitHub Discussions"></a>
+</p>
+
 ---
 
 ## What is LEVH?
