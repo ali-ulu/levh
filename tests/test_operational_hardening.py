@@ -179,9 +179,9 @@ async def test_token_gate_rate_limits_bad_auth_attempts(monkeypatch):
     try:
         transport = ASGITransport(app=api_mod.app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
-            first = await client.get("/api/stats", headers={"X-StackMemory-Token": "bad"})
-            second = await client.get("/api/stats", headers={"X-StackMemory-Token": "bad"})
-            third = await client.get("/api/stats", headers={"X-StackMemory-Token": "bad"})
+            first = await client.get("/api/stats", headers={"X-LEVH-Token": "bad"})
+            second = await client.get("/api/stats", headers={"X-LEVH-Token": "bad"})
+            third = await client.get("/api/stats", headers={"X-LEVH-Token": "bad"})
         assert [first.status_code, second.status_code, third.status_code] == [401, 401, 429]
         assert int(third.headers["Retry-After"]) >= 1
     finally:

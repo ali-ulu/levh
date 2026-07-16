@@ -4,7 +4,7 @@
 - [ ] Backend tests pass with `EMBEDDER_MODE=hash`.
 - [ ] API smoke passes with no hang.
 - [ ] Built wheel installs in a clean virtual environment.
-- [ ] `stackmemory benchmark` works from the installed wheel.
+- [ ] `levh benchmark` works from the installed wheel.
 - [ ] `GET /` serves dashboard HTML from the installed wheel.
 - [ ] Frontend production build exits cleanly.
 - [ ] `npm audit --omit=dev` has no critical/high findings.

@@ -3,7 +3,7 @@
 This is deliberately dependency-free and is only used when the optional
 STACKMEMORY_TOKEN gate is enabled. It is not a distributed quota system; its
 purpose is to slow local/network brute-force attempts against a single
-StackMemory process.
+LEVH process.
 """
 
 from __future__ import annotations

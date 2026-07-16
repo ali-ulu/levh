@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Deterministic StackMemory release pipeline.
+"""Deterministic LEVH release pipeline.
 
 One command takes the repo from a source tree to a verified, version-consistent
 distributable. The ordering is the whole point: the frontend is built *after*
@@ -13,7 +13,7 @@ Pipeline stages (in order):
     3. sync      — replace server/dashboard/ with the fresh frontend/out/
     4. assert    — fail loudly if any version string disagrees (source + packaged)
     5. wheel     — `python -m build --wheel` + `twine check`
-    6. zip       — package the source tree into dist/stackmemory-<version>.zip
+    6. zip       — package the source tree into dist/levh-<version>.zip
 
 Usage:
     python scripts/release.py --version 2.23.0        # full release
@@ -51,7 +51,7 @@ VERSION_SITES = [
     ("server/api.py", re.compile(r'(version=")([^"]+)(")'), FULL),
     (
         "frontend/src/components/layout/sidebar.tsx",
-        re.compile(r"(Memory Engine v)(\d+\.\d+)()"),
+        re.compile(r"(LEVH Engine v)(\d+\.\d+)()"),
         MINOR,
     ),
 ]
@@ -150,9 +150,10 @@ def build_frontend(skip: bool) -> None:
         print("    removed stale frontend/out")
     # Always start from the lockfile contract. `npm ci` removes any warmed
     # node_modules state, so release, CI and Docker validate the same graph.
-    _run(["npm", "ci"], frontend, "frontend install", timeout=300)
+    npm = "npm.cmd" if os.name == "nt" else "npm"
+    _run([npm, "ci"], frontend, "frontend install", timeout=300)
     _run(
-        ["npm", "run", "build"],
+        [npm, "run", "build"],
         frontend,
         "frontend build",
         env={"NEXT_TELEMETRY_DISABLED": "1"},
@@ -178,7 +179,7 @@ def sync_dashboard(skip_build: bool) -> None:
 
 def assert_consistent() -> None:
     """Fail if any version site disagrees with pyproject, or the packaged
-    dashboard still carries a stale 'Memory Engine vX.Y' badge."""
+    dashboard still carries a stale 'LEVH Engine vX.Y' badge."""
     version = _pyproject_version()
     minor = _minor(version)
     problems: list[str] = []
@@ -196,12 +197,12 @@ def assert_consistent() -> None:
             "frontend/package-lock.json versions "
             f"= {lock.get('version')}/{lock_root} (want {version}/{version})"
         )
-    if f"Memory Engine v{minor}" not in _read("frontend/src/components/layout/sidebar.tsx"):
+    if f"LEVH Engine v{minor}" not in _read("frontend/src/components/layout/sidebar.tsx"):
         problems.append(f"sidebar.tsx not at minor v{minor}")
 
     # packaged dashboard — scan every emitted asset for a stale badge
     dashboard = REPO_ROOT / "server" / "dashboard"
-    badge = re.compile(r"Memory Engine v(\d+\.\d+)")
+    badge = re.compile(r"LEVH Engine v(\d+\.\d+)")
     if dashboard.exists():
         for path in dashboard.rglob("*"):
             if not path.is_file() or path.suffix not in {".html", ".js", ".txt"}:
@@ -228,7 +229,7 @@ def build_wheel(skip: bool) -> None:
     dist = REPO_ROOT / "dist"
     # Setuptools may reuse build/lib and silently retain removed or stale
     # dashboard assets. Always rebuild the wheel from a clean staging tree.
-    for stale in (REPO_ROOT / "build", REPO_ROOT / "stackmemory.egg-info"):
+    for stale in (REPO_ROOT / "build", REPO_ROOT / "levh.egg-info"):
         if stale.exists():
             shutil.rmtree(stale)
             print(f"    removed stale {stale.relative_to(REPO_ROOT)}")
@@ -251,7 +252,7 @@ def make_zip(version: str, skip: bool) -> Path | None:
         return None
     dist = REPO_ROOT / "dist"
     dist.mkdir(exist_ok=True)
-    zip_path = dist / f"stackmemory-{version}.zip"
+    zip_path = dist / f"levh-{version}.zip"
     if zip_path.exists():
         zip_path.unlink()
 
@@ -261,7 +262,7 @@ def make_zip(version: str, skip: bool) -> Path | None:
             rel = path.relative_to(REPO_ROOT)
             if path.is_dir() or _is_excluded(rel):
                 continue
-            zf.write(path, Path("stackmemory-new") / rel)
+            zf.write(path, Path("levh-new") / rel)
             count += 1
     _verify_zip_clean(zip_path)
     print(f"    wrote {zip_path.relative_to(REPO_ROOT)} ({count} files, {zip_path.stat().st_size // 1024} KB)")
@@ -272,7 +273,7 @@ def make_zip(version: str, skip: bool) -> Path | None:
 # (the packaged UI) and template files like .env.example.
 _EXCLUDE_DIRS = {
     ".git", "node_modules", "__pycache__", ".next", "out", ".pytest_cache",
-    ".venv", "venv", "dist", "build", "stackmemory.egg-info",
+    ".venv", "venv", "dist", "build", "levh.egg-info",
     ".mypy_cache", ".ruff_cache", ".turbo", "logs",
 }
 _EXCLUDE_SUFFIXES = {".pyc", ".pyo", ".tsbuildinfo", ".log", ".db", ".db-wal", ".db-shm"}
@@ -297,7 +298,7 @@ def _verify_zip_clean(zip_path: Path) -> None:
         names = zf.namelist()
     offenders = [
         n for n in names
-        if _is_excluded(Path(n).relative_to("stackmemory-new"))
+        if _is_excluded(Path(n).relative_to("levh-new"))
         or n.endswith("/stackmemory.db")
     ]
     if offenders:
@@ -308,7 +309,7 @@ def _verify_zip_clean(zip_path: Path) -> None:
 
 # --- orchestration -----------------------------------------------------------
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="StackMemory release pipeline")
+    parser = argparse.ArgumentParser(description="LEVH release pipeline")
     parser.add_argument("--version", help="target version X.Y.Z (bump + full pipeline)")
     parser.add_argument("--check", action="store_true", help="verify version consistency only")
     parser.add_argument("--skip-build", action="store_true", help="reuse existing frontend/out")
@@ -329,7 +330,7 @@ def main(argv: list[str] | None = None) -> int:
             parser.error(f"--version {args.version!r} is not a valid X.Y.Z version")
 
         total = 6
-        print(f"Releasing StackMemory {args.version}")
+        print(f"Releasing LEVH {args.version}")
         _step(1, total, "Bump version strings")
         bump(args.version)
         _step(2, total, "Clean frontend build")
@@ -343,7 +344,7 @@ def main(argv: list[str] | None = None) -> int:
         _step(6, total, "Package source zip")
         zip_path = make_zip(args.version, args.skip_zip)
 
-        print(f"\nDone. StackMemory {args.version} is release-ready.")
+        print(f"\nDone. LEVH {args.version} is release-ready.")
         if zip_path:
             print(f"  zip: {zip_path}")
         return 0

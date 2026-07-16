@@ -29,11 +29,11 @@ of v2.2. All 117 tests pass (`EMBEDDER_MODE=hash python -m pytest -q`).
 ## Security
 
 5. **CORS locked down.** Default origins are now localhost only (was `*`),
-   configurable via `STACKMEMORY_CORS_ORIGINS`. A wildcard on a local service
+   configurable via `LEVH_CORS_ORIGINS`. A wildcard on a local service
    let any visited website read the whole memory store from the browser.
 
-6. **Optional shared-secret gate.** Set `STACKMEMORY_TOKEN` to require an
-   `X-StackMemory-Token` header on every `/api/*` call (except `/api/health`)
+6. **Optional shared-secret gate.** Set `LEVH_TOKEN` to require an
+   `X-LEVH-Token` header on every `/api/*` call (except `/api/health`)
    and on the WebSocket (`?token=`). Unset = zero-config local use.
 
 7. **Connector errors no longer leak upstream detail.** Connector `fetch`
@@ -76,7 +76,7 @@ tested; 122 tests pass.
     `AUTO_SUMMARIZE_SESSIONS=true`. Exposed as REST
     `POST /api/sessions/{id}/summarize` and MCP tool `summarize_session`.
     (`server/core/summarizer.py`.) This was the #1 gap: managed services
-    auto-distill conversations; StackMemory previously relied on explicit
+    auto-distill conversations; LEVH previously relied on explicit
     `store`.
 
 14. **Related memories (graph-lite) + recall trace.** `get_related()` returns a

@@ -46,7 +46,7 @@ def test_init_custom_db_path_is_used_by_capture_and_mcp_config(tmp_path):
     mcp = _run("mcp", "config", "claude", cwd=tmp_path)
     assert mcp.returncode == 0, mcp.stderr
     data = json.loads(mcp.stdout)
-    env = data["mcpServers"]["stackmemory"]["env"]
+    env = data["mcpServers"]["levh"]["env"]
     assert env["SQLITE_DB_PATH"] == str(custom.resolve())
     assert env["EMBEDDER_MODE"] == "hash"
 
@@ -76,4 +76,4 @@ def test_environment_overrides_saved_config_for_runtime_and_generated_mcp(tmp_pa
     )
     assert mcp.returncode == 0
     data = json.loads(mcp.stdout)
-    assert data["mcpServers"]["stackmemory"]["env"]["SQLITE_DB_PATH"] == str(override.resolve())
+    assert data["mcpServers"]["levh"]["env"]["SQLITE_DB_PATH"] == str(override.resolve())

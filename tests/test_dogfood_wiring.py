@@ -2,7 +2,7 @@
 
 The 2.25 audit found the journal existed but nothing attached it on the live
 path. Locked here:
-  - live wiring is OPT-IN: STACKMEMORY_DOGFOOD_ENABLED defaults to off and
+  - live wiring is OPT-IN: LEVH_DOGFOOD_ENABLED defaults to off and
     the shared engine provider attaches nothing without it;
   - when enabled, the provider-created engine journals automatically, to a
     file next to the SQLite database (or DOGFOOD_JOURNAL_PATH);
@@ -42,7 +42,7 @@ async def engine(tmp_path):
 
 
 def test_disabled_by_default(monkeypatch, tmp_path):
-    monkeypatch.delenv("STACKMEMORY_DOGFOOD_ENABLED", raising=False)
+    monkeypatch.delenv("LEVH_DOGFOOD_ENABLED", raising=False)
     assert dogfood_enabled() is False
     eng = MemoryEngine(db_path=str(tmp_path / "off.db"), embedder_mode="hash")
     assert maybe_attach(eng) is None
@@ -55,14 +55,14 @@ def test_provider_engine_attaches_only_when_enabled(monkeypatch, tmp_path):
     monkeypatch.setenv("EMBEDDER_MODE", "hash")
 
     # Off (default): provider engine has no journal listener.
-    monkeypatch.delenv("STACKMEMORY_DOGFOOD_ENABLED", raising=False)
+    monkeypatch.delenv("LEVH_DOGFOOD_ENABLED", raising=False)
     engine_provider.set_engine(None)
     try:
         eng = engine_provider.get_engine()
         assert getattr(eng, "_dogfood_attached", False) is False
 
         # On: provider engine is instrumented.
-        monkeypatch.setenv("STACKMEMORY_DOGFOOD_ENABLED", "true")
+        monkeypatch.setenv("LEVH_DOGFOOD_ENABLED", "true")
         engine_provider.set_engine(None)
         eng = engine_provider.get_engine()
         assert eng._dogfood_attached is True

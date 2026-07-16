@@ -52,7 +52,7 @@ def test_custom_config_path_environment_is_honored(tmp_path):
     other.write_text(json.dumps({"database_path": "selected.db"}), encoding="utf-8")
     cfg = resolve_runtime_config(
         cwd=tmp_path,
-        environ={"STACKMEMORY_CONFIG_PATH": str(other)},
+        environ={"LEVH_CONFIG_PATH": str(other)},
     )
     assert cfg.config_path == str(other.resolve())
     assert cfg.database_path == str((tmp_path / "selected.db").resolve())
@@ -62,7 +62,7 @@ def test_present_malformed_config_fails_closed(tmp_path):
     cfg_dir = tmp_path / ".stackmemory"
     cfg_dir.mkdir()
     (cfg_dir / "config.json").write_text("{not-json", encoding="utf-8")
-    with pytest.raises(RuntimeConfigError, match="Invalid StackMemory config"):
+    with pytest.raises(RuntimeConfigError, match="Invalid LEVH config"):
         resolve_runtime_config(cwd=tmp_path, environ={})
 
 
@@ -90,3 +90,19 @@ def test_memory_engine_defaults_use_canonical_config(tmp_path, monkeypatch):
     assert engine.db.db_path == str((tmp_path / "engine.db").resolve())
     assert engine._embedder_mode == "hash"
     assert engine.short_term.max_size == 7
+
+
+def test_legacy_stackmemory_environment_falls_back(tmp_path):
+    cfg = resolve_runtime_config(
+        cwd=tmp_path,
+        environ={"STACKMEMORY_API_PORT": "8123"},
+    )
+    assert cfg.api_port == 8123
+
+
+def test_levh_environment_wins_over_legacy(tmp_path):
+    cfg = resolve_runtime_config(
+        cwd=tmp_path,
+        environ={"LEVH_API_PORT": "8124", "STACKMEMORY_API_PORT": "8123"},
+    )
+    assert cfg.api_port == 8124

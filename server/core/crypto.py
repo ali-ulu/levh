@@ -1,6 +1,6 @@
 """Passphrase-based authenticated encryption for backups (Faz 0 security).
 
-A StackMemory backup can hold a person's entire work-life memory, so an
+A LEVH backup can hold a person's entire work-life memory, so an
 exported file must be encryptable at rest. This wraps the well-reviewed
 ``cryptography`` library rather than rolling our own:
 
@@ -24,7 +24,7 @@ from __future__ import annotations
 import base64
 import os
 
-MAGIC = b"SMENC1\n"  # 7 bytes — identifies an encrypted StackMemory backup
+MAGIC = b"SMENC1\n"  # 7 bytes — identifies an encrypted LEVH backup
 SALT_LEN = 16
 PBKDF2_ITERATIONS = 390_000
 
@@ -91,7 +91,7 @@ def decrypt(blob: bytes, passphrase: str) -> bytes:
     passphrase or a tampered/corrupt file."""
     ensure_available()
     if not is_encrypted(blob):
-        raise DecryptionError("not an encrypted StackMemory backup")
+        raise DecryptionError("not an encrypted LEVH backup")
     from cryptography.fernet import Fernet, InvalidToken
 
     body = bytes(blob[len(MAGIC):])

@@ -1,10 +1,10 @@
-# StackMemory → Kişisel Dijital Hafıza — Geliştirme Planı & Nirvana Yol Haritası
+# LEVH → Kişisel Dijital Hafıza — Geliştirme Planı & Nirvana Yol Haritası
 
-> **Belge amacı:** StackMemory 2.3.1'i "AI kodlama araçları için yerel hafıza katmanı"ndan
+> **Belge amacı:** LEVH 2.3.1'i "AI kodlama araçları için yerel hafıza katmanı"ndan
 > **"bir insanın iş hayatının dijital hafızası / ikinci beyni"** ürününe taşıyacak
 > detaylı, fazlara bölünmüş, ölçülebilir bir geliştirme planı.
 >
-> **Sürüm:** v1 · **Temel alınan kod:** stackmemory 2.3.1 (release-blockers-fixed)
+> **Sürüm:** v1 · **Temel alınan kod:** levh 2.3.1 (release-blockers-fixed)
 
 ---
 
@@ -40,7 +40,7 @@ Katılmadığın maddeyi söyle, o dalı yeniden yazayım.
 - "Bu hafta ne yaptım? Yarınki toplantıya ne hazırlamalıyım?"
 - "6 ay önce çözdüğüm o auth hatasının çözümü neydi?"
 
-Bu sorular bugünkü StackMemory'de **kısmen** cevaplanabiliyor (recall var) ama
+Bu sorular bugünkü LEVH'de **kısmen** cevaplanabiliyor (recall var) ama
 **kişiler, olaylar, zaman ekseni ve otomatik yakalama** olmadan "iş hayatının dijitali"
 olamaz. Plan tam olarak bu boşlukları kapatıyor.
 
@@ -48,7 +48,7 @@ olamaz. Plan tam olarak bu boşlukları kapatıyor.
 
 ## 2. Farklılaştırıcı: Neden bu, Rewind/Limitless/Mem0'dan iyi?
 
-| Rakip | Ne yapıyor | Zayıf noktası | StackMemory'nin cevabı |
+| Rakip | Ne yapıyor | Zayıf noktası | LEVH'nin cevabı |
 |-------|-----------|---------------|------------------------|
 | **Rewind / Limitless** | Her şeyi sonsuza kaydet (ekran/ses) | Sonsuz gürültü, gizlilik korkusu, "hatırlama" değil "arama" | **İnsan gibi unutur** — decay/reinforce ile sinyal yüzeye çıkar |
 | **Mem0 / Zep** | AI agent hafızası (developer) | Kişisel yaşam ürünü değil, kara kutu | Kişisel + **açıklanabilir** (H-score, forgetting curve) |
@@ -135,17 +135,17 @@ geliştirici + AI eşliğinde kaba tahmindir.
   `/api/backup` + `/api/restore`, `create_backup`/`restore_backup` MCP araçları, dashboard
   Settings **Backup & Restore** paneli (merge/replace). `cryptography` core bağımlılığa eklendi.
 - **At-rest DB şifreleme (kalan):** tüm SQLite dosyasının SQLCipher ile şifrelenmesi
-  (opsiyonel `STACKMEMORY_ENCRYPTION_KEY`). Backup şifrelemesi geldi; canlı DB şifrelemesi
+  (opsiyonel `LEVH_ENCRYPTION_KEY`). Backup şifrelemesi geldi; canlı DB şifrelemesi
   sıradaki adım.
 - ✅ **Gerçek hard-delete + redaction (YAPILDI — v2.18.0):** `audit_deletion` bir memory'nin
   3 katmanın herhangi birinde kalıp kalmadığını denetler; `purge_memory` hard-delete + post-
   condition audit ("gerçekten silindi" kanıtlanır). `audit_secrets`/`redact_memory`/
   `redact_all_secrets` gate öncesi sızmış secret'ları bulup redakte eder (redaction_history'ye
   loglar; assignment-tipi için idempotent). `/api/memories/audit-secrets|redact-all|{id}/redact|
-  {id}/purge` + `audit_secrets`/`redact_secrets`/`purge_memory` MCP + `stackmemory audit-secrets|
+  {id}/purge` + `audit_secrets`/`redact_secrets`/`purge_memory` MCP + `levh audit-secrets|
   redact-secrets|purge` CLI + Settings Privacy kartı.
-- ✅ **Cihaz kilidi (single-user auth) — TAM:** `STACKMEMORY_TOKEN` + CORS localhost kilidi
-  api.py'de aktif; 2.23A'da UX'e bağlandı — `X-StackMemory-Token` header'ı her `/api/*`
+- ✅ **Cihaz kilidi (single-user auth) — TAM:** `LEVH_TOKEN` + CORS localhost kilidi
+  api.py'de aktif; 2.23A'da UX'e bağlandı — `X-LEVH-Token` header'ı her `/api/*`
   çağrısında, `?token=` WS handshake'inde, `AuthGate` + Settings token yönetimi + `/api/health`
   `auth_required` bayrağı.
 - **Reviewer'ın bulduğu `test_cli.py` subprocess timeout'unu düzelt** (test izolasyonu).
@@ -157,13 +157,13 @@ geliştirici + AI eşliğinde kaba tahmindir.
   kalite kapısı — "hangi bilgi hafızaya alınır?". admit / review / reject (duplicate) /
   redact (secret temizleme; e-posta korunur). Deterministik/offline. `admission.evaluate`
   + `engine.evaluate_admission`/`admit_memory` + `/api/memories/admit|evaluate-admission`
-  + `admit_memory`/`evaluate_admission` MCP + `stackmemory admit` CLI + Settings önizleme.
+  + `admit_memory`/`evaluate_admission` MCP + `levh admit` CLI + Settings önizleme.
   *Connector framework v2 bunun üstüne kurulacak (ingest → admission gate).*
 - ✅ **Connector framework v2 (YAPILDI — v2.17.0):** gate-entegre artımlı ingest —
   her item admission gate'ten geçer (dedup + secret redaction), item-bazlı hata
   izolasyonu, `connector_sync` tablosunda sync defteri (re-sync artımlı ve raporlanabilir).
   `engine.ingest_items`/`list_sync_state` + `/api/connectors/sync|sync-state` +
-  `sync_connector`/`connector_sync_status` MCP + `stackmemory sync` CLI + Settings toggle.
+  `sync_connector`/`connector_sync_status` MCP + `levh sync` CLI + Settings toggle.
   *Kalan: zamanlama (scheduler/cron) + rate-limit — otomatik periyodik sync.*
 - ✅ **Calendar connector (YAPILDI — v2.5.0):** iCalendar `.ics` (dosya veya yayınlanmış
   URL) ayrıştırıcısı; toplantılar → Event memory'leri (katılımcı, zaman, başlık, konum,
@@ -203,7 +203,7 @@ geliştirici + AI eşliğinde kaba tahmindir.
   `memory_entities` tabloları; tipler person / organization / event / document / task.
   `extract_entities` (deterministik) + `reindex_entities`/`list_entities_graph`/`get_entity`
   engine + `/api/entities/*` + `reindex_entities`/`list_entities`/`about_entity` MCP +
-  `stackmemory entities` CLI + dashboard **Graph** sayfası. Co-occurrence sorguları join ile:
+  `levh entities` CLI + dashboard **Graph** sayfası. Co-occurrence sorguları join ile:
   "bu toplantıda kimler vardı", "X kişisi hangi kurumla/dokümanla bağlı".
 - **Çıkarım pipeline'ı:** her yeni memory'de entity extraction (LLM varsa yapılandırılmış,
   yoksa deterministik NER/regex fallback — mevcut "her zaman çalışır" felsefesine sadık).
@@ -246,7 +246,7 @@ geliştirici + AI eşliğinde kaba tahmindir.
   çiftleri **çelişki ADAYı** olarak işaretlenir (verdict değil, insan review'a düşer;
   auto-delete yok). Open aday trust'a küçük risk ekler. `memory_conflict_candidates`
   tablosu + `conflict.py` + `detect/list/review_conflict_candidate` engine +
-  `/api/conflicts/*` + 3 MCP + `stackmemory conflicts` CLI + dashboard **Conflicts** sayfası.
+  `/api/conflicts/*` + 3 MCP + `levh conflicts` CLI + dashboard **Conflicts** sayfası.
   *Kalan (opsiyonel, gated & default-off): LLM ile "bu iki memory kesin çelişiyor mu"
   adapter'ı — offline deterministik çizgiyi bozmamak için varsayılan kapalı.*
 - ✅ **Consolidation/özetleme (YAPILDI — v2.14.0):** eski, birbirine yakın memory
@@ -260,15 +260,15 @@ geliştirici + AI eşliğinde kaba tahmindir.
   `metadata.review_history`'de kayıtlı. Yaşam döngüsü kapandı: store → recall → decay →
   review → reinforce/weaken/forget. `review_queue()`/`apply_review()` engine +
   `/api/memories/review[/{id}]` + `list_review_memories`/`review_memory` MCP araçları +
-  `stackmemory review` CLI + dashboard **Review** sayfası.
+  `levh review` CLI + dashboard **Review** sayfası.
 - ✅ **Güven skoru (provenance) (YAPILDI — v2.20.0):** deterministik, açıklanabilir,
   offline confidence — `0.30·source + 0.25·corroboration + 0.20·review + 0.15·recency
   − 0.10·risk`; corroboration entity graph üzerinden (aynı entity kaç DISTINCT kaynak
   türünde geçiyor). H-score'dan ayrı, recall sıralamasını değiştirmiyor, "truth" iddiası
   değil. `memory_trust_scores` tablosu + `recompute_trust_scores`/`get_trust`/`list_low_trust`
-  engine + `/api/memories/{id}/trust|trust/recompute|low-trust` + 3 MCP + `stackmemory trust`
+  engine + `/api/memories/{id}/trust|trust/recompute|low-trust` + 3 MCP + `levh trust`
   CLI + Settings kartı. Senin "HUQAN trust" fikrinin oturduğu deterministik sinyal katmanı:
-  StackMemory hatırlar → trust score açıklar → HUQAN ileride yargılar.
+  LEVH hatırlar → trust score açıklar → HUQAN ileride yargılar.
 
 ### FAZ 6 — Ürünleşme (opsiyonel, product moduna geçersen)
 - Onboarding sihirbazı (non-dev): hesapları bağla → hafıza dolsun → ilk soruyu sor.

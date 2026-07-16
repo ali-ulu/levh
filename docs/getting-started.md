@@ -1,15 +1,15 @@
-# StackMemory — Getting Started
+# LEVH — Getting Started
 
-StackMemory is local-first. The database, onboarding receipt, demo corpus, and
+LEVH is local-first. The database, onboarding receipt, demo corpus, and
 optional dogfood journal stay on the machine unless the user explicitly exports
 a file.
 
 ## Try the deterministic demo
 
 ```bash
-pip install stackmemory
-stackmemory setup --demo --client claude --profile work
-stackmemory serve
+pip install levh
+levh setup --demo --client claude --profile work
+levh serve
 ```
 
 Open `http://localhost:8000`. The setup command loads 20 demo-tagged memories,
@@ -23,10 +23,10 @@ card to delete only `metadata.demo=true` memories. Real memories are preserved.
 ## Start with real data
 
 ```bash
-pip install stackmemory
-stackmemory setup --real --client claude --profile work
-stackmemory capture "Atlas uses PostgreSQL in production."
-stackmemory serve
+pip install levh
+levh setup --real --client claude --profile work
+levh capture "Atlas uses PostgreSQL in production."
+levh serve
 ```
 
 `setup --real` initializes local storage and the MCP config without seeding any
@@ -36,8 +36,8 @@ pin or boost trust.
 ## Readiness and diagnostics
 
 ```bash
-stackmemory setup --status
-stackmemory doctor
+levh setup --status
+levh doctor
 ```
 
 A zero-memory database is a first-run warning, not an installation failure.
@@ -50,8 +50,8 @@ recommended next action.
 Generated configs default to `work` rather than advertising all 59 tools.
 
 ```bash
-stackmemory setup --real --client cursor --profile minimal
-stackmemory mcp profiles
+levh setup --real --client cursor --profile minimal
+levh mcp profiles
 ```
 
 Profiles reduce the tool-discovery surface. They are **not** authentication,
@@ -63,7 +63,7 @@ Dogfood measurement is disabled by default. To collect whitelisted local usage
 events for a process:
 
 ```bash
-STACKMEMORY_DOGFOOD_ENABLED=true stackmemory serve
+LEVH_DOGFOOD_ENABLED=true levh serve
 ```
 
 Raw memory and query content are not recorded, and the journal performs no
@@ -78,8 +78,8 @@ Journal path precedence is:
 4. `./dogfood_events.jsonl`
 
 ```bash
-stackmemory dogfood status
-stackmemory dogfood export --output report.json
+levh dogfood status
+levh dogfood export --output report.json
 ```
 
 Export is an explicit action and contains aggregates only.

@@ -1,4 +1,4 @@
-"""StackMemory API — FastAPI server with REST + WebSocket + MCP SSE.
+"""LEVH API — FastAPI server with REST + WebSocket + MCP SSE.
 
 Serves the dashboard frontend and exposes the memory engine via HTTP/WebSocket.
 Mounts MCP SSE under /api/mcp; the stream endpoint is /api/mcp/sse.
@@ -18,7 +18,7 @@ import sys
 from contextlib import asynccontextmanager
 from typing import Optional
 
-logger = logging.getLogger("stackmemory.api")
+logger = logging.getLogger("levh.api")
 
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -30,6 +30,7 @@ from pydantic import BaseModel
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from server.core import engine_provider
+from server.core.env import get_env
 from server.core.memory_engine import MemoryEngine
 from server.core.rate_limit import SlidingWindowRateLimiter
 from server.core.types import (
@@ -104,8 +105,8 @@ async def lifespan(app: FastAPI):
 # ── FastAPI app ─────────────────────────────────────────────────────
 
 app = FastAPI(
-    title="StackMemory API",
-    version="2.26.8",
+    title="LEVH API",
+    version="2.27.0",
     description="Shared Memory Layer for AI Coding Workflows",
     lifespan=lifespan,
 )
@@ -113,12 +114,12 @@ app = FastAPI(
 # CORS: this service is normally a *local* single-user tool, so a wildcard
 # origin means any website the user visits can read their whole memory store
 # from the browser. Default to localhost origins and let deployments widen it
-# explicitly via STACKMEMORY_CORS_ORIGINS ("*" to opt back into wildcard).
+# explicitly via LEVH_CORS_ORIGINS ("*" to opt back into wildcard).
 _DEFAULT_CORS = (
     "http://localhost:3000,http://127.0.0.1:3000,"
     "http://localhost:8000,http://127.0.0.1:8000"
 )
-_cors_env = os.getenv("STACKMEMORY_CORS_ORIGINS", _DEFAULT_CORS).strip()
+_cors_env = get_env("LEVH_CORS_ORIGINS", _DEFAULT_CORS).strip()
 _cors_origins = (
     ["*"] if _cors_env == "*" else [o.strip() for o in _cors_env.split(",") if o.strip()]
 )
@@ -131,21 +132,22 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Optional shared-secret gate. When STACKMEMORY_TOKEN is set, every /api/*
+# Optional shared-secret gate. When LEVH_TOKEN is set, every /api/*
 # request (except the health check) must present it via the
-# X-StackMemory-Token header. Unset (default) keeps the tool zero-config for
+# X-LEVH-Token header. The legacy X-StackMemory-Token header remains accepted
+# for compatibility. Unset (default) keeps the tool zero-config for
 # purely local use.
-_API_TOKEN = os.getenv("STACKMEMORY_TOKEN", "").strip()
+_API_TOKEN = get_env("LEVH_TOKEN", "").strip()
 try:
-    _AUTH_RATE_LIMIT = int(os.getenv("STACKMEMORY_AUTH_RATE_LIMIT", "10"))
+    _AUTH_RATE_LIMIT = int(get_env("LEVH_AUTH_RATE_LIMIT", "10"))
 except ValueError:
     _AUTH_RATE_LIMIT = 10
 try:
-    _API_RATE_LIMIT = int(os.getenv("STACKMEMORY_API_RATE_LIMIT", "120"))
+    _API_RATE_LIMIT = int(get_env("LEVH_API_RATE_LIMIT", "120"))
 except ValueError:
     _API_RATE_LIMIT = 120
 try:
-    _RATE_LIMIT_WINDOW = float(os.getenv("STACKMEMORY_RATE_LIMIT_WINDOW_SECONDS", "60"))
+    _RATE_LIMIT_WINDOW = float(get_env("LEVH_RATE_LIMIT_WINDOW_SECONDS", "60"))
 except ValueError:
     _RATE_LIMIT_WINDOW = 60.0
 
@@ -167,7 +169,10 @@ async def _require_token(request: Request, call_next):
         and request.url.path != "/api/health"
     ):
         client_key = _request_client_key(request)
-        supplied = request.headers.get("X-StackMemory-Token", "")
+        supplied = (
+            request.headers.get("X-LEVH-Token")
+            or request.headers.get("X-StackMemory-Token", "")
+        )
         if not secrets.compare_digest(supplied, _API_TOKEN):
             allowed, retry_after = _auth_limiter.allow(client_key)
             if not allowed:
@@ -1052,7 +1057,7 @@ async def health():
     # up-front whether it must ask the user for a token before any /api/* call.
     return {
         "status": "ok",
-        "service": "stackmemory",
+        "service": "levh",
         "auth_required": bool(_API_TOKEN),
     }
 
@@ -1115,7 +1120,7 @@ async def create_backup(req: BackupRequest):
     encrypted = bool(req.passphrase)
     stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
     ext = "smbackup" if encrypted else "json"
-    filename = f"stackmemory-backup-{stamp}.{ext}"
+    filename = f"levh-backup-{stamp}.{ext}"
     return Response(
         content=blob,
         media_type="application/octet-stream",
@@ -1163,9 +1168,15 @@ async def restore_backup(req: RestoreRequest):
 @app.websocket("/ws/memory")
 async def memory_websocket(ws: WebSocket):
     # Mirror the REST token gate: when a token is configured, the socket must
-    # present it via the X-StackMemory-Token header or a ?token= query param.
+    # present it via the X-LEVH-Token header or a ?token= query param. The
+    # legacy X-StackMemory-Token header remains accepted.
     if _API_TOKEN:
-        supplied = ws.headers.get("x-stackmemory-token") or ws.query_params.get("token") or ""
+        supplied = (
+            ws.headers.get("x-levh-token")
+            or ws.headers.get("x-stackmemory-token")
+            or ws.query_params.get("token")
+            or ""
+        )
         client_key = f"ws:{ws.client.host if ws.client else 'unknown'}"
         if not secrets.compare_digest(supplied, _API_TOKEN):
             allowed, _ = _auth_limiter.allow(client_key)
@@ -1444,11 +1455,11 @@ def _dashboard_dir() -> str | None:
     """Return the first available dashboard static export directory.
 
     Source checkouts serve ``frontend/out``. Built wheels serve the packaged
-    copy under ``server/dashboard``. ``STACKMEMORY_DASHBOARD_DIR`` can override
+    copy under ``server/dashboard``. ``LEVH_DASHBOARD_DIR`` can override
     both for Docker or custom deployments.
     """
     candidates = [
-        os.getenv("STACKMEMORY_DASHBOARD_DIR", "").strip(),
+        get_env("LEVH_DASHBOARD_DIR", "").strip(),
         os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "frontend", "out"),
         os.path.join(os.path.dirname(os.path.abspath(__file__)), "dashboard"),
     ]
@@ -1467,9 +1478,9 @@ else:
     @app.get("/", response_class=PlainTextResponse)
     async def dashboard_placeholder():
         return (
-            "StackMemory API is running.\n\n"
+            "LEVH API is running.\n\n"
             "The dashboard static export was not found. Build it with:\n"
             "  cd frontend && npm install && npm run build\n"
-            "or set STACKMEMORY_DASHBOARD_DIR to a built dashboard directory.\n"
+            "or set LEVH_DASHBOARD_DIR to a built dashboard directory.\n"
             "API docs: /docs"
         )

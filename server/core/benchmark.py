@@ -87,7 +87,7 @@ async def run_benchmark(embedder_mode: str = "hash", top_k: int = 5) -> dict:
 
 
 def print_metrics(metrics: dict) -> None:
-    print("\nStackMemory recall benchmark")
+    print("\nLEVH recall benchmark")
     print("=" * 40)
     for key, value in metrics.items():
         print(f"  {key:24} {value}")
@@ -100,7 +100,7 @@ def print_metrics(metrics: dict) -> None:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="StackMemory recall benchmark")
+    parser = argparse.ArgumentParser(description="LEVH recall benchmark")
     parser.add_argument("--embedder", default=os.getenv("EMBEDDER_MODE", "hash"))
     parser.add_argument("--top-k", type=int, default=5)
     args = parser.parse_args()

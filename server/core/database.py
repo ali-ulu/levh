@@ -1,4 +1,4 @@
-"""SQLite Database Layer — Zero-ops persistence for StackMemory."""
+"""SQLite Database Layer — Zero-ops persistence for LEVH."""
 
 from __future__ import annotations
 
@@ -10,6 +10,8 @@ from pathlib import Path
 from typing import Optional
 
 import aiosqlite
+
+from server.core.env import get_env
 
 _DEFAULT_DB_PATH = os.getenv("SQLITE_DB_PATH", "./stackmemory.db")
 CURRENT_SCHEMA_VERSION = 2
@@ -170,7 +172,7 @@ class Database:
         self._connection: Optional[aiosqlite.Connection] = None
         try:
             configured_timeout = int(
-                os.getenv("STACKMEMORY_SQLITE_BUSY_TIMEOUT_MS", str(DEFAULT_BUSY_TIMEOUT_MS))
+                get_env("LEVH_SQLITE_BUSY_TIMEOUT_MS", str(DEFAULT_BUSY_TIMEOUT_MS))
             )
         except ValueError:
             configured_timeout = DEFAULT_BUSY_TIMEOUT_MS
@@ -228,7 +230,7 @@ class Database:
         """Install and backfill the optional FTS5 index.
 
         Python's standard SQLite builds normally include FTS5. When a vendor
-        build omits it, StackMemory remains functional and falls back to LIKE;
+        build omits it, LEVH remains functional and falls back to LIKE;
         the schema version intentionally remains at v1 so a later compatible
         runtime can retry the migration.
         """
@@ -311,7 +313,7 @@ class Database:
         if destination:
             target = Path(destination).expanduser().resolve()
         else:
-            configured_dir = os.getenv("STACKMEMORY_SAFETY_BACKUP_DIR", "").strip()
+            configured_dir = get_env("LEVH_SAFETY_BACKUP_DIR", "").strip()
             backup_dir = (
                 Path(configured_dir).expanduser().resolve()
                 if configured_dir

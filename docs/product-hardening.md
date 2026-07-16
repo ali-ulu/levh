@@ -1,4 +1,4 @@
-# StackMemory Product Hardening
+# LEVH Product Hardening
 
 ## What works today (v2.3)
 
@@ -10,8 +10,8 @@
 - **Env-configurable scoring**: HSCORE_ALPHA..DELTA and DECAY_HALF_LIFE_HOURS are read from the environment
 - **Pinning**: pinned memories never decay, sort first, are never auto-deduped
 - **Projects & sources**: per-workspace namespacing and per-AI-client attribution, with dashboard facets
-- **Context files**: compile memories into CLAUDE.md / .cursorrules (UI, CLI `stackmemory context`, MCP tool)
-- **Auto-capture**: git post-commit hook (`stackmemory hook install`) + `stackmemory capture` CLI
+- **Context files**: compile memories into CLAUDE.md / .cursorrules (UI, CLI `levh context`, MCP tool)
+- **Auto-capture**: git post-commit hook (`levh hook install`) + `levh capture` CLI
 - **Dedupe**: embedding-similarity duplicate detection with dry-run
 - **Embedders**: openai / local (sentence-transformers) / **ollama** / hash fallback — never crashes
 - **Schema migration**: v1 databases upgrade in place (ALTER TABLE on connect)
@@ -26,7 +26,7 @@
 ## Known gaps (not production-ready as SaaS)
 
 - No multi-tenant / per-user auth — designed as a local, single-user tool.
-  (An optional single shared-secret gate exists via `STACKMEMORY_TOKEN`, and
+  (An optional single shared-secret gate exists via `LEVH_TOKEN`, and
   CORS now defaults to localhost origins instead of a wildcard.)
 - No cloud sync / team sharing
 - Hash embedder is non-semantic (fine for demos/tests; use local/ollama/openai for real use)
@@ -35,7 +35,7 @@
 ## Next steps
 
 ### A — Distribution
-`uvx stackmemory` / PyPI publish; one-line installer that writes MCP configs for detected clients.
+`uvx levh` / PyPI publish; one-line installer that writes MCP configs for detected clients.
 
 ### B — Deeper auto-capture
 Session summarization on `end_session` — **done** (`summarize_session`, LLM +

@@ -13,7 +13,7 @@ def register(mcp: FastMCP, engine: MemoryEngine) -> None:
         """Get statistics about the memory system: counts, averages, active sessions."""
         stats = await engine.get_stats()
         return (
-            f"StackMemory Statistics\n"
+            f"LEVH Statistics\n"
             f"====================\n"
             f"Total memories:     {stats.total_memories}\n"
             f"  Short-term:       {stats.short_term_count}\n"

@@ -1,7 +1,7 @@
 # Memory Evaluation & Dogfood Journal (2.25)
 
 Two offline measurement tools added in 2.25, both local-only and both
-distinct from the H(x,ψ) recall benchmark (`stackmemory benchmark`).
+distinct from the H(x,ψ) recall benchmark (`levh benchmark`).
 
 ## Golden-fixture evaluation
 
@@ -11,9 +11,9 @@ admission gate → store → trust recompute → conflict detection → recall �
 review — on a fresh throwaway store, no LLM, no mocks. Every number in the
 report comes from executing the same code paths a live install runs.
 
-Run it with `stackmemory eval run [--fixtures DIR] [--embedder-mode MODE]
+Run it with `levh eval run [--fixtures DIR] [--embedder-mode MODE]
 [--output FILE]` (writes `eval_report.json` by default) and read the last
-report with `stackmemory eval report [--output FILE]`.
+report with `levh eval report [--output FILE]`.
 
 **Determinism contract**: with the hash embedder and a fixed fixture set, two
 consecutive runs produce byte-identical reports. Fixture keys stand in for
@@ -45,7 +45,7 @@ Each fixture file is one JSON object:
 ```
 {
   "evaluation_version": "memory-eval-v1",
-  "stackmemory_version": "...",
+  "levh_version": "...",
   "embedder_mode": "hash",
   "fixture_count": 9,
   "fixtures": [{"name": "...", "passed": true}, ...],
@@ -63,7 +63,7 @@ Each fixture file is one JSON object:
 
 Every value in a report is tied to `evaluation_version` and the fixture set
 that actually produced it. There are no fabricated or hard-coded numbers in
-this codebase's docs — quote a metric only from a real `stackmemory eval
+this codebase's docs — quote a metric only from a real `levh eval
 run` against a known fixture set.
 
 ## Dogfood journal
@@ -71,7 +71,7 @@ run` against a known fixture set.
 `server/core/dogfood.py` is a local, append-only JSONL journal of coarse
 usage events (`dogfood_events.jsonl` by default, overridable with
 `DOGFOOD_JOURNAL_PATH`). Since 2.25.1 live wiring is opt-in via
-`STACKMEMORY_DOGFOOD_ENABLED=true`: the shared engine provider then attaches
+`LEVH_DOGFOOD_ENABLED=true`: the shared engine provider then attaches
 the journal (default location: next to the SQLite database) and the briefing,
 meeting-prep, trust-view, review, and seed-demo surfaces emit events
 automatically; a per-engine guard makes double attach a no-op — the mechanism the Editor uses to check whether the
@@ -95,10 +95,10 @@ Whitelisted event types: `memory_stored`, `memory_recalled`,
 `review_keep`, `review_reinforce`, `review_weaken`, `review_forget`,
 `seed_demo_completed`.
 
-CLI: `stackmemory dogfood status` prints the aggregate view (event counts,
+CLI: `levh dogfood status` prints the aggregate view (event counts,
 time-to-first-value for first recall/briefing/meeting-prep after the journal
 starts, recall-feedback helpful rate, review-action distribution).
-`stackmemory dogfood export --output report.json` writes that same aggregate
+`levh dogfood export --output report.json` writes that same aggregate
 to a file.
 
 ## Non-claims
@@ -108,4 +108,4 @@ to a file.
   mentioned here as a security feature and none of this evaluation or
   journal machinery treats them as one.
 - No specific metric values are asserted in this document. Numbers only ever
-  come from a report produced by `stackmemory eval run`.
+  come from a report produced by `levh eval run`.

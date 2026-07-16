@@ -39,7 +39,7 @@ async function fetchApi<T>(path: string, options?: RequestInit): Promise<T> {
       "Content-Type": "application/json",
       // Token gate: attach when set on the server (see /lib/token). A
       // user-supplied header for the same key still wins via spread order.
-      ...(token ? { "X-StackMemory-Token": token } : {}),
+      ...(token ? { "X-LEVH-Token": token } : {}),
       ...options?.headers,
     },
     ...options,
@@ -363,7 +363,7 @@ export const api = {
     if (!res.ok) throw new Error(`API error ${res.status}`);
     const disposition = res.headers.get("Content-Disposition") || "";
     const match = disposition.match(/filename="([^"]+)"/);
-    const filename = match ? match[1] : "stackmemory-backup.json";
+    const filename = match ? match[1] : "levh-backup.json";
     return { blob: await res.blob(), filename };
   },
   restore: (content_b64: string, passphrase?: string, replace = false) =>

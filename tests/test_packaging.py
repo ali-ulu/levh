@@ -39,7 +39,7 @@ def test_source_sidebar_version_matches_pyproject():
     sidebar = (REPO_ROOT / "frontend/src/components/layout/sidebar.tsx").read_text(
         encoding="utf-8"
     )
-    assert f"Memory Engine v{expected}" in sidebar
+    assert f"LEVH Engine v{expected}" in sidebar
 
 
 def test_packaged_dashboard_version_matches_pyproject():
@@ -50,7 +50,7 @@ def test_packaged_dashboard_version_matches_pyproject():
         pytest.skip("no packaged dashboard")
 
     expected = _expected_minor_version()
-    pattern = re.compile(r"Memory Engine v(\d+\.\d+)")
+    pattern = re.compile(r"LEVH Engine v(\d+\.\d+)")
     stale = []
     for glob_pattern in ("**/*.txt", "**/*.html", "**/*.js"):
         for path in dashboard_dir.glob(glob_pattern):

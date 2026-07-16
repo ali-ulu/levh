@@ -1,6 +1,6 @@
-# StackMemory — Developer / Architecture Guide
+# LEVH — Developer / Architecture Guide
 
-A technical reference for anyone extending, embedding, or operating StackMemory.
+A technical reference for anyone extending, embedding, or operating LEVH.
 For the product pitch see `README.md`; for the maturity checklist see
 `docs/product-hardening.md`.
 
@@ -8,7 +8,7 @@ For the product pitch see `README.md`; for the maturity checklist see
 
 ## 1. What it is, in one paragraph
 
-StackMemory is a **single-process, local-first memory service** for AI coding
+LEVH is a **single-process, local-first memory service** for AI coding
 agents. One `MemoryEngine` coordinates three storage layers (an in-RAM
 short-term deque, a SQLite episodic store, and an in-RAM NumPy vector store)
 and a scoring function `H(x,ψ)` that ranks memories by *relevance × freshness ×
@@ -26,7 +26,7 @@ server/
 ├── api.py               FastAPI app: REST + WebSocket + static dashboard + MCP SSE mount
 ├── mcp_stdio.py         MCP server over stdio (Claude Desktop, Cursor, …)
 ├── mcp_sse.py           MCP server over SSE (mounted at /api/mcp/sse)
-├── cli.py               `stackmemory` CLI: doctor / init / serve / capture / context / hook / mcp
+├── cli.py               `levh` CLI: doctor / init / serve / capture / context / hook / mcp
 ├── configs.py           Env + config-file resolution
 │
 ├── core/
@@ -180,11 +180,11 @@ degrade-to-hash contract.
 | `FEEDBACK_WEAKEN_FACTOR` | 0.5 | negative-feedback shrink |
 | `INTERFERENCE_THRESHOLD` / `_FACTOR` | 0.97 / 0.6 | supersession sensitivity |
 | `AUTO_SUMMARIZE_SESSIONS` | false | auto-capture on session end |
-| `STACKMEMORY_TOKEN` | — | optional shared-secret gate on `/api/*` + WS |
-| `STACKMEMORY_CORS_ORIGINS` | localhost list | allowed browser origins |
-| `STACKMEMORY_AUTH_RATE_LIMIT` / `STACKMEMORY_API_RATE_LIMIT` | 10 / 120 | in-process token/API limits per 60s window |
-| `STACKMEMORY_SQLITE_BUSY_TIMEOUT_MS` | 5000 | lock wait; file DBs use WAL |
-| `STACKMEMORY_SAFETY_BACKUP_DIR` | DB sibling | pre-replace online SQLite safety copies |
+| `LEVH_TOKEN` | — | optional shared-secret gate on `/api/*` + WS |
+| `LEVH_CORS_ORIGINS` | localhost list | allowed browser origins |
+| `LEVH_AUTH_RATE_LIMIT` / `LEVH_API_RATE_LIMIT` | 10 / 120 | in-process token/API limits per 60s window |
+| `LEVH_SQLITE_BUSY_TIMEOUT_MS` | 5000 | lock wait; file DBs use WAL |
+| `LEVH_SAFETY_BACKUP_DIR` | DB sibling | pre-replace online SQLite safety copies |
 
 ---
 

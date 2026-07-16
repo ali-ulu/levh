@@ -113,7 +113,7 @@ export default function ProjectsPage() {
             <p>
               Store memories with a <code className="text-xs bg-muted px-1 rounded">project</code>{" "}
               name — from the dashboard, the <code className="text-xs bg-muted px-1 rounded">store_memory</code> MCP
-              tool, or <code className="text-xs bg-muted px-1 rounded">stackmemory capture</code> (auto-detects
+              tool, or <code className="text-xs bg-muted px-1 rounded">levh capture</code> (auto-detects
               your git repo).
             </p>
           </CardContent>
@@ -197,7 +197,7 @@ export default function ProjectsPage() {
             <p className="text-xs text-muted-foreground">
               Drop this file into your repo root — Claude Code, Cursor, and other clients read it
               automatically at session start. Regenerate whenever your memories change, or run{" "}
-              <code className="bg-muted px-1 rounded">stackmemory context -o CLAUDE.md</code>.
+              <code className="bg-muted px-1 rounded">levh context -o CLAUDE.md</code>.
             </p>
           </div>
         </DialogContent>

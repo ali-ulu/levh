@@ -18,6 +18,8 @@ import os
 import httpx
 import numpy as np
 
+from server.core.env import get_env
+
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "nomic-embed-text")
 
@@ -73,9 +75,9 @@ class Embedder:
         except Exception as exc:
             self.fallback_reason = (
                 "Local embedder unavailable; install with: "
-                'pip install "stackmemory[local]"'
+                'pip install "levh[local]"'
             )
-            if os.getenv("STACKMEMORY_EMBEDDER_DEBUG", "").strip():
+            if get_env("LEVH_EMBEDDER_DEBUG", "").strip():
                 self.fallback_reason += f" ({exc.__class__.__name__}: {exc})"
             self.mode = "hash"
             self._model = None
