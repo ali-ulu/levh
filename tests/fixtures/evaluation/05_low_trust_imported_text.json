@@ -1,0 +1,19 @@
+{
+  "name": "low_trust_imported_text",
+  "memories": [
+    {
+      "key": "imported-claim",
+      "content": "Pasted note of unknown origin: competitor Nimbus is shutting down their api next quarter.",
+      "source": "raw-paste",
+      "expected_admission": "admit"
+    }
+  ],
+  "queries": [
+    {
+      "query": "What did we hear about the Nimbus competitor api shutting down?",
+      "expected_memory_keys": ["imported-claim"]
+    }
+  ],
+  "expected_conflict_count": 0,
+  "expected_trust_labels": {"imported-claim": ["low", "very_low", "medium"]}
+}

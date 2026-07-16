@@ -1,0 +1,28 @@
+{
+  "name": "conflict_false_positive",
+  "memories": [
+    {
+      "key": "ci-status",
+      "content": "The nightly build pipeline is up again after the runner fix.",
+      "source": "cli",
+      "metadata": {"attendees": ["Ece Kaya <ece@acme-corp.com>"]},
+      "expected_admission": "admit"
+    },
+    {
+      "key": "headcount-note",
+      "content": "Ece mentioned hiring is down this quarter across the platform team.",
+      "source": "cli",
+      "metadata": {"attendees": ["Ece Kaya <ece@acme-corp.com>"]},
+      "expected_admission": "admit"
+    }
+  ],
+  "queries": [
+    {
+      "query": "What happened to the nightly build pipeline after the runner fix?",
+      "expected_memory_keys": ["ci-status"]
+    }
+  ],
+  "expected_conflicts": [],
+  "known_false_positives": true,
+  "note": "Deliberate false-positive scenario: 'up' vs 'down' about unrelated topics plus a shared person entity currently trips the antonym signal. The candidate is NOT a real conflict, so any detection here is counted as a false positive in the report — this fixture keeps the FP surface measured instead of hidden."
+}

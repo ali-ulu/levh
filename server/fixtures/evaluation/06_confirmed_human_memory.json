@@ -1,0 +1,31 @@
+{
+  "name": "confirmed_human_memory",
+  "memories": [
+    {
+      "key": "pinned-principle",
+      "content": "Team principle confirmed by the founder: never deploy to production on fridays.",
+      "source": "cli",
+      "pinned": true,
+      "importance": 0.9,
+      "expected_admission": "admit"
+    }
+  ],
+  "queries": [
+    {
+      "query": "What is our team principle about production deploys on fridays?",
+      "expected_memory_keys": [
+        "pinned-principle"
+      ]
+    }
+  ],
+  "expected_conflict_count": 0,
+  "expected_trust_labels": {
+    "pinned-principle": [
+      "medium_high",
+      "high"
+    ]
+  },
+  "reinforce_before_eval": [
+    "pinned-principle"
+  ]
+}

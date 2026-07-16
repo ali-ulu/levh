@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+
+# SQLite
+*.db
+*.db-journal
+*.db-wal
+
+# Environment
+.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Downloads
+download/
+
+# Frontend build
+frontend/.next/
+frontend/node_modules/
+frontend/.env.local
+
+# Worklog / dev artifacts
+worklog.md

@@ -1,0 +1,31 @@
+{
+  "name": "meeting_deadline_changed",
+  "memories": [
+    {
+      "key": "atlas-deadline-old",
+      "content": "Planning meeting: Atlas launch deadline march-03 agreed with the team.",
+      "source": "calendar",
+      "importance": 0.5,
+      "metadata": {"organizer": "Mert Yilmaz <mert@acme-corp.com>"},
+      "expected_admission": "admit"
+    },
+    {
+      "key": "atlas-deadline-new",
+      "content": "Replanning outcome: Atlas launch deadline april-10 after the scope change Mert approved.",
+      "source": "calendar",
+      "importance": 0.8,
+      "metadata": {"organizer": "Mert Yilmaz <mert@acme-corp.com>"},
+      "expected_admission": "admit"
+    }
+  ],
+  "queries": [
+    {
+      "query": "What is the current Atlas launch deadline after the scope change?",
+      "expected_memory_keys": ["atlas-deadline-new"],
+      "forbidden_memory_keys": ["atlas-deadline-old"]
+    }
+  ],
+  "expected_conflicts": [["atlas-deadline-old", "atlas-deadline-new"]],
+  "expected_conflict_count": 1,
+  "expected_trust_labels": {"atlas-deadline-new": ["medium", "medium_high", "high"]}
+}

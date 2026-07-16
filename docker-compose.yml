@@ -1,0 +1,15 @@
+services:
+  stackmemory:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - stackmemory-data:/data
+    environment:
+      - SQLITE_DB_PATH=/data/stackmemory.db
+      - EMBEDDER_MODE=hash # switch to "local" after adding sentence-transformers, or "openai"/"ollama"
+
+volumes:
+  stackmemory-data:

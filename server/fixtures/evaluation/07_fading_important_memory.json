@@ -1,0 +1,35 @@
+{
+  "name": "fading_important_memory",
+  "memories": [
+    {
+      "key": "fading-runbook",
+      "content": "Incident runbook shortcut: restart the ingest worker with systemctl restart ingest-worker.",
+      "source": "cli",
+      "importance": 0.3,
+      "expected_admission": "admit"
+    },
+    {
+      "key": "noise-1",
+      "content": "Office plants get watered on mondays by whoever arrives first.",
+      "source": "cli",
+      "expected_admission": "admit"
+    }
+  ],
+  "queries": [
+    {
+      "query": "How do I restart the ingest worker during an incident?",
+      "expected_memory_keys": ["fading-runbook"]
+    }
+  ],
+  "review_actions": [
+    {"key": "fading-runbook", "action": "reinforce"},
+    {"key": "noise-1", "action": "weaken"}
+  ],
+  "post_review_queries": [
+    {
+      "query": "How do I restart the ingest worker during an incident?",
+      "expected_memory_keys": ["fading-runbook"]
+    }
+  ],
+  "expected_conflict_count": 0
+}

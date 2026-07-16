@@ -1,0 +1,41 @@
+{
+  "name": "same_fact_independent_sources",
+  "memories": [
+    {
+      "key": "budget-email",
+      "content": "Email from finance: the Orion budget for Q3 was set to 40000 dollars.",
+      "source": "email:finance",
+      "metadata": {
+        "from": "Aylin Demir <aylin@acme-corp.com>"
+      },
+      "expected_admission": "admit"
+    },
+    {
+      "key": "budget-meeting",
+      "content": "In the quarterly review meeting Aylin confirmed Orion gets 40k for Q3 spending.",
+      "source": "calendar:quarterly-review",
+      "metadata": {
+        "attendees": [
+          "Aylin Demir <aylin@acme-corp.com>"
+        ]
+      },
+      "expected_admission": "admit"
+    }
+  ],
+  "queries": [
+    {
+      "query": "What was the Orion budget set to for Q3?",
+      "expected_memory_keys": [
+        "budget-email",
+        "budget-meeting"
+      ]
+    }
+  ],
+  "expected_conflict_count": 0,
+  "expected_trust_labels": {
+    "budget-email": [
+      "medium",
+      "medium_high"
+    ]
+  }
+}

@@ -1,0 +1,54 @@
+[build-system]
+requires = ["setuptools>=70", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "stackmemory"
+version = "2.26.8"
+description = "Shared memory layer for AI coding tools — memory that forgets like you do, unless it matters"
+readme = "README.md"
+license = "MIT"
+keywords = ["mcp", "memory", "ai", "claude", "cursor", "llm", "forgetting-curve", "spaced-repetition"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn>=0.30",
+    "aiosqlite>=0.20",
+    "numpy>=2.0",
+    "mcp>=1.0",
+    "fastmcp>=2.0",
+    "python-dotenv>=1.0",
+    "httpx>=0.27",
+    "cryptography>=42",
+]
+
+[project.optional-dependencies]
+local = ["sentence-transformers>=3.0", "transformers>=4.40", "torch>=2.0"]
+openai = []
+# Passphrase-encrypted backups. Bundled in core deps too; this extra is a
+# convenience alias for anyone pinning security features explicitly.
+secure = ["cryptography>=42"]
+dev = ["pytest", "pytest-asyncio", "build", "twine"]
+
+[project.urls]
+Homepage = "https://github.com/agiulucom42-del/stackmemory-new"
+Repository = "https://github.com/agiulucom42-del/stackmemory-new"
+
+[project.scripts]
+stackmemory = "server.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["server*"]
+exclude = ["frontend*", "tests*"]
+
+[tool.setuptools.package-data]
+server = ["dashboard/**/*", "fixtures/evaluation/*.json"]

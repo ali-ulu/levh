@@ -1,0 +1,24 @@
+{
+  "name": "same_source_duplicate",
+  "memories": [
+    {
+      "key": "standup-note",
+      "content": "Standup note: the payments service rollout finished without incidents on staging.",
+      "source": "cli",
+      "expected_admission": "admit"
+    },
+    {
+      "key": "standup-note-dup",
+      "content": "Standup note: the payments service rollout finished without incidents on staging.",
+      "source": "cli",
+      "expected_admission": "reject"
+    }
+  ],
+  "queries": [
+    {
+      "query": "How did the payments service rollout go on staging?",
+      "expected_memory_keys": ["standup-note"]
+    }
+  ],
+  "expected_conflict_count": 0
+}

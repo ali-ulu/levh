@@ -1,0 +1,140 @@
+# StackMemory Installation
+
+## Quick Start (5 minutes)
+
+### 1. Install
+
+```bash
+# Clone the repo
+git clone https://github.com/your-org/stackmemory-new.git
+cd stackmemory-new
+
+# Install in editable mode (recommended for development)
+pip install -e .
+
+# Or install as a package
+pip install .
+```
+
+### 2. Verify
+
+```bash
+stackmemory doctor
+```
+
+Expected output:
+
+```
+  StackMemory Doctor
+  ==================================================
+  Python                    PASS   3.12.x
+  Package import            PASS
+  Database path             PASS   /path/to/stackmemory-new
+  Embedder mode             PASS   hash (default)
+  API import                PASS
+  MCP import                PASS
+  MCP SSE import            PASS
+  Frontend dir              PASS   /path/to/stackmemory-new/frontend
+  Config generator          PASS
+  Env vars                  PASS   Defaults used
+
+  Verdict: OK
+```
+
+### 3. Initialize
+
+```bash
+stackmemory init
+```
+
+Creates `.stackmemory/config.json` with sensible defaults:
+
+```json
+{
+  "embedder_mode": "hash",
+  "database_path": "stackmemory.db",
+  "api_host": "127.0.0.1",
+  "api_port": 8000,
+  "mcp_transport": "stdio"
+}
+```
+
+### 4. Run the server
+
+```bash
+stackmemory serve
+# or with auto-reload for development
+stackmemory serve --reload
+```
+
+The API is available at `http://127.0.0.1:8000`. The dashboard frontend can be built and served separately (see Frontend section below).
+
+## Frontend Build
+
+```bash
+cd frontend
+npm install
+npm run build
+npm start
+```
+
+The frontend is a Next.js application. For development with hot reload:
+
+```bash
+cd frontend
+npm run dev
+```
+
+## Embedder Modes
+
+StackMemory supports three embedding modes, controlled by the `EMBEDDER_MODE` environment variable:
+
+| Mode | Command | Requirements | Quality |
+|------|---------|-------------|---------|
+| `hash` | `EMBEDDER_MODE=hash stackmemory serve` | None (built-in) | Deterministic, non-semantic |
+| `local` | `EMBEDDER_MODE=local stackmemory serve` | `pip install -e ".[local]"` + torch | Good semantic similarity |
+| `openai` | `EMBEDDER_MODE=openai stackmemory serve` | `OPENAI_API_KEY` env var | Best quality, requires API key |
+
+For quick demos and testing, `hash` mode works with zero additional dependencies.
+
+## Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `EMBEDDER_MODE` | `hash` | Embedding mode (hash / local / openai) |
+| `SQLITE_DB_PATH` | `./stackmemory.db` | Path to SQLite database file |
+| `SHORT_TERM_MAX` | `50` | Max short-term memories (FIFO) |
+| `OPENAI_API_KEY` | — | Required for openai embedder mode |
+
+## Troubleshooting
+
+### "Package import: FAIL"
+
+Make sure you are in the project root and the `server/` directory exists:
+
+```bash
+ls server/
+pip install -e .
+```
+
+### "Database path: FAIL"
+
+Check that the directory for `SQLITE_DB_PATH` exists and is writable:
+
+```bash
+mkdir -p $(dirname $SQLITE_DB_PATH)
+```
+
+### "MCP import: FAIL"
+
+Install MCP dependencies:
+
+```bash
+pip install mcp fastmcp
+```
+
+### Port already in use
+
+```bash
+stackmemory serve --port 8001
+```

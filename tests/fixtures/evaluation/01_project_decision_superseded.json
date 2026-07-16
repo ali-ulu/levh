@@ -1,0 +1,30 @@
+{
+  "name": "project_decision_superseded",
+  "memories": [
+    {
+      "key": "atlas-db-old",
+      "content": "Decision: the Atlas project database is mysql for the MVP.",
+      "source": "cli",
+      "importance": 0.5,
+      "metadata": {"attendees": ["Deniz Arslan <deniz@acme-corp.com>"]},
+      "expected_admission": "admit"
+    },
+    {
+      "key": "atlas-db-new",
+      "content": "Update from Deniz: the Atlas project database is postgres now, replacing the earlier MVP choice.",
+      "source": "cli",
+      "importance": 0.8,
+      "metadata": {"attendees": ["Deniz Arslan <deniz@acme-corp.com>"]},
+      "expected_admission": "admit"
+    }
+  ],
+  "queries": [
+    {
+      "query": "Which database does the Atlas project use now, postgres or something else?",
+      "expected_memory_keys": ["atlas-db-new"],
+      "forbidden_memory_keys": ["atlas-db-old"]
+    }
+  ],
+  "expected_conflicts": [["atlas-db-old", "atlas-db-new"]],
+  "expected_conflict_count": 1
+}
