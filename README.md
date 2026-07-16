@@ -1,6 +1,7 @@
-# LEVH
+                                                         # LEVH
 
-> Formerly StackMemory. The `stackmemory` command and `STACKMEMORY_*` env vars still work but are deprecated.
+
+<img width="363" height="359" alt="levh" src="https://github.com/user-attachments/assets/2e6c311c-8507-4ebd-99f5-8a4f827167b8" />
 
 
 <p align="center">
