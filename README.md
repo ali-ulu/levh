@@ -1,6 +1,6 @@
 # LEVH
 
-> **Brand transition:** LEVH is the product name. The PyPI package will be published as `levh`. The CLI command, environment variables, and database format remain `stackmemory` in this release for compatibility.
+> **Brand transition:** LEVH is the product name. The PyPI package is published as `levh`. The CLI command, environment variables, and database format remain `stackmemory` in this release for compatibility.
 
 
 <p align="center">
@@ -99,7 +99,6 @@ stability_hours(negative feedback) = max(stability × weaken_factor, 1h)
 git clone https://github.com/ali-ulu/levh.git
 cd levh
 pip install -e ".[dev]"
-# PyPI package coming soon — until published, install from source with: pip install -e .
 pip install levh
 ```
 
@@ -115,7 +114,6 @@ cp .env.example .env
 **Try the demo**
 
 ```bash
-# PyPI package coming soon — until published, install from source with: pip install -e .
 pip install levh
 stackmemory setup --demo --client claude --profile work
 stackmemory serve
@@ -124,7 +122,6 @@ stackmemory serve
 **Start with real data**
 
 ```bash
-# PyPI package coming soon — until published, install from source with: pip install -e .
 pip install levh
 stackmemory setup --real --client claude --profile work
 stackmemory capture "Atlas uses PostgreSQL in production."
