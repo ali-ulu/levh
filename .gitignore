@@ -36,3 +36,7 @@ frontend/.env.local
 
 # Worklog / dev artifacts
 worklog.md
+
+# Release artifacts
+*-delta.zip
+*.zip
