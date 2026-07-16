@@ -16,7 +16,7 @@
   <img src="https://img.shields.io/badge/VS%20Code-Extension-007acc?logo=visualstudiocode" alt="VS Code">
   <img src="https://img.shields.io/badge/SQLite-Embedded-003b57?logo=sqlite" alt="SQLite">
   <img src="https://img.shields.io/badge/Python-3.11%2B-3776ab?logo=python" alt="Python">
-  <img src="https://img.shields.io/badge/License-MIT-green" alt="License">
+  <img src="https://img.shields.io/badge/License-AGPL--3.0--or--later-green" alt="License">
 </p>
 
 ---
@@ -630,4 +630,4 @@ non-semantic and intended for deterministic smoke checks.
 
 ## License
 
-MIT
+GNU Affero General Public License v3.0 or later (AGPL-3.0-or-later)
