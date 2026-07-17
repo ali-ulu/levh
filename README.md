@@ -2,7 +2,7 @@
 
 
 <p align="center">
-  <img width="363" height="359" alt="LEVH logo" src="docs/assets/levh-logo.png" />
+  <img width="720" height="196" alt="LEVH — local-first memory for AI agents and humans" src="docs/assets/levh-lockup.svg" />
 </p>
 
 

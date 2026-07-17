@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 300" role="img" aria-labelledby="title desc">
+  <title id="title">LEVH — Local-first memory for AI agents and humans</title><desc id="desc">LEVH logo with a layered L symbol</desc>
+  <defs><linearGradient id="surface" x1="26" y1="20" x2="216" y2="238" gradientUnits="userSpaceOnUse"><stop stop-color="#18253A"/><stop offset="1" stop-color="#070D17"/></linearGradient><linearGradient id="steel" x1="70" y1="52" x2="180" y2="184" gradientUnits="userSpaceOnUse"><stop stop-color="#EAF3FF"/><stop offset=".42" stop-color="#8FB4E6"/><stop offset="1" stop-color="#4C6F9E"/></linearGradient></defs>
+  <rect x="24" y="24" width="220" height="220" rx="52" fill="url(#surface)"/>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M91 163h88l-22 22H91z" fill="#385475" opacity=".82"/><path d="M82 146h89l-22 22H82z" fill="#557B9F"/><path d="M73 129h89l-22 22H73z" fill="#789CC0"/><path d="M82 79 178 115 156 137 113 120 99 134 156 156 134 178 73 154 116 111z" fill="url(#steel)" stroke="#DDF0FF" stroke-width="3"/></g>
+  <text x="292" y="142" fill="#0D1727" font-family="Arial, Helvetica, sans-serif" font-size="110" font-weight="700" letter-spacing="16">LEVH</text><text x="298" y="202" fill="#45658D" font-family="Arial, Helvetica, sans-serif" font-size="25" font-weight="700" letter-spacing="4">LOCAL-FIRST MEMORY FOR AI AGENTS AND HUMANS</text>
+</svg>

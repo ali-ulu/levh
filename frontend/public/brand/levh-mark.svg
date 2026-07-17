@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title desc">
+  <title id="title">LEVH</title>
+  <desc id="desc">Layered L mark for LEVH</desc>
+  <defs>
+    <linearGradient id="surface" x1="20" y1="12" x2="106" y2="116" gradientUnits="userSpaceOnUse"><stop stop-color="#18253A"/><stop offset="1" stop-color="#070D17"/></linearGradient>
+    <linearGradient id="steel" x1="33" y1="27" x2="92" y2="94" gradientUnits="userSpaceOnUse"><stop stop-color="#EAF3FF"/><stop offset=".42" stop-color="#8FB4E6"/><stop offset="1" stop-color="#4C6F9E"/></linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="175%"><feDropShadow dx="0" dy="6" stdDeviation="5" flood-color="#000814" flood-opacity=".58"/></filter>
+  </defs>
+  <rect width="128" height="128" rx="30" fill="url(#surface)"/>
+  <g filter="url(#shadow)" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M38 75h51l-13 13H38z" fill="#385475" opacity=".82"/><path d="M33 65h52l-13 13H33z" fill="#557B9F"/><path d="M28 54h52L67 67H28z" fill="#789CC0"/>
+    <path d="M33 27 89 48 76 61 51 51 43 59 76 72 63 85 27 71 52 46z" fill="url(#steel)" stroke="#DDF0FF" stroke-width="2"/>
+  </g>
+</svg>
