@@ -62,7 +62,7 @@ function isActive(pathname: string, href: string) {
 function LogoMark() {
   return (
     <span className="levh-logo-shell" aria-hidden="true">
-      <img src="/brand/levh-mark.svg" alt="" className="levh-logo-mark" />
+      <img src="/brand/levh-mark.png" alt="" className="levh-logo-mark" />
     </span>
   );
 }
