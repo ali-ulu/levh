@@ -8,7 +8,7 @@
 
 <p align="center">
   <strong>LEVH</strong><br>
-  Shared Memory Layer for AI Coding Workflows<br>
+  Shared Memory Layer for AI Agents and Workflows<br>
   <em>Memory that forgets like you do — unless it matters.</em>
 </p>
 
@@ -28,11 +28,17 @@
   <a href="https://github.com/ali-ulu/levh/discussions"><img src="https://img.shields.io/badge/community-Discussions-0969da?logo=github" alt="GitHub Discussions"></a>
 </p>
 
+<p align="center">
+  <a href="docs/demo/5-minute-demo.md"><img src="docs/assets/levh-demo-tour.gif" alt="LEVH demo: local memory dashboard, entity graph, and conflict review" width="960" /></a>
+</p>
+
+<p align="center"><em>Real local demo: 20 memories, an entity graph, and a reviewable conflict candidate.</em></p>
+
 ---
 
 ## What is LEVH?
 
-LEVH gives your AI coding agents a **persistent, searchable memory** across sessions, projects, and tools. Instead of starting from scratch every time, your AI remembers what you discussed, decisions you made, and context from every workspace.
+LEVH gives AI agents and assistants a **persistent, searchable memory** across sessions, projects, and tools. Instead of starting from scratch every time, your AI remembers what you discussed, decisions you made, and context from every workspace.
 
 Most memory tools optimize for **perfect recall** — store everything, retrieve everything, let noise pile up forever. LEVH instead models memory the way **human memory actually works**: every memory has its own decay curve; unused memories fade; memories you actually rely on get reinforced and become durable, automatically, with no manual curation. Signal rises to the top on its own.
 
