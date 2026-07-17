@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.27.2
+
+### Human and agent memory positioning
+
+- Updated package, API, CLI, README, landing-page, and launch metadata to
+  describe LEVH as a local-first memory layer for AI agents and humans.
+- Added `levh --version` for standard CLI release identification.
+
 ## 2.27.1
 
 ### License metadata alignment

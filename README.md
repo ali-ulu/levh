@@ -8,7 +8,7 @@
 
 <p align="center">
   <strong>LEVH</strong><br>
-  Shared Memory Layer for AI Agents and Workflows<br>
+  Local-first Memory Layer for AI Agents and Humans<br>
   <em>Memory that forgets like you do — unless it matters.</em>
 </p>
 
@@ -38,7 +38,7 @@
 
 ## What is LEVH?
 
-LEVH gives AI agents and assistants a **persistent, searchable memory** across sessions, projects, and tools. Instead of starting from scratch every time, your AI remembers what you discussed, decisions you made, and context from every workspace.
+LEVH gives AI agents and people a **persistent, searchable memory** across sessions, projects, and tools. Instead of starting from scratch every time, shared context preserves what you discussed, decisions you made, and what matters in each workspace.
 
 Most memory tools optimize for **perfect recall** — store everything, retrieve everything, let noise pile up forever. LEVH instead models memory the way **human memory actually works**: every memory has its own decay curve; unused memories fade; memories you actually rely on get reinforced and become durable, automatically, with no manual curation. Signal rises to the top on its own.
 

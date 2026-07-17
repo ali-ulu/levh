@@ -1376,8 +1376,9 @@ def main() -> int:
         print("'stackmemory' is deprecated; use 'levh'", file=sys.stderr)
     parser = argparse.ArgumentParser(
         prog="stackmemory" if legacy_invocation else "levh",
-        description="LEVH — Shared Memory Layer for AI Coding Workflows",
+        description="LEVH - Local-first memory layer for AI agents and humans",
     )
+    parser.add_argument("--version", action="version", version="%(prog)s 2.27.2")
     sub = parser.add_subparsers(dest="command", help="Available commands")
 
     # doctor

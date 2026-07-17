@@ -13,6 +13,7 @@ Tests:
 
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -64,6 +65,15 @@ class TestDoctor:
         monkeypatch.setattr(sys, "argv", ["stackmemory", "doctor"])
         assert main() == 0
         assert "'stackmemory' is deprecated; use 'levh'" in capsys.readouterr().err
+
+
+class TestVersion:
+    """The primary CLI exposes a conventional, release-identifying version flag."""
+
+    def test_version_reports_levh_release(self):
+        result = _run_cli("--version")
+        assert result.returncode == 0
+        assert re.fullmatch(r"levh \d+\.\d+\.\d+", result.stdout.strip())
 
 
 class TestInit:

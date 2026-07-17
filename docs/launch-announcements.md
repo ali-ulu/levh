@@ -5,7 +5,7 @@ keep the install command and links intact.
 
 ## GitHub Discussion
 
-### LEVH is live: local-first memory for AI coding tools
+### LEVH is live: local-first memory for AI agents and humans
 
 LEVH is now publicly available.
 
@@ -65,7 +65,7 @@ your coding agent?
 
 ## LinkedIn / X
 
-LEVH is live: a local-first memory layer for AI coding tools.
+LEVH is live: a local-first memory layer for AI agents and humans.
 
 Give Claude, Cursor and other MCP clients persistent project context across
 sessions — with SQLite, a dashboard, trust/entity signals and no hosted
