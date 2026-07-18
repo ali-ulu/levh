@@ -1,0 +1,38 @@
+TASK-00A5 MERGE-PREPARATION COMMAND RECORD
+===========================================
+
+Locked checkout:
+  branch= audit/groundtruth-v2
+  head=3a97ae7177c128e5484434d76828751330149fc3
+
+1. python -m pytest -q tests/groundtruth
+   result=6 xfailed
+   exit=0
+
+2. python -m pip check
+   result=No broken requirements found.
+   exit=0
+
+3. python -m pytest --collect-only -q
+   result=533 tests collected
+
+4. Full Windows backend attempt
+   result=incomplete because two socket-monkeypatch tests block the
+   Proactor/aiosqlite self-pipe.
+
+5. Backend run with those two tests deselected
+   result=523 passed, 6 expected xfailed, 2 failed, 2 deselected
+   suite_green=false
+
+6. Isolated failure checks
+   MCP blackbox=WinError 5 named-pipe permission failure
+   setup CLI=noninteractive EOFError instead of expected guidance
+
+7. Sanitization and scope
+   machine path/PID/port residuals=0
+   real-secret pattern hits=0
+   product-code changes=0
+   forbidden artifact cleanup target=tests/groundtruth/__pycache__
+
+No dependency install, product-code change, remediation, commit, push, PR or
+merge was performed.

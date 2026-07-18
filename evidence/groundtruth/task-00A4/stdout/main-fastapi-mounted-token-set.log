@@ -1,0 +1,14 @@
+INFO:     127.0.0.1:<PORT> - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:<PORT> - "GET /api/mcp/sse HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:<PORT> - "POST /api/mcp/messages/?session_id=synthetic HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:<PORT> - "GET /api/mcp/sse HTTP/1.1" 200 OK
+INFO:     127.0.0.1:<PORT> - "POST /api/mcp/messages/?session_id=ec59654a7a6f4584a1ffcfa73561a295 HTTP/1.1" 202 Accepted
+INFO:     127.0.0.1:<PORT> - "POST /api/mcp/messages/?session_id=ec59654a7a6f4584a1ffcfa73561a295 HTTP/1.1" 202 Accepted
+INFO:     127.0.0.1:<PORT> - "POST /api/mcp/messages/?session_id=ec59654a7a6f4584a1ffcfa73561a295 HTTP/1.1" 202 Accepted
+INFO:     127.0.0.1:<PORT> - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:<PORT> - "GET /api/mcp/sse HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:<PORT> - "POST /api/mcp/messages/?session_id=synthetic HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:<PORT> - "GET /api/mcp/sse HTTP/1.1" 200 OK
+INFO:     127.0.0.1:<PORT> - "POST /api/mcp/messages/?session_id=af6b0414117d4f7eb21e690b1ed3873d HTTP/1.1" 202 Accepted
+INFO:     127.0.0.1:<PORT> - "POST /api/mcp/messages/?session_id=af6b0414117d4f7eb21e690b1ed3873d HTTP/1.1" 202 Accepted
+INFO:     127.0.0.1:<PORT> - "POST /api/mcp/messages/?session_id=af6b0414117d4f7eb21e690b1ed3873d HTTP/1.1" 202 Accepted

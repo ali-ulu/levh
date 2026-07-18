@@ -1,0 +1,20 @@
+INFO:     Started server process [11648]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:<PORT> (Press CTRL+C to quit)
+[07/18/26 19:34:03] INFO     Processing request of type           server.py:733
+                             ListToolsRequest
+                    INFO     Processing request of type           server.py:733
+                             CallToolRequest
+                    INFO     Processing request of type           server.py:733
+                             CallToolRequest
+INFO:     Started server process [6796]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:<PORT> (Press CTRL+C to quit)
+[07/18/26 19:35:04] INFO     Processing request of type           server.py:733
+                             ListToolsRequest
+                    INFO     Processing request of type           server.py:733
+                             CallToolRequest
+                    INFO     Processing request of type           server.py:733
+                             CallToolRequest

@@ -1,0 +1,6 @@
+standalone-default-no-token: pid=<PID> app=server.mcp_sse:app host=127.0.0.1 port=<PORT> db=<TEMP_ROOT>\pytest-45\test_01_standalone_default_wit0\standalone-default-no-token.db profile=<unset> token_env=absent
+standalone-profile-minimal: pid=<PID> app=server.mcp_sse:app host=127.0.0.1 port=<PORT> db=<TEMP_ROOT>\pytest-45\test_02_standalone_minimal_wor0\standalone-profile-minimal.db profile=minimal token_env=absent
+standalone-profile-work: pid=<PID> app=server.mcp_sse:app host=127.0.0.1 port=<PORT> db=<TEMP_ROOT>\pytest-45\test_02_standalone_minimal_wor0\standalone-profile-work.db profile=work token_env=absent
+standalone-profile-full: pid=<PID> app=server.mcp_sse:app host=127.0.0.1 port=<PORT> db=<TEMP_ROOT>\pytest-45\test_02_standalone_minimal_wor0\standalone-profile-full.db profile=full token_env=absent
+standalone-token-set-client-omits-token: pid=<PID> app=server.mcp_sse:app host=127.0.0.1 port=<PORT> db=<TEMP_ROOT>\pytest-45\test_03_standalone_ignores_lev0\standalone-token-set-client-omits-token.db profile=full token_env=set
+main-fastapi-mounted-token-set: pid=<PID> app=server.api:app host=127.0.0.1 port=<PORT> db=<TEMP_ROOT>\pytest-45\test_04_main_fastapi_mounted_m0\mounted-fastapi.db profile=minimal token_env=set

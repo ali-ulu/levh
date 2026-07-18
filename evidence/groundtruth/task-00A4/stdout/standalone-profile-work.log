@@ -1,0 +1,10 @@
+INFO:     127.0.0.1:<PORT> - "GET / HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:<PORT> - "GET /sse HTTP/1.1" 200 OK
+INFO:     127.0.0.1:<PORT> - "POST /messages/?session_id=d44ae455e70c471e95cdefcb47fe5ae6 HTTP/1.1" 202 Accepted
+INFO:     127.0.0.1:<PORT> - "POST /messages/?session_id=d44ae455e70c471e95cdefcb47fe5ae6 HTTP/1.1" 202 Accepted
+INFO:     127.0.0.1:<PORT> - "POST /messages/?session_id=d44ae455e70c471e95cdefcb47fe5ae6 HTTP/1.1" 202 Accepted
+INFO:     127.0.0.1:<PORT> - "GET / HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:<PORT> - "GET /sse HTTP/1.1" 200 OK
+INFO:     127.0.0.1:<PORT> - "POST /messages/?session_id=7412996a5f274ea78ef76353f7635347 HTTP/1.1" 202 Accepted
+INFO:     127.0.0.1:<PORT> - "POST /messages/?session_id=7412996a5f274ea78ef76353f7635347 HTTP/1.1" 202 Accepted
+INFO:     127.0.0.1:<PORT> - "POST /messages/?session_id=7412996a5f274ea78ef76353f7635347 HTTP/1.1" 202 Accepted

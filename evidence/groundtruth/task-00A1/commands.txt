@@ -1,0 +1,65 @@
+TASK-00A1 command chronology
+worktree=<AUDIT_WORKTREE>
+
+1. git rev-parse HEAD
+   3a97ae7177c128e5484434d76828751330149fc3
+
+2. git branch --show-current
+   audit/groundtruth-v2
+
+3. git status --short
+   (clean before TASK-00A1)
+
+4. .\.venv\Scripts\python.exe -m py_compile tests\groundtruth\test_cross_process_coherence.py
+   exit=0
+
+5. .\.venv\Scripts\python.exe -m pytest --collect-only -q tests\groundtruth\test_cross_process_coherence.py
+   2 tests collected
+   Note: collection completed; sandbox cleanup reported access denied for generated __pycache__. The final elevated run had no such limitation.
+
+6. .\.venv\Scripts\python.exe -m pytest -vv -s tests\groundtruth\test_cross_process_coherence.py
+   Initial characterization run: engine completed with six expected coherence failures.
+   Transport stopped early because similar synthetic prefixes triggered admission review.
+   No product behavior conclusion was drawn from that transport interruption.
+
+7. .\.venv\Scripts\python.exe -m pytest -vv -s tests\groundtruth\test_cross_process_coherence.py::test_real_mcp_stdio_and_rest_cross_process_coherence
+   First retry: MCP store succeeded; harness parser expected a hyphenated UUID while LEVH returned a 32-character hex ID.
+   Harness-only parser adjusted to accept LEVH's observed ID format.
+
+8. .\.venv\Scripts\python.exe -m pytest -vv -s tests\groundtruth\test_cross_process_coherence.py::test_real_mcp_stdio_and_rest_cross_process_coherence
+   Full transport scenarios completed.
+   exit=1 by characterization assertion
+   failures=REST_to_MCP create/update/delete recall; MCP_to_REST create/update/delete recall
+   restart recovery=6/6 pass
+
+9. .\.venv\Scripts\python.exe -m pytest -q tests\groundtruth\test_cross_process_coherence.py
+   Final normalized run.
+   exit=1
+   2 failed in 30.61s
+   engine live recall invariant failures=6/6
+   transport live recall invariant failures=6/6
+   engine restart recovery=6/6 pass
+   transport restart recovery=6/6 pass
+   SQLite integrity_check=ok for both final databases
+
+10. Ending verification commands are recorded after report generation below.
+10. Evidence validation
+    Required files present.
+    engine-scenarios.jsonl parse=OK (18 records: 12 pass, 6 fail)
+    transport-scenarios.jsonl parse=OK (15 records: 9 pass, 6 fail)
+    source/report structured-text trailing whitespace=none
+    Raw MCP stderr contains formatter padding and was preserved verbatim.
+
+11. git status --short --untracked-files=all
+    Only TASK-00A1 allowed outputs are untracked under:
+    - docs/groundtruth/00A1-cross-process-coherence.md
+    - tests/groundtruth/test_cross_process_coherence.py
+    - evidence/groundtruth/task-00A1/*
+    Product code changes=none
+
+12. git diff --check
+    exit=0
+    output=(empty)
+    Note: outputs are untracked, so a separate structured-text trailing-whitespace scan was also run.
+
+No commit, push, PR, merge, dependency install, or product-code remediation was performed.

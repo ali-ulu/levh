@@ -1,0 +1,18 @@
+{"input": "api_key=GT00A3SECRETDIRECT7F2A91 synthetic never real", "label": "direct_update", "provider": "hash"}
+{"input": "api_key=GT00A3SECRETDIRECT7F2A91 synthetic never real", "label": "direct_update", "provider": "hash"}
+{"input": "password=[REDACTED] synthetic create control", "label": "rest_create_and_update", "provider": "hash"}
+{"input": "password=[REDACTED] synthetic create control", "label": "rest_create_and_update", "provider": "hash"}
+{"input": "GT00A3 REST safe baseline before secret update", "label": "rest_create_and_update", "provider": "hash"}
+{"input": "GT00A3 REST safe baseline before secret update", "label": "rest_create_and_update", "provider": "hash"}
+{"input": "token=GT00A3SECRETRESTC1E487 synthetic REST update", "label": "rest_create_and_update", "provider": "hash"}
+{"input": "token=GT00A3SECRETRESTC1E487 synthetic REST update", "label": "rest_create_and_update", "provider": "hash"}
+{"input": "GT00A3 duplicate policy target alpha beta gamma delta epsilon zeta eta theta", "label": "rest_create_and_update", "provider": "hash"}
+{"input": "GT00A3 duplicate policy target alpha beta gamma delta epsilon zeta eta theta", "label": "rest_create_and_update", "provider": "hash"}
+{"input": "GT00A3 duplicate policy target alpha beta gamma delta epsilon zeta eta theta", "label": "rest_create_and_update", "provider": "hash"}
+{"input": "GT00A3 duplicate policy target alpha beta gamma delta epsilon zeta eta theta revised", "label": "rest_create_and_update", "provider": "hash"}
+{"input": "Harbor quartz safe exact update source 7281", "label": "rest_create_and_update", "provider": "hash"}
+{"input": "Harbor quartz safe exact update source 7281", "label": "rest_create_and_update", "provider": "hash"}
+{"input": "ĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀZ", "label": "rest_create_and_update", "provider": "hash"}
+{"input": "ĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀĀZ", "label": "rest_create_and_update", "provider": "hash"}
+{"input": "GT00A3 duplicate policy target alpha beta gamma delta epsilon zeta eta theta", "label": "rest_create_and_update", "provider": "hash"}
+{"input": "GT00A3 duplicate policy target alpha beta gamma delta epsilon zeta eta theta revised", "label": "rest_create_and_update", "provider": "hash"}
