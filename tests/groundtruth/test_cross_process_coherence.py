@@ -38,7 +38,11 @@ async def _seed(db_path: Path, content: str) -> str:
         await seed.shutdown()
 
 
-@pytest.mark.xfail(strict=True, reason=P0_1_REASON)
+@pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason=P0_1_REASON,
+)
 @pytest.mark.asyncio
 async def test_live_peer_observes_create_without_restart(tmp_path: Path) -> None:
     db_path = tmp_path / "create.db"
@@ -61,7 +65,11 @@ async def test_live_peer_observes_create_without_restart(tmp_path: Path) -> None
         await writer.shutdown()
 
 
-@pytest.mark.xfail(strict=True, reason=P0_1_REASON)
+@pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason=P0_1_REASON,
+)
 @pytest.mark.asyncio
 async def test_live_peer_observes_update_without_restart(tmp_path: Path) -> None:
     db_path = tmp_path / "update.db"
@@ -86,7 +94,11 @@ async def test_live_peer_observes_update_without_restart(tmp_path: Path) -> None
         await writer.shutdown()
 
 
-@pytest.mark.xfail(strict=True, reason=P0_1_REASON)
+@pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason=P0_1_REASON,
+)
 @pytest.mark.asyncio
 async def test_live_peer_observes_delete_without_restart(tmp_path: Path) -> None:
     db_path = tmp_path / "delete.db"

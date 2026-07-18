@@ -49,7 +49,7 @@ async def _first_sse_status(app: Any) -> int:
         "raw_path": b"/sse",
         "query_string": b"",
         "root_path": "",
-        "headers": [(b"host", b"localhost:8001")],
+        "headers": [(b"host", b"localhost")],
         "client": ("127.0.0.1", 41000),
         "server": ("localhost", 8001),
         "state": {},
@@ -65,7 +65,11 @@ async def _first_sse_status(app: Any) -> int:
             await task
 
 
-@pytest.mark.xfail(strict=True, reason=P0_4_REASON)
+@pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason=P0_4_REASON,
+)
 @pytest.mark.asyncio
 async def test_standalone_sse_requires_configured_token(
     tmp_path: Path,

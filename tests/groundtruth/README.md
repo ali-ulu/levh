@@ -2,11 +2,13 @@
 
 This directory contains lightweight **desired-behaviour** tests for the four
 Gate 0A P0 findings. They are part of normal backend collection and are marked
-`xfail(strict=True)` while the corresponding product defects remain open.
+`xfail(strict=True, raises=AssertionError)` while the corresponding product
+defects remain open.
 
-An expected failure means the known invariant is still violated. An unexpected
-pass is a hard CI failure, forcing the remediation to remove the marker and
-promote the test to an ordinary regression test.
+Only an `AssertionError` from the desired invariant may be an expected failure.
+Infrastructure, import, SQLite and harness errors remain real failures. An
+unexpected pass is a hard CI failure, forcing the remediation to remove the
+marker and promote the test to an ordinary regression test.
 
 | Test file | Desired invariant | Current marker |
 |---|---|---|

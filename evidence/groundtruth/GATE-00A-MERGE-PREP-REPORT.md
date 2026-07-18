@@ -21,7 +21,7 @@ NOT_STARTED
 - Preserved all four accepted P0 verdicts and task reports.
 - Moved process-heavy characterization programs out of default discovery into
   per-task `harness/` directories.
-- Added six lightweight desired-invariant tests with `xfail(strict=True)`.
+- Added six lightweight desired-invariant tests with `xfail(strict=True, raises=AssertionError)`.
 - Sanitized machine-specific worktree/temp paths and ephemeral PID/port values.
 - Retained only explicitly synthetic, non-functional canaries needed to explain
   the privacy and admission findings.
@@ -71,7 +71,8 @@ changed. They remain visible limitations, not passing results.
 - No real OpenAI key or other real credential was used.
 - No real outbound request was sent by Gate 0A network characterization.
 - P0-4 servers bound only to loopback.
-- No global purge, restore, admin mutation, commit, push, PR or merge occurred.
+- During TASK-00A5 no commit, push, PR or merge occurred; the audit commit and branch push were subsequently authorized and completed.
+- No global purge, restore, admin mutation, force push, PR merge or remediation occurred.
 - No product code was modified.
 - Allowed change roots are docs, evidence and Ground Truth tests only.
 
@@ -87,8 +88,20 @@ real-secret pattern hits: 0
 git status: 79 untracked audit files, 0 tracked changes, 0 outside scope
 git diff --check: exit 0
 ```
-## Decision boundary
+## TASK-00A6 review-closeout status
 
-This package may proceed to independent diff review. A local commit requires
-separate user approval. No P0 remediation may start before the audit PR is
-reviewed and merged.
+```text
+TESTED_RUNTIME_SHA: 3a97ae7177c128e5484434d76828751330149fc3
+PR_BASE_SHA: 034113e91feb442d480e9071612c50ce6092d486
+AUDIT_BRANCH_HEAD: fe4242c60ac9c79b032861f3a88e293a95f60130
+AUDIT_COMMIT: COMPLETED
+BRANCH_PUSH: COMPLETED
+INDEPENDENT_DIFF_REVIEW: CHANGES_REQUESTED_THEN_CORRECTED
+PR: NOT_STARTED
+MERGE: NOT_AUTHORIZED
+REMEDIATION: NOT_STARTED
+```
+
+The original preparation boundary above is historical. After TASK-00A6
+validation, a correction commit, normal push and draft PR are authorized.
+Force push, auto-merge, PR merge and P0 remediation remain unauthorized.

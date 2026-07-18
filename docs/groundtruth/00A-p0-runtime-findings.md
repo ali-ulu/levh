@@ -10,9 +10,17 @@ REMEDIATION:
 NOT_STARTED
 ```
 
-All results below were reproduced at locked HEAD
-`3a97ae7177c128e5484434d76828751330149fc3` on branch
-`audit/groundtruth-v2`. Product code was not modified.
+Runtime evidence identity and PR identity are intentionally separate:
+
+```text
+TESTED_RUNTIME_SHA: 3a97ae7177c128e5484434d76828751330149fc3
+PR_BASE_SHA: 034113e91feb442d480e9071612c50ce6092d486
+AUDIT_BRANCH_HEAD: fe4242c60ac9c79b032861f3a88e293a95f60130
+```
+
+`AUDIT_BRANCH_HEAD` is the post-main-merge, pre-correction snapshot. Runtime
+findings remain tied to `TESTED_RUNTIME_SHA`; no product code was modified by
+this audit.
 
 ## Canonical findings
 
@@ -74,7 +82,18 @@ The two reproducible failures are:
 Product code is unchanged, so these are not audit-diff regressions. They are
 recorded limitations and the suite is not described as green.
 
-## Merge boundary
+## Review-closeout boundary
 
-This audit package is ready only for independent diff review. It does not
-authorize a local commit, push, PR, merge, or any P0 remediation.
+```text
+AUDIT_COMMIT: COMPLETED
+BRANCH_PUSH: COMPLETED
+INDEPENDENT_DIFF_REVIEW: CHANGES_REQUESTED_THEN_CORRECTED
+PR: NOT_STARTED
+MERGE: NOT_AUTHORIZED
+REMEDIATION: NOT_STARTED
+```
+
+The original TASK-00A5 no-commit/no-push boundary is a historical preparation
+snapshot. Commit and push were subsequently authorized and completed. TASK-00A6
+may create a draft audit PR after validation; it does not authorize merge or P0
+remediation.

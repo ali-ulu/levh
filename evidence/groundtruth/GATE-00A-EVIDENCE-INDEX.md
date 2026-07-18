@@ -1,11 +1,12 @@
 # Gate 0A Evidence Index
 
-Locked HEAD: `3a97ae7177c128e5484434d76828751330149fc3`
+TESTED_RUNTIME_SHA: `3a97ae7177c128e5484434d76828751330149fc3`
+PR_BASE_SHA: `034113e91feb442d480e9071612c50ce6092d486`
 Branch: `audit/groundtruth-v2`
 
-Every SHA-256 below was computed after harness separation, evidence
-sanitization, pytest normalization and cache cleanup. This index excludes
-its own checksum to avoid a circular digest.
+Every SHA-256 below was computed after review correction, harness separation,
+evidence sanitization, pytest normalization and cache cleanup. This index
+excludes its own checksum to avoid a circular digest.
 
 | Relative path | Bytes | SHA-256 |
 |---|---:|---|
@@ -13,10 +14,10 @@ its own checksum to avoid a circular digest.
 | `docs/groundtruth/00A2-explicit-network-consent.md` | 6613 | `8711a989d79af5f48c98894b2fe16d5a1150a18a5bef3d2c91bc727b9d7d246e` |
 | `docs/groundtruth/00A3-content-update-admission-invariant.md` | 8368 | `aa1bea8d11d8e4f51c20c3b05fb7bd3a59fe4a0d491df7f99d83db88cbcf9e7f` |
 | `docs/groundtruth/00A4-standalone-sse-auth-boundary.md` | 7145 | `f40308a8bc60f0c47f21d2d94dddb6fe84300414d6e0295eca17c46fe4bcb29e` |
-| `docs/groundtruth/00A-merge-manifest.md` | 1779 | `f2dd04e009967673b6827f51ae1aac5ff32947c86c307e68f77a8c67bd1ba738` |
-| `docs/groundtruth/00A-p0-runtime-findings.md` | 3117 | `8331630b2025eec6f79c3fb339a95d8aac80e237d4cb81cc1e9eb3df6e84cf0f` |
-| `docs/groundtruth/00B-runtime-invariants.md` | 2459 | `00e3912e454eaba94527c660a1d6a62b47e7d1e9d6806a3864e18b9beb8b76e0` |
-| `evidence/groundtruth/GATE-00A-MERGE-PREP-REPORT.md` | 2988 | `89aa3eb4be6de1bc13e5057b7027b5f66102e3ec7c155fca3f70790e271fabbd` |
+| `docs/groundtruth/00A-merge-manifest.md` | 3229 | `dc409517d55ba9fa692706e8265c059afddf5ee57f39fc3376298a81e35fa1f5` |
+| `docs/groundtruth/00A-p0-runtime-findings.md` | 3688 | `814e8905b59d93ba81ddc1fec090d6b3d1f6fe406122863b6d08a65374f01de3` |
+| `docs/groundtruth/00B-runtime-invariants.md` | 7011 | `91610d5167d5344db662e704ce7c24fe58654840024547d37c61f289ee5dcf7b` |
+| `evidence/groundtruth/GATE-00A-MERGE-PREP-REPORT.md` | 3572 | `33ac2b08bcbab1e717daada58d6b46a87861080039ce88d4e8e29f3fc1a9f284` |
 | `evidence/groundtruth/task-00A1/commands.txt` | 2954 | `d2d6190815758d6685f3cdcc42ccafdb45e5f9e2838657f6d47b37aa461b3b08` |
 | `evidence/groundtruth/task-00A1/engine-scenarios.jsonl` | 12943 | `41072feaf813de7e88f21fd20d6a5db0b65000499d1f4d3a840e6823b444459a` |
 | `evidence/groundtruth/task-00A1/harness/reproduce_cross_process_coherence.py` | 40211 | `05411ff34a5e02070f2305b32a7c12d5f649676d3458e6bad55f1fdb9d004f77` |
@@ -82,10 +83,12 @@ its own checksum to avoid a circular digest.
 | `evidence/groundtruth/task-00A5/pytest-collect.txt` | 35806 | `53f165179236f11617ebfa407cb815fca9d9cd1b8218269b873d5a43bff99f8b` |
 | `evidence/groundtruth/task-00A5/pytest-collect-stderr.txt` | 0 | `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855` |
 | `evidence/groundtruth/task-00A5/sanitization-report.txt` | 737 | `e6e15f517e05c1224e3cfee646627a6486ef88b4e4e942b1df4754fda830ade6` |
-| `tests/groundtruth/README.md` | 1759 | `ae0b55f5bfa4900b64baf35b40c3ea8bc3ffc99250da17754e322aa8a754675a` |
-| `tests/groundtruth/test_cross_process_coherence.py` | 3340 | `41f665c3494ea65001d10e8b48929fab438ea5c54be2e02fb5ee6ecfc14af5cb` |
-| `tests/groundtruth/test_explicit_network_consent.py` | 2054 | `1ab99258aab0c6fdebb8b89293569dbec6f83f089465ed39ca579b5960daf052` |
-| `tests/groundtruth/test_standalone_sse_auth_boundary.py` | 2620 | `2902fe446e5d21e4490f7cb2b077ca2f870c11ad6d7ccad8065d4ad160c65c53` |
-| `tests/groundtruth/test_update_admission_invariant.py` | 1841 | `c033b898f381d9db4b3473b0b006f1bfefc3ec00d64407ec81e128db55139bd7` |
+| `evidence/groundtruth/task-00A6/iterations.jsonl` | 834 | `1f5c05b0d6751c6c54d354d1e67d00a78e08e5b51b3f913bd65bd4417e69e383` |
+| `evidence/groundtruth/task-00A6/REVIEW-CLOSEOUT.md` | 2366 | `3c57fd236858bed6faff19d2a495dd3d863ac1dab1c4f365a4b6c7e1598604b1` |
+| `tests/groundtruth/README.md` | 1869 | `326723fce0724aee425848340d86f518538bd713adaeec7292f52a0e53106750` |
+| `tests/groundtruth/test_cross_process_coherence.py` | 3454 | `5be474a4271d49cc8e0bd2f8dae8c529eedba407c7f31fdcdf7be8ed98760027` |
+| `tests/groundtruth/test_explicit_network_consent.py` | 2092 | `59e2bd23a7463b0046c08224395ee5835d179cdc32ad852a8e234335442e29c1` |
+| `tests/groundtruth/test_standalone_sse_auth_boundary.py` | 2653 | `bdda4b9d1f2a03c60689912c9b9144f2add81ed8b87b96234743d8b1eb5ab69b` |
+| `tests/groundtruth/test_update_admission_invariant.py` | 1879 | `41730c91021501ec53c42fa7d0d3593f1dff8209be2f73c1613a38b97ddb33a5` |
 
-Indexed files: 78
+Indexed files: 80

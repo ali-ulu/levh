@@ -20,7 +20,11 @@ P0_2_REASON = (
 )
 
 
-@pytest.mark.xfail(strict=True, reason=P0_2_REASON)
+@pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason=P0_2_REASON,
+)
 @pytest.mark.asyncio
 async def test_ambient_key_alone_never_activates_answer_or_summary_network(
     tmp_path: Path,

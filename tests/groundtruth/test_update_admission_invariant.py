@@ -18,7 +18,11 @@ P0_3_REASON = (
 )
 
 
-@pytest.mark.xfail(strict=True, reason=P0_3_REASON)
+@pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason=P0_3_REASON,
+)
 @pytest.mark.asyncio
 async def test_content_update_never_embeds_or_persists_raw_secret(
     tmp_path: Path,
