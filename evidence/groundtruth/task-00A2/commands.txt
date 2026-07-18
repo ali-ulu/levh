@@ -1,0 +1,71 @@
+TASK-00A2 command chronology
+worktree=<AUDIT_WORKTREE>
+
+1. git rev-parse HEAD
+   3a97ae7177c128e5484434d76828751330149fc3
+
+2. git branch --show-current
+   audit/groundtruth-v2
+
+3. git status --short --untracked-files=all
+   Only previously accepted TASK-00A1 outputs were present before TASK-00A2.
+
+4. Search for CODEX_TASK_00A2_EXPLICIT_NETWORK_CONSENT.md under Downloads,
+   C:\tmp and the clean worktree.
+   result=not found
+   The user-provided mandatory matrix and engine paths were used.
+
+5. Source survey
+   rg for OPENAI_API_KEY, MemoryEngine.ask, summarize_session, end_session,
+   answer_question, summarize_texts and httpx post sites.
+   result=engine hard-codes mode="auto" for ask/summary; ambient key selects
+   chat-completions helper path; end_session optionally calls summarize_session.
+
+6. .\.venv\Scripts\python.exe -m py_compile tests\groundtruth\test_explicit_network_consent.py
+   exit=0
+
+7. .\.venv\Scripts\python.exe -m pytest --collect-only -q tests\groundtruth\test_explicit_network_consent.py
+   4 tests collected in 12.39s
+   exit=0
+
+8. .\.venv\Scripts\python.exe -m pytest -vv -s tests\groundtruth\test_explicit_network_consent.py
+   4 passed in 17.41s
+   exit=0
+
+9. Final evidence run
+   .\.venv\Scripts\python.exe -m pytest -q tests\groundtruth\test_explicit_network_consent.py
+   4 passed in 13.41s
+   exit=0
+   stdout copied to evidence/groundtruth/task-00A2/stdout/pytest.txt
+   stderr copied to evidence/groundtruth/task-00A2/stderr/pytest.txt
+
+10. Evidence result
+    scenarios=9, pass=9, fail=0
+    captured_httpx_post_attempts=3
+    payloads_containing_synthetic_memory=3
+    delegated_to_httpx_transport=0
+    real_network_requests=0
+    credential=synthetic_nonfunctional
+
+11. Ending git status, scope validation and git diff --check are recorded after
+    report generation.
+
+No product code modification, dependency install, commit, push, PR, merge, or
+remediation was performed.
+
+12. Evidence validation
+    required_files=present
+    scenarios.jsonl parse=OK
+    captured-httpx-posts.jsonl parse=OK
+    synthetic_key_value_in_capture=NO
+    structured_text_trailing_whitespace=NONE
+
+13. git status --short --untracked-files=all
+    scope=accepted TASK-00A1 outputs plus TASK-00A2 outputs only
+    product_code_changes=none
+
+14. git diff --check
+    exit=0
+    output=(empty)
+    Note: outputs are untracked, so structured-text whitespace was also checked
+    separately in step 12.

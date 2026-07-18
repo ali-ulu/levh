@@ -1,0 +1,5 @@
+[levh] MCP profile 'full' \u2192 59 tools advertised
+[07/18/26 19:14:39] INFO     Processing request of type           server.py:733
+                             ListToolsRequest
+[07/18/26 19:14:40] INFO     Processing request of type           server.py:733
+                             CallToolRequest

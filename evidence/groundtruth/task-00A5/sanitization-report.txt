@@ -1,0 +1,21 @@
+TASK-00A5 SANITIZATION REPORT
+==============================
+
+Previously normalized files: 29
+Machine-specific C:\Users paths remaining: 0
+pytest-of-user path fragments remaining: 0
+Ephemeral pid=/port=/loopback-port values remaining: 0
+Real credential pattern hits remaining: 0
+
+Preserved intentionally:
+- synthetic OpenAI key markers that cannot authenticate;
+- synthetic secret canaries required to demonstrate P0-3 persistence;
+- loopback host names and canonical endpoint names;
+- random memory IDs that identify controlled audit records.
+
+Removed before final verification:
+- tests/groundtruth/__pycache__
+- Python bytecode cache files
+
+Forbidden merge artifacts:
+.db, -wal, -shm, zip, cache, real secret, local temporary database
