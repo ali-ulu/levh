@@ -1,21 +1,23 @@
 # Gate 0A Evidence Index
 
 TESTED_RUNTIME_SHA: `3a97ae7177c128e5484434d76828751330149fc3`
-PR_BASE_SHA: `034113e91feb442d480e9071612c50ce6092d486`
-Branch: `audit/groundtruth-v2`
+PR_BASE_SHA: `034113e91feb442d480e9071612c50ce6092d486` (Gate 0A audit PR #4)
+MERGED_AUDIT_SHA: `9433918410a061ae8ea940f435e738310ee2d31c`
+Branch: `audit/groundtruth-checksum-closeout`
 
-Every SHA-256 below was computed after review correction, harness separation,
-evidence sanitization, pytest normalization and cache cleanup. This index
-excludes its own checksum to avoid a circular digest.
+Every byte count and SHA-256 below is computed from the canonical Git blob
+content at MERGED_AUDIT_SHA, not from checkout working-tree bytes. This keeps
+verification independent of core.autocrlf and platform line-ending conversion.
+The index excludes its own checksum to avoid a circular digest.
 
 | Relative path | Bytes | SHA-256 |
 |---|---:|---|
+| `docs/groundtruth/00A-merge-manifest.md` | 3229 | `dc409517d55ba9fa692706e8265c059afddf5ee57f39fc3376298a81e35fa1f5` |
+| `docs/groundtruth/00A-p0-runtime-findings.md` | 3688 | `814e8905b59d93ba81ddc1fec090d6b3d1f6fe406122863b6d08a65374f01de3` |
 | `docs/groundtruth/00A1-cross-process-coherence.md` | 6897 | `7ee20e9cacd5ed4a3cba522972638f3079488eb07fa5be730e2cb509fd2ff78b` |
 | `docs/groundtruth/00A2-explicit-network-consent.md` | 6613 | `8711a989d79af5f48c98894b2fe16d5a1150a18a5bef3d2c91bc727b9d7d246e` |
 | `docs/groundtruth/00A3-content-update-admission-invariant.md` | 8368 | `aa1bea8d11d8e4f51c20c3b05fb7bd3a59fe4a0d491df7f99d83db88cbcf9e7f` |
 | `docs/groundtruth/00A4-standalone-sse-auth-boundary.md` | 7145 | `f40308a8bc60f0c47f21d2d94dddb6fe84300414d6e0295eca17c46fe4bcb29e` |
-| `docs/groundtruth/00A-merge-manifest.md` | 3229 | `dc409517d55ba9fa692706e8265c059afddf5ee57f39fc3376298a81e35fa1f5` |
-| `docs/groundtruth/00A-p0-runtime-findings.md` | 3688 | `814e8905b59d93ba81ddc1fec090d6b3d1f6fe406122863b6d08a65374f01de3` |
 | `docs/groundtruth/00B-runtime-invariants.md` | 7011 | `91610d5167d5344db662e704ce7c24fe58654840024547d37c61f289ee5dcf7b` |
 | `evidence/groundtruth/GATE-00A-MERGE-PREP-REPORT.md` | 3572 | `33ac2b08bcbab1e717daada58d6b46a87861080039ce88d4e8e29f3fc1a9f284` |
 | `evidence/groundtruth/task-00A1/commands.txt` | 2954 | `d2d6190815758d6685f3cdcc42ccafdb45e5f9e2838657f6d47b37aa461b3b08` |
@@ -23,18 +25,18 @@ excludes its own checksum to avoid a circular digest.
 | `evidence/groundtruth/task-00A1/harness/reproduce_cross_process_coherence.py` | 40211 | `05411ff34a5e02070f2305b32a7c12d5f649676d3458e6bad55f1fdb9d004f77` |
 | `evidence/groundtruth/task-00A1/process-map.txt` | 1012 | `cb04c14cfe9f62621a3843a86c203f40d8346b6050c64f13d955d0f45afcaadb` |
 | `evidence/groundtruth/task-00A1/sqlite-state.txt` | 1170 | `66c6648a43b6f0cb6d3bbe0d5f78879e88ac7fb9077e960ed1475f2f3f67fc04` |
-| `evidence/groundtruth/task-00A1/stderr/engine-A.log` | 0 | `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855` |
 | `evidence/groundtruth/task-00A1/stderr/engine-A-restarted.log` | 0 | `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855` |
-| `evidence/groundtruth/task-00A1/stderr/engine-B.log` | 0 | `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855` |
+| `evidence/groundtruth/task-00A1/stderr/engine-A.log` | 0 | `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855` |
 | `evidence/groundtruth/task-00A1/stderr/engine-B-restarted.log` | 0 | `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855` |
+| `evidence/groundtruth/task-00A1/stderr/engine-B.log` | 0 | `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855` |
 | `evidence/groundtruth/task-00A1/stderr/mcp-initial.log` | 929 | `2f5854ed842bcccf60bc4bd3de620ee05d2901c4331053a651ad47f049db9326` |
 | `evidence/groundtruth/task-00A1/stderr/mcp-restarted.log` | 554 | `2a1c7a8694c8d8aee71f1ea7484a561da4e5d2a741c1a39e2ef3a96b6124e646` |
 | `evidence/groundtruth/task-00A1/stderr/rest-initial.log` | 200 | `b03dd8e46f78d28bd37eaa35b34e33172f79a4cf5942c13c52355f74df3fed2d` |
 | `evidence/groundtruth/task-00A1/stderr/rest-restarted.log` | 199 | `e12e7d3c69622b74f37a1772cb68aab6351b36c7e6f8f349d8b362e4a5ba309a` |
-| `evidence/groundtruth/task-00A1/stdout/engine-A.jsonl` | 4688 | `e3dfb6f0dd7701cf3955ebe14ee182b97ff264d89e89655c4ba4fe0b888e22bd` |
 | `evidence/groundtruth/task-00A1/stdout/engine-A-restarted.jsonl` | 1706 | `c7ab552699cd956cdac3d8a7b807c2cc2103ef4639a708256e6981e464e9d0c5` |
-| `evidence/groundtruth/task-00A1/stdout/engine-B.jsonl` | 4684 | `f3981321b37ad3bb292d4b51ce3fe0200e733963707f444bed7c0f18d0f6e43e` |
+| `evidence/groundtruth/task-00A1/stdout/engine-A.jsonl` | 4688 | `e3dfb6f0dd7701cf3955ebe14ee182b97ff264d89e89655c4ba4fe0b888e22bd` |
 | `evidence/groundtruth/task-00A1/stdout/engine-B-restarted.jsonl` | 1705 | `1f77bdec0615c7037c6d34eacd233a72ed32750e459c06d1ef74dbc172644678` |
+| `evidence/groundtruth/task-00A1/stdout/engine-B.jsonl` | 4684 | `f3981321b37ad3bb292d4b51ce3fe0200e733963707f444bed7c0f18d0f6e43e` |
 | `evidence/groundtruth/task-00A1/stdout/mcp-tool-results.jsonl` | 8238 | `a5725a134f354dcbb2beb9a3bfa6ff2492aaff4dc03a7011fbacac9909a0d009` |
 | `evidence/groundtruth/task-00A1/stdout/rest-initial.log` | 858 | `46b65359ea282467eac6f30304eddbde07725c6cf598c26e1957f7f950bfd7e2` |
 | `evidence/groundtruth/task-00A1/stdout/rest-restarted.log` | 292 | `59289d861d6aa2da3dd2cc152a7ad77f9cf4c29626472552c4748a9b91e9e18d` |
@@ -78,13 +80,13 @@ excludes its own checksum to avoid a circular digest.
 | `evidence/groundtruth/task-00A4/stdout/tool-results.jsonl` | 1170 | `01950494a7bf92f367b712615c3b39b695c9e58bc265418b74599fdfbf477ce9` |
 | `evidence/groundtruth/task-00A4/tool-surfaces.jsonl` | 5054 | `4d21d6e191e930bb1a99358321549ebe81a8749c461fc811daee3c12b3dbdeec` |
 | `evidence/groundtruth/task-00A5/commands.txt` | 1104 | `ca84bd68c1c81f538f7825dbe5c5fdeefe54c7c6ebf9ab8d793302977532db93` |
-| `evidence/groundtruth/task-00A5/pytest-backend.txt` | 1148 | `66029bb8c5e2be486e26a45d968a1eaaeb30756c1f8b1f38b29463ac2de9fc6a` |
 | `evidence/groundtruth/task-00A5/pytest-backend-stderr.txt` | 0 | `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855` |
-| `evidence/groundtruth/task-00A5/pytest-collect.txt` | 35806 | `53f165179236f11617ebfa407cb815fca9d9cd1b8218269b873d5a43bff99f8b` |
+| `evidence/groundtruth/task-00A5/pytest-backend.txt` | 1148 | `66029bb8c5e2be486e26a45d968a1eaaeb30756c1f8b1f38b29463ac2de9fc6a` |
 | `evidence/groundtruth/task-00A5/pytest-collect-stderr.txt` | 0 | `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855` |
+| `evidence/groundtruth/task-00A5/pytest-collect.txt` | 35806 | `53f165179236f11617ebfa407cb815fca9d9cd1b8218269b873d5a43bff99f8b` |
 | `evidence/groundtruth/task-00A5/sanitization-report.txt` | 737 | `e6e15f517e05c1224e3cfee646627a6486ef88b4e4e942b1df4754fda830ade6` |
-| `evidence/groundtruth/task-00A6/iterations.jsonl` | 834 | `1f5c05b0d6751c6c54d354d1e67d00a78e08e5b51b3f913bd65bd4417e69e383` |
-| `evidence/groundtruth/task-00A6/REVIEW-CLOSEOUT.md` | 3041 | `10674368138012924740b6a6e1f51edbf6238c66054a11926bd1004a7fb30e27` |
+| `evidence/groundtruth/task-00A6/REVIEW-CLOSEOUT.md` | 2951 | `20bcfe9c56193568c0afe4a4d5e8e550d18182ebb248b8c29fa4ed23392e5a5c` |
+| `evidence/groundtruth/task-00A6/iterations.jsonl` | 833 | `366dc7a5c78bd6045cd9f00dfface3c5aad46061cd087c8f73bbf8d17e0005b8` |
 | `tests/groundtruth/README.md` | 1869 | `326723fce0724aee425848340d86f518538bd713adaeec7292f52a0e53106750` |
 | `tests/groundtruth/test_cross_process_coherence.py` | 3454 | `5be474a4271d49cc8e0bd2f8dae8c529eedba407c7f31fdcdf7be8ed98760027` |
 | `tests/groundtruth/test_explicit_network_consent.py` | 2092 | `59e2bd23a7463b0046c08224395ee5835d179cdc32ad852a8e234335442e29c1` |
