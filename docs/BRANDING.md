@@ -19,7 +19,7 @@ the upper form represents present context and the three lower planes represent
 retained memory layers.
 
 - App/dashboard mark and favicon: `frontend/public/brand/levh-mark.png`
-- Documentation and Pages visual: `docs/assets/levh-brand-board.png`
+- Website visual: `docs/assets/levh-brand-board.png`
 - Favicon source: `frontend/src/app/icon.png`
 
 Use the board's normal `LEVH` wordmark in product UI. The stylised three-bar `E`
