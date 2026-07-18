@@ -50,8 +50,8 @@ async def _first_sse_status(app: Any) -> int:
         "query_string": b"",
         "root_path": "",
         "headers": [(b"host", b"localhost")],
-        "client": ("127.0.0.1", 41000),
-        "server": ("localhost", 8001),
+        "client": ("127.0.0.1", 0),
+        "server": ("localhost", 0),
         "state": {},
     }
     task = asyncio.create_task(app(scope, receive, send))

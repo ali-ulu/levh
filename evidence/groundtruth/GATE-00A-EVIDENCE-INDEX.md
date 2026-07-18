@@ -31,10 +31,10 @@ excludes its own checksum to avoid a circular digest.
 | `evidence/groundtruth/task-00A1/stderr/mcp-restarted.log` | 554 | `2a1c7a8694c8d8aee71f1ea7484a561da4e5d2a741c1a39e2ef3a96b6124e646` |
 | `evidence/groundtruth/task-00A1/stderr/rest-initial.log` | 200 | `b03dd8e46f78d28bd37eaa35b34e33172f79a4cf5942c13c52355f74df3fed2d` |
 | `evidence/groundtruth/task-00A1/stderr/rest-restarted.log` | 199 | `e12e7d3c69622b74f37a1772cb68aab6351b36c7e6f8f349d8b362e4a5ba309a` |
-| `evidence/groundtruth/task-00A1/stdout/engine-A.jsonl` | 4685 | `550d1b32ada1690214442909d30ab3360f9fbeebe61adce62d3760da20170b2f` |
-| `evidence/groundtruth/task-00A1/stdout/engine-A-restarted.jsonl` | 1704 | `b8941348bd2f89b4bf033af5c9b45d89c7e57971b4fd62257b6dff0d8312e3f1` |
-| `evidence/groundtruth/task-00A1/stdout/engine-B.jsonl` | 4682 | `c8d77ef6537bee2812066ad8f458ea08bfca1491afcd196da594f4c768b76890` |
-| `evidence/groundtruth/task-00A1/stdout/engine-B-restarted.jsonl` | 1703 | `9b83f38b19c14c507d85ad242ba7cb2af497613005ef7cbfe31d88afccea5752` |
+| `evidence/groundtruth/task-00A1/stdout/engine-A.jsonl` | 4688 | `e3dfb6f0dd7701cf3955ebe14ee182b97ff264d89e89655c4ba4fe0b888e22bd` |
+| `evidence/groundtruth/task-00A1/stdout/engine-A-restarted.jsonl` | 1706 | `c7ab552699cd956cdac3d8a7b807c2cc2103ef4639a708256e6981e464e9d0c5` |
+| `evidence/groundtruth/task-00A1/stdout/engine-B.jsonl` | 4684 | `f3981321b37ad3bb292d4b51ce3fe0200e733963707f444bed7c0f18d0f6e43e` |
+| `evidence/groundtruth/task-00A1/stdout/engine-B-restarted.jsonl` | 1705 | `1f77bdec0615c7037c6d34eacd233a72ed32750e459c06d1ef74dbc172644678` |
 | `evidence/groundtruth/task-00A1/stdout/mcp-tool-results.jsonl` | 8238 | `a5725a134f354dcbb2beb9a3bfa6ff2492aaff4dc03a7011fbacac9909a0d009` |
 | `evidence/groundtruth/task-00A1/stdout/rest-initial.log` | 858 | `46b65359ea282467eac6f30304eddbde07725c6cf598c26e1957f7f950bfd7e2` |
 | `evidence/groundtruth/task-00A1/stdout/rest-restarted.log` | 292 | `59289d861d6aa2da3dd2cc152a7ad77f9cf4c29626472552c4748a9b91e9e18d` |
@@ -84,11 +84,11 @@ excludes its own checksum to avoid a circular digest.
 | `evidence/groundtruth/task-00A5/pytest-collect-stderr.txt` | 0 | `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855` |
 | `evidence/groundtruth/task-00A5/sanitization-report.txt` | 737 | `e6e15f517e05c1224e3cfee646627a6486ef88b4e4e942b1df4754fda830ade6` |
 | `evidence/groundtruth/task-00A6/iterations.jsonl` | 834 | `1f5c05b0d6751c6c54d354d1e67d00a78e08e5b51b3f913bd65bd4417e69e383` |
-| `evidence/groundtruth/task-00A6/REVIEW-CLOSEOUT.md` | 2366 | `3c57fd236858bed6faff19d2a495dd3d863ac1dab1c4f365a4b6c7e1598604b1` |
+| `evidence/groundtruth/task-00A6/REVIEW-CLOSEOUT.md` | 3041 | `10674368138012924740b6a6e1f51edbf6238c66054a11926bd1004a7fb30e27` |
 | `tests/groundtruth/README.md` | 1869 | `326723fce0724aee425848340d86f518538bd713adaeec7292f52a0e53106750` |
 | `tests/groundtruth/test_cross_process_coherence.py` | 3454 | `5be474a4271d49cc8e0bd2f8dae8c529eedba407c7f31fdcdf7be8ed98760027` |
 | `tests/groundtruth/test_explicit_network_consent.py` | 2092 | `59e2bd23a7463b0046c08224395ee5835d179cdc32ad852a8e234335442e29c1` |
-| `tests/groundtruth/test_standalone_sse_auth_boundary.py` | 2653 | `bdda4b9d1f2a03c60689912c9b9144f2add81ed8b87b96234743d8b1eb5ab69b` |
+| `tests/groundtruth/test_standalone_sse_auth_boundary.py` | 2646 | `25a1ffcabd9803d0e2088447cf39184c8745a7ed19ba341f38c900e26f39cf72` |
 | `tests/groundtruth/test_update_admission_invariant.py` | 1879 | `41730c91021501ec53c42fa7d0d3593f1dff8209be2f73c1613a38b97ddb33a5` |
 
 Indexed files: 80

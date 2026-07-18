@@ -88,3 +88,15 @@ This report is intentionally a pre-commit evidence snapshot. The immutable
 TASK-00A6 correction commit, normal branch push and draft PR are verified from
 Git/GitHub metadata in the final gate report; PR merge and product remediation
 remain outside this authorization.
+## Independent pre-merge review sanitation correction
+
+A final read-only review found four numeric process IDs in TASK-00A1 stdout
+JSONL and two fixed synthetic ASGI port values in the lightweight P0-4 test.
+The process IDs were replaced with the PID placeholder and the in-process ASGI
+tuple ports with zero. These values were transport metadata only; scenario
+outcomes, canonical P0 verdicts and raw behavioral evidence semantics are
+unchanged.
+
+The evidence index was rebuilt after this correction. Validation must again
+show six expected strict xfails, 80/80 checksums, zero residual numeric PID/port
+hits, zero real-secret hits and zero product-code files before merge.
