@@ -40,7 +40,8 @@ secure = ["cryptography>=42"]
 dev = ["pytest", "pytest-asyncio", "build", "twine"]
 
 [project.urls]
-Homepage = "https://github.com/ali-ulu/levh"
+Homepage = "https://levh.ai-ulu.com/"
+Documentation = "https://levh.ai-ulu.com/"
 Repository = "https://github.com/ali-ulu/levh"
 
 [project.scripts]

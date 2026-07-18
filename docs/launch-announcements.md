@@ -29,7 +29,7 @@ pip install levh
 levh doctor
 ```
 
-- Website: https://ali-ulu.github.io/levh/
+- Website: https://levh.ai-ulu.com/
 - PyPI: https://pypi.org/project/levh/
 - Source: https://github.com/ali-ulu/levh
 
@@ -55,7 +55,7 @@ reinforced or pinned information stays durable.
 
 Install: `pip install levh`
 
-Demo/docs: https://ali-ulu.github.io/levh/
+Demo/docs: https://levh.ai-ulu.com/
 
 Source: https://github.com/ali-ulu/levh
 
@@ -73,5 +73,5 @@ account.
 
 `pip install levh`
 
-https://ali-ulu.github.io/levh/
+https://levh.ai-ulu.com/
 https://github.com/ali-ulu/levh
