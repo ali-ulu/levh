@@ -132,7 +132,15 @@ Recall quality is measured, not claimed:
 ```bash
 levh benchmark     # hit@1 / hit@3 / hit@5 / MRR on a labelled query set
 levh eval run      # golden-fixture run through the full pipeline
+levh tune          # fit the H(x,ψ) weights and report what it's worth
 ```
+
+`levh tune` searches for better `HSCORE_*` weights against a labelled set and
+reports the gain **cross-validated** — weights are fitted on some query groups
+and scored on a group they never saw. On the small built-in corpus the fitted
+weights do not generalise, and the command says so and recommends keeping the
+defaults rather than printing an overfitted result. It is offline analysis: it
+changes no runtime behaviour and only prints values for you to adopt.
 
 Please don't quote hit@k or MRR numbers from anywhere other than a real run on
 your own corpus and embedder mode — the hash fallback is non-semantic and will

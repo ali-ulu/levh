@@ -9,6 +9,7 @@ Commands:
     levh hook install   Install a git post-commit hook that captures commits
     levh summarize <session_id>  Distill a session into one summary memory
     levh benchmark      Run the recall-quality benchmark (hit@k / MRR)
+    levh tune           Fit H(x,psi) weights to the labelled set (offline)
     levh mcp config <platform>  Print MCP config JSON for a client
     levh mcp stdio      Launch MCP stdio server (for Claude Desktop etc.)
 """
@@ -840,6 +841,31 @@ def cmd_benchmark(args: argparse.Namespace) -> int:
     return 0
 
 
+# ── tune (offline H-score weight fitting) ─────────────────────────
+
+def cmd_tune(args: argparse.Namespace) -> int:
+    """Fit the H(x,ψ) weights to the labelled query set and report the gain.
+
+    Offline analysis only — this prints recommended HSCORE_* values and never
+    changes runtime behaviour.
+    """
+    import asyncio
+
+    from server.core.tuning import print_report, run_tuning
+
+    mode = args.embedder_mode or resolve_runtime_config().embedder_mode
+    report = asyncio.run(
+        run_tuning(
+            embedder_mode=mode,
+            top_k=args.top_k,
+            iterations=args.iterations,
+            seed=args.seed,
+        )
+    )
+    print_report(report)
+    return 0
+
+
 # ── review (spaced-repetition) ────────────────────────────────────
 
 def cmd_review(args: argparse.Namespace) -> int:
@@ -1448,6 +1474,13 @@ def main() -> int:
     benchmark_p.add_argument("--embedder-mode", type=str, default="", help="Embedder mode (default: $EMBEDDER_MODE or hash)")
     benchmark_p.add_argument("--top-k", type=int, default=5, help="Top-k for recall during the benchmark")
 
+    # tune
+    tune_p = sub.add_parser("tune", help="Fit H(x,psi) weights to the labelled query set (offline)")
+    tune_p.add_argument("--embedder-mode", type=str, default="", help="Embedder mode (default: $EMBEDDER_MODE or hash)")
+    tune_p.add_argument("--top-k", type=int, default=5, help="Top-k for recall during tuning")
+    tune_p.add_argument("--iterations", type=int, default=400, help="Search iterations (default: 400)")
+    tune_p.add_argument("--seed", type=int, default=0, help="Random seed; fixed seed = reproducible result")
+
     # hook
     hook_p = sub.add_parser("hook", help="Git auto-capture hook")
     hook_sub = hook_p.add_subparsers(dest="hook_command", help="Hook subcommands")
@@ -1606,6 +1639,8 @@ def main() -> int:
         return cmd_summarize(args)
     elif args.command == "benchmark":
         return cmd_benchmark(args)
+    elif args.command == "tune":
+        return cmd_tune(args)
     elif args.command == "review":
         if args.review_command in ("list", "apply"):
             return cmd_review(args)

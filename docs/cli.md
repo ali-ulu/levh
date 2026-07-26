@@ -12,6 +12,7 @@ levh context -o CLAUDE.md      # generate a context file from memories
 levh hook install              # git post-commit auto-capture
 levh summarize <session_id>    # distill a session into one summary memory
 levh benchmark                 # recall-quality harness (hit@k / MRR)
+levh tune                      # fit H(x,psi) weights offline; reports cross-validated gain
 levh mcp config cursor         # print MCP config for a client
 levh mcp stdio                 # run the MCP stdio server
 levh eval run                  # golden-fixture memory evaluation → eval_report.json
