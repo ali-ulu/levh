@@ -33,6 +33,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from server.core import engine_provider
 from server.core.env import get_env
+from server.core.onboarding import levh_version
 from server.tools.register import register_all_tools
 
 # ── Lifecycle: open/close the DB around the server's run ────────────
@@ -49,6 +50,12 @@ async def _lifespan(_server: FastMCP) -> AsyncIterator[None]:
 
 
 mcp = FastMCP("LEVH", lifespan=_lifespan)
+
+# FastMCP's constructor has no `version` parameter and never passes one to the
+# underlying lowlevel Server, which then falls back to the `mcp` SDK's own
+# package version for `initialize`'s serverInfo.version. Set it explicitly so
+# version-aware clients see LEVH's real version, not the mcp library's.
+mcp._mcp_server.version = levh_version()
 
 # Register tools at import time so they are advertised on initialize. The tool
 # *surface* is controlled by LEVH_MCP_PROFILE (minimal / work / admin /
