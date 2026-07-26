@@ -10,14 +10,28 @@ from typing import Any, Optional
 from pydantic import BaseModel, Field
 
 
+# `Enum.__str__`/`__format__` print "ClassName.MEMBER" even for a `(str, Enum)`
+# mixin — the `str` base is not enough to make f-string formatting return the
+# plain value. Left alone, that leaks straight into MCP tool output text (the
+# model's context, and what a user reads) as e.g. "Type: MemoryType.EPISODIC",
+# and into `Memory.model_dump()` (Python mode preserves the enum instance;
+# only `mode="json"` converts it). Overriding `__str__` fixes both call shapes
+# everywhere they're formatted, current and future, instead of patching each
+# f-string site with `.value`. Equality and `isinstance(x, str)` are unaffected.
 class MemoryType(str, Enum):
     SHORT_TERM = "short_term"
     EPISODIC = "episodic"
+
+    def __str__(self) -> str:
+        return self.value
 
 
 class SessionStatus(str, Enum):
     ACTIVE = "active"
     ENDED = "ended"
+
+    def __str__(self) -> str:
+        return self.value
 
 
 # ── Data Models ──────────────────────────────────────────────────────

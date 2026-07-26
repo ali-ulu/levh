@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from importlib.metadata import version as package_version
 import os
 from pathlib import Path
 import socket
@@ -15,6 +16,7 @@ from mcp.client.sse import sse_client
 from mcp.client.stdio import stdio_client
 
 ROOT = Path(__file__).resolve().parents[1]
+LEVH_VERSION = package_version("levh")
 
 
 def _env(db_path: Path) -> dict[str, str]:
@@ -45,7 +47,14 @@ async def test_mcp_stdio_protocol_blackbox(tmp_path):
     with open(os.devnull, "w", encoding="utf-8") as errlog:
         async with stdio_client(params, errlog=errlog) as (read, write):
             async with ClientSession(read, write) as session:
-                await session.initialize()
+                init_result = await session.initialize()
+                # FastMCP has no `version` constructor parameter and never
+                # forwards one to the underlying lowlevel Server, which then
+                # falls back to the `mcp` SDK's own package version. Left
+                # unset, every client sees the library version instead of
+                # LEVH's (regression: server/mcp_stdio.py used to report
+                # e.g. "1.28.1" here instead of the real release).
+                assert init_result.serverInfo.version == LEVH_VERSION
                 tools = await session.list_tools()
                 assert [tool.name for tool in tools.tools] == [
                     "store_memory",
@@ -59,11 +68,18 @@ async def test_mcp_stdio_protocol_blackbox(tmp_path):
                     {"content": "Stdio protocol black-box memory", "memory_type": "episodic"},
                 )
                 assert stored.isError is False
+                # `(str, Enum)` still prints "MemoryType.EPISODIC" via
+                # Enum.__str__ unless overridden (server/core/types.py), and
+                # that used to leak straight into this tool-output text.
+                assert "MemoryType." not in _tool_text(stored)
+                assert "Type: episodic" in _tool_text(stored)
                 recalled = await session.call_tool(
                     "recall_memory", {"query": "Stdio protocol", "top_k": 3}
                 )
                 assert recalled.isError is False
                 assert "Stdio protocol black-box memory" in _tool_text(recalled)
+                assert "MemoryType." not in _tool_text(recalled)
+                assert "Type: episodic" in _tool_text(recalled)
 
 
 @pytest.mark.asyncio
@@ -103,7 +119,11 @@ async def test_mcp_sse_protocol_blackbox(tmp_path):
             f"http://127.0.0.1:{port}/sse", timeout=5, sse_read_timeout=20
         ) as (read, write):
             async with ClientSession(read, write) as session:
-                await session.initialize()
+                init_result = await session.initialize()
+                # Same fallback as the stdio transport (see the parallel
+                # assertion above) — a separate FastMCP instance, so it
+                # needed, and got, the same fix independently.
+                assert init_result.serverInfo.version == LEVH_VERSION
                 tools = await session.list_tools()
                 assert len(tools.tools) == 5
                 stored = await session.call_tool(
@@ -111,11 +131,14 @@ async def test_mcp_sse_protocol_blackbox(tmp_path):
                     {"content": "SSE protocol black-box memory", "memory_type": "episodic"},
                 )
                 assert stored.isError is False
+                assert "MemoryType." not in _tool_text(stored)
                 recalled = await session.call_tool(
                     "recall_memory", {"query": "SSE protocol", "top_k": 3}
                 )
                 assert recalled.isError is False
                 assert "SSE protocol black-box memory" in _tool_text(recalled)
+                assert "MemoryType." not in _tool_text(recalled)
+                assert "Type: episodic" in _tool_text(recalled)
     finally:
         if process.returncode is None:
             process.terminate()

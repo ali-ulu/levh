@@ -140,6 +140,16 @@ class MemoryEngine:
         self._embedder: Embedder | None = None
         self._embedder_mode = embedder_mode
 
+        # Cross-process/cross-instance cache coherence (see
+        # _sync_with_external_writes). None until initialize() sets a
+        # baseline; a synced engine's own writes never change its own view of
+        # data_version, so this only ever detects a peer's writes. The lock
+        # serializes concurrent refreshes on this engine (e.g. several
+        # recall() calls arriving together right after a peer's write) so
+        # they don't all pay for a redundant full reload.
+        self._known_data_version: int | None = None
+        self._sync_lock = asyncio.Lock()
+
     @property
     def embedder(self) -> Embedder:
         if self._embedder is None:
@@ -216,10 +226,48 @@ class MemoryEngine:
                     self.vector_store.add(m)
                 if m.memory_type == MemoryType.SHORT_TERM:
                     self.short_term.add(m)
+            # Baseline for _sync_with_external_writes: this load IS current
+            # as of this data_version, so the first recall() must not treat
+            # it as stale and reload redundantly.
+            self._known_data_version = await self.db.data_version()
             # Materialized graph/trust/conflict rows may come from an older
             # version or interrupted process. Reconcile lazily on first read.
             self._derived_dirty = True
             self._initialized = True
+
+    async def _sync_with_external_writes(self) -> None:
+        """Refresh the in-memory caches if a peer has written since our last
+        sync — the fix for cross-process/cross-instance cache coherence.
+
+        vector_store and short_term are process-local: two MemoryEngine
+        instances sharing one SQLite file (two OS processes, or two engines
+        in the same process, e.g. tests) do not otherwise learn about each
+        other's create/update/delete until a restart reloads from SQLite,
+        which is the source of truth. episodic reads (get_memory,
+        list_memories) already go straight to SQLite on every call and were
+        never affected; only the vector_store-backed candidate search in
+        recall() was silently working from a stale snapshot.
+
+        A single `PRAGMA data_version` query (see Database.data_version) is
+        cheap enough to run before every recall(). On a miss — the common
+        case, no peer wrote — this is that one query. On a hit, a full reload
+        from episodic is O(corpus size); acceptable for a local, single-user
+        tool with no distributed cache to invalidate incrementally, and only
+        paid when something outside this connection actually changed.
+        """
+        async with self._sync_lock:
+            version = await self.db.data_version()
+            if self._known_data_version is not None and version == self._known_data_version:
+                return
+            all_memories = await self.episodic.get_all()
+            self.vector_store.clear()
+            self.short_term.clear()
+            for m in all_memories:
+                if m.embedding:
+                    self.vector_store.add(m)
+                if m.memory_type == MemoryType.SHORT_TERM:
+                    self.short_term.add(m)
+            self._known_data_version = version
 
     async def shutdown(self) -> None:
         await self.db.close()
@@ -341,6 +389,7 @@ class MemoryEngine:
         or inflate their access frequency — only genuine AI recall should
         reinforce.
         """
+        await self._sync_with_external_writes()
         query_embedding = await self.embedder.embed(query)
 
         def _predicate(memory: Memory) -> bool:

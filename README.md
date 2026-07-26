@@ -161,10 +161,12 @@ LEVH is a **local, single-user tool** — no accounts, no multi-tenancy.
 This is not per-user auth, and it is not a substitute for your own reverse proxy
 if you expose the service beyond localhost.
 
-**Known limitation:** LEVH keeps its vector cache in-process. If two processes
-(for example Claude Desktop and the dashboard) write to the same database
-concurrently, each sees the other's changes only after a restart. Cross-process
-cache invalidation is tracked for an upcoming release.
+**Cross-process coherence.** Two processes sharing one database (for example
+Claude Desktop and the dashboard) see each other's writes without a restart —
+`recall()` checks SQLite's own `PRAGMA data_version` before scoring and
+refreshes its in-memory caches if a peer wrote since the last check. `GET
+/api/memories/{id}` and list/search endpoints read straight from SQLite on
+every call and were never affected.
 
 Found a vulnerability? See [SECURITY.md](SECURITY.md).
 
