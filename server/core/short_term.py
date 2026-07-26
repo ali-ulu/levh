@@ -39,9 +39,6 @@ class ShortTermMemory:
                 return True
         return False
 
-    def clear(self) -> None:
-        self._deque.clear()
-
     def clear(self) -> int:
         count = len(self._deque)
         self._deque.clear()
