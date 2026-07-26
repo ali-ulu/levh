@@ -153,10 +153,47 @@ python -m server.mcp_stdio
 For web-based clients, the SSE transport is available:
 
 ```bash
-uvicorn server.mcp_sse:app --host 0.0.0.0 --port 8001
+LEVH_MCP_PROFILE=work uvicorn server.mcp_sse:app --host 127.0.0.1 --port 8001
 ```
 
 Or via the FastAPI mount at `/api/mcp/sse` when using the main API server.
+
+MCP profiles limit which tools are advertised; they are not an authentication
+boundary. The standalone server keeps the backward-compatible `full` profile
+when `LEVH_MCP_PROFILE` is unset, so explicitly choose `work` or `minimal` when
+that is all the client needs.
+
+Keep the standalone server on loopback unless remote access is intentional.
+Before any non-loopback bind, set a strong `LEVH_TOKEN`. Header-capable clients
+must include it in `X-LEVH-Token` on every SSE transport request (the legacy
+`X-StackMemory-Token` header is also accepted):
+
+```bash
+LEVH_TOKEN='replace-with-a-strong-random-token' \
+LEVH_MCP_PROFILE=work \
+uvicorn server.mcp_sse:app --host 0.0.0.0 --port 8001
+```
+
+`LEVH_ALLOW_REMOTE_WITHOUT_TOKEN=true` is an advanced operator assertion for a
+deployment already protected by a trusted network boundary. It disables the
+tokenless non-loopback rejection, so never use it with a public bind or rely on
+a local reverse proxy unless that proxy enforces authentication itself.
+
+Header authentication is preferred. Native browser `EventSource` cannot set
+custom headers, so browser-only clients may instead use
+`/sse?token=<percent-encoded-token>` and include the same query token on
+`/messages/` requests. A supplied header is authoritative: a wrong header plus
+a correct query token is rejected.
+
+Uvicorn's default access log records the complete query string, including the
+token. When query authentication is unavoidable, disable that log (and ensure
+any reverse proxy also redacts query strings):
+
+```bash
+LEVH_TOKEN='replace-with-a-strong-random-token' \
+LEVH_MCP_PROFILE=work \
+uvicorn server.mcp_sse:app --host 0.0.0.0 --port 8001 --no-access-log
+```
 
 ## Troubleshooting
 

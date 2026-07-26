@@ -1,9 +1,9 @@
 # Ground Truth invariant tests
 
 This directory contains lightweight **desired-behaviour** tests for the four
-Gate 0A P0 findings. They are part of normal backend collection and are marked
-`xfail(strict=True, raises=AssertionError)` while the corresponding product
-defects remain open.
+Gate 0A P0 findings. They are part of normal backend collection. Tests remain
+marked `xfail(strict=True, raises=AssertionError)` while their corresponding
+product defect is open, then become ordinary regression tests when remediated.
 
 Only an `AssertionError` from the desired invariant may be an expected failure.
 Infrastructure, import, SQLite and harness errors remain real failures. An
@@ -15,7 +15,7 @@ marker and promote the test to an ordinary regression test.
 | `test_cross_process_coherence.py` | Live readers sharing SQLite observe create, update and delete without restart. | P0-1 strict xfail |
 | `test_explicit_network_consent.py` | Ambient credentials alone produce zero Ask/Summary outbound attempts. | P0-2 strict xfail |
 | `test_update_admission_invariant.py` | Updated content passes admission before embedding or persistence. | P0-3 strict xfail |
-| `test_standalone_sse_auth_boundary.py` | Standalone SSE enforces configured `LEVH_TOKEN`. | P0-4 strict xfail |
+| `test_standalone_sse_auth_boundary.py` | Standalone SSE enforces configured `LEVH_TOKEN`. | Regression (marker removed) |
 
 The process-heavy characterization harnesses are audit-only and live beside
 their immutable evidence:

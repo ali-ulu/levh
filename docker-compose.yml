@@ -4,12 +4,15 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "127.0.0.1:8000:8000"
+      - "127.0.0.1:8000:8000" # This loopback publish is the network boundary.
     volumes:
       - stackmemory-data:/data
     environment:
       - SQLITE_DB_PATH=/data/stackmemory.db
       - EMBEDDER_MODE=hash # switch to "local" after adding sentence-transformers, or "openai"/"ollama"
+      # Safe ONLY because the port publish above is restricted to loopback.
+      # If you widen that publish, set LEVH_TOKEN instead of this override.
+      - LEVH_ALLOW_REMOTE_WITHOUT_TOKEN=true
 
 volumes:
   stackmemory-data:

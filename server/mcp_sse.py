@@ -8,7 +8,11 @@ stored via MCP SSE are instantly visible to the REST API / dashboard
 (and vice versa) within the same process.
 
 Usage (standalone):
-    uvicorn server.mcp_sse:app --host 0.0.0.0 --port 8001
+    uvicorn server.mcp_sse:app --host 127.0.0.1 --port 8001
+
+Set LEVH_TOKEN before any non-loopback deployment. When configured, clients
+must send it in X-LEVH-Token (or the legacy X-StackMemory-Token) on every
+SSE transport request.
 
 Usage (mounted in FastAPI at /api/mcp, stream at /api/mcp/sse):
     See server/api.py
@@ -26,6 +30,7 @@ from mcp.server.fastmcp import FastMCP
 # Ensure project root is on the path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from server.auth import ConfiguredTokenAuthMiddleware, shared_auth_limiter
 from server.core import engine_provider
 from server.core.env import get_env
 from server.tools.register import register_all_tools
@@ -53,4 +58,9 @@ register_all_tools(mcp_sse, engine_provider.get_engine(), profile=_MCP_PROFILE)
 
 # ── ASGI app (returned by .sse_app()) ────────────────────────────────
 
-app = mcp_sse.sse_app()
+_SSE_TOKEN = get_env("LEVH_TOKEN", "").strip()
+app = ConfiguredTokenAuthMiddleware(
+    mcp_sse.sse_app(),
+    token=_SSE_TOKEN,
+    limiter=shared_auth_limiter,
+)

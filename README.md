@@ -471,6 +471,9 @@ docker compose up -d
 ```
 
 One container, one port. The image builds the dashboard and serves it from the API.
+Compose explicitly accepts tokenless Docker-bridge traffic because the published
+host port is restricted to `127.0.0.1`. If that port mapping is widened, remove
+`LEVH_ALLOW_REMOTE_WITHOUT_TOKEN` and set a strong `LEVH_TOKEN` instead.
 
 ---
 
@@ -509,7 +512,8 @@ the process that launches it when environment overrides are required.
 | `INTERFERENCE_FACTOR` | `0.6` | Stability multiplier applied to superseded memories |
 | `AUTO_SUMMARIZE_SESSIONS` | `false` | Auto-summarize a session's memories on `end_session` |
 | `SUMMARY_MODEL` | `gpt-4o-mini` | OpenAI chat model used for session summaries |
-| `LEVH_TOKEN` | — | Optional shared-secret gate on `/api/*` (except `/api/health`) and the WebSocket |
+| `LEVH_TOKEN` | — | Shared-secret gate required for non-loopback access unless an external boundary is explicitly declared |
+| `LEVH_ALLOW_REMOTE_WITHOUT_TOKEN` | `false` | Advanced operator assertion that an external network boundary protects tokenless non-loopback traffic; never use with a public port |
 | `LEVH_CORS_ORIGINS` | localhost only | Comma-separated allowed browser origins (`*` for wildcard) |
 | `LEVH_AUTH_RATE_LIMIT` | `10` | Failed token attempts allowed per rate-limit window, per client/process |
 | `LEVH_API_RATE_LIMIT` | `120` | Authenticated API requests allowed per window, per client/process |
@@ -522,9 +526,11 @@ the process that launches it when environment overrides are required.
 ## Security
 
 LEVH binds to loopback by default. `levh serve --host 0.0.0.0`
-(or any non-loopback host) is refused unless `LEVH_TOKEN` is set. The
-Docker Compose default publishes only `127.0.0.1:8000`; deployments that widen
-the bind must set a strong token. CORS is not an authorization boundary.
+(or any non-loopback host) is refused unless `LEVH_TOKEN` is set. Direct ASGI
+entry points also reject tokenless non-loopback peers. The Docker Compose
+default explicitly opts into bridge traffic only because it publishes
+`127.0.0.1:8000`; deployments that widen that publish must remove the override
+and set a strong token. CORS is not an authorization boundary.
 
 The default REST, WebSocket, MCP `store_memory`, CLI `capture`, and connector
 import paths pass through the deterministic admission gate before persistence.
@@ -539,10 +545,12 @@ multi-tenancy. Two lightweight controls harden the default local deployment:
   open in your browser could `fetch()` your entire memory store from a
   service running on `localhost:8000`. Widen it with `LEVH_CORS_ORIGINS`
   only if you know what you're exposing.
-- **Optional shared-secret token** (`LEVH_TOKEN`) gates every `/api/*`
+- **Shared-secret token** (`LEVH_TOKEN`) gates every `/api/*`
   route and the WebSocket behind an `X-LEVH-Token` header (or `?token=`
   for the socket). When enabled, failed token attempts and authenticated API
-  traffic are limited in-process. Unset by default so local use stays zero-config.
+  traffic are limited in-process. Unset by default so loopback use stays
+  zero-config; non-loopback peers are rejected unless an operator explicitly
+  declares a separate trusted boundary.
 
 This is not per-user auth or a substitute for running behind your own
 reverse proxy if you expose the service beyond localhost.
