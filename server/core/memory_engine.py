@@ -11,8 +11,10 @@ Emits events ("stored", "updated", "deleted", "recalled", "consolidated",
 from __future__ import annotations
 
 import asyncio
+import logging
 import os
 import re
+import sqlite3
 from datetime import datetime, timezone
 from typing import Callable, Optional
 
@@ -78,6 +80,9 @@ def _first_marker_sentence(content: str, pattern: "re.Pattern", limit: int = 160
         segments.extend(line.split(". "))
     sentence = next((s for s in segments if pattern.search(s)), content)
     return sentence.strip()[:limit] or None
+
+
+logger = logging.getLogger("levh.memory_engine")
 
 
 class MemoryEngine:
@@ -352,10 +357,23 @@ class MemoryEngine:
         for old, similarity in similar:
             if similarity < self.interference_threshold:
                 continue
-            old.stability_hours = self.scorer.weaken(
-                old.stability_hours, self.interference_factor
-            )
-            await self.db.update_memory(old.id, {"stability_hours": old.stability_hours})
+            weakened = self.scorer.weaken(old.stability_hours, self.interference_factor)
+            # This write is best-effort, like the embedder/summarizer fallbacks
+            # (see docs/ARCHITECTURE.md invariant #5): the new memory this call
+            # exists to interfere around is already committed by the time we
+            # get here (store() calls episodic.store(mem) first), so a transient
+            # SQLite contention here must not fail a store the caller already
+            # succeeded at. Worst case, one older memory keeps its prior
+            # stability a little longer than ideal — not a correctness issue.
+            try:
+                await self.db.update_memory(old.id, {"stability_hours": weakened})
+            except sqlite3.OperationalError:
+                logger.warning(
+                    "interference weaken skipped for %s: transient SQLite error",
+                    old.id,
+                )
+                continue
+            old.stability_hours = weakened
             interfered.append(old.id)
 
         if interfered:

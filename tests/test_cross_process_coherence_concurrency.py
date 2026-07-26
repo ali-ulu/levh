@@ -9,14 +9,14 @@ raced ahead of a concurrent store()'s cache write without a lock, an engine
 could transiently lose visibility of a memory it just stored itself, even
 though SQLite always had it correctly.
 
-Interference is disabled here (interference_threshold = 1.0): it makes an
-extra write per store() to weaken a similar older memory, and at high enough
-write concurrency across two connections that trips a separate, pre-existing
-SQLite `database is locked` condition unrelated to cache coherence. That is a
-real, independently reproducible issue in the interference write path — filed
-separately, not papered over here — but it has nothing to do with what this
-test guards, so it's disabled to keep this a reliable, non-flaky regression
-test for the thing it actually checks.
+Interference (the extra write each store() makes to weaken a similar older
+memory) is left at its default here. It used to make this test flaky: at this
+concurrency, across two connections, it reliably tripped a separate,
+pre-existing `sqlite3.OperationalError: database is locked` unrelated to
+cache coherence. That was fixed at its source (_apply_interference now
+degrades instead of propagating on a transient lock — see
+tests/test_interference_resilience.py) rather than worked around here, so
+this test now exercises the real default configuration.
 """
 
 from __future__ import annotations
@@ -35,8 +35,6 @@ async def test_own_writes_survive_a_concurrent_external_sync(tmp_path):
     peer = MemoryEngine(db_path=db_path, embedder_mode="hash")
     await mine.initialize()
     await peer.initialize()
-    mine.interference_threshold = 1.0
-    peer.interference_threshold = 1.0
     try:
         stored_ids: list[str] = []
 
