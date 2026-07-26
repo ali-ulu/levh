@@ -6,8 +6,8 @@
 
 ```bash
 # Clone the repo
-git clone https://github.com/your-org/levh-new.git
-cd levh-new
+git clone https://github.com/ali-ulu/levh.git
+cd levh
 
 # Install in editable mode (recommended for development)
 pip install -e .
@@ -29,12 +29,12 @@ Expected output:
   ==================================================
   Python                    PASS   3.12.x
   Package import            PASS
-  Database path             PASS   /path/to/levh-new
+  Database path             PASS   /path/to/levh
   Embedder mode             PASS   hash (default)
   API import                PASS
   MCP import                PASS
   MCP SSE import            PASS
-  Frontend dir              PASS   /path/to/levh-new/frontend
+  Frontend dir              PASS   /path/to/levh/frontend
   Config generator          PASS
   Env vars                  PASS   Defaults used
 
