@@ -1,8 +1,4 @@
 <p align="center">
-  <img width="960" height="480" alt="LEVH — local-first memory for AI agents and humans" src="docs/assets/levh-brand-board.png" />
-</p>
-
-<p align="center">
   <strong>LEVH</strong><br>
   Local-first memory layer for AI agents and humans<br>
   <em>Memory that forgets like you do — unless it matters.</em>

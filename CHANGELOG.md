@@ -1,5 +1,41 @@
 # Changelog
 
+## 2.28.0
+
+### Launch remediation: all four Gate 0A P0 findings closed
+
+- **Remote access requires a token.** Standalone MCP SSE now enforces
+  `LEVH_TOKEN` like every other transport; the REST API, dashboard and
+  WebSocket reject tokenless non-loopback peers directly in the ASGI layer
+  (bypassing the CLI no longer bypasses the check). `LEVH_ALLOW_REMOTE_WITHOUT_TOKEN`
+  is the explicit, documented escape hatch for deployments (like Docker
+  Compose) whose network boundary is enforced elsewhere.
+- **Outbound LLM calls require explicit opt-in.** An ambient `OPENAI_API_KEY`
+  no longer activates Ask, session summaries, consolidation, or transcript
+  ingest on its own — set `ANSWER_MODE=llm` / `SUMMARY_MODE=llm` per feature.
+  `GET /api/config` reports the effective posture.
+- **Content updates go through the admission gate.** `update_memory` used to
+  embed and persist new content with no redaction and no minimum-length
+  check; secrets typed into an edit are now redacted exactly as they are on
+  create, before the text ever reaches the embedder.
+- **Live peers observe writes without a restart.** Two processes (or engine
+  instances) sharing one SQLite file — the real deployment shape, e.g. Claude
+  Desktop plus the dashboard — now see each other's create/update/delete
+  immediately. `recall()` checks SQLite's own `PRAGMA data_version` and
+  refreshes its cache only when a peer actually wrote.
+- Fixed MCP `serverInfo.version` reporting the `mcp` SDK's version instead of
+  LEVH's own, and MCP tool output leaking raw enum reprs (`MemoryType.EPISODIC`
+  instead of `episodic`) into recall/search/list/store/session text.
+- Added `levh tune`: an offline, cross-validated fitter for the H(x,ψ)
+  scoring weights. Reports what a fitted weight set is actually worth on a
+  labelled query set and recommends keeping the shipped defaults when the
+  gain doesn't survive leave-one-group-out validation. Changes no runtime
+  behavior on its own.
+- Restructured the README into a landing page; moved full reference material
+  (MCP tools, REST API, CLI, connectors, configuration) into `docs/`.
+
+Full suite: 596 passed, 0 xfailed.
+
 ## 2.27.2
 
 ### Human and agent memory positioning
