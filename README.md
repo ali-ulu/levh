@@ -170,7 +170,7 @@ Found a vulnerability? See [SECURITY.md](SECURITY.md).
 | Database | SQLite via `aiosqlite` (auto-migrating schema) |
 | Embeddings | OpenAI / sentence-transformers / Ollama / hash |
 | Vector Search | NumPy cosine similarity |
-| Frontend | Next.js 14 (static export) + shadcn/ui + Recharts |
+| Frontend | Next.js 15 + React 19 (static export) + shadcn/ui + Recharts |
 | Container | Docker (single image: API + dashboard) |
 
 ---
