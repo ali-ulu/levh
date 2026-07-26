@@ -341,6 +341,24 @@ class Database:
         assert self._connection is not None, "Database not connected. Call connect() first."
         return self._connection
 
+    async def data_version(self) -> int:
+        """SQLite's own cross-connection change counter for this database file.
+
+        `PRAGMA data_version` changes whenever ANY *other* connection commits —
+        including a different process — but a connection's own commits never
+        bump its own view of it (verified empirically, not just per the SQLite
+        docs). That is exactly "did a peer write since I last checked," for
+        the cost of one fast pragma query: no polling thread, no IPC, no
+        schema change. Used to invalidate MemoryEngine's process-local
+        vector_store/short_term caches when a live peer (another engine
+        instance sharing this file, in-process or in a separate process)
+        writes without this connection knowing.
+        """
+        cursor = await self.conn.execute("PRAGMA data_version")
+        row = await cursor.fetchone()
+        await cursor.close()
+        return int(row[0])
+
     async def close(self) -> None:
         if self._connection:
             await self._connection.close()

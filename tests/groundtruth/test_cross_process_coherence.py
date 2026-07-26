@@ -13,12 +13,6 @@ from server.core.memory_engine import MemoryEngine
 
 
 PROJECT = "GT00A5_P0_1_INVARIANT"
-P0_1_REASON = (
-    "P0-1 confirmed: live peer vector caches do not observe external "
-    "create/update/delete mutations until restart"
-)
-
-
 async def _engine(db_path: Path) -> MemoryEngine:
     engine = MemoryEngine(db_path=str(db_path), embedder_mode="hash")
     await engine.initialize()
@@ -38,11 +32,6 @@ async def _seed(db_path: Path, content: str) -> str:
         await seed.shutdown()
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=P0_1_REASON,
-)
 @pytest.mark.asyncio
 async def test_live_peer_observes_create_without_restart(tmp_path: Path) -> None:
     db_path = tmp_path / "create.db"
@@ -65,11 +54,6 @@ async def test_live_peer_observes_create_without_restart(tmp_path: Path) -> None
         await writer.shutdown()
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=P0_1_REASON,
-)
 @pytest.mark.asyncio
 async def test_live_peer_observes_update_without_restart(tmp_path: Path) -> None:
     db_path = tmp_path / "update.db"
@@ -94,11 +78,6 @@ async def test_live_peer_observes_update_without_restart(tmp_path: Path) -> None
         await writer.shutdown()
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=P0_1_REASON,
-)
 @pytest.mark.asyncio
 async def test_live_peer_observes_delete_without_restart(tmp_path: Path) -> None:
     db_path = tmp_path / "delete.db"

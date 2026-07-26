@@ -139,6 +139,18 @@ objects, so a pin that only hit SQLite would still be decayed at ranking time.
    (it just partitions the corpus). Don't assume a single global dimension.
 5. **Fallbacks never raise.** Embedder and summarizer degrade (to hash /
    extractive) rather than throwing — a missing model must not break a store.
+6. **Cross-instance cache coherence.** Invariant #1 covers this engine's own
+   mutations; it says nothing about a *peer* engine (another process, or
+   another `MemoryEngine` sharing this SQLite file) writing without this
+   process knowing. `recall()` calls `_sync_with_external_writes()` first,
+   which checks SQLite's own `PRAGMA data_version` (see
+   `Database.data_version`) and does a full cache reload from `episodic` on a
+   miss — cheap when nothing changed (one pragma query), a peer's write is
+   the only thing that ever triggers the reload. A connection's own commits
+   never change its own view of `data_version`, so this cannot loop on itself.
+   Any new read path that scores from `vector_store`/`short_term` directly
+   (as opposed to `episodic`, which always reads live) needs the same call at
+   its top, or it inherits the staleness `recall()` no longer has.
 
 ---
 
