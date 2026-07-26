@@ -13,7 +13,7 @@ marker and promote the test to an ordinary regression test.
 | Test file | Desired invariant | Current marker |
 |---|---|---|
 | `test_cross_process_coherence.py` | Live readers sharing SQLite observe create, update and delete without restart. | P0-1 strict xfail |
-| `test_explicit_network_consent.py` | Ambient credentials alone produce zero Ask/Summary outbound attempts. | P0-2 strict xfail |
+| `test_explicit_network_consent.py` | Ambient credentials alone produce zero Ask/Summary outbound attempts. | Regression (marker removed) |
 | `test_update_admission_invariant.py` | Updated content passes admission before embedding or persistence. | P0-3 strict xfail |
 | `test_standalone_sse_auth_boundary.py` | Standalone SSE enforces configured `LEVH_TOKEN`. | Regression (marker removed) |
 

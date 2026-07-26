@@ -5,11 +5,13 @@ ranked list of memories (recall), it synthesizes a direct answer and cites the
 exact memories it drew from, so every claim is traceable back to a source and a
 date. This is what turns a memory *store* into a memory you can *ask*.
 
-Two backends, chosen automatically (same philosophy as summarizer):
-  - **LLM** (OpenAI chat) when ``OPENAI_API_KEY`` is set — a real synthesized
-    answer that only uses the provided memories, with inline [n] citations.
-  - **Extractive fallback** otherwise — deterministic, offline, zero-cost:
-    returns the most relevant memories as an evidence list. Never raises.
+Two backends (same philosophy as summarizer):
+  - **Extractive** — the default. Deterministic, offline, zero-cost: returns
+    the most relevant memories as an evidence list. Never raises.
+  - **LLM** (OpenAI chat) — a real synthesized answer over only the provided
+    memories, with inline [n] citations. Requires an explicit opt-in via
+    ``ANSWER_MODE=llm``; an ambient ``OPENAI_API_KEY`` alone never enables it.
+    See ``llm_policy``.
 """
 
 from __future__ import annotations
@@ -17,6 +19,8 @@ from __future__ import annotations
 import os
 
 import httpx
+
+from server.core import llm_policy as policy
 
 _ANSWER_MODEL = os.getenv("ANSWER_MODEL", "gpt-4o-mini")
 _SYSTEM_PROMPT = (
@@ -37,9 +41,9 @@ def _extractive_fallback(question: str, sources: list[dict]) -> str:
             "Store some memories or connect a source, then ask again."
         )
     lines = [
-        "I can't synthesize an answer without an LLM configured, but here are "
-        "your most relevant memories (set OPENAI_API_KEY or run Ollama for a "
-        "written answer):",
+        "Here are your most relevant memories. For a written answer, enable "
+        "the LLM backend with ANSWER_MODE=llm and set OPENAI_API_KEY — LEVH "
+        "never sends memories anywhere without that explicit opt-in:",
         "",
     ]
     for s in sources:
@@ -62,14 +66,14 @@ async def answer_question(
         question: The user's natural-language question.
         sources: List of dicts with at least ``n`` (citation index) and
             ``content``; ``created_at``/``project`` used for context.
-        mode: "auto" (LLM if key, else extractive), "llm", or "extractive".
+        mode: "auto" (extractive unless ANSWER_MODE opts in), "llm", or
+            "extractive". Resolved by ``llm_policy.use_llm``.
         client: Optional shared httpx client.
     """
     if not sources:
         return _extractive_fallback(question, sources)
 
-    use_llm = mode == "llm" or (mode == "auto" and os.getenv("OPENAI_API_KEY"))
-    if not use_llm:
+    if not policy.use_llm(mode, policy.ANSWER_FEATURE):
         return _extractive_fallback(question, sources)
 
     numbered = "\n".join(

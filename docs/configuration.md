@@ -16,7 +16,9 @@ the process that launches it when environment overrides are required.
 |----------|---------|-------------|
 | `SQLITE_DB_PATH` | `./stackmemory.db` | SQLite database path |
 | `EMBEDDER_MODE` | `auto` | `auto`, `local`, `openai`, `ollama`, `hash`; `auto` is local-first and never selects OpenAI just because a key exists |
-| `OPENAI_API_KEY` | — | Used only when `EMBEDDER_MODE=openai` (and separately by optional LLM summaries/Ask features) |
+| `OPENAI_API_KEY` | — | Credential only. Its presence never enables any outbound call on its own — `EMBEDDER_MODE`, `ANSWER_MODE` and `SUMMARY_MODE` decide that |
+| `ANSWER_MODE` | `auto` (offline) | Set to `llm` to let Ask synthesize answers via OpenAI. Unset means Ask is fully offline |
+| `SUMMARY_MODE` | `auto` (offline) | Set to `llm` to let session summaries, consolidation and transcript ingest call OpenAI. Unset means all three are fully offline |
 | `LOCAL_MODEL` | `all-MiniLM-L6-v2` | Local embedding model |
 | `OLLAMA_URL` | `http://localhost:11434` | Ollama server (mode `ollama`) |
 | `OLLAMA_MODEL` | `nomic-embed-text` | Ollama embedding model |

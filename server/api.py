@@ -35,7 +35,7 @@ from server.auth import (
     constant_time_token_matches,
     shared_auth_limiter,
 )
-from server.core import engine_provider
+from server.core import engine_provider, llm_policy
 from server.core.env import get_env
 from server.core.memory_engine import MemoryEngine
 from server.core.rate_limit import SlidingWindowRateLimiter
@@ -978,6 +978,10 @@ async def get_config():
         "reinforcement_gain": engine.scorer.reinforcement_gain,
         "max_stability_hours": engine.scorer.max_stability_hours,
         "auto_summarize_sessions": engine.auto_summarize,
+        # Whether anything in this install may send memory content to a remote
+        # model, so the Settings page can state it plainly instead of leaving
+        # users to infer it from the presence of an API key.
+        "outbound": llm_policy.outbound_status(),
         "version": app.version,
     }
 

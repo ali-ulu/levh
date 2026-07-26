@@ -155,6 +155,7 @@ LEVH is a **local, single-user tool** — no accounts, no multi-tenancy.
 - **Tokenless means loopback-only.** Without `LEVH_TOKEN`, remote peers are rejected — by `levh serve`, by the MCP SSE server, and by the ASGI apps directly, so bypassing the CLI does not bypass the boundary. Docker Compose opts into bridge traffic explicitly, and only because it publishes `127.0.0.1:8000`.
 - **Shared-secret token** (`LEVH_TOKEN`) gates `/api/*`, the WebSocket and the MCP SSE transport, with in-process rate limiting on failed attempts. Set it before widening any bind.
 - **CORS defaults to localhost origins**, not `*` — otherwise any site open in your browser could read your entire memory store. CORS is not an authorization boundary.
+- **Nothing leaves the machine without an explicit opt-in.** An `OPENAI_API_KEY` in your environment is treated as a credential, never as permission — Ask, session summaries, consolidation and transcript ingest all run their offline backends until you set `ANSWER_MODE=llm` or `SUMMARY_MODE=llm`. `GET /api/config` reports the effective posture.
 - **Secrets are redacted** by the admission gate before storage, and `audit-secrets` / `redact-secrets` find and strip anything stored before the gate existed.
 
 This is not per-user auth, and it is not a substitute for your own reverse proxy
