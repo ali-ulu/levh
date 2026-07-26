@@ -6,12 +6,14 @@ those auto-distill conversations into facts; LEVH otherwise relies on
 explicit `store` calls. `summarize_session` gives the same "auto-capture on
 session end" behavior.
 
-Two backends, chosen automatically:
-  - **LLM** (OpenAI chat) when ``OPENAI_API_KEY`` is set and mode allows it —
-    produces a real prose/bullet summary.
-  - **Extractive fallback** otherwise — deterministic, offline, zero-cost:
-    keeps the most important / most recent lines. Never raises, so session
-    end never fails just because summarization was unavailable.
+Two backends:
+  - **Extractive** — the default. Deterministic, offline, zero-cost: keeps the
+    most important / most recent lines. Never raises, so session end never
+    fails just because summarization was unavailable.
+  - **LLM** (OpenAI chat) — a real prose/bullet summary. Requires an explicit
+    opt-in via ``SUMMARY_MODE=llm``; an ambient ``OPENAI_API_KEY`` alone never
+    enables it. This path also covers consolidation and transcript ingest,
+    which summarize without any direct user interaction. See ``llm_policy``.
 """
 
 from __future__ import annotations
@@ -19,6 +21,8 @@ from __future__ import annotations
 import os
 
 import httpx
+
+from server.core import llm_policy as policy
 
 _SUMMARY_MODEL = os.getenv("SUMMARY_MODEL", "gpt-4o-mini")
 _SYSTEM_PROMPT = (
@@ -61,8 +65,7 @@ async def summarize_texts(
     if not texts:
         return ""
 
-    use_llm = mode == "llm" or (mode == "auto" and os.getenv("OPENAI_API_KEY"))
-    if not use_llm:
+    if not policy.use_llm(mode, policy.SUMMARY_FEATURE):
         return _extractive_fallback(texts)
 
     joined = "\n".join(f"- {t.strip()}" for t in texts)

@@ -14,17 +14,6 @@ import pytest
 from server.core.memory_engine import MemoryEngine
 
 
-P0_2_REASON = (
-    "P0-2 confirmed: ambient OPENAI_API_KEY alone activates answer and "
-    "summary HTTP attempts"
-)
-
-
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=P0_2_REASON,
-)
 @pytest.mark.asyncio
 async def test_ambient_key_alone_never_activates_answer_or_summary_network(
     tmp_path: Path,

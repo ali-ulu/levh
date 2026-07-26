@@ -12,17 +12,6 @@ import pytest
 from server.core.memory_engine import MemoryEngine
 
 
-P0_3_REASON = (
-    "P0-3 confirmed: content update bypasses admission and persists the raw "
-    "secret canary"
-)
-
-
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=P0_3_REASON,
-)
 @pytest.mark.asyncio
 async def test_content_update_never_embeds_or_persists_raw_secret(
     tmp_path: Path,
