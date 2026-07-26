@@ -13,7 +13,6 @@ import asyncio
 import json
 import logging
 import os
-import secrets
 import sys
 from contextlib import asynccontextmanager
 from typing import Optional
@@ -29,6 +28,13 @@ from pydantic import BaseModel
 # Ensure project root is on the path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from server.auth import (
+    AUTH_RATE_LIMIT,
+    AUTH_RATE_LIMIT_WINDOW_SECONDS,
+    RemoteAccessBoundaryMiddleware,
+    constant_time_token_matches,
+    shared_auth_limiter,
+)
 from server.core import engine_provider
 from server.core.env import get_env
 from server.core.memory_engine import MemoryEngine
@@ -138,20 +144,15 @@ app.add_middleware(
 # for compatibility. Unset (default) keeps the tool zero-config for
 # purely local use.
 _API_TOKEN = get_env("LEVH_TOKEN", "").strip()
-try:
-    _AUTH_RATE_LIMIT = int(get_env("LEVH_AUTH_RATE_LIMIT", "10"))
-except ValueError:
-    _AUTH_RATE_LIMIT = 10
+app.add_middleware(RemoteAccessBoundaryMiddleware, token=_API_TOKEN)
+_AUTH_RATE_LIMIT = AUTH_RATE_LIMIT
 try:
     _API_RATE_LIMIT = int(get_env("LEVH_API_RATE_LIMIT", "120"))
 except ValueError:
     _API_RATE_LIMIT = 120
-try:
-    _RATE_LIMIT_WINDOW = float(get_env("LEVH_RATE_LIMIT_WINDOW_SECONDS", "60"))
-except ValueError:
-    _RATE_LIMIT_WINDOW = 60.0
+_RATE_LIMIT_WINDOW = AUTH_RATE_LIMIT_WINDOW_SECONDS
 
-_auth_limiter = SlidingWindowRateLimiter(_AUTH_RATE_LIMIT, _RATE_LIMIT_WINDOW)
+_auth_limiter = shared_auth_limiter
 _api_limiter = SlidingWindowRateLimiter(_API_RATE_LIMIT, _RATE_LIMIT_WINDOW)
 
 
@@ -173,7 +174,7 @@ async def _require_token(request: Request, call_next):
             request.headers.get("X-LEVH-Token")
             or request.headers.get("X-StackMemory-Token", "")
         )
-        if not secrets.compare_digest(supplied, _API_TOKEN):
+        if not constant_time_token_matches(supplied, _API_TOKEN):
             allowed, retry_after = _auth_limiter.allow(client_key)
             if not allowed:
                 return JSONResponse(
@@ -1178,7 +1179,7 @@ async def memory_websocket(ws: WebSocket):
             or ""
         )
         client_key = f"ws:{ws.client.host if ws.client else 'unknown'}"
-        if not secrets.compare_digest(supplied, _API_TOKEN):
+        if not constant_time_token_matches(supplied, _API_TOKEN):
             allowed, _ = _auth_limiter.allow(client_key)
             # 1008 = policy violation; 1013 asks a compliant client to retry
             # later once the rate window has elapsed.

@@ -33,7 +33,8 @@ the process that launches it when environment overrides are required.
 | `INTERFERENCE_FACTOR` | `0.6` | Stability multiplier applied to superseded memories |
 | `AUTO_SUMMARIZE_SESSIONS` | `false` | Auto-summarize a session's memories on `end_session` |
 | `SUMMARY_MODEL` | `gpt-4o-mini` | OpenAI chat model used for session summaries |
-| `LEVH_TOKEN` | — | Optional shared-secret gate on `/api/*` (except `/api/health`) and the WebSocket |
+| `LEVH_TOKEN` | — | Shared-secret gate required for non-loopback access unless an external boundary is explicitly declared |
+| `LEVH_ALLOW_REMOTE_WITHOUT_TOKEN` | `false` | Advanced operator assertion that an external network boundary protects tokenless non-loopback traffic; never use with a public port |
 | `LEVH_CORS_ORIGINS` | localhost only | Comma-separated allowed browser origins (`*` for wildcard) |
 | `LEVH_AUTH_RATE_LIMIT` | `10` | Failed token attempts allowed per rate-limit window, per client/process |
 | `LEVH_API_RATE_LIMIT` | `120` | Authenticated API requests allowed per window, per client/process |
@@ -52,3 +53,9 @@ docker compose up -d
 ```
 
 One container, one port. The image builds the dashboard and serves it from the API.
+
+Compose explicitly accepts tokenless Docker-bridge traffic because the published
+host port is restricted to `127.0.0.1` — inside the container the host's traffic
+arrives from the bridge gateway, which is not a loopback peer. If that port
+mapping is widened, remove `LEVH_ALLOW_REMOTE_WITHOUT_TOKEN` and set a strong
+`LEVH_TOKEN` instead.

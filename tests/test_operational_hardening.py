@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 from httpx import ASGITransport, AsyncClient
 
+from server.auth import constant_time_token_matches
 from server.core.database import CURRENT_SCHEMA_VERSION, Database
 from server.core.embedder import Embedder
 from server.core.memory_engine import MemoryEngine
@@ -170,26 +171,35 @@ def test_sliding_window_limiter_is_deterministic():
 async def test_token_gate_rate_limits_bad_auth_attempts(monkeypatch):
     import server.api as api_mod
 
+    assert constant_time_token_matches(None, "correct-token") is False
+    assert constant_time_token_matches("", "correct-token") is False
+    assert constant_time_token_matches("yanlış", "correct-token") is False
+    assert constant_time_token_matches("doğru-token", "doğru-token") is True
+
     old_token = api_mod._API_TOKEN
     old_auth = api_mod._auth_limiter
     old_api = api_mod._api_limiter
     api_mod._API_TOKEN = "correct-token"
-    api_mod._auth_limiter = SlidingWindowRateLimiter(2, 60)
+    api_mod._auth_limiter = SlidingWindowRateLimiter(10, 60)
     api_mod._api_limiter = SlidingWindowRateLimiter(100, 60)
     try:
         transport = ASGITransport(app=api_mod.app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
+            unicode_response = await client.get(
+                "/api/stats",
+                headers=[(b"x-levh-token", "yanlış".encode("utf-8"))],
+            )
+            api_mod._auth_limiter = SlidingWindowRateLimiter(2, 60)
             first = await client.get("/api/stats", headers={"X-LEVH-Token": "bad"})
             second = await client.get("/api/stats", headers={"X-LEVH-Token": "bad"})
             third = await client.get("/api/stats", headers={"X-LEVH-Token": "bad"})
+        assert unicode_response.status_code == 401
         assert [first.status_code, second.status_code, third.status_code] == [401, 401, 429]
         assert int(third.headers["Retry-After"]) >= 1
     finally:
         api_mod._API_TOKEN = old_token
         api_mod._auth_limiter = old_auth
         api_mod._api_limiter = old_api
-
-
 @pytest.mark.asyncio
 async def test_replace_restore_creates_recoverable_safety_backup(tmp_path):
     target_path = tmp_path / "target.db"
@@ -249,6 +259,9 @@ def test_docker_runs_non_root_with_healthcheck_and_loopback_compose():
     assert "HEALTHCHECK" in dockerfile
     assert "/api/health" in dockerfile
     assert '127.0.0.1:8000:8000' in compose
+    assert "LEVH_ALLOW_REMOTE_WITHOUT_TOKEN" not in dockerfile
+    assert "LEVH_ALLOW_REMOTE_WITHOUT_TOKEN=true" in compose
+    assert "Safe ONLY because" in compose
 
 
 def test_network_connectors_define_client_level_timeouts():
