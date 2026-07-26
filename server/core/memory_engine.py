@@ -477,17 +477,70 @@ class MemoryEngine:
         tags: list[str] | None = None,
         project: str | None = None,
         pinned: bool | None = None,
+        use_gate: bool = True,
+        min_length: int = 3,
     ) -> Memory | None:
-        """Update an existing memory."""
+        """Update an existing memory.
+
+        A content change goes through the same admission gate as a new memory
+        *before* it is embedded or persisted. Writing a secret via ``PUT`` used
+        to bypass the redaction that ``store``/``admit`` apply, so the same
+        secret was redacted or kept depending only on which endpoint the caller
+        reached — and the raw value also went into the embedding, where deleting
+        the text later would not remove it.
+
+        The gate does two separable jobs, and an update needs them differently:
+
+          - **Content safety** (secret redaction, minimum length) applies
+            exactly as it does on create. Enforced here.
+          - **Corpus hygiene** (duplicate detection) exists to stop the store
+            growing near-identical copies. An update does not grow the corpus,
+            and editing a memory towards an existing one is a legitimate thing
+            to do, so the duplicate verdict is recorded in metadata for review
+            rather than blocking the write.
+
+        The memory being updated is excluded from its own duplicate probe.
+        ``use_gate=False`` is the audited administrative override, mirroring
+        ``admit_memory(force=True)``; the decision is recorded either way.
+
+        Metadata-only updates (``content is None``) never run the gate — there
+        is no new content to judge.
+        """
         memory = await self.episodic.get(memory_id)
         if not memory:
             return None
 
         if content is not None:
-            memory.content = content
-            memory.embedding = await self.embedder.embed(content)
+            admitted_content = content
+            decision: dict | None = None
+            if use_gate:
+                decision = await self.evaluate_admission(
+                    content,
+                    project=project if project is not None else memory.project,
+                    min_length=min_length,
+                    exclude_id=memory_id,
+                )
+                # "reject" here can only mean too-short content; duplicates are
+                # recorded, not blocking (see the docstring).
+                if "too_short" in decision.get("reason_codes", []):
+                    return None
+                if decision["redacted"]:
+                    admitted_content = decision["redacted_content"]
+
+            memory.content = admitted_content
+            memory.embedding = await self.embedder.embed(admitted_content)
             memory.metadata = dict(memory.metadata or {})
             memory.metadata["embedding_provenance"] = self.embedder.identity()
+            memory.metadata["admission"] = {
+                "action": decision["action"] if decision else "bypassed",
+                "reasons": decision["reasons"] if decision else ["gate bypassed on update"],
+                "reason_codes": decision["reason_codes"] if decision else ["gate_bypassed"],
+                "redacted": bool(decision["redacted"]) if decision else False,
+                "secrets": decision["secrets"] if decision else [],
+                "max_similarity": decision["max_similarity"] if decision else 0.0,
+                "forced": not use_gate,
+                "on_update": True,
+            }
         if importance is not None:
             memory.importance = max(0.0, min(1.0, importance))
         if tags is not None:
@@ -500,15 +553,9 @@ class MemoryEngine:
         memory.touch()
         await self.episodic.update(memory)
 
-        # Update in-memory layers
-        self.vector_store.add(memory)
-        st = self.short_term.find(memory_id)
-        if st:
-            st.content = memory.content
-            st.importance = memory.importance
-            st.tags = memory.tags
-            st.project = memory.project
-            st.pinned = memory.pinned
+        # Funnel through the shared cache refresh like every other mutator, so
+        # the in-memory layers cannot drift from what was just persisted.
+        self._refresh_memory_caches(memory)
 
         self._mark_derived_dirty()
         self._emit("updated", self._memory_event_payload(memory))
@@ -1862,7 +1909,11 @@ class MemoryEngine:
     # ── Admission Gate (quality: decide before storing) ───────────
 
     async def evaluate_admission(
-        self, content: str, project: str | None = None, min_length: int = 3
+        self,
+        content: str,
+        project: str | None = None,
+        min_length: int = 3,
+        exclude_id: str | None = None,
     ) -> dict:
         """Judge a candidate memory WITHOUT storing it: admit / review / redact
         / reject. Computes the duplicate signal (max cosine similarity to any
@@ -1882,6 +1933,10 @@ class MemoryEngine:
             embedding = await self.embedder.embed(probe_text)
 
             def _pred(m: Memory) -> bool:
+                # A memory being updated is its own nearest neighbour, so
+                # without this it would always look like a duplicate of itself.
+                if exclude_id is not None and m.id == exclude_id:
+                    return False
                 return project is None or m.project == project
 
             neighbours = self.vector_store.search(embedding, top_k=1, predicate=_pred)

@@ -96,7 +96,7 @@ levh context -o CLAUDE.md       # compile memory into a context file
 - **People, organizations & timeline** — who you interact with and what happened when, extracted automatically from calendars, email and transcripts. No manual tagging.
 - **Daily briefing & meeting prep** — today's events, open commitments detected from your own words, and who you're about to meet. Fully offline.
 - **Decisions & conflicts** — decision statements pulled out of your memories, and a review signal when two memories appear to disagree. A signal, never a verdict; nothing is auto-deleted.
-- **Admission gate** — every incoming memory is screened before storage: duplicates rejected, secrets like API keys redacted. Deterministic, offline.
+- **Admission gate** — every incoming memory is screened before storage, on create *and* on update: duplicates flagged, secrets like API keys redacted before they are ever embedded. Deterministic, offline.
 - **Trust & provenance** — an explainable reliability score per memory from source type, corroboration and review history. Separate from ranking; not a truth claim.
 - **Entity knowledge graph** — memories indexed into real entity tables, so "which memories mention X" is a join, not a search.
 - **Encrypted backup & restore** — a full portable snapshot including decay state, optionally encrypted with a passphrase (PBKDF2 + AES).
@@ -156,7 +156,7 @@ LEVH is a **local, single-user tool** — no accounts, no multi-tenancy.
 - **Shared-secret token** (`LEVH_TOKEN`) gates `/api/*`, the WebSocket and the MCP SSE transport, with in-process rate limiting on failed attempts. Set it before widening any bind.
 - **CORS defaults to localhost origins**, not `*` — otherwise any site open in your browser could read your entire memory store. CORS is not an authorization boundary.
 - **Nothing leaves the machine without an explicit opt-in.** An `OPENAI_API_KEY` in your environment is treated as a credential, never as permission — Ask, session summaries, consolidation and transcript ingest all run their offline backends until you set `ANSWER_MODE=llm` or `SUMMARY_MODE=llm`. `GET /api/config` reports the effective posture.
-- **Secrets are redacted** by the admission gate before storage, and `audit-secrets` / `redact-secrets` find and strip anything stored before the gate existed.
+- **Secrets are redacted** by the admission gate before storage — on every write path, including updates, and before the text reaches the embedder. `audit-secrets` / `redact-secrets` find and strip anything stored before the gate existed.
 
 This is not per-user auth, and it is not a substitute for your own reverse proxy
 if you expose the service beyond localhost.
