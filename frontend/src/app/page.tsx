@@ -200,7 +200,7 @@ export default function Dashboard() {
                     </span>
                     <span className="flex shrink-0 items-center gap-2">
                       {memory.pinned && <Pin className="h-3.5 w-3.5 text-amber-500" />}
-                      <span className="score-chip">{memory.hscore === null ? "—" : memory.hscore.toFixed(2)}</span>
+                      <span className="score-chip">{memory.hscore == null ? "—" : memory.hscore.toFixed(2)}</span>
                     </span>
                   </button>
                 ))}
@@ -233,7 +233,7 @@ export default function Dashboard() {
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {people.map((person, index) => (
                 <Link key={person.key} href={`/people/?person=${encodeURIComponent(person.key)}`} className="identity-card">
-                  <span className={`identity-avatar avatar-${index % 4}`}>{person.name.slice(0, 2).toUpperCase()}</span>
+                  <span className={`identity-avatar avatar-${index % 4}`}>{(person.name || "?").slice(0, 2).toUpperCase()}</span>
                   <span className="min-w-0">
                     <strong className="block truncate text-sm">{person.name}</strong>
                     <small className="text-[10px] text-muted-foreground">{person.memory_count} memories</small>
@@ -242,7 +242,7 @@ export default function Dashboard() {
               ))}
               {people.length === 0 && organizations.slice(0, 4).map((org, index) => (
                 <Link key={org.key} href="/organizations" className="identity-card">
-                  <span className={`identity-avatar avatar-${index % 4}`}>{org.name.slice(0, 2).toUpperCase()}</span>
+                  <span className={`identity-avatar avatar-${index % 4}`}>{(org.name || "?").slice(0, 2).toUpperCase()}</span>
                   <span className="min-w-0">
                     <strong className="block truncate text-sm">{org.name}</strong>
                     <small className="text-[10px] text-muted-foreground">{org.memory_count} memories</small>
