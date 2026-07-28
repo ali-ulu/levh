@@ -52,7 +52,11 @@ async function fetchApi<T>(path: string, options?: RequestInit): Promise<T> {
     } catch {}
     throw new Error(`API error ${detail}`);
   }
-  return res.json();
+  try {
+    return (await res.json()) as T;
+  } catch {
+    throw new Error(`API error: invalid response from ${path}`);
+  }
 }
 
 export function wsUrl(): string {
