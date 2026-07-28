@@ -1229,6 +1229,29 @@ def cmd_seed_demo(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_remove_demo(args: argparse.Namespace) -> int:
+    """Remove all demo-tagged memories, leaving real data untouched."""
+    import asyncio
+
+    from server.core import engine_provider
+
+    async def _run() -> dict:
+        engine = engine_provider.get_engine()
+        await engine.initialize()
+        try:
+            return await engine.remove_demo_data()
+        finally:
+            await engine.shutdown()
+
+    result = asyncio.run(_run())
+    removed = result.get("removed", 0)
+    if removed == 0:
+        print("  No demo data found — nothing to remove.")
+    else:
+        print(f"  Removed {removed} demo memories.")
+    return 0
+
+
 # ── mcp config ───────────────────────────────────────────────────
 
 def cmd_mcp_config(args: argparse.Namespace) -> int:
@@ -1576,6 +1599,12 @@ def main() -> int:
         help="Seed even if the store already has memories",
     )
 
+    # remove-demo (onboarding: strip the demo corpus back out)
+    sub.add_parser(
+        "remove-demo",
+        help="Remove demo-tagged memories, leaving real data untouched",
+    )
+
     # entities (persistent entity knowledge graph)
     ent_p = sub.add_parser("entities", help="Persistent entity knowledge graph")
     ent_sub = ent_p.add_subparsers(dest="entities_command")
@@ -1654,6 +1683,8 @@ def main() -> int:
         return cmd_purge(args)
     elif args.command == "seed-demo":
         return cmd_seed_demo(args)
+    elif args.command == "remove-demo":
+        return cmd_remove_demo(args)
     elif args.command == "entities":
         if args.entities_command in ("reindex", "list", "about"):
             return cmd_entities(args)
