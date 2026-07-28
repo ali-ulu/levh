@@ -807,8 +807,14 @@ export default function SettingsPage() {
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <Plug className="h-4 w-4" />
-            Import from Apps
+            Connectors
           </CardTitle>
+          <p className="text-xs text-muted-foreground">
+            Bring in real data (calendar, email, Notion, GitHub, transcripts). Attendees and
+            senders/recipients feed the knowledge graph on the dashboard and Graph page — without
+            a connector or manually-set metadata, plain-text memories won&apos;t produce people or
+            organization nodes.
+          </p>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex flex-wrap gap-2">
