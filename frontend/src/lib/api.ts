@@ -376,6 +376,27 @@ export const api = {
       body: JSON.stringify({ content_b64, passphrase: passphrase || "", replace }),
     }),
 
+  // Full export — memories + entity graph + trust scores + conflicts.
+  // Binary response, so raw fetch (not fetchApi).
+  exportFull: async (format: "json" | "sqlite" | "pdf"): Promise<{ blob: Blob; filename: string }> => {
+    const token = getToken();
+    const res = await fetch(`${API}/api/export/full.${format}`, {
+      headers: token ? { "X-LEVH-Token": token } : {},
+    });
+    if (!res.ok) {
+      let detail = `${res.status}`;
+      try {
+        const body = await res.json();
+        if (body?.detail) detail = `${res.status}: ${body.detail}`;
+      } catch {}
+      throw new Error(`API error ${detail}`);
+    }
+    const disposition = res.headers.get("Content-Disposition") || "";
+    const match = disposition.match(/filename="([^"]+)"/);
+    const filename = match ? match[1] : `levh-full-export.${format}`;
+    return { blob: await res.blob(), filename };
+  },
+
   // Context
   generateContextFile: (project: string | null, style: "claude" | "cursor") =>
     fetchApi<{ filename: string; content: string }>("/api/context-file", {

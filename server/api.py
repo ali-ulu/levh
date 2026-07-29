@@ -1101,6 +1101,69 @@ async def import_memories(req: ImportRequest):
     return await engine.import_memories_gated(req.data)
 
 
+# ── Full export (memories + entity graph + trust + conflicts) ──────
+
+
+def _export_filename(ext: str) -> str:
+    from datetime import datetime, timezone
+
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+    return f"levh-full-export-{stamp}.{ext}"
+
+
+@app.get("/api/export/full.json")
+async def export_full_json():
+    """One-shot audit bundle: memories, entity graph, trust scores, and
+    conflict candidates — the raw machine-readable record."""
+    from server.core.full_export import build_full_export
+
+    engine = await get_engine()
+    export = await build_full_export(engine)
+    import json as _json
+
+    return Response(
+        content=_json.dumps(export, default=str),
+        media_type="application/json",
+        headers={"Content-Disposition": f'attachment; filename="{_export_filename("json")}"'},
+    )
+
+
+@app.get("/api/export/full.sqlite")
+async def export_full_sqlite():
+    """Raw SQLite copy of the live database, taken via the online backup API."""
+    from server.core.full_export import export_full_sqlite as export_sqlite
+
+    engine = await get_engine()
+    try:
+        blob = await export_sqlite(engine)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    return Response(
+        content=blob,
+        media_type="application/vnd.sqlite3",
+        headers={"Content-Disposition": f'attachment; filename="{_export_filename("sqlite")}"'},
+    )
+
+
+@app.get("/api/export/full.pdf")
+async def export_full_pdf():
+    """Human-readable audit report (summary counts, entity/trust/conflict
+    overview) rendered from the same data as the JSON export."""
+    from server.core.full_export import PdfUnavailableError, build_full_export, render_full_export_pdf
+
+    engine = await get_engine()
+    export = await build_full_export(engine)
+    try:
+        blob = render_full_export_pdf(export)
+    except PdfUnavailableError as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
+    return Response(
+        content=blob,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{_export_filename("pdf")}"'},
+    )
+
+
 # ── Backup / Restore (Faz 0 security) ───────────────────────────────
 
 
