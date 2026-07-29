@@ -1229,6 +1229,58 @@ def cmd_seed_demo(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_export_full(args: argparse.Namespace) -> int:
+    """Export memories + entity graph + trust scores + conflicts to one file."""
+    import asyncio
+
+    from server.core import engine_provider
+
+    fmt = args.format
+    out_path = args.out or f"levh-full-export.{fmt}"
+
+    async def _run():
+        engine = engine_provider.get_engine()
+        await engine.initialize()
+        try:
+            from server.core.full_export import (
+                PdfUnavailableError,
+                build_full_export,
+                export_full_sqlite,
+                render_full_export_pdf,
+            )
+
+            if fmt == "json":
+                import json
+
+                export = await build_full_export(engine)
+                with open(out_path, "w") as f:
+                    json.dump(export, f, indent=2, default=str)
+                return export["counts"]
+            elif fmt == "sqlite":
+                blob = await export_full_sqlite(engine)
+                with open(out_path, "wb") as f:
+                    f.write(blob)
+                return None
+            else:
+                export = await build_full_export(engine)
+                try:
+                    blob = render_full_export_pdf(export)
+                except PdfUnavailableError as exc:
+                    print(f"  {exc}", file=sys.stderr)
+                    return None
+                with open(out_path, "wb") as f:
+                    f.write(blob)
+                return export["counts"]
+        finally:
+            await engine.shutdown()
+
+    counts = asyncio.run(_run())
+    if counts is None and fmt == "pdf":
+        return 1
+    print(f"  Wrote {out_path}" + (f" — {counts}" if counts else ""))
+    return 0
+
+
 def cmd_remove_demo(args: argparse.Namespace) -> int:
     """Remove all demo-tagged memories, leaving real data untouched."""
     import asyncio
@@ -1605,6 +1657,19 @@ def main() -> int:
         help="Remove demo-tagged memories, leaving real data untouched",
     )
 
+    # export-full (memories + entity graph + trust + conflicts, one file)
+    export_full_p = sub.add_parser(
+        "export-full",
+        help="Export memories, entity graph, trust scores, and conflicts to one file",
+    )
+    export_full_p.add_argument(
+        "--format",
+        choices=["json", "sqlite", "pdf"],
+        default="json",
+        help="Output format (default: json)",
+    )
+    export_full_p.add_argument("--out", help="Output file path (default: levh-full-export.<format>)")
+
     # entities (persistent entity knowledge graph)
     ent_p = sub.add_parser("entities", help="Persistent entity knowledge graph")
     ent_sub = ent_p.add_subparsers(dest="entities_command")
@@ -1685,6 +1750,8 @@ def main() -> int:
         return cmd_seed_demo(args)
     elif args.command == "remove-demo":
         return cmd_remove_demo(args)
+    elif args.command == "export-full":
+        return cmd_export_full(args)
     elif args.command == "entities":
         if args.entities_command in ("reindex", "list", "about"):
             return cmd_entities(args)
