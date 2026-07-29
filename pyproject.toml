@@ -39,7 +39,7 @@ openai = []
 secure = ["cryptography>=42"]
 # PDF rendering for the full-export audit report.
 pdf = ["fpdf2>=2.7"]
-dev = ["pytest", "pytest-asyncio", "build", "twine"]
+dev = ["pytest", "pytest-asyncio", "build", "twine", "fpdf2>=2.7"]
 
 [project.urls]
 Homepage = "https://levh.ai-ulu.com/"
