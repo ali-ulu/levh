@@ -21,7 +21,16 @@ from .people import extract_people
 
 # Sources / metadata that mark a memory as a document.
 _DOCUMENT_SOURCES = ("notion", "obsidian", "local_files", "github")
-_DOCUMENT_META_KEYS = ("path", "file", "filename", "document", "title_path")
+_DOCUMENT_META_KEYS = (
+    "path",
+    "file",
+    "filename",
+    "document",
+    "title_path",
+    "relative_path",
+    "file_path",
+    "file_name",
+)
 
 # Task / action-item markers (English + Turkish) — same spirit as the
 # commitment detector, but these become first-class task entities.
