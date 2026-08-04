@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- `local_files` connector no longer chunks by default. Each file becomes one
+  memory regardless of size; pass `chunk_size` in the connector config to opt
+  back into splitting large files (with `overlap`, default 200).
+
 ## 2.28.0
 
 ### Launch remediation: all four Gate 0A P0 findings closed
