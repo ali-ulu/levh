@@ -56,7 +56,6 @@ EXT_TAGS: dict[str, list[str]] = {
     ".kt": ["kotlin", "code"],
 }
 
-DEFAULT_CHUNK_SIZE: int = 2000
 DEFAULT_OVERLAP: int = 200
 
 
@@ -66,13 +65,16 @@ class LocalFilesConnector(BaseConnector):
     name: str = "local_files"
     description: str = (
         "Import local files (markdown, code, JSON, etc.) into memories. "
-        "Recursively scans a directory, filters by extension, and chunks large files."
+        "Recursively scans a directory, filters by extension. Each file becomes "
+        "one memory unless chunk_size is set, in which case large files are split."
     )
 
     def __init__(self) -> None:
         self._root: Path | None = None
         self._extensions: set[str] = DEFAULT_EXTENSIONS
-        self._chunk_size: int = DEFAULT_CHUNK_SIZE
+        # None = no chunking: every file becomes exactly one memory,
+        # however large. Set chunk_size in config to opt into splitting.
+        self._chunk_size: int | None = None
         self._overlap: int = DEFAULT_OVERLAP
         self._exclude_dirs: set[str] = {
             ".git", "__pycache__", "node_modules", ".venv", "venv",
@@ -89,8 +91,11 @@ class LocalFilesConnector(BaseConnector):
         Config keys:
             directory (str): Root directory to scan.
             extensions (list[str], optional): File extensions to include.
-            chunk_size (int, optional): Max chars per chunk. Default 2000.
+            chunk_size (int, optional): Max chars per chunk. Unset by default,
+                meaning files are never split. Set this to opt into chunking
+                large files.
             overlap (int, optional): Overlap between chunks. Default 200.
+                Only used when chunk_size is set.
             exclude_dirs (list[str], optional): Directories to skip.
         """
         directory = config.get("directory", ".")
@@ -103,14 +108,15 @@ class LocalFilesConnector(BaseConnector):
             exts = config["extensions"]
             self._extensions = {e if e.startswith(".") else f".{e}" for e in exts}
 
-        if "chunk_size" in config:
+        if "chunk_size" in config and config["chunk_size"] is not None:
             self._chunk_size = int(config["chunk_size"])
         if "overlap" in config:
             self._overlap = int(config["overlap"])
-        if self._chunk_size <= 0:
-            raise ValueError("chunk_size must be greater than zero")
-        if self._overlap < 0 or self._overlap >= self._chunk_size:
-            raise ValueError("overlap must satisfy 0 <= overlap < chunk_size")
+        if self._chunk_size is not None:
+            if self._chunk_size <= 0:
+                raise ValueError("chunk_size must be greater than zero")
+            if self._overlap < 0 or self._overlap >= self._chunk_size:
+                raise ValueError("overlap must satisfy 0 <= overlap < chunk_size")
         if "exclude_dirs" in config:
             self._exclude_dirs = set(config["exclude_dirs"])
 
@@ -192,8 +198,9 @@ class LocalFilesConnector(BaseConnector):
         if ext == ".json":
             return self._process_json_file(raw, tags, metadata)
 
-        # Chunk if large
-        if len(raw) <= self._chunk_size:
+        # Chunk only if the caller opted in via chunk_size; otherwise the
+        # whole file becomes one memory, however large.
+        if self._chunk_size is None or len(raw) <= self._chunk_size:
             return [{
                 "content": raw.strip(),
                 "tags": tags,
@@ -211,8 +218,11 @@ class LocalFilesConnector(BaseConnector):
         try:
             data = json.loads(raw)
         except json.JSONDecodeError:
+            content = raw.strip()
+            if self._chunk_size is not None:
+                content = content[: self._chunk_size]
             return [{
-                "content": raw.strip()[:self._chunk_size],
+                "content": content,
                 "tags": tags + ["json-parse-error"],
                 "metadata": metadata,
             }]
@@ -229,8 +239,12 @@ class LocalFilesConnector(BaseConnector):
         else:
             text = str(data)
 
+        content = text.strip()
+        if self._chunk_size is not None:
+            content = content[: self._chunk_size * 2]
+
         return [{
-            "content": text.strip()[:self._chunk_size * 2],
+            "content": content,
             "tags": tags,
             "metadata": {**metadata, "json_keys": list(data.keys()) if isinstance(data, dict) else None},
         }]
