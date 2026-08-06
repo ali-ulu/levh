@@ -3,17 +3,20 @@
 Faz 2 entity layer: where ``people.py`` rolls captured metadata up into
 distinct *people*, this module rolls the same people up one level further
 into distinct *organizations* — "which companies do I actually interact
-with, how often, and who from them?". It reuses ``people.parse_person`` /
-``people.extract_people`` for the underlying (name, email) extraction so
-there is exactly one place that understands the metadata shapes connectors
-produce. Pure functions, no I/O.
+with, how often, and who from them?". It reuses
+``text_entities.people_in_memory`` for the underlying (name, email)
+extraction so there is exactly one place that understands both the metadata
+shapes connectors produce and the people named in free text. Pure functions,
+no I/O.
+
+Organizations here are keyed by e-mail domain. Companies named in prose with
+no address to key off ("Zephyr Labs") become organization entities in the
+knowledge graph via ``entities.py``, but do not appear in this rollup.
 """
 
 from __future__ import annotations
 
 from typing import Any, Iterable, Optional
-
-from .people import extract_people
 
 # Public suffix / generic-TLD-ish labels to peel off the end of a domain
 # before picking the "organization" label. Not a full public-suffix-list
@@ -94,10 +97,13 @@ def aggregate_organizations(memories: Iterable[Any]) -> list[dict]:
     convention) for callers that need to look the referencing memories up;
     summary views should drop it.
     """
+    # Imported here, not at module scope: ``text_entities`` reuses
+    # ``parse_person`` from ``people``, which this module imports from.
+    from .text_entities import people_in_memory
+
     orgs: dict[str, dict] = {}
     for mem in memories:
-        metadata = getattr(mem, "metadata", None) or {}
-        found = extract_people(metadata)
+        found = people_in_memory(mem)
         if not found:
             continue
         source = getattr(mem, "source", None)

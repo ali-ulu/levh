@@ -85,10 +85,13 @@ def aggregate_people(memories: Iterable[Any]) -> list[dict]:
     ``.created_at`` (Memory models or anything duck-typed the same). Returns a
     list of person dicts sorted by memory_count desc, then name.
     """
+    # Imported here, not at module scope: ``text_entities`` reuses
+    # ``parse_person`` from this module, so a top-level import would cycle.
+    from .text_entities import people_in_memory
+
     people: dict[str, dict] = {}
     for mem in memories:
-        metadata = getattr(mem, "metadata", None) or {}
-        found = extract_people(metadata)
+        found = people_in_memory(mem)
         if not found:
             continue
         source = getattr(mem, "source", None)

@@ -118,8 +118,10 @@ async def test_seed_counts_are_deterministic(engine):
     reviewed change (and the 5-minute demo stays predictable)."""
     result = await engine.seed_demo()
     assert result["seeded"] == 20
-    assert result["entities"] == 21
-    assert result["entity_links"] == 52
+    # 22, not 21: free-text extraction adds the prose-named "Zephyr Labs"
+    # organization, which has no e-mail domain to key off.
+    assert result["entities"] == 22
+    assert result["entity_links"] == 53
     assert result["trust_scored"] == 20
     assert result["conflict_candidates"] == 1
 
