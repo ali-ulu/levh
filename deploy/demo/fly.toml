@@ -1,0 +1,60 @@
+# Fly.io config for a PUBLIC, throwaway LEVH demo instance.
+#
+# This is intentionally separate from any self-hosted deployment:
+#   - No persistent volume. The container filesystem (including the SQLite
+#     file) is ephemeral. Combined with auto_stop_machines below, every idle
+#     restart wipes whatever a visitor did and comes back with a clean seeded
+#     demo corpus — no manual reset job needed, and no real user data can
+#     ever accumulate here.
+#   - LEVH_ALLOW_REMOTE_WITHOUT_TOKEN=true is used for its INTENDED purpose
+#     here (a deliberately public demo), not as a workaround. Do not reuse
+#     this file for anything that should hold real memories.
+#   - Runs the shipped Dockerfile unchanged; only the start command is
+#     overridden (seed the demo corpus, then serve) via [processes] below.
+#
+# Deploy (requires your own Fly.io account — see deploy/demo/README.md):
+#   flyctl launch --config deploy/demo/fly.toml --no-deploy
+#   flyctl deploy --config deploy/demo/fly.toml
+
+app = "levh-demo"          # must be globally unique on Fly.io — change this
+primary_region = "iad"     # pick the region nearest your audience
+
+[build]
+  dockerfile = "../../Dockerfile"
+
+[processes]
+  app = "sh -c 'levh seed-demo --force && exec uvicorn server.api:app --host 0.0.0.0 --port 8000'"
+
+[env]
+  EMBEDDER_MODE = "hash"
+  SQLITE_DB_PATH = "/data/stackmemory.db"
+  LEVH_ALLOW_REMOTE_WITHOUT_TOKEN = "true"
+  LEVH_CORS_ORIGINS = "*"
+
+[[services]]
+  internal_port = 8000
+  protocol = "tcp"
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [[services.ports]]
+    port = 443
+    handlers = ["tls", "http"]
+  [[services.ports]]
+    port = 80
+    handlers = ["http"]
+    force_https = true
+
+  [[services.tcp_checks]]
+    interval = "15s"
+    timeout = "5s"
+
+[[services.http_checks]]
+  path = "/api/health"
+  interval = "15s"
+  timeout = "5s"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
