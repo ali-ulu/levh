@@ -200,3 +200,21 @@ class TrustService:
                     }
                 )
         return output
+
+    async def list_all_trust(self, limit: int = 1_000_000) -> list[dict]:
+        """Return every stored trust breakdown, best score first."""
+        rows = await self.db.list_all_trust(limit=limit)
+        output = []
+        for row in rows:
+            try:
+                output.append(json.loads(row["breakdown_json"]))
+            except Exception:
+                output.append(
+                    {
+                        "memory_id": row["memory_id"],
+                        "confidence": row["confidence"],
+                        "label": row["label"],
+                    }
+                )
+        output.sort(key=lambda b: b.get("confidence", 0), reverse=True)
+        return output

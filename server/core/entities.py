@@ -17,11 +17,20 @@ import re
 from typing import Any
 
 from .organizations import FREE_EMAIL_DOMAINS, domain_to_org
-from .people import extract_people
+from .text_entities import extract_orgs_from_text, people_in_memory
 
 # Sources / metadata that mark a memory as a document.
 _DOCUMENT_SOURCES = ("notion", "obsidian", "local_files", "github")
-_DOCUMENT_META_KEYS = ("path", "file", "filename", "document", "title_path")
+_DOCUMENT_META_KEYS = (
+    "path",
+    "file",
+    "filename",
+    "document",
+    "title_path",
+    "relative_path",
+    "file_path",
+    "file_name",
+)
 
 # Task / action-item markers (English + Turkish) — same spirit as the
 # commitment detector, but these become first-class task entities.
@@ -39,6 +48,12 @@ def _key(text: str) -> str:
 
 def _first_line(content: str) -> str:
     return (content or "").split("\n", 1)[0].strip()
+
+
+def _squash(text: str) -> str:
+    """Alphanumerics only, lowercased — so "Zephyr Labs" and the
+    domain-derived "Zephyrlabs" compare equal."""
+    return re.sub(r"[^a-z0-9]", "", (text or "").lower())
 
 
 def _is_event(source: str, metadata: dict) -> bool:
@@ -94,14 +109,27 @@ def extract_entities(memory: Any) -> list[dict]:
         seen.add((etype, k))
         out.append({"type": etype, "key": k, "name": name.strip() or k, "role": role})
 
-    # people + organizations (reuse the metadata extractors)
-    for name, email in extract_people(metadata):
+    # people + organizations — connector metadata first, then whatever the
+    # content itself names (so hand-typed notes aren't entity-less).
+    domain_org_labels: set[str] = set()
+    for name, email in people_in_memory(memory):
         person_key = email or name.lower()
         _add("person", person_key, name, "person")
         if email:
             domain = email.split("@")[-1].lower()
             if domain and domain not in FREE_EMAIL_DOMAINS:
-                _add("organization", domain, domain_to_org(domain), "org")
+                label = domain_to_org(domain)
+                domain_org_labels.add(_squash(label))
+                _add("organization", domain, label, "org")
+
+    # Organizations named outright in prose ("Zephyr Labs"), which have no
+    # e-mail domain to key off. Skipped when this memory already produced the
+    # same company from an e-mail domain — the domain is the stabler identity,
+    # so "Zephyr Labs" folds into zephyrlabs.io rather than forking a node.
+    for org_name in extract_orgs_from_text(content, source, metadata):
+        if _squash(org_name) in domain_org_labels:
+            continue
+        _add("organization", org_name, org_name, "org")
 
     # event
     if _is_event(source, metadata):

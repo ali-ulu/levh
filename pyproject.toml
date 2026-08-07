@@ -37,7 +37,9 @@ openai = []
 # Passphrase-encrypted backups. Bundled in core deps too; this extra is a
 # convenience alias for anyone pinning security features explicitly.
 secure = ["cryptography>=42"]
-dev = ["pytest", "pytest-asyncio", "build", "twine"]
+# PDF rendering for the full-export audit report.
+pdf = ["fpdf2>=2.7"]
+dev = ["pytest", "pytest-asyncio", "build", "twine", "fpdf2>=2.7"]
 
 [project.urls]
 Homepage = "https://levh.ai-ulu.com/"

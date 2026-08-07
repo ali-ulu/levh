@@ -104,6 +104,10 @@ export default function SettingsPage() {
   const [consolidateResult, setConsolidateResult] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Full audit export (memories + entity graph + trust + conflicts)
+  const [fullExportBusy, setFullExportBusy] = useState<"" | "json" | "sqlite" | "pdf">("");
+  const [fullExportError, setFullExportError] = useState("");
+
   // Backup & restore
   const [backupPass, setBackupPass] = useState("");
   const [backingUp, setBackingUp] = useState(false);
@@ -240,6 +244,23 @@ export default function SettingsPage() {
       alert(`Import failed: ${e instanceof Error ? e.message : e}`);
     }
     setImportingJson(false);
+  };
+
+  const downloadFullExport = async (format: "json" | "sqlite" | "pdf") => {
+    setFullExportBusy(format);
+    setFullExportError("");
+    try {
+      const { blob, filename } = await api.exportFull(format);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setFullExportError(e instanceof Error ? e.message : String(e));
+    }
+    setFullExportBusy("");
   };
 
   const downloadBackup = async () => {
@@ -807,8 +828,14 @@ export default function SettingsPage() {
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <Plug className="h-4 w-4" />
-            Import from Apps
+            Connectors
           </CardTitle>
+          <p className="text-xs text-muted-foreground">
+            Bring in real data (calendar, email, Notion, GitHub, transcripts). Attendees and
+            senders/recipients feed the knowledge graph on the dashboard and Graph page — without
+            a connector or manually-set metadata, plain-text memories won&apos;t produce people or
+            organization nodes.
+          </p>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex flex-wrap gap-2">
@@ -939,6 +966,54 @@ export default function SettingsPage() {
                 e.target.value = "";
               }}
             />
+          </div>
+
+          <div className="pt-2 border-t space-y-1">
+            <p className="text-xs text-muted-foreground">
+              Full audit export — memories, entity graph, trust scores, and conflict candidates
+              in one file. For auditing or backing up everything, not just memories.
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                variant="outline"
+                onClick={() => downloadFullExport("json")}
+                disabled={fullExportBusy !== ""}
+              >
+                {fullExportBusy === "json" ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Download className="h-4 w-4 mr-2" />
+                )}
+                Full export (JSON)
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => downloadFullExport("sqlite")}
+                disabled={fullExportBusy !== ""}
+              >
+                {fullExportBusy === "sqlite" ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Download className="h-4 w-4 mr-2" />
+                )}
+                Full export (SQLite)
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => downloadFullExport("pdf")}
+                disabled={fullExportBusy !== ""}
+              >
+                {fullExportBusy === "pdf" ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Download className="h-4 w-4 mr-2" />
+                )}
+                Audit report (PDF)
+              </Button>
+            </div>
+            {fullExportError && (
+              <span className="text-xs text-destructive">{fullExportError}</span>
+            )}
           </div>
 
           <div className="flex flex-wrap items-center gap-2 pt-2 border-t">

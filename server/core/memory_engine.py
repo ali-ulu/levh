@@ -2453,6 +2453,11 @@ class MemoryEngine:
             limit=limit,
         )
 
+    async def list_all_trust(self, limit: int = 1_000_000) -> list[dict]:
+        """Return every stored trust breakdown, best score first."""
+        await self._ensure_derived_state()
+        return await self.trust_service.list_all_trust(limit=limit)
+
     # ── Conflict candidates (deterministic review signal) ─────────
 
     async def detect_conflict_candidates(self) -> dict:

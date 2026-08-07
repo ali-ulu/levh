@@ -1051,6 +1051,15 @@ class Database:
         await cursor.close()
         return [dict(r) for r in rows]
 
+    async def list_all_trust(self, limit: int = 1_000_000) -> list[dict]:
+        cursor = await self.conn.execute(
+            "SELECT * FROM memory_trust_scores ORDER BY confidence ASC LIMIT ?",
+            (limit,),
+        )
+        rows = await cursor.fetchall()
+        await cursor.close()
+        return [dict(r) for r in rows]
+
     async def clear_trust(self) -> None:
         await self.conn.execute("DELETE FROM memory_trust_scores")
         await self.conn.commit()
