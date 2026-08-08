@@ -321,10 +321,10 @@ class MemoryEngine:
             metadata=enriched_metadata,
         )
 
+        await self.episodic.store(mem)
         if mem.memory_type == MemoryType.SHORT_TERM:
             self.short_term.add(mem)
         self.vector_store.add(mem)
-        await self.episodic.store(mem)
 
         await self._apply_interference(mem)
 
@@ -526,10 +526,10 @@ class MemoryEngine:
     async def forget(self, memory_id: str) -> bool:
         """Remove a memory and every derived reference atomically."""
         existing = await self.episodic.get(memory_id)
-        self.short_term.remove(memory_id)
-        self.vector_store.remove(memory_id)
         deleted = await self.db.delete_memory_cascade(memory_id)
         if deleted:
+            self.short_term.remove(memory_id)
+            self.vector_store.remove(memory_id)
             if existing and existing.session_id:
                 await self._refresh_session_count(existing.session_id)
             self._mark_derived_dirty()
