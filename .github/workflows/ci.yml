@@ -15,11 +15,21 @@ jobs:
           python-version: "3.12"
           cache: pip
       - name: Install
-        run: pip install -e ".[dev]"
+        run: python -m pip install -e ".[dev]"
+      - name: Compile Python sources
+        run: python -m compileall -q server tests
       - name: Test
         env:
           EMBEDDER_MODE: hash
         run: python -m pytest -q
+      - name: API smoke
+        env:
+          EMBEDDER_MODE: hash
+        run: python -m pytest -q tests/test_api_smoke.py
+      - name: Build distributions
+        run: python -m build
+      - name: Validate distributions
+        run: twine check dist/*
 
   frontend:
     runs-on: ubuntu-latest
