@@ -16,7 +16,7 @@ StackMemory is currently focused on release hardening and reliable local-first i
 python -m pip install -e ".[dev]"
 python -m compileall -q server tests
 EMBEDDER_MODE=hash python -m pytest -q
-EMBEDDER_MODE=hash python tests/test_api_smoke.py
+EMBEDDER_MODE=hash python -m pytest -q tests/test_api_smoke.py
 python -m build
 twine check dist/*
 ```
