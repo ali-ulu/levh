@@ -212,42 +212,48 @@ class LocalFilesConnector(BaseConnector):
     def _process_json_file(
         self, raw: str, tags: list[str], metadata: dict[str, Any]
     ) -> list[dict]:
-        """Flatten JSON into readable text memories."""
+        """Flatten JSON into readable text memories without dropping content."""
         import json
 
         try:
             data = json.loads(raw)
         except json.JSONDecodeError:
             content = raw.strip()
-            if self._chunk_size is not None:
-                content = content[: self._chunk_size]
+            json_tags = tags + ["json-parse-error"]
+            json_metadata = metadata
+        else:
+            if isinstance(data, list):
+                text = "\n".join(
+                    f"- {json.dumps(item, ensure_ascii=False)}" for item in data
+                )
+            elif isinstance(data, dict):
+                lines = []
+                for k, v in data.items():
+                    lines.append(f"{k}: {json.dumps(v, ensure_ascii=False)}")
+                text = "\n".join(lines)
+            else:
+                text = str(data)
+
+            content = text.strip()
+            json_tags = tags
+            json_metadata = {
+                **metadata,
+                "json_keys": list(data.keys()) if isinstance(data, dict) else None,
+            }
+
+        if self._chunk_size is None or len(content) <= self._chunk_size:
             return [{
                 "content": content,
-                "tags": tags + ["json-parse-error"],
-                "metadata": metadata,
+                "tags": json_tags,
+                "metadata": json_metadata,
             }]
 
-        if isinstance(data, list):
-            text = "\n".join(
-                f"- {json.dumps(item, ensure_ascii=False)}" for item in data
-            )
-        elif isinstance(data, dict):
-            lines = []
-            for k, v in data.items():
-                lines.append(f"{k}: {json.dumps(v, ensure_ascii=False)}")
-            text = "\n".join(lines)
-        else:
-            text = str(data)
-
-        content = text.strip()
-        if self._chunk_size is not None:
-            content = content[: self._chunk_size * 2]
-
-        return [{
-            "content": content,
-            "tags": tags,
-            "metadata": {**metadata, "json_keys": list(data.keys()) if isinstance(data, dict) else None},
-        }]
+        return self._chunk_text(
+            content,
+            json_tags,
+            json_metadata,
+            str(metadata.get("file_name", "")),
+        )
 
     def _chunk_text(
         self,
