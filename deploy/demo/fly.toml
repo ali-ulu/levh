@@ -6,9 +6,11 @@
 #     restart wipes whatever a visitor did and comes back with a clean seeded
 #     demo corpus — no manual reset job needed, and no real user data can
 #     ever accumulate here.
-#   - LEVH_ALLOW_REMOTE_WITHOUT_TOKEN=true is used for its INTENDED purpose
-#     here (a deliberately public demo), not as a workaround. Do not reuse
-#     this file for anything that should hold real memories.
+#   - LEVH_PUBLIC_DEMO=true enables read-only mode for the public demo:
+#     GET endpoints work, but all mutating endpoints (POST, PUT, PATCH, DELETE)
+#     and sensitive exports (full.json, full.sqlite, full.pdf) return 403.
+#     This is the intended way to run a public demo — do not reuse this file
+#     for anything that should hold real memories.
 #   - Runs the shipped Dockerfile unchanged; only the start command is
 #     overridden (seed the demo corpus, then serve) via [processes] below.
 #
@@ -28,7 +30,7 @@ primary_region = "iad"     # pick the region nearest your audience
 [env]
   EMBEDDER_MODE = "hash"
   SQLITE_DB_PATH = "/data/stackmemory.db"
-  LEVH_ALLOW_REMOTE_WITHOUT_TOKEN = "true"
+  LEVH_PUBLIC_DEMO = "true"
   LEVH_CORS_ORIGINS = "*"
 
 [[services]]

@@ -192,8 +192,44 @@ async def _require_token(request: Request, call_next):
             )
     return await call_next(request)
 
-# ── Request/Response DTOs ───────────────────────────────────────────
 
+# Public demo mode: when LEVH_PUBLIC_DEMO=true, allow only read-only (GET) access
+# to /api/* endpoints. Block all mutating methods (POST, PUT, PATCH, DELETE) and
+# sensitive export endpoints. This prevents anonymous visitors from modifying or
+# exporting the shared demo database.
+_PUBLIC_DEMO = get_env("LEVH_PUBLIC_DEMO", "").strip().lower() == "true"
+_PUBLIC_DEMO_BLOCKED_PATHS = {
+    "/api/export/full.json",
+    "/api/export/full.sqlite",
+    "/api/export/full.pdf",
+}
+
+
+@app.middleware("http")
+async def _public_demo_guard(request: Request, call_next):
+    if (
+        _PUBLIC_DEMO
+        and request.url.path.startswith("/api/")
+        and request.url.path != "/api/health"
+    ):
+        # Allow safe read-only methods on most endpoints
+        if request.method in ("GET", "HEAD", "OPTIONS"):
+            # But block sensitive export endpoints even for GET
+            if request.url.path in _PUBLIC_DEMO_BLOCKED_PATHS:
+                return JSONResponse(
+                    {"detail": "forbidden in public demo mode"},
+                    status_code=403,
+                )
+            return await call_next(request)
+        # Block all mutating methods
+        return JSONResponse(
+            {"detail": "forbidden in public demo mode: mutating endpoint"},
+            status_code=403,
+        )
+    return await call_next(request)
+
+
+# ── Request/Response DTOs ───────────────────────────────────────────
 
 class StoreRequest(BaseModel):
     content: str
@@ -1235,6 +1271,7 @@ async def restore_backup(req: RestoreRequest):
 
 @app.websocket("/ws/memory")
 async def memory_websocket(ws: WebSocket):
+    global _event_loop
     # Mirror the REST token gate: when a token is configured, the socket must
     # present it via the X-LEVH-Token header or a ?token= query param. The
     # legacy X-StackMemory-Token header remains accepted.
@@ -1256,9 +1293,45 @@ async def memory_websocket(ws: WebSocket):
         if not allowed:
             await ws.close(code=1013)
             return
+    # Public demo mode: only allow read-only WebSocket actions
+    if _PUBLIC_DEMO:
+        await ws.accept()
+        engine = await get_engine()
+        if _event_loop is None:
+            _event_loop = asyncio.get_running_loop()
+        _ws_clients.add(ws)
+        try:
+            while True:
+                data = await ws.receive_json()
+                action = data.get("action")
+
+                if action == "recall":
+                    result = await engine.recall(**data.get("params", {}))
+                    await ws.send_json({
+                        "type": "recalled",
+                        "results": [
+                            {"memory": m.model_dump(exclude={"embedding"}), "score": s}
+                            for m, s in zip(result.memories, result.scores)
+                        ],
+                    })
+
+                elif action == "stats":
+                    stats = await engine.get_stats()
+                    await ws.send_json({"type": "stats", "stats": stats.model_dump()})
+
+                elif action == "ping":
+                    await ws.send_json({"type": "pong"})
+
+                else:
+                    await ws.send_json({"type": "error", "message": f"action '{action}' forbidden in public demo mode"})
+        except WebSocketDisconnect:
+            pass
+        finally:
+            _ws_clients.discard(ws)
+        return
+
     await ws.accept()
     engine = await get_engine()
-    global _event_loop
     if _event_loop is None:
         _event_loop = asyncio.get_running_loop()
     _ws_clients.add(ws)
