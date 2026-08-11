@@ -1304,6 +1304,38 @@ def cmd_remove_demo(args: argparse.Namespace) -> int:
     return 0
 
 
+# ── continue (autonomous session continuity) ────────────────────────
+
+def cmd_continue(args: argparse.Namespace) -> int:
+    """Show context to resume work — synthesizes session DNA from recent activity."""
+    import asyncio
+
+    from server.core import engine_provider
+
+    project = args.project or _detect_project()
+
+    async def _run() -> str:
+        engine = engine_provider.get_engine()
+        await engine.initialize()
+        try:
+            return await engine.get_continuity_context(
+                task=args.task or None,
+                project=project or None,
+                limit=args.limit,
+                since=args.since or None,
+            )
+        finally:
+            await engine.shutdown()
+
+    try:
+        context = asyncio.run(_run())
+        print(context)
+        return 0
+    except Exception as e:
+        print(f"  Error: {e}", file=sys.stderr)
+        return 1
+
+
 # ── mcp config ───────────────────────────────────────────────────
 
 def cmd_mcp_config(args: argparse.Namespace) -> int:
@@ -1657,20 +1689,14 @@ def main() -> int:
         help="Remove demo-tagged memories, leaving real data untouched",
     )
 
-    # export-full (memories + entity graph + trust + conflicts, one file)
-    export_full_p = sub.add_parser(
-        "export-full",
-        help="Export memories, entity graph, trust scores, and conflicts to one file",
-    )
-    export_full_p.add_argument(
-        "--format",
-        choices=["json", "sqlite", "pdf"],
-        default="json",
-        help="Output format (default: json)",
-    )
-    export_full_p.add_argument("--out", help="Output file path (default: levh-full-export.<format>)")
+    # continue (autonomous session continuity)
+    continue_p = sub.add_parser("continue", help="Show context to resume work (session DNA)")
+    continue_p.add_argument("task", nargs="?", default="", help="Task/query to find relevant context")
+    continue_p.add_argument("--project", type=str, default="", help="Project filter (default: git repo name)")
+    continue_p.add_argument("--limit", type=int, default=5, help="Max sessions to consider")
+    continue_p.add_argument("--since", type=str, default="", help="Only consider sessions since ISO date (e.g. 2026-01-01)")
 
-    # entities (persistent entity knowledge graph)
+    # export-full (memories + entity graph + trust + conflicts, one file)
     ent_p = sub.add_parser("entities", help="Persistent entity knowledge graph")
     ent_sub = ent_p.add_subparsers(dest="entities_command")
     ent_sub.add_parser("reindex", help="Rebuild the entity graph from all memories")
@@ -1750,6 +1776,8 @@ def main() -> int:
         return cmd_seed_demo(args)
     elif args.command == "remove-demo":
         return cmd_remove_demo(args)
+    elif args.command == "continue":
+        return cmd_continue(args)
     elif args.command == "export-full":
         return cmd_export_full(args)
     elif args.command == "entities":

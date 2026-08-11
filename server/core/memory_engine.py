@@ -1205,6 +1205,134 @@ class MemoryEngine:
         row = await self.db.get_session(session_id)
         return Session(**row) if row else None
 
+    # ── Continuity Context (autonomous session recovery) ────────────
+
+    async def get_continuity_context(
+        self,
+        task: str | None = None,
+        project: str | None = None,
+        limit: int = 5,
+        since: str | None = None,
+    ) -> str:
+        """Synthesize a continuity brief from recent sessions and memories.
+
+        Returns a human-readable brief showing where the user left off,
+        including recent sessions, active files, decisions, and blockers.
+        """
+        from datetime import datetime, timezone
+
+        # Get recent sessions for the project
+        sessions = await self.list_sessions(limit=limit * 2)
+        if project:
+            sessions = [s for s in sessions if s.metadata.get("project") == project]
+        sessions = sessions[:limit]
+
+        # Filter by date if since provided
+        if since:
+            try:
+                since_dt = datetime.fromisoformat(since.replace("Z", "+00:00"))
+                sessions = [s for s in sessions if s.created_at and
+                            datetime.fromisoformat(s.created_at.replace("Z", "+00:00")) >= since_dt]
+            except ValueError:
+                pass  # Invalid date format, ignore filter
+
+        # Get recent memories for context
+        recent_memories = await self.episodic.search(
+            project=project,
+            limit=50,
+        )
+
+        # Filter memories by session if we have sessions
+        session_ids = {s.id for s in sessions}
+        session_memories = [m for m in recent_memories if m.session_id in session_ids]
+
+        # Also get git-hook memories (commits) for the project
+        commit_memories = [m for m in recent_memories if m.source == "git-hook"]
+        if project:
+            commit_memories = [m for m in commit_memories if m.project == project]
+
+        # Build the brief
+        lines = []
+        lines.append("=== LEVH Continuity Brief ===")
+        lines.append("")
+
+        if task:
+            lines.append(f"Task: {task}")
+            lines.append("")
+
+        if sessions:
+            lines.append(f"Recent Sessions ({len(sessions)}):")
+            for s in sessions:
+                status = "*" if s.status == "active" else "o"
+                mem_count = s.memory_count
+                project_info = s.metadata.get("project", "")
+                proj_str = f" [{project_info}]" if project_info else ""
+                lines.append(f"  {status} {s.name}{proj_str} - {mem_count} memories - {s.id[:8]}")
+                if s.metadata.get("task"):
+                    lines.append(f"      Task: {s.metadata['task']}")
+            lines.append("")
+
+        # Active files from commit memories
+        if commit_memories:
+            lines.append("Recent Changes (from commits):")
+            seen_files = set()
+            for m in commit_memories[:10]:
+                # Extract file paths from commit messages
+                import re
+                files = re.findall(r'(\w+/\w+\.\w+|\w+\.\w+)', m.content)
+                for f in files:
+                    if f not in seen_files and len(seen_files) < 15:
+                        seen_files.add(f)
+                        lines.append(f"  - {f}")
+            lines.append("")
+
+        # Decisions from recent memories
+        decisions = []
+        for m in recent_memories[:30]:
+            content_lower = m.content.lower()
+            if any(kw in content_lower for kw in ["decided", "agreed", "karar", "seçtik", "we'll", "will use", "switching to"]):
+                decisions.append(m)
+        if decisions:
+            lines.append("Recent Decisions:")
+            for d in decisions[:5]:
+                snippet = d.content[:120].replace("\n", " ")
+                lines.append(f"  - {snippet}...")
+            lines.append("")
+
+        # Blockers / errors / TODOs
+        blockers = []
+        for m in recent_memories[:30]:
+            content_lower = m.content.lower()
+            if any(kw in content_lower for kw in ["error", "failed", "blocked", "todo", "fixme", "hata", "başarısız", "takıldı"]):
+                blockers.append(m)
+        if blockers:
+            lines.append("Blockers / Errors / TODOs:")
+            for b in blockers[:5]:
+                snippet = b.content[:120].replace("\n", " ")
+                lines.append(f"  ! {snippet}...")
+            lines.append("")
+
+        # Next suggested actions based on task
+        if task:
+            lines.append("Suggested Next Actions:")
+            # Simple heuristic: if task mentions a file, suggest working on it
+            if "test" in task.lower():
+                lines.append("  1. Run failing tests")
+                lines.append("  2. Fix test failures")
+            elif "refactor" in task.lower():
+                lines.append("  1. Continue refactoring")
+                lines.append("  2. Run tests to verify")
+            elif "bug" in task.lower() or "fix" in task.lower():
+                lines.append("  1. Reproduce the bug")
+                lines.append("  2. Implement fix")
+            else:
+                lines.append("  1. Continue from last session")
+                lines.append("  2. Check recent decisions above")
+            lines.append("")
+
+        lines.append("=============================")
+        return "\n".join(lines)
+
     # ── Projects / Sources / Tags ─────────────────────────────────
 
     async def list_projects(self) -> list[dict]:
