@@ -32,6 +32,33 @@ import { getToken } from "./token";
 // Set NEXT_PUBLIC_API_URL only when running `next dev` against a separate API.
 const API = process.env.NEXT_PUBLIC_API_URL || "";
 
+// FastAPI puts anything in `detail`: a plain string, a validation-error array,
+// or an object (the admission gate returns {message, decision}). Interpolating
+// those last two straight into a template literal renders "[object Object]" and
+// hides the actual reason, so unpack them into something a user can read.
+function describeDetail(status: number, detail: unknown): string {
+  if (typeof detail === "string") return `${status}: ${detail}`;
+  if (Array.isArray(detail)) {
+    const msgs = detail
+      .map((d) => (typeof d === "string" ? d : (d as { msg?: string })?.msg))
+      .filter(Boolean);
+    if (msgs.length) return `${status}: ${msgs.join("; ")}`;
+  } else if (detail && typeof detail === "object") {
+    const d = detail as { message?: string; decision?: { reasons?: string[] } };
+    const reasons = d.decision?.reasons;
+    if (d.message) {
+      return reasons?.length
+        ? `${status}: ${d.message} — ${reasons.join("; ")}`
+        : `${status}: ${d.message}`;
+    }
+  }
+  try {
+    return `${status}: ${JSON.stringify(detail)}`;
+  } catch {
+    return `${status}`;
+  }
+}
+
 async function fetchApi<T>(path: string, options?: RequestInit): Promise<T> {
   const token = getToken();
   const res = await fetch(`${API}${path}`, {
@@ -48,7 +75,7 @@ async function fetchApi<T>(path: string, options?: RequestInit): Promise<T> {
     let detail = `${res.status}`;
     try {
       const body = await res.json();
-      if (body?.detail) detail = `${res.status}: ${body.detail}`;
+      if (body?.detail) detail = describeDetail(res.status, body.detail);
     } catch {}
     throw new Error(`API error ${detail}`);
   }
@@ -387,7 +414,7 @@ export const api = {
       let detail = `${res.status}`;
       try {
         const body = await res.json();
-        if (body?.detail) detail = `${res.status}: ${body.detail}`;
+        if (body?.detail) detail = describeDetail(res.status, body.detail);
       } catch {}
       throw new Error(`API error ${detail}`);
     }

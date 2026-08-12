@@ -99,9 +99,17 @@ export function MemoryQuickAdd({ onAdded }: { onAdded?: () => void }) {
             <Pin className="h-3.5 w-3.5 mr-1.5" />
             {pinned ? "Pinned — never decays" : "Pin memory"}
           </Button>
-          <div className="flex items-center gap-3">
-            {error && <span className="text-xs text-destructive">{error}</span>}
-            <Button onClick={submit} disabled={!content.trim() || saving}>
+          <div className="flex items-center gap-3 min-w-0">
+            {error && (
+              <span className="text-xs text-destructive text-right leading-snug min-w-0">
+                {error}
+              </span>
+            )}
+            <Button
+              className="shrink-0"
+              onClick={submit}
+              disabled={!content.trim() || saving}
+            >
               {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Store memory
             </Button>
