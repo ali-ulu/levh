@@ -132,7 +132,7 @@ def _build_server_entry(
     """Build the inner server config dict shared by all platforms.
 
     ``profile`` sets LEVH_MCP_PROFILE so the client advertises a focused
-    tool surface (default ``work``) instead of all 59 tools — better
+    tool surface (default ``work``) instead of all 61 tools — better
     tool-selection accuracy. Pass ``full`` to opt back into everything.
     """
     abs_project = os.path.abspath(project_path)

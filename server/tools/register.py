@@ -103,6 +103,7 @@ def _register(mcp: FastMCP, engine: MemoryEngine) -> None:
     from .trust import register as reg_trust
     from .conflicts import register as reg_conflicts
     from .continuity import register as reg_continuity
+    from .record_mistake import register as reg_record_mistake
 
     reg_store(mcp, engine)
     reg_recall(mcp, engine)
@@ -143,3 +144,4 @@ def _register(mcp: FastMCP, engine: MemoryEngine) -> None:
     reg_trust(mcp, engine)
     reg_conflicts(mcp, engine)
     reg_continuity(mcp, engine)
+    reg_record_mistake(mcp, engine)
