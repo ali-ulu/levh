@@ -1697,6 +1697,19 @@ def main() -> int:
     continue_p.add_argument("--since", type=str, default="", help="Only consider sessions since ISO date (e.g. 2026-01-01)")
 
     # export-full (memories + entity graph + trust + conflicts, one file)
+    export_full_p = sub.add_parser(
+        "export-full",
+        help="Export memories, entity graph, trust scores, and conflicts to one file",
+    )
+    export_full_p.add_argument(
+        "--format",
+        choices=["json", "sqlite", "pdf"],
+        default="json",
+        help="Output format (default: json)",
+    )
+    export_full_p.add_argument("--out", help="Output file path (default: levh-full-export.<format>)")
+
+    # entities (persistent entity knowledge graph)
     ent_p = sub.add_parser("entities", help="Persistent entity knowledge graph")
     ent_sub = ent_p.add_subparsers(dest="entities_command")
     ent_sub.add_parser("reindex", help="Rebuild the entity graph from all memories")
