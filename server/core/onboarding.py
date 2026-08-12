@@ -76,7 +76,19 @@ def write_receipt(
 
 def public_client_options() -> list[dict[str, str]]:
     """Authoritative client list without duplicate aliases."""
-    preferred = ("claude", "cursor", "windsurf", "claude_code", "vscode", "cline")
+    preferred = (
+        "claude",
+        "claude_code",
+        "cursor",
+        "windsurf",
+        "vscode",
+        "cline",
+        "jcode",
+        "omp",
+        "opencode",
+        "codex",
+        "hermes",
+    )
     result: list[dict[str, str]] = []
     for alias in preferred:
         platform = PLATFORM_ALIASES[alias]

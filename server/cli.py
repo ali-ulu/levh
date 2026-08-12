@@ -1603,7 +1603,10 @@ def main() -> int:
     config_p.add_argument(
         "platform",
         type=str,
-        help="Client platform (claude, cursor, windsurf, claude_code, vscode, cline, generic)",
+        help=(
+            "Client platform (claude, cursor, windsurf, claude_code, vscode, cline, "
+            "jcode, omp, opencode, codex, hermes, generic)"
+        ),
     )
     config_p.add_argument("--embedder-mode", type=str, help="Embedder mode override")
     config_p.add_argument("--db-path", type=str, help="Database path override")

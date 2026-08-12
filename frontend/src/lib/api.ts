@@ -458,6 +458,8 @@ export const api = {
       profiles_are_security_boundary: boolean;
       warning: string;
       config: Record<string, unknown>;
+      config_text?: string;
+      config_path?: string | null;
     }>("/api/onboarding/mcp-config", {
       method: "POST",
       body: JSON.stringify({ client, profile }),

@@ -98,8 +98,14 @@ export function OnboardingEmptyState({ status, onChanged }: OnboardingEmptyState
   const handleConfig = () =>
     run("config", async () => {
       const result = await api.onboardingMcpConfig(client, profile);
-      setConfigText(JSON.stringify(result.config, null, 2));
-      setMessage(`${result.client} config generated with ${result.tool_count} advertised tools.`);
+      // Codex takes TOML and Hermes YAML, so prefer the server-rendered text
+      // and only fall back to JSON for an older server that omits it.
+      setConfigText(result.config_text ?? JSON.stringify(result.config, null, 2));
+      setMessage(
+        result.config_path
+          ? `${result.client} config generated with ${result.tool_count} advertised tools — save as ${result.config_path}.`
+          : `${result.client} config generated with ${result.tool_count} advertised tools.`
+      );
     });
 
   const handleCopy = async () => {

@@ -512,7 +512,7 @@ async def get_onboarding_status():
 @app.post("/api/onboarding/mcp-config")
 async def generate_onboarding_mcp_config(req: OnboardingMCPConfigRequest):
     """Generate a focused MCP client config without persisting secrets."""
-    from server.configs import generate_config, normalize_platform
+    from server.configs import PLATFORMS, generate_config, normalize_platform, render_config
     from server.tools.profiles import UnknownProfileError, profile_counts, resolve_profile
 
     try:
@@ -561,6 +561,10 @@ async def generate_onboarding_mcp_config(req: OnboardingMCPConfigRequest):
         "onboarding_receipt_written": True,
         "onboarding_ready": receipt["first_memory_ready"],
         "config": cfg,
+        # Not every client reads JSON — Codex takes TOML and Hermes YAML — so
+        # the dashboard renders this text rather than JSON-encoding `config`.
+        "config_text": render_config(platform, cfg),
+        "config_path": PLATFORMS[platform]["file_path"],
     }
 
 
