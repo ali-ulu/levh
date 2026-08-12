@@ -25,7 +25,7 @@ Frontend validation:
 
 ```bash
 cd frontend
-npm ci --legacy-peer-deps
+npm ci
 NEXT_TELEMETRY_DISABLED=1 npm run build
 npm audit --omit=dev
 ```

@@ -14,6 +14,9 @@ build/
 *.db-journal
 *.db-wal
 
+# Files uploaded for connector imports (written next to the database)
+uploads/
+
 # Environment
 .env
 

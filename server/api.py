@@ -13,8 +13,10 @@ import asyncio
 import json
 import logging
 import os
+import re
 import sys
 from contextlib import asynccontextmanager
+from pathlib import Path, PurePosixPath
 from typing import Optional
 
 logger = logging.getLogger("levh.api")
@@ -512,7 +514,7 @@ async def get_onboarding_status():
 @app.post("/api/onboarding/mcp-config")
 async def generate_onboarding_mcp_config(req: OnboardingMCPConfigRequest):
     """Generate a focused MCP client config without persisting secrets."""
-    from server.configs import generate_config, normalize_platform
+    from server.configs import PLATFORMS, generate_config, normalize_platform, render_config
     from server.tools.profiles import UnknownProfileError, profile_counts, resolve_profile
 
     try:
@@ -561,6 +563,10 @@ async def generate_onboarding_mcp_config(req: OnboardingMCPConfigRequest):
         "onboarding_receipt_written": True,
         "onboarding_ready": receipt["first_memory_ready"],
         "config": cfg,
+        # Not every client reads JSON — Codex takes TOML and Hermes YAML — so
+        # the dashboard renders this text rather than JSON-encoding `config`.
+        "config_text": render_config(platform, cfg),
+        "config_path": PLATFORMS[platform]["file_path"],
     }
 
 
@@ -1473,6 +1479,69 @@ async def connector_sync(req: ConnectorRequest):
     )
     await conn.disconnect()
     return result
+
+
+class ConnectorUploadRequest(BaseModel):
+    filename: str
+    content_b64: str
+
+
+# A browser never hands out the absolute path of a picked file, so the
+# dashboard cannot fill in ics_path/mbox_path/transcript_path from a file
+# input on its own. It uploads the bytes here instead and gets back the path
+# the connector should read — the server is local, so this stays on one
+# machine. Same base64-in-JSON shape as /api/restore, which keeps
+# python-multipart out of the runtime dependency list.
+MAX_UPLOAD_BYTES = 64 * 1024 * 1024
+
+
+def _connector_upload_dir() -> Path:
+    from server.core.runtime_config import resolve_runtime_config
+
+    base = Path(resolve_runtime_config().database_path).resolve().parent
+    target = base / "uploads"
+    target.mkdir(parents=True, exist_ok=True)
+    return target
+
+
+def _safe_upload_name(filename: str) -> str:
+    """Reduce *filename* to a plain name that cannot escape the upload dir."""
+    name = PurePosixPath(filename.replace("\\", "/")).name.strip()
+    if not name or name in {".", ".."}:
+        raise HTTPException(status_code=400, detail="filename is required")
+    cleaned = re.sub(r"[^A-Za-z0-9._-]", "_", name).lstrip(".")
+    if not cleaned:
+        raise HTTPException(status_code=400, detail="filename has no usable characters")
+    return cleaned[:120]
+
+
+@app.post("/api/connectors/upload")
+async def connector_upload(req: ConnectorUploadRequest):
+    """Store an uploaded file locally and return the path to import from."""
+    import base64
+    import binascii
+
+    name = _safe_upload_name(req.filename)
+    try:
+        blob = base64.b64decode(req.content_b64, validate=True)
+    except (binascii.Error, ValueError):
+        raise HTTPException(status_code=400, detail="content_b64 is not valid base64")
+    if not blob:
+        raise HTTPException(status_code=400, detail="uploaded file is empty")
+    if len(blob) > MAX_UPLOAD_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"file is larger than the {MAX_UPLOAD_BYTES // (1024 * 1024)} MB upload limit",
+        )
+
+    target = _connector_upload_dir() / name
+    stem, suffix = os.path.splitext(name)
+    counter = 1
+    while target.exists():
+        target = target.with_name(f"{stem}-{counter}{suffix}")
+        counter += 1
+    target.write_bytes(blob)
+    return {"path": str(target), "filename": target.name, "bytes": len(blob)}
 
 
 @app.get("/api/connectors/sync-state")

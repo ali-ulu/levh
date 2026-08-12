@@ -58,6 +58,35 @@ PLATFORMS: dict[str, dict[str, Any]] = {
         "file_path": ".vscode/mcp.json",
         "description": "Cline (VS Code extension)",
     },
+    "jcode": {
+        "file_name": "mcp.json",
+        "file_path": ".jcode/mcp.json",
+        "description": "jcode (CLI)",
+    },
+    "omp": {
+        "file_name": "mcp.json",
+        "file_path": ".omp/mcp.json",
+        "description": "oh-my-pi / omp (CLI)",
+    },
+    # The three below do not speak the "mcpServers" JSON dialect; see FORMATS.
+    "opencode": {
+        "file_name": "opencode.json",
+        "file_path": "opencode.json",
+        "description": "opencode (CLI)",
+        "format": "opencode_json",
+    },
+    "codex": {
+        "file_name": "config.toml",
+        "file_path": ".codex/config.toml",
+        "description": "Codex CLI (OpenAI)",
+        "format": "codex_toml",
+    },
+    "hermes": {
+        "file_name": "config.yaml",
+        "file_path": ".hermes/config.yaml",
+        "description": "Hermes Agent (Nous Research)",
+        "format": "hermes_yaml",
+    },
 }
 
 PLATFORM_ALIASES: dict[str, str] = {
@@ -68,8 +97,22 @@ PLATFORM_ALIASES: dict[str, str] = {
     "claude_code": "claude_code",
     "vscode": "vscode",
     "cline": "cline",
+    "jcode": "jcode",
+    "omp": "omp",
+    "oh_my_pi": "omp",
+    "opencode": "opencode",
+    "codex": "codex",
+    "hermes": "hermes",
     "generic": "claude_desktop",
 }
+
+# Serialisation dialect per platform. Anything not listed here uses the
+# "mcpServers" JSON object that most clients adopted from Claude Desktop.
+DEFAULT_FORMAT = "mcp_servers_json"
+
+
+def platform_format(platform: str) -> str:
+    return PLATFORMS[platform].get("format", DEFAULT_FORMAT)
 
 
 def normalize_platform(name: str) -> str:
@@ -125,7 +168,8 @@ def generate_config(
         **env_overrides: Extra environment variables for the server process.
 
     Returns:
-        A dict ready to be serialised as JSON.
+        The platform's native config structure, ready to be serialised by
+        :func:`render_config` into that platform's file format.
     """
     if platform not in PLATFORMS:
         available = ", ".join(sorted(PLATFORMS.keys()))
@@ -134,13 +178,113 @@ def generate_config(
         )
 
     server_entry = _build_server_entry(project_path, profile=profile, **env_overrides)
+    fmt = platform_format(platform)
 
-    # Claude Desktop and Claude Code use "mcpServers" top-level key
+    if fmt == "opencode_json":
+        # opencode keys the block "mcp", tags each entry local/remote, takes the
+        # command as one argv array, and spells the environment "environment".
+        return {
+            "mcp": {
+                "levh": {
+                    "type": "local",
+                    "command": [server_entry["command"], *server_entry["args"]],
+                    "enabled": True,
+                    "environment": server_entry["env"],
+                }
+            }
+        }
+
+    if fmt in ("codex_toml", "hermes_yaml"):
+        # Both spell the block "mcp_servers". Hermes documents no cwd key, and
+        # Codex reads config.toml from a fixed location, so neither can rely on
+        # a working directory — the env carries absolute paths already.
+        entry = {
+            "command": server_entry["command"],
+            "args": server_entry["args"],
+            "env": server_entry["env"],
+        }
+        return {"mcp_servers": {"levh": entry}}
+
+    # Claude Desktop and the clients that copied it use "mcpServers".
     return {
         "mcpServers": {
             "levh": server_entry,
         },
     }
+
+
+# ── Serialisation ───────────────────────────────────────────────────
+
+
+def _toml_value(value: Any) -> str:
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, (int, float)):
+        return str(value)
+    if isinstance(value, list):
+        return "[" + ", ".join(_toml_value(v) for v in value) + "]"
+    return json.dumps(str(value))
+
+
+def _to_toml(config: dict) -> str:
+    """Emit the narrow TOML shape Codex reads — tables of string scalars.
+
+    Hand-rolled on purpose: the standard library ships a TOML reader but no
+    writer, and pulling a dependency in for six lines of output is not worth it.
+    """
+    lines: list[str] = []
+    for server_name, entry in config["mcp_servers"].items():
+        lines.append(f"[mcp_servers.{server_name}]")
+        for key, value in entry.items():
+            if isinstance(value, dict):
+                continue
+            lines.append(f"{key} = {_toml_value(value)}")
+        env = entry.get("env") or {}
+        if env:
+            lines.append("")
+            lines.append(f"[mcp_servers.{server_name}.env]")
+            for key, value in env.items():
+                lines.append(f"{key} = {_toml_value(value)}")
+        lines.append("")
+    return "\n".join(lines).rstrip() + "\n"
+
+
+def _yaml_scalar(value: Any) -> str:
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, (int, float)):
+        return str(value)
+    return json.dumps(str(value))  # double-quoted: valid YAML, escapes safely
+
+
+def _to_yaml(config: dict) -> str:
+    """Emit the narrow YAML shape Hermes reads. Hand-rolled — see _to_toml."""
+    lines = ["mcp_servers:"]
+    for server_name, entry in config["mcp_servers"].items():
+        lines.append(f"  {server_name}:")
+        for key, value in entry.items():
+            if isinstance(value, dict):
+                if not value:
+                    continue
+                lines.append(f"    {key}:")
+                for k, v in value.items():
+                    lines.append(f"      {k}: {_yaml_scalar(v)}")
+            elif isinstance(value, list):
+                rendered = ", ".join(_yaml_scalar(v) for v in value)
+                lines.append(f"    {key}: [{rendered}]")
+            else:
+                lines.append(f"    {key}: {_yaml_scalar(value)}")
+    return "\n".join(lines) + "\n"
+
+
+def render_config(platform: str, config: dict) -> str:
+    """Serialise *config* into the file text *platform* expects."""
+    fmt = platform_format(platform)
+    if fmt == "codex_toml":
+        return _to_toml(config)
+    if fmt == "hermes_yaml":
+        return _to_yaml(config)
+    return json.dumps(config, indent=2) + "\n"
 
 
 def generate_all_configs(
@@ -173,7 +317,7 @@ def generate_all_configs(
             target_file = out / file_name
 
         target_file.write_text(
-            json.dumps(cfg, indent=2) + "\n",
+            render_config(platform, cfg),
             encoding="utf-8",
         )
         result[platform] = str(target_file)
