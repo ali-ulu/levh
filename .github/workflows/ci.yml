@@ -50,7 +50,7 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - name: Install
-        run: npm ci --legacy-peer-deps
+        run: npm ci
       - name: Build (lint + typecheck + static export)
         env:
           NEXT_TELEMETRY_DISABLED: "1"
