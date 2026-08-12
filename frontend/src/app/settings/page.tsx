@@ -92,6 +92,7 @@ export default function SettingsPage() {
   const [importResult, setImportResult] = useState("");
   const [useGate, setUseGate] = useState(true);
   const [syncState, setSyncState] = useState<SyncState[]>([]);
+  const [uploadingKey, setUploadingKey] = useState("");
 
   // Data management
   const [exporting, setExporting] = useState(false);
@@ -231,6 +232,36 @@ export default function SettingsPage() {
       URL.revokeObjectURL(url);
     } catch {}
     setExporting(false);
+  };
+
+  // Connector config keys that name a single file the server has to read.
+  // Directory keys (directory, vault_path) stay typed — a browser cannot hand
+  // over a folder, and credential keys are not paths at all.
+  const FILE_CONFIG_KEYS: Record<string, string> = {
+    ics_path: ".ics",
+    mbox_path: ".mbox,.eml",
+    transcript_path: ".vtt,.srt,.txt",
+  };
+
+  const uploadConnectorFile = async (key: string, file: File) => {
+    setUploadingKey(key);
+    setImportResult("");
+    try {
+      const buffer = await file.arrayBuffer();
+      // btoa() over a big string blows the argument limit, so chunk it.
+      const bytes = new Uint8Array(buffer);
+      const parts: string[] = [];
+      for (let i = 0; i < bytes.length; i += 0x8000) {
+        parts.push(String.fromCharCode.apply(null, Array.from(bytes.subarray(i, i + 0x8000))));
+      }
+      const binary = parts.join("");
+      const r = await api.connectorUpload(file.name, btoa(binary));
+      setConnectorConfig((prev) => ({ ...prev, [key]: r.path }));
+      setImportResult(`Uploaded ${r.filename} (${(r.bytes / 1024).toFixed(0)} KB). Now run the import.`);
+    } catch (e) {
+      setImportResult(e instanceof Error ? e.message : "Upload failed");
+    }
+    setUploadingKey("");
   };
 
   const importJson = async (file: File) => {
@@ -836,6 +867,12 @@ export default function SettingsPage() {
             a connector or manually-set metadata, plain-text memories won&apos;t produce people or
             organization nodes.
           </p>
+          <p className="text-xs text-muted-foreground">
+            Pick a connector, then fill what it asks for: calendar, email and transcripts take a
+            file you upload here; Obsidian and local files take a folder path on this machine;
+            Notion and GitHub take an API credential. Everything is read locally — nothing is
+            sent anywhere else.
+          </p>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex flex-wrap gap-2">
@@ -858,7 +895,29 @@ export default function SettingsPage() {
             <>
               <p className="text-xs text-muted-foreground">{activeConnector.description}</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {activeConnector.required_config_keys.map((key) => (
+                {activeConnector.required_config_keys.map((key) =>
+                  key in FILE_CONFIG_KEYS ? (
+                    <div key={key} className="space-y-1">
+                      <Label className="text-xs">{key}</Label>
+                      <Input
+                        type="file"
+                        accept={FILE_CONFIG_KEYS[key]}
+                        disabled={uploadingKey === key}
+                        className="cursor-pointer file:mr-3 file:rounded file:border-0 file:bg-muted file:px-2 file:py-1 file:text-xs"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) uploadConnectorFile(key, file);
+                        }}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        {uploadingKey === key
+                          ? "Uploading…"
+                          : connectorConfig[key]
+                          ? `Ready: ${connectorConfig[key]}`
+                          : "Pick the exported file — it is copied to this machine's LEVH folder, then imported."}
+                      </p>
+                    </div>
+                  ) : (
                   <div key={key} className="space-y-1">
                     <Label className="text-xs">{key}</Label>
                     <Input
@@ -881,7 +940,8 @@ export default function SettingsPage() {
                       }
                     />
                   </div>
-                ))}
+                  )
+                )}
                 <div className="space-y-1">
                   <Label className="text-xs">Store under project (optional)</Label>
                   <Input

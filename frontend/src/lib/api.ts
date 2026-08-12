@@ -499,6 +499,14 @@ export const api = {
       }
     ),
 
+  // A browser hands out file *contents*, never the absolute path a connector
+  // needs, so the file is uploaded and the server returns the path to import.
+  connectorUpload: (filename: string, content_b64: string) =>
+    fetchApi<{ path: string; filename: string; bytes: number }>(
+      "/api/connectors/upload",
+      { method: "POST", body: JSON.stringify({ filename, content_b64 }) }
+    ),
+
   // Connector Framework v2 — gate-filtered incremental sync
   connectorSync: (
     connector: string,
