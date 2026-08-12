@@ -27,6 +27,7 @@ from .episodic import EpisodicMemory
 from .hscore import HScoreCalculator, HScoreWeights, _env_float
 from .short_term import ShortTermMemory
 from .types import (
+    RULE_TAG,
     Memory,
     MemoryStats,
     MemoryType,
@@ -1048,6 +1049,7 @@ class MemoryEngine:
         project: str | None = None,
         style: str = "claude",
         max_memories: int = 60,
+        max_rules: int = 10,
     ) -> str:
         """Compile memories into a persistent context file for AI clients.
 
@@ -1055,6 +1057,7 @@ class MemoryEngine:
             project: Only include this project's memories (None = all).
             style: "claude" (CLAUDE.md) or "cursor" (.cursorrules).
             max_memories: Cap on included memories.
+            max_rules: Cap on guard rules listed in their own section.
         """
         pinned = await self.episodic.search(project=project, pinned=True, limit=max_memories)
         important = await self.episodic.search(
@@ -1076,6 +1079,13 @@ class MemoryEngine:
         important = [m for m in _dedup(important) if not m.pinned]
         recent = _dedup(recent)
 
+        # Rules recorded by the mistake guard are pinned too, so split them out
+        # of the generic pinned list rather than printing them twice. They lead
+        # the file: a rule exists because ignoring it already cost something.
+        rules = [m for m in pinned if RULE_TAG in (m.tags or [])]
+        rules.sort(key=lambda m: (m.importance, m.created_at), reverse=True)
+        pinned = [m for m in pinned if RULE_TAG not in (m.tags or [])]
+
         title = f"Project Memory — {project}" if project else "Project Memory"
         now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 
@@ -1094,6 +1104,13 @@ class MemoryEngine:
             tags = f" _[{', '.join(m.tags)}]_" if m.tags else ""
             return f"- {m.content.strip()}{tags}"
 
+        if rules:
+            lines.append("## Rules Learned From Mistakes")
+            lines.append("")
+            lines.append("Each of these was recorded after the mistake it describes.")
+            lines.append("")
+            lines.extend(f"- {m.content.strip()}" for m in rules[:max_rules])
+            lines.append("")
         if pinned:
             lines.append("## Always Remember (pinned)")
             lines.extend(_bullet(m) for m in pinned)
@@ -1107,7 +1124,7 @@ class MemoryEngine:
             lines.extend(_bullet(m) for m in recent[:10])
             lines.append("")
 
-        if not (pinned or important or recent):
+        if not (rules or pinned or important or recent):
             lines.append("_No memories stored yet._")
 
         return "\n".join(lines).rstrip() + "\n"

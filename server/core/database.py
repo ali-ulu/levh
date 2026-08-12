@@ -63,6 +63,23 @@ CREATE TABLE IF NOT EXISTS connector_sync (
     runs           INTEGER DEFAULT 0
 );
 
+-- Mistake guard: one row per recorded mistake. The rule itself lives in
+-- `memories` (pinned, so it never decays); this table is the incident log
+-- that says which rule was learned, from what, and whether it still stands.
+CREATE TABLE IF NOT EXISTS violations (
+    id           TEXT PRIMARY KEY,
+    rule_id      TEXT NOT NULL,          -- memories.id of the pinned rule
+    task         TEXT,                   -- what was being attempted
+    wrong_action TEXT NOT NULL,          -- what was done
+    root_cause   TEXT,                   -- why it happened
+    tool_name    TEXT,                   -- tool involved, when known
+    severity     TEXT NOT NULL DEFAULT 'medium',
+    source       TEXT NOT NULL DEFAULT 'user',
+    occurred_at  TEXT NOT NULL,
+    resolved     INTEGER DEFAULT 0,
+    resolution   TEXT
+);
+
 -- Entity knowledge graph (persistent): typed entities + memory↔entity links.
 CREATE TABLE IF NOT EXISTS entities (
     id         TEXT PRIMARY KEY,       -- "<type>:<key>"
@@ -125,6 +142,8 @@ CREATE INDEX IF NOT EXISTS idx_ses_status  ON sessions(status);
 CREATE INDEX IF NOT EXISTS idx_ent_type     ON entities(type);
 CREATE INDEX IF NOT EXISTS idx_me_entity     ON memory_entities(entity_id);
 CREATE INDEX IF NOT EXISTS idx_me_memory     ON memory_entities(memory_id);
+CREATE INDEX IF NOT EXISTS idx_viol_rule     ON violations(rule_id);
+CREATE INDEX IF NOT EXISTS idx_viol_when     ON violations(occurred_at DESC);
 """
 
 # Columns added after v1.0 — applied to pre-existing databases on connect.
@@ -874,6 +893,55 @@ class Database:
             (source_key, connector, project, last_synced_at, fetched, stored, stored),
         )
         await self.conn.commit()
+
+    # ── Mistake guard ─────────────────────────────────────────────
+
+    async def insert_violation(self, violation: dict) -> None:
+        await self.conn.execute(
+            """
+            INSERT INTO violations
+                (id, rule_id, task, wrong_action, root_cause, tool_name,
+                 severity, source, occurred_at, resolved, resolution)
+            VALUES
+                (:id, :rule_id, :task, :wrong_action, :root_cause, :tool_name,
+                 :severity, :source, :occurred_at, :resolved, :resolution)
+            """,
+            violation,
+        )
+        await self.conn.commit()
+
+    async def list_violations(
+        self,
+        since: Optional[str] = None,
+        severity: Optional[str] = None,
+        limit: int = 50,
+    ) -> list[dict]:
+        query = "SELECT * FROM violations WHERE 1 = 1"
+        params: list = []
+        if since:
+            query += " AND occurred_at >= ?"
+            params.append(since)
+        if severity:
+            query += " AND severity = ?"
+            params.append(severity)
+        query += " ORDER BY occurred_at DESC LIMIT ?"
+        params.append(limit)
+
+        cursor = await self.conn.execute(query, params)
+        rows = await cursor.fetchall()
+        await cursor.close()
+        return [dict(r) for r in rows]
+
+    async def count_violations(self, since: Optional[str] = None) -> int:
+        if since:
+            cursor = await self.conn.execute(
+                "SELECT COUNT(*) FROM violations WHERE occurred_at >= ?", (since,)
+            )
+        else:
+            cursor = await self.conn.execute("SELECT COUNT(*) FROM violations")
+        row = await cursor.fetchone()
+        await cursor.close()
+        return int(row[0]) if row else 0
 
     # ── Entity knowledge graph ────────────────────────────────────
 

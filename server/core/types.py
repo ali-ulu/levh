@@ -9,6 +9,12 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
+# Tag carried by every rule the mistake guard records. It lives here rather
+# than in `guard.py` because both the guard and the context-file builder in
+# `memory_engine` need it, and the guard imports the engine — defining it in
+# either of those would make the import cycle.
+RULE_TAG = "levh-rule"
+
 
 # `Enum.__str__`/`__format__` print "ClassName.MEMBER" even for a `(str, Enum)`
 # mixin — the `str` base is not enough to make f-string formatting return the

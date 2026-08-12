@@ -1,8 +1,8 @@
 """MCP tool profiles — control how many tools a client actually sees.
 
-Advertising all 59 tools to every AI client hurts tool-selection accuracy:
+Advertising all 61 tools to every AI client hurts tool-selection accuracy:
 selection quality falls off as the tool list grows, so a public demo where the
-agent must pick the right tool from 59 is a reliability risk. Profiles let a
+agent must pick the right tool from 61 is a reliability risk. Profiles let a
 client mount a focused subset instead.
 
 Every tool is assigned to the *smallest* profile it belongs to; profiles are
@@ -54,6 +54,10 @@ TOOL_TIERS: dict[str, str] = {
     "about_entity": "work",
     "memory_trust": "work",
     "list_conflict_candidates": "work",
+    # A rule only helps if it is recorded when the mistake is fresh, which is
+    # during ordinary work — hence "work" rather than "admin". Reading the log
+    # back is a review activity, so it sits one tier up.
+    "record_mistake": "work",
     # ── admin: maintenance / management ──────────────────────────────
     "unpin_memory": "admin",
     "update_memory": "admin",
@@ -89,6 +93,7 @@ TOOL_TIERS: dict[str, str] = {
     "recompute_trust_scores": "admin",
     "detect_conflict_candidates": "admin",
     "review_conflict_candidate": "admin",
+    "list_mistakes": "admin",
     "evaluate_admission": "admin",
     "admit_memory": "admin",
     "audit_secrets": "admin",
