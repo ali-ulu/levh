@@ -17,7 +17,10 @@ def register(mcp: FastMCP, engine: MemoryEngine) -> None:
         """
         return await engine.get_continuity_context(project=project)
 
-    @mcp.resource("levh://session/{project}/continuity?task={task}")
+    # Task variant uses a path segment, not a query string: FastMCP compiles
+    # resource templates into regexes without escaping "?", so a query-string
+    # template registers but never matches a real URI.
+    @mcp.resource("levh://session/{project}/continuity/{task}")
     async def continuity_brief_with_task(project: str, task: str) -> str:
         """Get a continuity brief for a specific task in a project."""
         return await engine.get_continuity_context(project=project, task=task)

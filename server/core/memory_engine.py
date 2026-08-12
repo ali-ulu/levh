@@ -1221,26 +1221,41 @@ class MemoryEngine:
         """
         from datetime import datetime, timezone
 
-        # Get recent sessions for the project
-        sessions = await self.list_sessions(limit=limit * 2)
-        if project:
-            sessions = [s for s in sessions if s.metadata.get("project") == project]
-        sessions = sessions[:limit]
-
-        # Filter by date if since provided
-        if since:
-            try:
-                since_dt = datetime.fromisoformat(since.replace("Z", "+00:00"))
-                sessions = [s for s in sessions if s.created_at and
-                            datetime.fromisoformat(s.created_at.replace("Z", "+00:00")) >= since_dt]
-            except ValueError:
-                pass  # Invalid date format, ignore filter
-
         # Get recent memories for context
         recent_memories = await self.episodic.search(
             project=project,
             limit=50,
         )
+
+        # Get recent sessions for the project. Session metadata rarely carries
+        # a "project" key, so a session also counts as belonging to the project
+        # when any of the project's memories were recorded under it.
+        sessions = await self.list_sessions(limit=limit * 2)
+        if project:
+            project_session_ids = {m.session_id for m in recent_memories if m.session_id}
+            sessions = [
+                s
+                for s in sessions
+                if s.metadata.get("project") == project or s.id in project_session_ids
+            ]
+
+        # Filter by date if since provided — before truncating to `limit`,
+        # otherwise the cut-off list is filtered instead of the full one.
+        if since:
+            def _as_utc(value: str) -> datetime:
+                # A bare date like "2026-01-01" parses as naive and cannot be
+                # compared against the tz-aware timestamps we store, so assume UTC.
+                parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+                return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+
+            try:
+                since_dt = _as_utc(since)
+                sessions = [s for s in sessions if s.created_at and
+                            _as_utc(s.created_at) >= since_dt]
+            except ValueError:
+                pass  # Invalid date format, ignore filter
+
+        sessions = sessions[:limit]
 
         # Filter memories by session if we have sessions
         session_ids = {s.id for s in sessions}
