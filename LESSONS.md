@@ -12,6 +12,10 @@ Hatalardan çıkan kalıcı dersler. Her görev öncesi ilgili anahtar kelimeyle
 - Harici bir aracın config formatını varsayma; her istemci için gerçek dokümantasyonundan doğrula (JSON şemaları bile aynı değil, Codex TOML / Hermes YAML kullanır).
 - Tarayıcı bir dosyanın mutlak yolunu asla vermez; sunucunun okuyacağı dosya için yol input'u değil upload uçtan uca akışı tasarla.
 - FastAPI `TestClient` kendini loopback dışı bir istemci olarak sunar; loopback sınırı olan endpoint'leri test ederken `TestClient(app, client=("127.0.0.1", <port>))` kullan.
+- Yeni MCP tool eklerken `server/tools/profiles.py` içindeki `TOOL_TIERS`'a da ekle ve sabit tool sayılarını güncelle; `tests/test_mcp_profiles.py` kayıt ile katman haritasının birebir örtüşmesini kilitliyor.
+- `server/api.py` içindeki `_engine` modül global'i; testte `SQLITE_DB_PATH` değiştirmek yetmez, `api._engine`/`api._initialized`/`engine_provider.set_engine(None)` sıfırlanmalı.
+- aiosqlite bağlantısı onu açan event loop'a bağlıdır; `asyncio.run(initialize())` ile açıp sonra ayrı bir loop çalıştırma — FastMCP `lifespan` kullan.
+- Doğrulama için üretim kodunu geçici bozduktan sonra `git checkout -- <dosya>` ile geri alma; commit edilmemiş tüm değişikliklerini siler.
 
 ## 2026-08-12 — levh / server.cli
 
@@ -68,3 +72,24 @@ Hatalardan çıkan kalıcı dersler. Her görev öncesi ilgili anahtar kelimeyle
 - KÖK NEDEN: `RemoteAccessBoundaryMiddleware` token yokken yalnızca loopback'e izin veriyor; FastAPI `TestClient` varsayılan olarak kendini `testclient` host'u ile sunuyor ve bu loopback sayılmıyor.
 - KURAL: Loopback sınırı olan endpoint'leri test ederken `TestClient(app, client=("127.0.0.1", <port>))` ver ya da httpx `ASGITransport` kullan.
 - KAPSAM: `tests/` içindeki tüm API testleri.
+
+## 2026-08-13 — levh / MCP tool profilleri
+
+- HATA: Guard tool'ları eklendiğinde `test_mcp_profiles.py` iki testte düştü; tool kodunda hata yoktu.
+- KÖK NEDEN: `profiles.py` her tool'u bir katmana atıyor ve testler hem katman haritasının kayıtla birebir örtüşmesini hem de sabit tool sayılarını (59) doğruluyor. Yeni tool bu haritaya eklenmeden kaydedilince kayıt ile harita ayrıştı.
+- KURAL: Yeni MCP tool eklerken `TOOL_TIERS`'a katmanıyla birlikte ekle; `profiles.py`, `configs.py`, `test_mcp_profiles.py`, `test_onboarding_*.py` içindeki sabit sayıları güncelle. Katman seçimi bir tasarım kararıdır: varsayılan profil `work`, yani `work`'te olmayan tool pratikte görünmez.
+- KAPSAM: `server/tools/register.py` ile birlikte her yeni tool.
+
+## 2026-08-13 — levh / üretilen MCP sunucusunun event loop'u
+
+- HATA: `levh mcp init --with-memory` ile üretilen sunucu ilk tool çağrısında takılıyordu; dosyalar doğru yazılmıştı.
+- KÖK NEDEN: Üretilen `main()` önce `asyncio.run(engine.initialize())` çağırıyor, sonra `mcp.run()` kendi event loop'unu açıyordu. aiosqlite bağlantısı ilk (kapanmış) loop'a bağlı kaldığı için her sorgu asılı kalıyor.
+- KURAL: Async bir kaynağı sunucudan önce ayrı bir `asyncio.run()` içinde açma; FastMCP `lifespan` kullan (`server/mcp_stdio.py` deseni). Kod üreten bir özellikte, üretilen kodu import edip gerçekten bir tool çağıran test yaz — dosya varlığını doğrulamak yetmez.
+- KAPSAM: `server/scaffold.py` ve async kaynak açan tüm giriş noktaları.
+
+## 2026-08-13 — levh / public demo modunda arama
+
+- HATA: Public demo'da hafıza araması tamamen çalışmıyordu; testi olmadığı için fark edilmemişti.
+- KÖK NEDEN: Demo koruması tüm mutating HTTP metodlarını engelliyor, `recall` ise sorguyu taşımak için POST kullanıyor. Aynı dosyadaki WebSocket yolu `recall`'a açıkça izin veriyordu — iki yarı çelişiyordu.
+- KURAL: "Yazma" kararını HTTP metoduna göre verme; POST kullanan okuma uçları için açık bir izin listesi tut ve yan etkiyi (reinforcement) sunucu tarafında zorla kapat, istek gövdesine güvenme. Güvenlik sınırlarını manuel checklist ile değil testle doğrula.
+- KAPSAM: `server/api.py` demo/yetki middleware'leri.
