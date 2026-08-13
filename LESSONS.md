@@ -15,7 +15,6 @@ Hatalardan çıkan kalıcı dersler. Her görev öncesi ilgili anahtar kelimeyle
 - Yeni MCP tool eklerken `server/tools/profiles.py` içindeki `TOOL_TIERS`'a da ekle ve sabit tool sayılarını güncelle; `tests/test_mcp_profiles.py` kayıt ile katman haritasının birebir örtüşmesini kilitliyor.
 - `server/api.py` içindeki `_engine` modül global'i; testte `SQLITE_DB_PATH` değiştirmek yetmez, `api._engine`/`api._initialized`/`engine_provider.set_engine(None)` sıfırlanmalı.
 - aiosqlite bağlantısı onu açan event loop'a bağlıdır; `asyncio.run(initialize())` ile açıp sonra ayrı bir loop çalıştırma — FastMCP `lifespan` kullan.
-- Doğrulama için üretim kodunu geçici bozduktan sonra `git checkout -- <dosya>` ile geri alma; commit edilmemiş tüm değişikliklerini siler.
 
 ## 2026-08-12 — levh / server.cli
 

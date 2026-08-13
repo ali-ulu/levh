@@ -176,12 +176,16 @@ async def test_token_gate_rate_limits_bad_auth_attempts(monkeypatch):
     assert constant_time_token_matches("yanlış", "correct-token") is False
     assert constant_time_token_matches("doğru-token", "doğru-token") is True
 
-    old_token = api_mod._API_TOKEN
-    old_auth = api_mod._auth_limiter
-    old_api = api_mod._api_limiter
-    api_mod._API_TOKEN = "correct-token"
-    api_mod._auth_limiter = SlidingWindowRateLimiter(10, 60)
-    api_mod._api_limiter = SlidingWindowRateLimiter(100, 60)
+    # The token and the limiters live in server.routes.deps, which is the one
+    # place the middleware reads them from.
+    from server.routes import deps
+
+    old_token = os.environ.get("LEVH_TOKEN")
+    old_auth = deps.auth_limiter
+    old_api = deps.api_limiter
+    os.environ["LEVH_TOKEN"] = "correct-token"
+    deps.auth_limiter = SlidingWindowRateLimiter(10, 60)
+    deps.api_limiter = SlidingWindowRateLimiter(100, 60)
     try:
         transport = ASGITransport(app=api_mod.app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -189,7 +193,7 @@ async def test_token_gate_rate_limits_bad_auth_attempts(monkeypatch):
                 "/api/stats",
                 headers=[(b"x-levh-token", "yanlış".encode("utf-8"))],
             )
-            api_mod._auth_limiter = SlidingWindowRateLimiter(2, 60)
+            deps.auth_limiter = SlidingWindowRateLimiter(2, 60)
             first = await client.get("/api/stats", headers={"X-LEVH-Token": "bad"})
             second = await client.get("/api/stats", headers={"X-LEVH-Token": "bad"})
             third = await client.get("/api/stats", headers={"X-LEVH-Token": "bad"})
@@ -197,9 +201,12 @@ async def test_token_gate_rate_limits_bad_auth_attempts(monkeypatch):
         assert [first.status_code, second.status_code, third.status_code] == [401, 401, 429]
         assert int(third.headers["Retry-After"]) >= 1
     finally:
-        api_mod._API_TOKEN = old_token
-        api_mod._auth_limiter = old_auth
-        api_mod._api_limiter = old_api
+        if old_token is None:
+            os.environ.pop("LEVH_TOKEN", None)
+        else:
+            os.environ["LEVH_TOKEN"] = old_token
+        deps.auth_limiter = old_auth
+        deps.api_limiter = old_api
 @pytest.mark.asyncio
 async def test_replace_restore_creates_recoverable_safety_backup(tmp_path):
     target_path = tmp_path / "target.db"

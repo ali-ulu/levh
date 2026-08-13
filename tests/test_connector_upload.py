@@ -105,9 +105,9 @@ def test_invalid_base64_is_rejected(client):
 
 
 def test_oversized_upload_is_rejected(client, monkeypatch):
-    from server import api
+    from server.routes import connectors
 
-    monkeypatch.setattr(api, "MAX_UPLOAD_BYTES", 16)
+    monkeypatch.setattr(connectors, "MAX_UPLOAD_BYTES", 16)
     res = _upload(client, "big.mbox", b"x" * 17)
     assert res.status_code == 413
 
