@@ -1,0 +1,182 @@
+"""The SQLite schema, its indexes and the migration table.
+
+Kept apart from the connection logic: this is data, and it is the part a
+reader looking for "what columns exist" actually wants.
+"""
+
+from __future__ import annotations
+
+import os
+
+
+
+_DEFAULT_DB_PATH = os.getenv("SQLITE_DB_PATH", "./stackmemory.db")
+
+
+CURRENT_SCHEMA_VERSION = 2
+
+
+_SCHEMA = """
+CREATE TABLE IF NOT EXISTS memories (
+    id          TEXT PRIMARY KEY,
+    content     TEXT NOT NULL,
+    memory_type TEXT NOT NULL DEFAULT 'short_term',
+    embedding   TEXT,                -- JSON-encoded float[]
+    importance  REAL DEFAULT 0.5,
+    frequency   INTEGER DEFAULT 1,
+    tags        TEXT,                -- JSON-encoded string[]
+    session_id  TEXT,
+    project     TEXT,
+    source      TEXT,
+    pinned      INTEGER DEFAULT 0,
+    metadata    TEXT,                -- JSON-encoded object
+    hscore      REAL,
+    created_at  TEXT NOT NULL,
+    accessed_at TEXT NOT NULL,
+    decay_factor REAL DEFAULT 1.0,
+    stability_hours REAL DEFAULT 168.0,
+    recall_count INTEGER DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS sessions (
+    id           TEXT PRIMARY KEY,
+    name         TEXT NOT NULL DEFAULT 'Untitled Session',
+    status       TEXT NOT NULL DEFAULT 'active',
+    metadata     TEXT,
+    memory_count INTEGER DEFAULT 0,
+    created_at   TEXT NOT NULL,
+    ended_at     TEXT
+);
+
+-- Connector framework v2: per-source incremental-sync bookkeeping.
+CREATE TABLE IF NOT EXISTS connector_sync (
+    source_key     TEXT PRIMARY KEY,   -- "<connector>:<project>" identity
+    connector      TEXT NOT NULL,
+    project        TEXT,
+    last_synced_at TEXT,
+    last_fetched   INTEGER DEFAULT 0,
+    last_stored    INTEGER DEFAULT 0,
+    total_stored   INTEGER DEFAULT 0,
+    runs           INTEGER DEFAULT 0
+);
+
+-- Mistake guard: one row per recorded mistake. The rule itself lives in
+-- `memories` (pinned, so it never decays); this table is the incident log
+-- that says which rule was learned, from what, and whether it still stands.
+CREATE TABLE IF NOT EXISTS violations (
+    id           TEXT PRIMARY KEY,
+    rule_id      TEXT NOT NULL,          -- memories.id of the pinned rule
+    task         TEXT,                   -- what was being attempted
+    wrong_action TEXT NOT NULL,          -- what was done
+    root_cause   TEXT,                   -- why it happened
+    tool_name    TEXT,                   -- tool involved, when known
+    severity     TEXT NOT NULL DEFAULT 'medium',
+    source       TEXT NOT NULL DEFAULT 'user',
+    occurred_at  TEXT NOT NULL,
+    resolved     INTEGER DEFAULT 0,
+    resolution   TEXT
+);
+
+-- Entity knowledge graph (persistent): typed entities + memory↔entity links.
+CREATE TABLE IF NOT EXISTS entities (
+    id         TEXT PRIMARY KEY,       -- "<type>:<key>"
+    type       TEXT NOT NULL,          -- person|organization|event|document|task
+    ekey       TEXT NOT NULL,
+    name       TEXT NOT NULL,
+    created_at TEXT,
+    updated_at TEXT
+);
+
+CREATE TABLE IF NOT EXISTS memory_entities (
+    memory_id  TEXT NOT NULL,
+    entity_id  TEXT NOT NULL,
+    role       TEXT,
+    PRIMARY KEY (memory_id, entity_id)
+);
+
+-- Deterministic conflict CANDIDATES (review signal, never a verdict).
+CREATE TABLE IF NOT EXISTS memory_conflict_candidates (
+    id                  TEXT PRIMARY KEY,   -- "<memA>|<memB>" (sorted)
+    memory_id_a         TEXT NOT NULL,
+    memory_id_b         TEXT NOT NULL,
+    shared_entities_json TEXT NOT NULL,
+    signal_type         TEXT NOT NULL,
+    confidence          REAL NOT NULL,
+    status              TEXT NOT NULL,      -- open|dismissed|confirmed|resolved
+    explanation_json    TEXT NOT NULL,
+    created_at          TEXT NOT NULL,
+    reviewed_at         TEXT
+);
+
+-- Provenance / trust scores (deterministic reliability signal, NOT truth).
+CREATE TABLE IF NOT EXISTS memory_trust_scores (
+    memory_id           TEXT PRIMARY KEY,
+    confidence          REAL NOT NULL,
+    source_score        REAL NOT NULL,
+    corroboration_score REAL NOT NULL,
+    review_score        REAL NOT NULL,
+    recency_score       REAL NOT NULL,
+    risk_penalty        REAL NOT NULL,
+    label               TEXT NOT NULL,
+    computed_at         TEXT NOT NULL,
+    breakdown_json      TEXT NOT NULL
+);
+
+"""
+
+
+# Indexes are created AFTER migrations so they can reference columns that
+# older databases gain via ALTER TABLE.
+_INDEXES = """
+CREATE INDEX IF NOT EXISTS idx_mem_session ON memories(session_id);
+CREATE INDEX IF NOT EXISTS idx_mem_type    ON memories(memory_type);
+CREATE INDEX IF NOT EXISTS idx_mem_hscore  ON memories(hscore);
+CREATE INDEX IF NOT EXISTS idx_mem_created ON memories(created_at);
+CREATE INDEX IF NOT EXISTS idx_mem_project ON memories(project);
+CREATE INDEX IF NOT EXISTS idx_mem_source  ON memories(source);
+-- Matches the default list/search ordering (pinned DESC, created_at DESC).
+CREATE INDEX IF NOT EXISTS idx_mem_pinned_created ON memories(pinned, created_at);
+CREATE INDEX IF NOT EXISTS idx_ses_status  ON sessions(status);
+CREATE INDEX IF NOT EXISTS idx_ent_type     ON entities(type);
+CREATE INDEX IF NOT EXISTS idx_me_entity     ON memory_entities(entity_id);
+CREATE INDEX IF NOT EXISTS idx_me_memory     ON memory_entities(memory_id);
+CREATE INDEX IF NOT EXISTS idx_viol_rule     ON violations(rule_id);
+CREATE INDEX IF NOT EXISTS idx_viol_when     ON violations(occurred_at DESC);
+"""
+
+
+# Columns added after v1.0 — applied to pre-existing databases on connect.
+_MIGRATIONS: list[tuple[str, str]] = [
+    ("project", "ALTER TABLE memories ADD COLUMN project TEXT"),
+    ("source", "ALTER TABLE memories ADD COLUMN source TEXT"),
+    ("pinned", "ALTER TABLE memories ADD COLUMN pinned INTEGER DEFAULT 0"),
+    ("stability_hours", "ALTER TABLE memories ADD COLUMN stability_hours REAL DEFAULT 168.0"),
+    ("recall_count", "ALTER TABLE memories ADD COLUMN recall_count INTEGER DEFAULT 0"),
+]
+
+
+_FTS_SCHEMA = """
+CREATE VIRTUAL TABLE IF NOT EXISTS memories_fts USING fts5(
+    memory_id UNINDEXED,
+    content,
+    tokenize = 'unicode61'
+);
+
+CREATE TRIGGER IF NOT EXISTS memories_fts_ai
+AFTER INSERT ON memories BEGIN
+    DELETE FROM memories_fts WHERE memory_id = new.id;
+    INSERT INTO memories_fts(memory_id, content) VALUES (new.id, new.content);
+END;
+
+CREATE TRIGGER IF NOT EXISTS memories_fts_au
+AFTER UPDATE OF id, content ON memories BEGIN
+    DELETE FROM memories_fts WHERE memory_id = old.id;
+    DELETE FROM memories_fts WHERE memory_id = new.id;
+    INSERT INTO memories_fts(memory_id, content) VALUES (new.id, new.content);
+END;
+
+CREATE TRIGGER IF NOT EXISTS memories_fts_ad
+AFTER DELETE ON memories BEGIN
+    DELETE FROM memories_fts WHERE memory_id = old.id;
+END;
+"""
