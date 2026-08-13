@@ -205,6 +205,11 @@ _PUBLIC_DEMO_BLOCKED_PATHS = {
     "/api/export/full.sqlite",
     "/api/export/full.pdf",
 }
+# Recall reads memory but has to POST to carry its query, so the blanket
+# method rule would kill search on the public demo — while the WebSocket
+# path deliberately allows the same action. Let it through and neutralize
+# its one side effect (reinforcement) in the endpoint itself.
+_PUBLIC_DEMO_ALLOWED_POSTS = {"/api/memories/recall"}
 
 
 @app.middleware("http")
@@ -222,6 +227,8 @@ async def _public_demo_guard(request: Request, call_next):
                     {"detail": "forbidden in public demo mode"},
                     status_code=403,
                 )
+            return await call_next(request)
+        if request.method == "POST" and request.url.path in _PUBLIC_DEMO_ALLOWED_POSTS:
             return await call_next(request)
         # Block all mutating methods
         return JSONResponse(
@@ -713,7 +720,10 @@ async def recall_memories(req: RecallRequest):
         session_id=req.session_id,
         project=req.project,
         min_importance=req.min_importance,
-        reinforce=req.reinforce,
+        # Reinforcement resets decay clocks and raises frequency. On a public
+        # demo the store is shared, so an anonymous search must not reshape
+        # what everyone else sees.
+        reinforce=False if _PUBLIC_DEMO else req.reinforce,
     )
     return {
         "memories": [m.model_dump(exclude={"embedding"}) for m in result.memories],
