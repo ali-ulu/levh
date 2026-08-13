@@ -37,7 +37,7 @@ def cmd_context(args: argparse.Namespace) -> int:
     if args.output:
         # The operator names the output file; writing where they asked is the
         # command's purpose, so the path is intentionally not constrained.
-        Path(args.output).write_text(content, encoding="utf-8")  # codeql[py/path-injection]
+        Path(args.output).write_text(content, encoding="utf-8")
         print(f"  Wrote {args.output} ({len(content)} chars, project={project or 'all'})")
     else:
         print(content)

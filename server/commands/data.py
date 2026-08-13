@@ -70,12 +70,12 @@ def cmd_export_full(args: argparse.Namespace) -> int:
                 import json
 
                 export = await build_full_export(engine)
-                with open(out_path, "w") as f:  # codeql[py/path-injection]
+                with open(out_path, "w") as f:
                     json.dump(export, f, indent=2, default=str)
                 return export["counts"]
             elif fmt == "sqlite":
                 blob = await export_full_sqlite(engine)
-                with open(out_path, "wb") as f:  # codeql[py/path-injection]
+                with open(out_path, "wb") as f:
                     f.write(blob)
                 return None
             else:
@@ -85,7 +85,7 @@ def cmd_export_full(args: argparse.Namespace) -> int:
                 except PdfUnavailableError as exc:
                     print(f"  {exc}", file=sys.stderr)
                     return None
-                with open(out_path, "wb") as f:  # codeql[py/path-injection]
+                with open(out_path, "wb") as f:
                     f.write(blob)
                 return export["counts"]
         finally:
