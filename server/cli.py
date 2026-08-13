@@ -1383,6 +1383,49 @@ def cmd_mcp_config(args: argparse.Namespace) -> int:
     return 0
 
 
+# ── mcp init ──────────────────────────────────────────────────────
+
+
+def cmd_mcp_init(args: argparse.Namespace) -> int:
+    """Scaffold a new MCP server project."""
+    from server.scaffold import ScaffoldError, generate_project
+    from server.tools.profiles import UnknownProfileError, resolve_profile
+
+    try:
+        profile = resolve_profile(getattr(args, "profile", None))
+    except UnknownProfileError as exc:
+        print(f"  {exc}", file=sys.stderr)
+        return 1
+
+    try:
+        written = generate_project(
+            args.name,
+            target_dir=args.directory,
+            with_memory=args.with_memory,
+            template=args.template,
+            profile=profile,
+            force=args.force,
+        )
+    except ScaffoldError as exc:
+        print(f"  {exc}", file=sys.stderr)
+        return 1
+
+    root = written[0].parent if len(written) == 1 else Path(args.directory).resolve() / args.name
+    print(f"\n  Created {args.name} ({len(written)} files) in {root}")
+    for path in written:
+        print(f"    {path.relative_to(root.parent)}")
+
+    module = args.name.replace("-", "_").replace(".", "_").lower()
+    print("\n  Next:")
+    print(f"    cd {args.name}")
+    print("    pip install -r requirements.txt")
+    print(f"    python -m {module}.server")
+    if args.with_memory:
+        print(f"\n  Memory tools mounted with the '{profile}' profile, sharing the")
+        print("  LEVH database — stored memories show up in the dashboard too.")
+    return 0
+
+
 # ── mcp profiles ──────────────────────────────────────────────────
 
 def cmd_mcp_profiles(_args: argparse.Namespace) -> int:
@@ -1617,6 +1660,32 @@ def main() -> int:
         help="MCP tool profile: minimal | work (default) | admin | full",
     )
 
+    # mcp init
+    init_srv_p = mcp_sub.add_parser(
+        "init", help="Scaffold a new MCP server project (optionally with LEVH memory)"
+    )
+    init_srv_p.add_argument("name", type=str, help="Project name (becomes the directory)")
+    init_srv_p.add_argument(
+        "--with-memory",
+        action="store_true",
+        help="Mount the LEVH memory tools in the generated server",
+    )
+    init_srv_p.add_argument(
+        "--template", type=str, default="python", help="Project template: python"
+    )
+    init_srv_p.add_argument(
+        "--profile",
+        type=str,
+        default="work",
+        help="MCP tool profile for the mounted memory tools (with --with-memory)",
+    )
+    init_srv_p.add_argument(
+        "--directory", type=str, default=".", help="Where to create the project"
+    )
+    init_srv_p.add_argument(
+        "--force", action="store_true", help="Write into a non-empty directory"
+    )
+
     # mcp profiles
     mcp_sub.add_parser("profiles", help="List MCP tool profiles and their tool counts")
 
@@ -1819,6 +1888,8 @@ def main() -> int:
     elif args.command == "mcp":
         if args.mcp_command == "config":
             return cmd_mcp_config(args)
+        elif args.mcp_command == "init":
+            return cmd_mcp_init(args)
         elif args.mcp_command == "profiles":
             return cmd_mcp_profiles(args)
         elif args.mcp_command == "stdio":
