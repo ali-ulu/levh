@@ -1,0 +1,132 @@
+name: Publish
+
+# Releasing by hand means remembering six steps in order. This does them:
+# push a tag, and the wheel is built from that exact commit, verified, attached
+# to a GitHub Release and uploaded to PyPI.
+#
+#   git tag -a v2.29.0 -m "LEVH 2.29.0" && git push origin v2.29.0
+#
+# One-time setup on PyPI: add a Trusted Publisher for this repository with
+# workflow `publish.yml` (https://pypi.org/manage/account/publishing/). No API
+# token is stored anywhere — PyPI verifies the workflow's OIDC identity.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to publish (e.g. v2.29.0)"
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build and verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install build tooling
+        run: python -m pip install --upgrade build twine
+
+      # The tag and the version in the tree must agree. A tag pointing at a
+      # commit that still says 2.28.0 would publish the wrong thing under the
+      # right name, and nothing downstream would notice.
+      - name: Check the tag matches the packaged version
+        run: |
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          VERSION="$(python -c 'import tomllib,pathlib; print(tomllib.loads(pathlib.Path("pyproject.toml").read_text())["project"]["version"])')"
+          echo "tag=$TAG version=$VERSION"
+          test "$TAG" = "v$VERSION" || {
+            echo "::error::tag $TAG does not match pyproject version $VERSION"
+            exit 1
+          }
+
+      - name: Assert every version site agrees
+        run: python scripts/release.py --check
+
+      - name: Build wheel and sdist
+        run: python -m build
+
+      - name: twine check
+        run: python -m twine check dist/*
+
+      # A wheel that imports is not the same as a wheel that runs. This is the
+      # check that would have caught a missing packaged dashboard.
+      - name: Install the wheel in a clean environment and run it
+        run: |
+          python -m venv /tmp/verify
+          /tmp/verify/bin/pip install --quiet dist/*.whl
+          /tmp/verify/bin/levh --version
+          /tmp/verify/bin/python - <<'PY'
+          import os
+          import server
+
+          dashboard = os.path.join(os.path.dirname(server.__file__), "dashboard")
+          assert os.path.isdir(dashboard), "packaged dashboard is missing"
+          assert os.path.exists(os.path.join(dashboard, "index.html")), "dashboard has no index"
+          print("packaged dashboard:", len(os.listdir(dashboard)), "entries")
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  github-release:
+    name: GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+
+      # The release notes are the CHANGELOG section for this version, so the
+      # two can never tell different stories.
+      - name: Extract the changelog section
+        run: |
+          VERSION="$(python -c 'import tomllib,pathlib; print(tomllib.loads(pathlib.Path("pyproject.toml").read_text())["project"]["version"])')"
+          awk -v v="## $VERSION" '
+            $0 == v {found=1; next}
+            found && /^## / {exit}
+            found {print}
+          ' CHANGELOG.md > release-notes.md
+          test -s release-notes.md || echo "See CHANGELOG.md." > release-notes.md
+          head -5 release-notes.md
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.tag || github.ref_name }}
+          body_path: release-notes.md
+          files: dist/*
+
+  pypi:
+    name: PyPI
+    needs: build
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write # Trusted Publishing — no token is stored in the repo
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+      - uses: pypa/gh-action-pypi-publish@release/v1
