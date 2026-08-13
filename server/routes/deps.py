@@ -22,6 +22,7 @@ from server.auth import (
 )
 from server.core.env import get_env
 from server.core.rate_limit import SlidingWindowRateLimiter
+from server.entrypoint import levh_version
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from fastapi import WebSocket
@@ -75,7 +76,10 @@ def set_event_loop_if_unset() -> None:
 
 logger = logging.getLogger("levh.api")
 
-APP_VERSION = "2.28.0"
+# Derived, never a literal: server/api.py already carries the canonical
+# version that scripts/release.py rewrites, and a second copy here is exactly
+# the drift #46 hit — it silently stayed at 2.28.0 through a 2.29.0 bump.
+APP_VERSION = levh_version()
 
 def api_token() -> str:
     """The shared-secret gate, or "" when the server is open.

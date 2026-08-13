@@ -83,6 +83,7 @@ Optional, once you are set up:
 ```bash
 levh hook install               # capture every git commit message
 levh context -o CLAUDE.md       # compile memory into a context file
+levh mcp init my-server --with-memory   # scaffold an MCP server on this database
 ```
 
 → [Getting Started](docs/getting-started.md) · [5-minute demo](docs/demo/5-minute-demo.md) · [Installing from source](docs/installation.md)
@@ -99,11 +100,13 @@ levh context -o CLAUDE.md       # compile memory into a context file
 - **Admission gate** — every incoming memory is screened before storage, on create *and* on update: duplicates flagged, secrets like API keys redacted before they are ever embedded. Deterministic, offline.
 - **Trust & provenance** — an explainable reliability score per memory from source type, corroboration and review history. Separate from ranking; not a truth claim.
 - **Entity knowledge graph** — memories indexed into real entity tables, so "which memories mention X" is a join, not a search.
+- **Mistake guard** — a corrected mistake becomes a pinned rule plus an incident record. Pinned memories never decay, so the rule is still there weeks later, in a different session, and it leads the generated context file where the next session reads it before working.
 - **Encrypted backup & restore** — a full portable snapshot including decay state, optionally encrypted with a passphrase (PBKDF2 + AES).
 - **Consolidation & review** — aged clusters collapse into durable summaries; the fading queue becomes a keep / reinforce / forget flow.
-- **59 MCP tools**, a REST API, a WebSocket feed, and a live Next.js dashboard served by the API itself — one process, one port.
+- **61 MCP tools**, a REST API, a WebSocket feed, and a live Next.js dashboard served by the API itself — one process, one port.
 - **4 embedding modes** — OpenAI, local `all-MiniLM-L6-v2`, Ollama (fully offline), or a deterministic hash fallback. The system always works.
-- **Connectors** for Calendar, Email, transcripts, Notion, Obsidian, GitHub and local files — all routed through the admission gate.
+- **Connectors** for Calendar, Email, transcripts, Notion, Obsidian, GitHub and local files — all routed through the admission gate. Calendar, mail and transcript files are uploaded from the dashboard; there is no filesystem path to type.
+- **Scaffold your own MCP server** — `levh mcp init my-server --with-memory` writes a working server that shares this database, optionally with a deploy config for Fly, Railway, Render or Docker.
 
 → [Full MCP tool list](docs/mcp-tools.md) · [REST API](docs/api-reference.md) · [CLI](docs/cli.md) · [Connectors](docs/connectors.md)
 
@@ -114,10 +117,10 @@ levh context -o CLAUDE.md       # compile memory into a context file
 | | |
 |---|---|
 | [Getting Started](docs/getting-started.md) | First run, demo vs. real data |
-| [Platform Setup](docs/mcp-client-config.md) | Claude Desktop, Cursor, Claude Code, VS Code, Windsurf |
+| [Platform Setup](docs/mcp-client-config.md) | Claude Desktop, Claude Code, Cursor, Windsurf, VS Code (Cline), jcode, omp, opencode, Codex, Hermes |
 | [Configuration](docs/configuration.md) | Environment variables, precedence, Docker |
 | [Architecture](docs/ARCHITECTURE.md) | Layers, engine, scoring internals |
-| [MCP Tools](docs/mcp-tools.md) | All 59 tools and the profile bands |
+| [MCP Tools](docs/mcp-tools.md) | All 61 tools and the profile bands |
 | [REST API](docs/api-reference.md) | Every endpoint |
 | [CLI](docs/cli.md) | Every command |
 | [Evaluation](docs/memory-evaluation.md) | Recall benchmark, golden fixtures, dogfood |

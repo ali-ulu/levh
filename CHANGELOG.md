@@ -2,9 +2,81 @@
 
 ## Unreleased
 
-- `local_files` connector no longer chunks by default. Each file becomes one
-  memory regardless of size; pass `chunk_size` in the connector config to opt
-  back into splitting large files (with `overlap`, default 200).
+## 2.29.0
+
+### Mistake guard
+
+- **A corrected mistake becomes a rule that outlives the session.**
+  `record_mistake` stores it as a pinned memory — pinned memories are exempt
+  from H(x,ψ) decay — plus a row in the new `violations` table recording the
+  incident that taught it. Rules lead the generated context file under
+  "Rules Learned From Mistakes", so the next session reads them before
+  working. `list_mistakes` reads the log back.
+- **Readable by a person, not only an agent.** `GET /api/guard/rules`,
+  `GET /api/guard/violations`, `POST /api/guard/mistakes`, and a "Mistake
+  guard" page in the dashboard under Intelligence.
+- Deliberately not included: deciding whether a *proposed* action violates a
+  rule. That runs in front of every tool call and needs a latency budget and
+  a false-positive story that recorded rules can inform but this layer cannot
+  assume.
+
+### Connectors and clients
+
+- `local_files` no longer chunks by default. Each file becomes one memory
+  regardless of size; pass `chunk_size` in the connector config to opt back
+  into splitting large files (with `overlap`, default 200).
+- **Upload calendar, mailbox and transcript files from the dashboard.**
+  Importing used to require typing an absolute filesystem path while the JSON
+  import on the same page used a file picker. Browsers expose a file's
+  contents but never its path, so the bytes are uploaded and the server
+  returns the path to import from. The stored file is named from an
+  identifier, never from the request.
+- **Five more MCP clients:** jcode, omp (oh-my-pi), opencode, Codex and
+  Hermes. Three of them never read the JSON shape LEVH emitted — opencode
+  uses a different schema, Codex uses TOML, Hermes uses YAML — so config
+  generated the old way was silently ignored. Output is now format-aware and
+  verified with each format's own parser.
+
+### Scaffolding
+
+- **`levh mcp init <name> --with-memory`** writes a working FastMCP server
+  that imports the installed package and shares this database, so a memory
+  stored through it appears in the dashboard too. `--deploy fly|railway|
+  render|docker` adds a deploy config; all four point `SQLITE_DB_PATH` at a
+  persistent volume, because an ephemeral filesystem would start every
+  restart with an empty memory.
+
+### Fixes
+
+- **Public demo mode kept its search.** `recall` POSTs because it carries a
+  query, so the blanket "block every mutating method" rule left the demo
+  without memory search while the WebSocket path allowed the same action.
+  Recall is allowed again with reinforcement forced off, so an anonymous
+  search cannot reshape a shared store. 19 tests now lock the boundary that
+  previously had none.
+- **`levh sync` no longer echoes credentials.** Connector config carries
+  tokens and API keys, and an exception message is written by the connector
+  or its HTTP client — which put the URL, credentials and all, into the
+  error that was printed verbatim. Supplied values are stripped from the
+  message. A malformed `--config` pair is reported without repeating it.
+- **API errors say what went wrong** instead of rendering `[object Object]`.
+- **The dashboard's popovers are opaque again** — a second Tailwind config
+  was shadowing the first and dropping the theme tokens.
+- **`python -m server.cli --version`** derives from package metadata rather
+  than a second hard-coded semver.
+- `audit_secrets` returns `secret_types`, named after the detector labels it
+  actually holds; it never returned the credential it matched.
+
+### Internal
+
+- The five largest files were split by responsibility, with public surfaces
+  unchanged and verified: `memory_engine.py` 2829 → 290, `cli.py` 1920 → 273,
+  `api.py` 1782 → 237, `database.py` 1242 → 274, and the settings page
+  1226 → 53. Route table, engine methods, database methods and CLI
+  subcommands all diff clean before and after.
+- `LEVH_TOKEN` and `LEVH_PUBLIC_DEMO` are read at call time instead of being
+  frozen at import, so two modules can no longer disagree about whether
+  writes are allowed.
 
 ## 2.28.0
 

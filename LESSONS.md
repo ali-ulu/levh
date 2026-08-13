@@ -100,3 +100,10 @@ Hatalardan çıkan kalıcı dersler. Her görev öncesi ilgili anahtar kelimeyle
 - KÖK NEDEN: Release pipeline canonical package sürümünü güncellese de CLI aynı semver'i ayrı bir literal olarak tutuyordu; yeni release'te bu ikinci kaynak güncellenmedi ve mevcut consistency testi console entrypoint'i doğrulamıyordu.
 - KURAL: Sürüm bilgisini çoğaltma; installed CLI sürümünü `importlib.metadata.version("levh")` üzerinden package metadata'sından türet ve entrypoint hedefini regression testiyle kilitle.
 - KAPSAM: `pyproject.toml`, `server/entrypoint.py`, CLI sürüm raporlama ve release testleri.
+
+## 2026-08-13 — levh / bölme sonrası sürüm literali
+
+- HATA: 2.29.0 bump'ından sonra `/api/config` hâlâ 2.28.0 bildiriyordu.
+- KÖK NEDEN: `server/api.py` bölünürken sürüm sabiti `routes/deps.py`'ye ikinci bir literal olarak kopyalanmıştı. `scripts/release.py` yalnızca kendi `VERSION_SITES` listesindeki dört yeri yeniden yazıyor, yeni kopyayı bilmiyordu — #46'daki drift'in aynısı, bu kez refaktörün ürettiği.
+- KURAL: Refaktörde sabitleri çoğaltma; sürümü `levh_version()` üzerinden package metadata'sından türet. Bölme sonrası `python scripts/release.py --check` çalıştır.
+- KAPSAM: `server/routes/deps.py`, sürüm bildiren tüm yollar.
