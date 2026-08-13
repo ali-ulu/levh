@@ -47,8 +47,8 @@ Documentation = "https://levh.ai-ulu.com/"
 Repository = "https://github.com/ali-ulu/levh"
 
 [project.scripts]
-levh = "server.cli:main"
-stackmemory = "server.cli:main"
+levh = "server.entrypoint:main"
+stackmemory = "server.entrypoint:main"
 
 [tool.setuptools.packages.find]
 include = ["server*"]
