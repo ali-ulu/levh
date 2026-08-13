@@ -10,6 +10,8 @@ from __future__ import annotations
 
 import argparse
 
+from server.entrypoint import levh_version
+
 from server.tools.profiles import DEFAULT_PROFILE  # noqa: F401
 
 
@@ -22,7 +24,12 @@ def build_parser(prog: str) -> tuple[argparse.ArgumentParser, dict[str, argparse
         prog=prog,
         description="LEVH - Local-first memory layer for AI agents and humans",
     )
-    parser.add_argument("--version", action="version", version="%(prog)s 2.27.2")
+    # Derived, never a second literal: a hard-coded semver here is exactly the
+    # drift #46 hit, and `python -m server.cli --version` reaches this path
+    # while the installed console script goes through server/entrypoint.py.
+    parser.add_argument(
+        "--version", action="version", version=f"%(prog)s {levh_version()}"
+    )
     sub = parser.add_subparsers(dest="command", help="Available commands")
 
     # doctor

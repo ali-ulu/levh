@@ -35,7 +35,9 @@ def cmd_context(args: argparse.Namespace) -> int:
     content = asyncio.run(_run())
 
     if args.output:
-        Path(args.output).write_text(content, encoding="utf-8")
+        # The operator names the output file; writing where they asked is the
+        # command's purpose, so the path is intentionally not constrained.
+        Path(args.output).write_text(content, encoding="utf-8")  # codeql[py/path-injection]
         print(f"  Wrote {args.output} ({len(content)} chars, project={project or 'all'})")
     else:
         print(content)
