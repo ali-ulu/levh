@@ -79,6 +79,15 @@ def test_traversal_attempts_cannot_escape_the_upload_dir(client, tmp_path, filen
     assert os.sep not in res.json()["filename"]
 
 
+def test_the_written_path_is_inside_the_upload_directory(client, tmp_path):
+    """Containment is re-checked on the resolved path, not just the name."""
+    res = _upload(client, "../../etc/passwd", b"x")
+
+    written = os.path.realpath(res.json()["path"])
+    upload_dir = os.path.realpath(str(tmp_path / "uploads"))
+    assert os.path.commonpath([written, upload_dir]) == upload_dir
+
+
 def test_dotfile_names_are_defanged(client):
     res = _upload(client, "...", b"x")
     assert res.status_code == 400

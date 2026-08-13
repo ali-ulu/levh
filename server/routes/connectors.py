@@ -141,13 +141,25 @@ async def connector_upload(req: ConnectorUploadRequest):
             detail=f"file is larger than the {MAX_UPLOAD_BYTES // (1024 * 1024)} MB upload limit",
         )
 
-    target = _connector_upload_dir() / name
+    upload_dir = _connector_upload_dir()
+    target = upload_dir / name
     stem, suffix = os.path.splitext(name)
     counter = 1
     while target.exists():
         target = target.with_name(f"{stem}-{counter}{suffix}")
         counter += 1
-    target.write_bytes(blob)
+
+    # _safe_upload_name already reduces the name to a basename over a
+    # restricted character set. This re-checks the *resolved* path against the
+    # upload directory anyway: the containment property is what actually
+    # matters, and asserting it here does not depend on reading the sanitizer
+    # correctly.
+    resolved = target.resolve()
+    if resolved.parent != upload_dir.resolve():
+        raise HTTPException(status_code=400, detail="invalid upload path")
+
+    resolved.write_bytes(blob)
+    target = resolved
     return {"path": str(target), "filename": target.name, "bytes": len(blob)}
 
 
