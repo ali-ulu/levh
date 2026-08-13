@@ -253,6 +253,27 @@ class TestSecretsInOutput:
         assert secret not in result.stderr
         assert "malformed --config" in result.stderr
 
+    def test_a_connector_error_cannot_carry_a_supplied_value_out(self):
+        """Exception text is not ours to trust.
+
+        A connector's error message is written by the connector — or by an
+        HTTP client that will happily put the URL, credentials and all, into
+        the error it raises. Every value the operator passed via --config is
+        stripped from it before printing.
+        """
+        secret = "ghp_notarealtokenbutshapedlikeone12345"
+        result = _run_cli(
+            "sync", "calendar", "--config", f"ics_path=/nonexistent/{secret}.ics"
+        )
+
+        assert result.returncode != 0
+        assert secret not in result.stdout
+        assert secret not in result.stderr
+        # ...and the error still says what went wrong.
+        assert "Calendar file not found" in result.stderr
+        assert "[redacted]" in result.stderr
+
+
     def test_the_secret_audit_reports_types_not_values(self, tmp_path):
         """`audit-secrets` names what it found, never the credential.
 

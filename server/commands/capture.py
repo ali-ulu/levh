@@ -114,6 +114,20 @@ def cmd_admit(args: argparse.Namespace) -> int:
     return 0
 
 
+def _scrub(text: str, secrets: "list[str]") -> str:
+    """Remove supplied config values from text destined for the terminal.
+
+    Connector config carries tokens and API keys, and an exception message is
+    not under our control — an HTTP client happily puts the URL, query string
+    and all, into the error it raises. Since the exact values are known here,
+    stripping them is reliable in a way that pattern-matching a message is not.
+    """
+    for secret in secrets:
+        if secret and len(secret) >= 4:
+            text = text.replace(secret, "[redacted]")
+    return text
+
+
 def cmd_sync(args: argparse.Namespace) -> int:
     """Connector v2: gate-filtered incremental import, or show sync state."""
     import asyncio
@@ -186,16 +200,18 @@ def cmd_sync(args: argparse.Namespace) -> int:
         await conn.disconnect()
         return result
 
+    supplied_secrets = list(config.values())
+
     try:
         result = asyncio.run(_run())
     except KeyError as e:
-        print(f"  {e}", file=sys.stderr)
+        print(f"  {_scrub(str(e), supplied_secrets)}", file=sys.stderr)
         return 1
     except (FileNotFoundError, ValueError, ConnectionError) as e:
-        print(f"  Connection failed: {e}", file=sys.stderr)
+        print(f"  Connection failed: {_scrub(str(e), supplied_secrets)}", file=sys.stderr)
         return 1
     except Exception as e:
-        print(f"  Sync failed: {e}", file=sys.stderr)
+        print(f"  Sync failed: {_scrub(str(e), supplied_secrets)}", file=sys.stderr)
         return 1
 
     print(
