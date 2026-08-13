@@ -1611,6 +1611,82 @@ async def get_entity(entity_id: str):
     return result
 
 
+# ── Mistake guard ───────────────────────────────────────────────────
+# Read-only surface over the rules mistakes produced and the incidents
+# that taught them. Recording happens through the MCP tool, where the
+# mistake is actually observed.
+
+class MistakeRequest(BaseModel):
+    task: str = ""
+    wrong_action: str
+    correct_action: str
+    root_cause: str = ""
+    tool_name: str = ""
+    severity: str = "medium"
+    source: str = "user"
+    project: Optional[str] = None
+
+
+async def _get_guard():
+    from server.core.guard import GuardService
+
+    engine = await get_engine()
+    return GuardService(engine.db, engine)
+
+
+@app.get("/api/guard/violations")
+async def list_guard_violations(days: int = 0, severity: str = "", limit: int = 50):
+    """List recorded mistakes, newest first. ``days=0`` means all time."""
+    guard = await _get_guard()
+    return {
+        "violations": await guard.list_violations(
+            days=days or None, severity=severity or None, limit=limit
+        )
+    }
+
+
+@app.get("/api/guard/rules")
+async def list_guard_rules(project: str = "", limit: int = 50):
+    """List the pinned rules mistakes have produced, most important first."""
+    guard = await _get_guard()
+    rules = await guard.list_rules(project=project or None, limit=limit)
+    return {
+        "rules": [
+            {
+                "id": r.id,
+                "statement": r.content,
+                "importance": r.importance,
+                "severity": r.metadata.get("severity", "medium"),
+                "task": r.metadata.get("task", ""),
+                "correct_action": r.metadata.get("correct_action", ""),
+                "root_cause": r.metadata.get("root_cause", ""),
+                "project": r.project,
+                "created_at": r.created_at,
+            }
+            for r in rules
+        ]
+    }
+
+
+@app.post("/api/guard/mistakes")
+async def record_guard_mistake(req: MistakeRequest):
+    """Record a mistake as a pinned rule plus a violation row."""
+    guard = await _get_guard()
+    try:
+        return await guard.record_mistake(
+            task=req.task,
+            wrong_action=req.wrong_action,
+            correct_action=req.correct_action,
+            root_cause=req.root_cause,
+            tool_name=req.tool_name,
+            severity=req.severity,
+            source=req.source,
+            project=req.project,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+
+
 # ── Conflict candidates (deterministic review signal) ───────────────
 # Never a verdict, never auto-deletes — a human reviews each candidate.
 

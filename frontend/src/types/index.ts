@@ -319,3 +319,32 @@ export interface OnboardingStatus {
   recommended_next_step: string;
   checks: OnboardingCheck[];
 }
+
+// Mistake guard: a rule is what was learned, a violation is the incident
+// that taught it. Recording happens through the MCP tool; the dashboard
+// reads them back.
+export interface GuardRule {
+  id: string;
+  statement: string;
+  importance: number;
+  severity: string;
+  task: string;
+  correct_action: string;
+  root_cause: string;
+  project: string | null;
+  created_at: string;
+}
+
+export interface GuardViolation {
+  id: string;
+  rule_id: string;
+  task: string | null;
+  wrong_action: string;
+  root_cause: string | null;
+  tool_name: string | null;
+  severity: string;
+  source: string;
+  occurred_at: string;
+  resolved: number;
+  resolution: string | null;
+}
