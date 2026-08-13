@@ -118,7 +118,7 @@ export function Sidebar() {
           </div>
           <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">SQLite · MCP · REST · WebSocket</p>
           <div className="mt-3 flex items-center justify-between text-[10px] text-muted-foreground">
-            <span>LEVH Engine v2.28</span>
+            <span>LEVH Engine v2.29</span>
             <span>local-first</span>
           </div>
         </div>
