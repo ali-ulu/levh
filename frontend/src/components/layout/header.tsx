@@ -7,6 +7,10 @@ import { api } from "@/lib/api";
 import { ThemeSwitcher } from "@/components/layout/theme-switcher";
 import { Bell, CircleHelp, Plus, Search, Wifi, WifiOff } from "lucide-react";
 
+// How often the online badge re-checks the core. The badge tolerates being a
+// few seconds stale, so this is deliberately slower than a UI-critical poll.
+const HEALTH_POLL_MS = 30000;
+
 export function Header() {
   const [online, setOnline] = useState<boolean | null>(null);
   const [query, setQuery] = useState("");
@@ -14,9 +18,20 @@ export function Header() {
 
   useEffect(() => {
     const check = () => api.health().then(() => setOnline(true)).catch(() => setOnline(false));
+    // Only poll while the tab is actually visible: a forgotten background tab
+    // otherwise keeps hitting /api/health forever to refresh a badge nobody is
+    // looking at. Firing on visibilitychange means returning to the tab still
+    // gets a fresh badge immediately, instead of waiting out the interval.
+    const tick = () => {
+      if (document.visibilityState === "visible") check();
+    };
     check();
-    const iv = setInterval(check, 15000);
-    return () => clearInterval(iv);
+    const iv = setInterval(tick, HEALTH_POLL_MS);
+    document.addEventListener("visibilitychange", tick);
+    return () => {
+      clearInterval(iv);
+      document.removeEventListener("visibilitychange", tick);
+    };
   }, []);
 
   const submit = (event: FormEvent) => {

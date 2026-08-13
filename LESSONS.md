@@ -107,3 +107,10 @@ Hatalardan çıkan kalıcı dersler. Her görev öncesi ilgili anahtar kelimeyle
 - KÖK NEDEN: `server/api.py` bölünürken sürüm sabiti `routes/deps.py`'ye ikinci bir literal olarak kopyalanmıştı. `scripts/release.py` yalnızca kendi `VERSION_SITES` listesindeki dört yeri yeniden yazıyor, yeni kopyayı bilmiyordu — #46'daki drift'in aynısı, bu kez refaktörün ürettiği.
 - KURAL: Refaktörde sabitleri çoğaltma; sürümü `levh_version()` üzerinden package metadata'sından türet. Bölme sonrası `python scripts/release.py --check` çalıştır.
 - KAPSAM: `server/routes/deps.py`, sürüm bildiren tüm yollar.
+
+## 2026-08-14 — levh / header health polling
+
+- HATA: Sunucu access log'u `GET /api/health 200` satırlarıyla doluyordu; her satır farklı bir efemeral porttan geliyordu ve başka hiçbir isteği okumak mümkün değildi.
+- KÖK NEDEN: `frontend/src/components/layout/header.tsx` online rozeti için 15 saniyede bir koşulsuz `setInterval` çalıştırıyordu — sekme arka planda unutulsa bile. Farklı port ise ayrı bir hata değil, aynı olgunun sonucu: uvicorn'un `timeout_keep_alive` varsayılanı 5 sn, polling aralığı 15 sn olduğu için bağlantı her seferinde boştayken kapanıyor ve keep-alive hiç devreye girmiyor.
+- KURAL: Süreli polling ekliyorsan `document.visibilityState` ile kapıla ve `visibilitychange`'e de bağla, yoksa görünmeyen sekme sonsuza kadar istek üretir. Access log gürültüsünü filtrelerken yalnızca başarılı (`<400`) yanıtları düşür — başarısız health çağrısı görülmesi gereken tek satırdır.
+- KAPSAM: `frontend/src/components/layout/header.tsx`, `server/core/log_filters.py`, süreli poll eden tüm bileşenler.

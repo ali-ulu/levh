@@ -15,6 +15,7 @@ from pathlib import Path
 from server.commands.paths import DEFAULT_CONFIG, MCP_DIR
 from server.core.runtime_config import CONFIG_DIR, CONFIG_FILE
 from server.core.env import get_env
+from server.core.log_filters import install_access_log_filters
 from server.core.runtime_config import resolve_runtime_config, runtime_env
 
 
@@ -184,5 +185,6 @@ def cmd_serve(args: argparse.Namespace) -> int:
         return 1
     print(f"  Starting LEVH API on {host}:{port}")
     print(f"  Dashboard: http://{host}:{port}/   API docs: http://{host}:{port}/docs")
+    install_access_log_filters()
     uvicorn.run("server.api:app", host=host, port=port, reload=args.reload)
     return 0
