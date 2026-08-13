@@ -15,6 +15,7 @@ Hatalardan çıkan kalıcı dersler. Her görev öncesi ilgili anahtar kelimeyle
 - Yeni MCP tool eklerken `server/tools/profiles.py` içindeki `TOOL_TIERS`'a da ekle ve sabit tool sayılarını güncelle; `tests/test_mcp_profiles.py` kayıt ile katman haritasının birebir örtüşmesini kilitliyor.
 - `server/api.py` içindeki `_engine` modül global'i; testte `SQLITE_DB_PATH` değiştirmek yetmez, `api._engine`/`api._initialized`/`engine_provider.set_engine(None)` sıfırlanmalı.
 - aiosqlite bağlantısı onu açan event loop'a bağlıdır; `asyncio.run(initialize())` ile açıp sonra ayrı bir loop çalıştırma — FastMCP `lifespan` kullan.
+- CLI/package sürümünü ikinci bir hard-coded semver literal'iyle çoğaltma; kullanıcıya gösterilen sürümü package metadata'sından türet ve release testinde entrypoint sözleşmesini kilitle.
 
 ## 2026-08-12 — levh / server.cli
 
@@ -92,3 +93,10 @@ Hatalardan çıkan kalıcı dersler. Her görev öncesi ilgili anahtar kelimeyle
 - KÖK NEDEN: Demo koruması tüm mutating HTTP metodlarını engelliyor, `recall` ise sorguyu taşımak için POST kullanıyor. Aynı dosyadaki WebSocket yolu `recall`'a açıkça izin veriyordu — iki yarı çelişiyordu.
 - KURAL: "Yazma" kararını HTTP metoduna göre verme; POST kullanan okuma uçları için açık bir izin listesi tut ve yan etkiyi (reinforcement) sunucu tarafında zorla kapat, istek gövdesine güvenme. Güvenlik sınırlarını manuel checklist ile değil testle doğrula.
 - KAPSAM: `server/api.py` demo/yetki middleware'leri.
+
+## 2026-08-13 — levh / CLI sürüm drift'i (#46)
+
+- HATA: Paket metadata'sı `2.28.0` iken kullanıcı-facing `levh --version` yolu `server.cli` içindeki ikinci bir sabit nedeniyle `2.27.2` bildirebiliyordu.
+- KÖK NEDEN: Release pipeline canonical package sürümünü güncellese de CLI aynı semver'i ayrı bir literal olarak tutuyordu; yeni release'te bu ikinci kaynak güncellenmedi ve mevcut consistency testi console entrypoint'i doğrulamıyordu.
+- KURAL: Sürüm bilgisini çoğaltma; installed CLI sürümünü `importlib.metadata.version("levh")` üzerinden package metadata'sından türet ve entrypoint hedefini regression testiyle kilitle.
+- KAPSAM: `pyproject.toml`, `server/entrypoint.py`, CLI sürüm raporlama ve release testleri.
