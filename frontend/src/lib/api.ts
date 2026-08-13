@@ -4,6 +4,8 @@ import type {
   Connector,
   ConflictCandidate,
   Decision,
+  GuardRule,
+  GuardViolation,
   EntityRow,
   ForgettingCurve,
   MeetingPrep,
@@ -505,6 +507,17 @@ export const api = {
     fetchApi<{ path: string; filename: string; bytes: number }>(
       "/api/connectors/upload",
       { method: "POST", body: JSON.stringify({ filename, content_b64 }) }
+    ),
+
+  // Mistake guard — read-only views over rules and the incidents behind them
+  listGuardRules: (project?: string) =>
+    fetchApi<{ rules: GuardRule[] }>(
+      `/api/guard/rules${project ? `?project=${encodeURIComponent(project)}` : ""}`
+    ),
+
+  listGuardViolations: (severity?: string) =>
+    fetchApi<{ violations: GuardViolation[] }>(
+      `/api/guard/violations${severity ? `?severity=${encodeURIComponent(severity)}` : ""}`
     ),
 
   // Connector Framework v2 — gate-filtered incremental sync

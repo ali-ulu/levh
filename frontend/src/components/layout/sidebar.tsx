@@ -17,6 +17,7 @@ import {
   Network,
   RefreshCw,
   Settings,
+  ShieldAlert,
   Sunrise,
   Users,
 } from "lucide-react";
@@ -38,6 +39,7 @@ const groups = [
       { href: "/briefing", label: "Daily briefing", icon: Sunrise },
       { href: "/review", label: "Review queue", icon: RefreshCw },
       { href: "/conflicts", label: "Conflicts", icon: GitCompareArrows },
+      { href: "/guard", label: "Mistake guard", icon: ShieldAlert },
       { href: "/meeting-prep", label: "Meeting prep", icon: CalendarClock },
       { href: "/decisions", label: "Decisions", icon: Gavel },
       { href: "/visualize", label: "Insights", icon: BarChart3 },
