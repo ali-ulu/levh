@@ -307,3 +307,23 @@ async def test_purge_memory_mcp_tool(engine):
     text = _tool_text(await mcp.call_tool("purge_memory", {"memory_id": m.id}))
     assert m.id[:8] in text
     assert "purge" in text.lower()
+
+
+@pytest.mark.asyncio
+async def test_the_audit_names_the_field_after_what_it_holds(engine):
+    """`secret_types` holds detector labels, and the name has to say so.
+
+    Called "secrets" it read as though the audit hands back credentials —
+    which it never does — and a static analyzer flagged every line that
+    printed it as clear-text logging of a secret.
+    """
+    await engine.store("aws_access_key = AKIAIOSFODNN7EXAMPLE", memory_type="episodic")
+
+    report = await engine.audit_secrets()
+    item = report["items"][0]
+
+    assert "secrets" not in item
+    assert item["secret_types"], "the detector labels are what the audit reports"
+    assert all(isinstance(label, str) for label in item["secret_types"])
+    # The value itself never leaves the audit, under any key.
+    assert "AKIAIOSFODNN7EXAMPLE" not in repr(item)

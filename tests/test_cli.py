@@ -235,3 +235,70 @@ class TestSummarize:
         )
         assert result.returncode == 1
         assert "not found" in (result.stdout + result.stderr)
+
+
+class TestSecretsInOutput:
+    """A CLI that handles credentials must not print them back."""
+
+    def test_a_malformed_config_pair_is_not_echoed(self):
+        """`--config token:ghp_x` (wrong separator) must not print the value.
+
+        Connector config carries tokens and API keys, and CLI output lands in
+        terminal scrollback, CI logs and screenshots.
+        """
+        secret = "ghp_thisisnotarealtokenbutlooksliketone"
+        result = _run_cli("sync", "github", "--config", f"token:{secret}")
+
+        assert secret not in result.stdout
+        assert secret not in result.stderr
+        assert "malformed --config" in result.stderr
+
+    def test_a_connector_error_cannot_carry_a_supplied_value_out(self):
+        """Exception text is not ours to trust.
+
+        A connector's error message is written by the connector — or by an
+        HTTP client that will happily put the URL, credentials and all, into
+        the error it raises. Every value the operator passed via --config is
+        stripped from it before printing.
+        """
+        secret = "ghp_notarealtokenbutshapedlikeone12345"
+        result = _run_cli(
+            "sync", "calendar", "--config", f"ics_path=/nonexistent/{secret}.ics"
+        )
+
+        assert result.returncode != 0
+        assert secret not in result.stdout
+        assert secret not in result.stderr
+        # ...and the error still says what went wrong.
+        assert "Calendar file not found" in result.stderr
+        assert "[redacted]" in result.stderr
+
+
+    def test_the_secret_audit_reports_types_not_values(self, tmp_path):
+        """`audit-secrets` names what it found, never the credential.
+
+        The memory is seeded through the engine rather than `levh capture`,
+        because capture redacts on the way in — audit-secrets exists for the
+        rows that got stored before the gate did, so that is what to test.
+        """
+        import asyncio
+
+        from server.core.memory_engine import MemoryEngine
+
+        secret = "sk-notarealkeybutshapedlikeone1234567890"
+        db = str(tmp_path / "audit.db")
+
+        async def seed():
+            engine = MemoryEngine(db_path=db, embedder_mode="hash")
+            await engine.initialize()
+            await engine.store(f"the api_key = {secret} is in here", memory_type="episodic")
+            await engine.shutdown()
+
+        asyncio.run(seed())
+
+        result = _run_cli("audit-secrets", extra_env={"SQLITE_DB_PATH": db})
+
+        # The audit has to actually find it, or this proves nothing.
+        assert "1 flagged" in result.stdout, result.stdout
+        assert secret not in result.stdout
+        assert secret not in result.stderr

@@ -24,7 +24,7 @@ def register(mcp: FastMCP, engine: MemoryEngine) -> None:
             f"{audit['flagged']} of {audit['scanned']} memories contain secrets:\n"
         ]
         for item in audit["items"]:
-            secrets = ", ".join(item["secrets"])
+            secrets = ", ".join(item["secret_types"])
             lines.append(f"[{item['id'][:8]}] {secrets} — {item['preview']}")
         lines.append(
             "\nUse redact_secrets(apply=true) to strip secrets from all flagged memories."

@@ -249,7 +249,7 @@ export const api = {
       audit: {
         scanned: number;
         flagged: number;
-        items: { id: string; secrets: string[]; preview: string }[];
+        items: { id: string; secret_types: string[]; preview: string }[];
       };
     }>("/api/memories/audit-secrets"),
 
