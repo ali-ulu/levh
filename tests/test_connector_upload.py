@@ -41,7 +41,10 @@ def test_upload_returns_a_readable_path(client, tmp_path):
     assert res.status_code == 200, res.text
 
     data = res.json()
+    # The name comes back for display; the stored file is named independently.
     assert data["filename"] == "meetings.ics"
+    assert data["path"].endswith(".ics")
+    assert "meetings" not in os.path.basename(data["path"])
     assert data["bytes"] == len(body)
     # The path must be absolute — the connector resolves it server-side.
     assert os.path.isabs(data["path"])
@@ -79,13 +82,22 @@ def test_traversal_attempts_cannot_escape_the_upload_dir(client, tmp_path, filen
     assert os.sep not in res.json()["filename"]
 
 
-def test_the_written_path_is_inside_the_upload_directory(client, tmp_path):
-    """Containment is re-checked on the resolved path, not just the name."""
+def test_the_written_path_is_not_built_from_the_request(client, tmp_path):
+    """The stored name is a fresh identifier, so a hostile name cannot steer it."""
     res = _upload(client, "../../etc/passwd", b"x")
 
     written = os.path.realpath(res.json()["path"])
     upload_dir = os.path.realpath(str(tmp_path / "uploads"))
     assert os.path.commonpath([written, upload_dir]) == upload_dir
+    assert "passwd" not in written
+
+
+def test_an_unknown_extension_is_dropped_rather_than_carried_through(client):
+    res = _upload(client, "payload.sh", b"x")
+
+    assert res.status_code == 200
+    assert not os.path.basename(res.json()["path"]).endswith(".sh")
+    assert res.json()["filename"] == "payload.sh"
 
 
 def test_dotfile_names_are_defanged(client):

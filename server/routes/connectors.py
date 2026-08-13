@@ -5,6 +5,7 @@ from __future__ import annotations
 import base64
 import binascii
 import os
+import uuid
 import re
 from pathlib import Path, PurePosixPath
 
@@ -17,8 +18,23 @@ from server.routes.deps import logger
 router = APIRouter()
 
 
-def _safe_upload_name(filename: str) -> str:
-    """Reduce *filename* to a plain name that cannot escape the upload dir."""
+# Extensions a connector can actually read. The stored file takes its suffix
+# from this set, never from the request, so no part of the on-disk path is
+# built from user input.
+UPLOAD_SUFFIXES = {
+    ".ics": ".ics",
+    ".mbox": ".mbox",
+    ".eml": ".eml",
+    ".vtt": ".vtt",
+    ".srt": ".srt",
+    ".txt": ".txt",
+    ".json": ".json",
+    ".md": ".md",
+}
+
+
+def _display_name(filename: str) -> str:
+    """The name shown back to the user. Never used to build a path."""
     name = PurePosixPath(filename.replace("\\", "/")).name.strip()
     if not name or name in {".", ".."}:
         raise HTTPException(status_code=400, detail="filename is required")
@@ -26,6 +42,16 @@ def _safe_upload_name(filename: str) -> str:
     if not cleaned:
         raise HTTPException(status_code=400, detail="filename has no usable characters")
     return cleaned[:120]
+
+
+def _stored_suffix(display_name: str) -> str:
+    """Pick the on-disk suffix from a fixed table, keyed by the upload's own.
+
+    Returning a value from UPLOAD_SUFFIXES rather than the request's string is
+    the point: connectors still see a .ics as a .ics, while the path being
+    written contains nothing an uploader chose.
+    """
+    return UPLOAD_SUFFIXES.get(os.path.splitext(display_name)[1].lower(), "")
 
 
 def _connector_upload_dir() -> Path:
@@ -128,7 +154,7 @@ async def connector_sync(req: ConnectorRequest):
 async def connector_upload(req: ConnectorUploadRequest):
     """Store an uploaded file locally and return the path to import from."""
 
-    name = _safe_upload_name(req.filename)
+    display = _display_name(req.filename)
     try:
         blob = base64.b64decode(req.content_b64, validate=True)
     except (binascii.Error, ValueError):
@@ -141,26 +167,12 @@ async def connector_upload(req: ConnectorUploadRequest):
             detail=f"file is larger than the {MAX_UPLOAD_BYTES // (1024 * 1024)} MB upload limit",
         )
 
-    upload_dir = _connector_upload_dir()
-    target = upload_dir / name
-    stem, suffix = os.path.splitext(name)
-    counter = 1
-    while target.exists():
-        target = target.with_name(f"{stem}-{counter}{suffix}")
-        counter += 1
-
-    # _safe_upload_name already reduces the name to a basename over a
-    # restricted character set. This re-checks the *resolved* path against the
-    # upload directory anyway: the containment property is what actually
-    # matters, and asserting it here does not depend on reading the sanitizer
-    # correctly.
-    resolved = target.resolve()
-    if resolved.parent != upload_dir.resolve():
-        raise HTTPException(status_code=400, detail="invalid upload path")
-
-    resolved.write_bytes(blob)
-    target = resolved
-    return {"path": str(target), "filename": target.name, "bytes": len(blob)}
+    # The stored name is a fresh identifier plus a suffix from the table
+    # above, so the path being written is not derived from the request at all.
+    # The uploader's name survives only in the response, for display.
+    target = _connector_upload_dir() / f"{uuid.uuid4().hex}{_stored_suffix(display)}"
+    target.write_bytes(blob)
+    return {"path": str(target), "filename": display, "bytes": len(blob)}
 
 
 @router.get("/api/connectors/sync-state")
