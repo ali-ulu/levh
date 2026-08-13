@@ -2,9 +2,9 @@
 
 The complete MCP tool surface. See the [README](../README.md) for an overview.
 
-> **Tool profiles.** Advertising all 59 tools to a client hurts tool-selection
+> **Tool profiles.** Advertising all 61 tools to a client hurts tool-selection
 > accuracy, so LEVH groups them into cumulative profiles —
-> `minimal` (5) ⊂ `work` (15) ⊂ `admin` (54) ⊂ `full` (59). Generated configs
+> `minimal` (5) ⊂ `work` (16) ⊂ `admin` (56) ⊂ `full` (61). Generated configs
 > default to **`work`**; run `levh mcp profiles` to see the bands, or set
 > `LEVH_MCP_PROFILE` / `mcp config --profile <name>` to change it. The
 > full table below is the `full` surface. Profiles only filter which tools a
@@ -72,3 +72,5 @@ The complete MCP tool surface. See the [README](../README.md) for an overview.
 | 57 | `detect_conflict_candidates` | Flag memory pairs that might disagree (shared entity + opposing pattern) |
 | 58 | `list_conflict_candidates` | List conflict candidates by status (open/confirmed/…) |
 | 59 | `review_conflict_candidate` | Human review — dismiss / confirm / keep-A / keep-B / both-valid |
+| 60 | `record_mistake` | Record a corrected mistake as a pinned rule — never decays, leads generated context files |
+| 61 | `list_mistakes` | Read the incident log back, newest first (filter by days / severity) |

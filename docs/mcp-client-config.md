@@ -6,12 +6,24 @@ LEVH provides an MCP (Model Context Protocol) server that can be connected to va
 
 | Client | CLI Command | Config File |
 |--------|------------|-------------|
-| Claude Desktop | `levh mcp config claude` | `claude_desktop_config.json` |
-| Claude Code | `levh mcp config claude_code` | `.claude.json` |
-| Cursor | `levh mcp config cursor` | `.cursor/mcp.json` |
+| Claude Desktop (Anthropic) | `levh mcp config claude_desktop` | `None` |
+| Claude Code (CLI) | `levh mcp config claude_code` | `.claude.json` |
+| Cursor IDE | `levh mcp config cursor` | `.cursor/mcp.json` |
 | Windsurf | `levh mcp config windsurf` | `.windsurf/mcp.json` |
-| VS Code + Cline | `levh mcp config vscode` | `.vscode/mcp.json` |
+| VS Code (with Cline extension) | `levh mcp config vscode` | `.vscode/mcp.json` |
+| Cline (VS Code extension) | `levh mcp config cline` | `.vscode/mcp.json` |
+| jcode (CLI) | `levh mcp config jcode` | `.jcode/mcp.json` |
+| oh-my-pi / omp (CLI) | `levh mcp config omp` | `.omp/mcp.json` |
+| opencode (CLI) | `levh mcp config opencode` | `opencode.json` · opencode schema |
+| Codex CLI (OpenAI) | `levh mcp config codex` | `.codex/config.toml` |
+| Hermes Agent (Nous Research) | `levh mcp config hermes` | `.hermes/config.yaml` |
 | Generic | `levh mcp config generic` | (stdout JSON) |
+
+Not every client reads the same shape. opencode uses its own JSON schema,
+Codex expects TOML and Hermes YAML — config generated in Claude Desktop's
+format is silently ignored by those three, so the generator emits each
+client's own format. `tests/test_mcp_configs.py` parses the output with the
+parser the platform actually uses.
 
 ## Claude Desktop
 

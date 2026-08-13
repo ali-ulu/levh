@@ -14,8 +14,16 @@ LESSONS.md dosyasını her görev öncesi kontrol et, her hata sonrası güncell
 LEVH is a local-first memory layer for AI agents: a Python MCP server plus a
 Next.js dashboard, all persisted to SQLite. No cloud services, no accounts.
 
-- `server/` — MCP server, CLI (`server/cli.py`), memory engine, FastAPI app
+- `server/` — MCP server, CLI, memory engine, FastAPI app
+- `server/api.py` + `server/routes/` — the app, then one module per URL prefix
+- `server/cli.py` + `server/cli_parsers.py` + `server/commands/` — dispatch,
+  parsers, implementations
+- `server/core/memory_engine.py` + `server/core/engine/` — the class, then its
+  behaviour as mixins by responsibility
+- `server/core/database.py` + `server/core/db/` — connection and migrations,
+  then query groups per table
 - `server/tools/` — one module per MCP tool/resource, wired up in `register.py`
+  and tiered in `profiles.py`
 - `server/dashboard/` — packaged dashboard, generated from `frontend/out/`
 - `frontend/` — Next.js source; `frontend/out/` is a committed build artifact
 - `tests/` — pytest suite, must run offline
@@ -66,6 +74,9 @@ python -m server.cli --help   # every pre-existing command still listed
 ## Adding an MCP tool or resource
 
 Add the module under `server/tools/`, register it in `server/tools/register.py`,
+give it a tier in `server/tools/profiles.py` (a test locks the tier map to the
+registry, and the hardcoded tool counts in `profiles.py`, `configs.py` and the
+docs move with it),
 and read the resource back before calling it done — registration succeeding does
 not mean the URI resolves:
 
@@ -76,3 +87,17 @@ await mcp.read_resource("levh://...")
 Resource template parameters must be path segments. A query-string template
 (`.../thing?task={task}`) registers cleanly and then never matches, because
 FastMCP does not escape `?` when it compiles templates to regexes.
+
+## Docs that are locked to the code
+
+`docs/api-reference.md`, `docs/cli.md`, `docs/mcp-tools.md` and
+`docs/mcp-client-config.md` are checked against the running app by
+`tests/test_docs_match_code.py`. A new route, subcommand, tool or client fails
+the suite until the table lists it.
+
+## Splitting a file
+
+Do not copy constants into the new module. `scripts/release.py` rewrites only
+the version sites it knows about, so a duplicated version literal silently
+stays behind — run `python scripts/release.py --check` after any split that
+touches a file holding one.

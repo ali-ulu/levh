@@ -23,27 +23,55 @@ recall, so signal self-curates instead of accumulating noise.
 
 ```
 server/
-├── api.py               FastAPI app: REST + WebSocket + static dashboard + MCP SSE mount
+├── api.py               FastAPI app: builds it, installs middleware, includes routers,
+│                        mounts the MCP SSE app and the static dashboard
+├── middleware.py        The token gate and the public-demo boundary
+├── routes/              One module per URL prefix; deps.py holds what they share
+│   ├── memories.py      /api/memories collection routes (literal paths)
+│   ├── memory_item.py   /api/memories/{id} routes — included after the collection,
+│   │                    or the path parameter swallows /fading, /review, /low-trust
+│   ├── guard.py         Mistake-guard rules and incidents
+│   └── …                sessions, knowledge, context, system, data_transfer,
+│                        connectors, entities, conflicts, onboarding, live
+│
 ├── mcp_stdio.py         MCP server over stdio (Claude Desktop, Cursor, …)
 ├── mcp_sse.py           MCP server over SSE (mounted at /api/mcp/sse)
-├── cli.py               `levh` CLI: doctor / init / serve / capture / context / hook / mcp
-├── configs.py           Env + config-file resolution
+│
+├── cli.py               `levh` dispatch
+├── cli_parsers.py       build_parser(): every argparse definition
+├── commands/            One module per command area; paths.py holds shared constants
+├── entrypoint.py        Console script — the one place the version is derived
+├── scaffold.py          `levh mcp init` project generator
+├── configs.py           MCP client config generation (JSON / TOML / YAML per client)
 │
 ├── core/
 │   ├── engine_provider.py   Process-wide singleton engine (shared by ALL transports)
-│   ├── memory_engine.py     Orchestrator — the heart of the system
+│   ├── memory_engine.py     The class and its construction; behaviour lives in engine/
+│   ├── engine/              MemoryEngine mixins by responsibility — write, recall,
+│   │                        decay, continuity, sessions, briefing, transfer, ingest,
+│   │                        privacy, graph, dedupe, … plus helpers.py
+│   ├── database.py          Connection, migrations, runtime status
+│   ├── db/                  Query groups by table + schema.py (the DDL itself)
 │   ├── types.py             Pydantic models (Memory, Session, RecallRequest, …)
-│   ├── database.py          Async SQLite wrapper + schema + migrations
 │   ├── episodic.py          Thin Memory<->DB mapping layer
 │   ├── short_term.py        Bounded FIFO deque (live working set)
 │   ├── vector_store.py      NumPy cosine-similarity search (mixed-dimension safe)
 │   ├── embedder.py          openai / local / ollama / hash, with graceful fallback
 │   ├── hscore.py            H(x,ψ) math: scoring, decay, reinforce, weaken, curves
+│   ├── admission.py         The gate: dedupe + secret redaction before storage
+│   ├── guard.py             Mistakes → pinned rules + the violations log
 │   └── summarizer.py        Session auto-capture (LLM or extractive fallback)
 │
-├── tools/               One file per MCP tool; register.py wires them all up
-└── connectors/          Import sources: local_files / obsidian / notion / github
+├── tools/               One file per MCP tool; register.py wires them up and
+│                        profiles.py decides which ones a client is shown
+└── connectors/          Import sources: calendar / email / transcript /
+                         local_files / obsidian / notion / github
 ```
+
+The engine and the database are split into mixins rather than services because
+their methods use the object's own state throughout; the split moved bodies
+unchanged, so the public surface is provably identical (84 engine methods and
+66 database methods before and after).
 
 **Golden rule:** all transports resolve the engine through
 `engine_provider.get_engine()`. Never construct a second `MemoryEngine` in a
@@ -158,7 +186,9 @@ objects, so a pin that only hit SQLite would still be decayed at ranking time.
 
 **Add an MCP tool:** create `server/tools/<name>.py` exposing
 `register(mcp, engine)` with an `@mcp.tool()` coroutine, then add two lines to
-`server/tools/register.py`. (See `tools/related.py` / `tools/summarize.py` for
+`server/tools/register.py`, **and** give it a tier in `server/tools/profiles.py`
+— a test locks the tier map to the registry, and the default profile is `work`,
+so a tool outside it is invisible to most clients. (See `tools/related.py` / `tools/summarize.py` for
 the smallest examples.)
 
 **Add a REST route:** add to `api.py`. Sub-paths (`/api/memories/{id}/related`)
