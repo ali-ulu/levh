@@ -216,4 +216,6 @@ def test_main_api_registers_remote_access_boundary() -> None:
         if middleware.cls is RemoteAccessBoundaryMiddleware
     ]
     assert len(registrations) == 1
-    assert registrations[0].kwargs["token"] == api_mod._API_TOKEN
+    from server.routes import deps
+
+    assert registrations[0].kwargs["token"] == deps.api_token()
