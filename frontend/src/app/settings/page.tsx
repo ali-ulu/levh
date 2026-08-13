@@ -141,7 +141,7 @@ export default function SettingsPage() {
   const [secretsAudit, setSecretsAudit] = useState<{
     scanned: number;
     flagged: number;
-    items: { id: string; secrets: string[]; preview: string }[];
+    items: { id: string; secret_types: string[]; preview: string }[];
   } | null>(null);
   const [secretsError, setSecretsError] = useState("");
   const [redactAllBusy, setRedactAllBusy] = useState(false);
@@ -747,7 +747,7 @@ export default function SettingsPage() {
                     <li key={item.id} className="text-xs text-muted-foreground">
                       <span className="font-mono">{item.id.slice(0, 8)}</span>{" "}
                       <Badge variant="secondary" className="text-[11px]">
-                        {item.secrets.join(", ")}
+                        {item.secret_types.join(", ")}
                       </Badge>{" "}
                       {item.preview}
                     </li>

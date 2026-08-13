@@ -55,13 +55,16 @@ class MemoryPrivacyMixin:
         memories = await self.episodic.search(limit=limit)
         flagged = []
         for m in memories:
-            redacted_content, secrets = redact_secrets(m.content or "")
-            if secrets:
+            redacted_content, secret_types = redact_secrets(m.content or "")
+            if secret_types:
                 flagged.append(
                     {
                         "id": m.id,
-                        "secrets": secrets,
-                        # Never echo the credential that the audit detected.
+                        # Detector labels ("credential_assignment"), not the
+                        # credentials — the audit reports what kind of secret
+                        # it matched, never the value.
+                        "secret_types": secret_types,
+                        # Likewise the preview: built from the redacted copy.
                         "preview": (redacted_content or "").split("\n", 1)[0][:100],
                         "project": m.project,
                         "source": m.source,
