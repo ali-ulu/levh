@@ -149,7 +149,13 @@ def cmd_sync(args: argparse.Namespace) -> int:
     config: dict = {}
     for kv in args.config:
         if "=" not in kv:
-            print(f"  Ignoring malformed --config value (expected KEY=VALUE): {kv}", file=sys.stderr)
+            # Never echo the argument itself: connector config carries
+            # tokens and API keys, and a mistyped separator
+            # (--config token:ghp_...) would print the credential.
+            print(
+                "  Ignoring a malformed --config value (expected KEY=VALUE)",
+                file=sys.stderr,
+            )
             continue
         key, _, value = kv.partition("=")
         config[key] = value

@@ -31,8 +31,11 @@ def cmd_audit_secrets(args: argparse.Namespace) -> int:
         return 0
     print(f"  Scanned {audit['scanned']} memories — {audit['flagged']} flagged:")
     for item in audit["items"]:
-        secrets = ", ".join(item["secrets"])
-        print(f"  [{item['id'][:8]}] {secrets} — {item['preview']}")
+        # These are detector labels ("credential_assignment"), not the
+        # credentials themselves, and the preview comes from the redacted
+        # copy — audit_secrets never returns the value it matched.
+        secret_types = ", ".join(item["secrets"])
+        print(f"  [{item['id'][:8]}] {secret_types} — {item['preview']}")
     print("  Use `levh redact-secrets --apply` to strip them.")
     return 0
 
