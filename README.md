@@ -125,6 +125,7 @@ levh mcp init my-server --with-memory   # scaffold an MCP server on this databas
 | [CLI](docs/cli.md) | Every command |
 | [Evaluation](docs/memory-evaluation.md) | Recall benchmark, golden fixtures, dogfood |
 | [Testing](docs/testing.md) | Running the suite |
+| [Releasing](docs/releasing.md) | Version bump, tag, automated publish |
 
 ---
 

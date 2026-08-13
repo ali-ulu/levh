@@ -27,7 +27,9 @@ Next.js dashboard, all persisted to SQLite. No cloud services, no accounts.
 - `server/dashboard/` — packaged dashboard, generated from `frontend/out/`
 - `frontend/` — Next.js source; `frontend/out/` is a committed build artifact
 - `tests/` — pytest suite, must run offline
-- `scripts/release.py` — version bump, frontend build, dashboard sync
+- `scripts/release.py` — version bump, frontend build, dashboard sync;
+  pushing a `v*` tag then publishes via `.github/workflows/publish.yml`
+  (see `docs/releasing.md`)
 
 ## Ground rules
 
