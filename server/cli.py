@@ -1404,6 +1404,7 @@ def cmd_mcp_init(args: argparse.Namespace) -> int:
             with_memory=args.with_memory,
             template=args.template,
             profile=profile,
+            deploy=getattr(args, "deploy", "") or "",
             force=args.force,
         )
     except ScaffoldError as exc:
@@ -1678,6 +1679,12 @@ def main() -> int:
         type=str,
         default="work",
         help="MCP tool profile for the mounted memory tools (with --with-memory)",
+    )
+    init_srv_p.add_argument(
+        "--deploy",
+        type=str,
+        default="",
+        help="Also write deploy config: fly | railway | render | docker",
     )
     init_srv_p.add_argument(
         "--directory", type=str, default=".", help="Where to create the project"

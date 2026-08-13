@@ -263,12 +263,111 @@ def _gitignore() -> str:
     ) + "\n"
 
 
+
+# ── Deploy targets ──────────────────────────────────────────────────
+# Every one of these makes the same decision explicit rather than silently:
+# an MCP server with LEVH memory keeps its database on disk, so a hosted
+# deployment needs a persistent volume. Ephemeral filesystems lose the
+# memory on each restart, which is the one failure that would make the
+# generated project look broken rather than unconfigured.
+
+DEPLOY_TARGETS = ("fly", "railway", "render", "docker")
+
+_DB_PATH_NOTE = (
+    "SQLITE_DB_PATH points at the mounted volume. Without it the database "
+    "lands on an ephemeral filesystem and every restart starts from an empty "
+    "memory."
+)
+
+
+def _dockerfile(name: str) -> str:
+    return f"""# {name} — MCP server image.
+FROM python:3.12-slim
+
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY . .
+
+# {_DB_PATH_NOTE}
+ENV SQLITE_DB_PATH=/data/levh.db
+ENV EMBEDDER_MODE=hash
+VOLUME ["/data"]
+
+CMD ["python", "-m", "{module_name(name)}.server"]
+"""
+
+
+def _fly_toml(name: str) -> str:
+    return f"""# fly.toml — `fly launch --no-deploy` then `fly deploy`.
+app = "{name}"
+primary_region = "fra"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  # {_DB_PATH_NOTE}
+  SQLITE_DB_PATH = "/data/levh.db"
+  EMBEDDER_MODE = "hash"
+
+# Create it first: fly volumes create levh_data --size 1
+[[mounts]]
+  source = "levh_data"
+  destination = "/data"
+"""
+
+
+def _railway_json(name: str) -> str:
+    return f"""{{
+  "$schema": "https://railway.app/railway.schema.json",
+  "build": {{ "builder": "DOCKERFILE", "dockerfilePath": "Dockerfile" }},
+  "deploy": {{
+    "startCommand": "python -m {module_name(name)}.server",
+    "restartPolicyType": "ON_FAILURE"
+  }}
+}}
+"""
+
+
+def _render_yaml(name: str) -> str:
+    return f"""# render.yaml — {_DB_PATH_NOTE}
+services:
+  - type: web
+    name: {name}
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: SQLITE_DB_PATH
+        value: /data/levh.db
+      - key: EMBEDDER_MODE
+        value: hash
+    disk:
+      name: levh-data
+      mountPath: /data
+      sizeGB: 1
+"""
+
+
+def _deploy_files(name: str, target: str) -> dict[str, str]:
+    """Files for one deploy target. All of them build the same image."""
+    files = {"Dockerfile": _dockerfile(name)}
+    if target == "fly":
+        files["fly.toml"] = _fly_toml(name)
+    elif target == "railway":
+        files["railway.json"] = _railway_json(name)
+    elif target == "render":
+        files["render.yaml"] = _render_yaml(name)
+    return files
+
+
 def generate_project(
     name: str,
     target_dir: str | Path,
     with_memory: bool = False,
     template: str = DEFAULT_TEMPLATE,
     profile: str = "work",
+    deploy: str = "",
     force: bool = False,
 ) -> list[Path]:
     """Write a new MCP server project. Returns the files created."""
@@ -276,6 +375,11 @@ def generate_project(
     if template not in TEMPLATES:
         raise ScaffoldError(
             f"unknown template '{template}'. Available: {', '.join(TEMPLATES)}"
+        )
+
+    if deploy and deploy not in DEPLOY_TARGETS:
+        raise ScaffoldError(
+            f"unknown deploy target '{deploy}'. Available: {', '.join(DEPLOY_TARGETS)}"
         )
 
     root = Path(target_dir).expanduser().resolve() / project_name
@@ -293,6 +397,8 @@ def generate_project(
         "requirements.txt": _requirements(with_memory),
         ".gitignore": _gitignore(),
     }
+    if deploy:
+        files.update(_deploy_files(project_name, deploy))
 
     written: list[Path] = []
     for relative, content in files.items():

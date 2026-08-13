@@ -235,3 +235,96 @@ def test_adding_init_did_not_displace_its_neighbours():
     assert result.returncode == 0
     for command in ("config", "profiles", "stdio", "init"):
         assert command in result.stdout, f"'{command}' vanished from `levh mcp --help`"
+
+
+# ── Deploy targets ───────────────────────────────────────────────────
+
+
+@pytest.mark.parametrize(
+    ("target", "expected"),
+    [
+        ("fly", "fly.toml"),
+        ("railway", "railway.json"),
+        ("render", "render.yaml"),
+        ("docker", None),
+    ],
+)
+def test_each_target_writes_its_config_plus_a_dockerfile(tmp_path, target, expected):
+    generate_project("srv", tmp_path, with_memory=True, deploy=target)
+
+    root = tmp_path / "srv"
+    assert (root / "Dockerfile").is_file(), "every target builds the same image"
+    if expected:
+        assert (root / expected).is_file()
+
+
+def test_nothing_deploy_related_is_written_by_default(tmp_path):
+    generate_project("srv", tmp_path, with_memory=True)
+
+    root = tmp_path / "srv"
+    assert not (root / "Dockerfile").exists()
+    assert not (root / "fly.toml").exists()
+
+
+def test_an_unknown_deploy_target_is_refused(tmp_path):
+    with pytest.raises(ScaffoldError, match="unknown deploy target"):
+        generate_project("srv", tmp_path, deploy="heroku")
+
+
+def test_the_generated_fly_config_parses_as_toml(tmp_path):
+    import tomllib
+
+    generate_project("srv", tmp_path, with_memory=True, deploy="fly")
+    config = tomllib.loads((tmp_path / "srv" / "fly.toml").read_text())
+
+    assert config["app"] == "srv"
+    # The mount is the point: without it the database is ephemeral.
+    assert config["mounts"][0]["destination"] == "/data"
+    assert config["env"]["SQLITE_DB_PATH"].startswith("/data")
+
+
+def test_the_generated_railway_config_parses_as_json(tmp_path):
+    import json as _json
+
+    generate_project("srv", tmp_path, with_memory=True, deploy="railway")
+    config = _json.loads((tmp_path / "srv" / "railway.json").read_text())
+
+    assert config["build"]["builder"] == "DOCKERFILE"
+    assert "srv.server" in config["deploy"]["startCommand"]
+
+
+def test_the_generated_render_config_parses_as_yaml(tmp_path):
+    yaml = pytest.importorskip("yaml")
+
+    generate_project("srv", tmp_path, with_memory=True, deploy="render")
+    config = yaml.safe_load((tmp_path / "srv" / "render.yaml").read_text())
+
+    service = config["services"][0]
+    assert service["dockerfilePath"] == "./Dockerfile"
+    assert service["disk"]["mountPath"] == "/data"
+
+
+def test_the_image_stores_the_database_on_the_volume(tmp_path):
+    """An ephemeral filesystem would lose the memory on every restart."""
+    generate_project("srv", tmp_path, with_memory=True, deploy="docker")
+
+    dockerfile = (tmp_path / "srv" / "Dockerfile").read_text()
+    assert "ENV SQLITE_DB_PATH=/data/levh.db" in dockerfile
+    assert 'VOLUME ["/data"]' in dockerfile
+    assert 'CMD ["python", "-m", "srv.server"]' in dockerfile
+
+
+def test_the_cli_passes_the_deploy_flag_through(tmp_path):
+    result = _cli("mcp", "init", "dep-server", "--with-memory", "--deploy", "fly",
+                  "--directory", str(tmp_path), cwd=REPO_ROOT)
+
+    assert result.returncode == 0, result.stderr
+    assert (tmp_path / "dep-server" / "fly.toml").is_file()
+
+
+def test_the_cli_reports_an_unknown_deploy_target(tmp_path):
+    result = _cli("mcp", "init", "srv", "--deploy", "heroku",
+                  "--directory", str(tmp_path), cwd=REPO_ROOT)
+
+    assert result.returncode == 1
+    assert "unknown deploy target" in result.stderr
