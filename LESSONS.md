@@ -17,6 +17,13 @@ Hatalardan çıkan kalıcı dersler. Her görev öncesi ilgili anahtar kelimeyle
 - aiosqlite bağlantısı onu açan event loop'a bağlıdır; `asyncio.run(initialize())` ile açıp sonra ayrı bir loop çalıştırma — FastMCP `lifespan` kullan.
 - CLI/package sürümünü ikinci bir hard-coded semver literal'iyle çoğaltma; kullanıcıya gösterilen sürümü package metadata'sından türet ve release testinde entrypoint sözleşmesini kilitle.
 
+## 2026-08-15 — levh / server.commands.hooks (#55)
+
+- HATA: `levh hook install --client claude-code` ile kurulan SessionStart hook'u, proje yolunda boşluk olan her projede hiç çalışmıyordu; oturum hafızasız başlıyor ve hiçbir hata mesajı çıkmıyordu.
+- KÖK NEDEN: `_hook_entry()` komutu `$CLAUDE_PROJECT_DIR/.claude/hooks/levh-session-start.sh` olarak tırnaksız üretiyordu. Claude Code bunu shell komut satırına genişletiyor; boşluklu yolda word-splitting olup kabuk ilk parçayı komut adı sanıyor ve `exit 127` ile sessizce düşüyor.
+- KURAL: Bir shell komut satırına genişletilecek her path placeholder'ını çift tırnak içine al. Doğrulamayı kabuk çalıştırarak değil, değişkeni boşluklu bir yolla değiştirip `shlex.split()` sonucunun TEK token verdiğini iddia ederek yap — böylece test offline ve platformdan bağımsız kalır.
+- KAPSAM: `server/commands/hooks.py` ve istemci config'ine komut satırı yazan tüm üreticiler.
+
 ## 2026-08-12 — levh / server.cli
 
 - HATA: `levh export-full` komutu tamamen kayboldu; argparse `invalid choice: 'export-full'` veriyordu.

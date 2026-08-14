@@ -36,9 +36,13 @@ SETTINGS_PATH = Path(".claude/settings.json")
 
 
 def _hook_entry() -> dict:
+    # Quoted, because Claude Code expands this into a shell command line and
+    # project directories have spaces in them ("social mcp", "My Documents").
+    # Unquoted the expansion word-splits, the hook never runs, and the session
+    # starts with no memory and no error to explain why.
     return {
         "type": "command",
-        "command": "$CLAUDE_PROJECT_DIR/" + SESSION_HOOK_PATH.as_posix(),
+        "command": '"$CLAUDE_PROJECT_DIR/' + SESSION_HOOK_PATH.as_posix() + '"',
     }
 
 
