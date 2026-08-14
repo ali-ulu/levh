@@ -93,6 +93,31 @@ def test_the_registered_command_survives_a_project_path_with_spaces(project):
     )
 
 
+def test_installing_over_a_legacy_unquoted_entry_repairs_it(project):
+    """An upgrade has to fix the broken command, not step over it.
+
+    Every project installed before the quoting fix carries the unquoted entry.
+    Recognising it as "already installed" and returning leaves those projects
+    broken forever, because nothing in the output suggests uninstalling first.
+    """
+    settings_path = project / ".claude/settings.json"
+    settings_path.parent.mkdir(parents=True)
+    legacy = "$CLAUDE_PROJECT_DIR/.claude/hooks/levh-session-start.sh"
+    settings_path.write_text(
+        json.dumps(
+            {"hooks": {"SessionStart": [{"hooks": [{"type": "command", "command": legacy}]}]}}
+        )
+    )
+
+    assert _install() == 0
+
+    settings = json.loads(settings_path.read_text())
+    commands = [e["command"] for g in settings["hooks"]["SessionStart"] for e in g["hooks"]]
+    assert commands == ['"$CLAUDE_PROJECT_DIR/.claude/hooks/levh-session-start.sh"'], (
+        "the stale entry survived the upgrade"
+    )
+
+
 def test_installing_twice_changes_nothing(project):
     _install()
     first = (project / ".claude/settings.json").read_text()

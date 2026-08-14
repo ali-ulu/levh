@@ -86,13 +86,32 @@ def _install_session_hook(limit: int) -> int:
     # memory tool would be its own kind of forgetting.
     hooks = settings.setdefault("hooks", {})
     groups = hooks.setdefault("SessionStart", [])
+
+    # An entry of ours that isn't the current one is a stale install, not a
+    # finished one. Rewriting it is the only way a project that predates a fix
+    # to the command line ever receives that fix — treating it as "already
+    # installed" would leave it broken with nothing to suggest reinstalling.
+    canonical = _hook_entry()
+    found = upgraded = False
     for group in groups:
         entries = group.get("hooks", [])
-        if any(_is_levh_entry(e) for e in entries):
-            _write_settings(settings)
-            print(f"  Already installed: {SESSION_HOOK_PATH}")
+        for index, entry in enumerate(entries):
+            if not _is_levh_entry(entry):
+                continue
+            found = True
+            if entry != canonical:
+                entries[index] = canonical
+                upgraded = True
+
+    if found:
+        _write_settings(settings)
+        if upgraded:
+            print(f"  Updated the existing entry in {SETTINGS_PATH}")
             return 0
-    groups.append({"hooks": [_hook_entry()]})
+        print(f"  Already installed: {SESSION_HOOK_PATH}")
+        return 0
+
+    groups.append({"hooks": [canonical]})
     _write_settings(settings)
 
     print(f"  Installed session hook: {SESSION_HOOK_PATH}")
