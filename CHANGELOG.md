@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+- **Sessions start with your memory already in them.** `levh hook install
+  --client claude-code` registers a Claude Code SessionStart hook, so a new
+  session opens with the rules you recorded, the memories you pinned and where
+  you left off — without anyone asking for them. The hook prints nothing when
+  there is nothing to say and exits 0 even when LEVH is broken; a memory tool
+  that stops you starting work is worse than none.
+- The continuity brief now carries pinned memories and mistake-guard rules.
+  Everything else in it is a keyword read of recent activity; these two come
+  from the pin flag, because they are what the user explicitly said never to
+  forget and must not depend on a phrase matching a list.
+- `levh continue --if-any` prints nothing when there is no activity, instead
+  of an empty frame.
+
 ## 2.29.0
 
 ### Mistake guard

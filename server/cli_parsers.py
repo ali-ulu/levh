@@ -107,10 +107,29 @@ def build_parser(prog: str) -> tuple[argparse.ArgumentParser, dict[str, argparse
     tune_p.add_argument("--seed", type=int, default=0, help="Random seed; fixed seed = reproducible result")
 
     # hook
-    hook_p = sub.add_parser("hook", help="Git auto-capture hook")
+    hook_p = sub.add_parser("hook", help="Auto-capture and session-start hooks")
     hook_sub = hook_p.add_subparsers(dest="hook_command", help="Hook subcommands")
-    hook_sub.add_parser("install", help="Install post-commit capture hook")
-    hook_sub.add_parser("uninstall", help="Remove the capture hook")
+    for verb, verb_help in (
+        ("install", "Install a hook"),
+        ("uninstall", "Remove a hook"),
+    ):
+        hook_verb = hook_sub.add_parser(verb, help=verb_help)
+        hook_verb.add_argument(
+            "--client",
+            type=str,
+            default="git",
+            choices=["git", "claude-code"],
+            help=(
+                "git (default): capture every commit message. "
+                "claude-code: start every session with the continuity brief"
+            ),
+        )
+        hook_verb.add_argument(
+            "--limit",
+            type=int,
+            default=5,
+            help="Sessions to summarize in the brief (claude-code only)",
+        )
 
     # mcp
     mcp_p = sub.add_parser("mcp", help="MCP server commands")
@@ -248,6 +267,11 @@ def build_parser(prog: str) -> tuple[argparse.ArgumentParser, dict[str, argparse
     continue_p.add_argument("--project", type=str, default="", help="Project filter (default: git repo name)")
     continue_p.add_argument("--limit", type=int, default=5, help="Max sessions to consider")
     continue_p.add_argument("--since", type=str, default="", help="Only consider sessions since ISO date (e.g. 2026-01-01)")
+    continue_p.add_argument(
+        "--if-any",
+        action="store_true",
+        help="Print nothing when there is no activity (used by the session hook)",
+    )
 
     # export-full (memories + entity graph + trust + conflicts, one file)
     export_full_p = sub.add_parser(

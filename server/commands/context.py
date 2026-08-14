@@ -94,6 +94,12 @@ def cmd_continue(args: argparse.Namespace) -> int:
 
     try:
         context = asyncio.run(_run())
+        if not context.strip():
+            # --if-any is what the session hook uses: nothing to say, say
+            # nothing, rather than pushing an empty frame into the session.
+            if not getattr(args, "if_any", False):
+                print("  No recent activity to resume from yet.")
+            return 0
         print(context)
         return 0
     except Exception as e:

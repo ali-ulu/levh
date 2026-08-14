@@ -19,9 +19,9 @@ Run `levh <command> --help` for the flags of any one of them.
 | `levh summarize` | Distill a session into one summary memory |
 | `levh benchmark` | Run the recall-quality benchmark (hit@k / MRR) |
 | `levh tune` | Fit H(x,psi) weights to the labelled query set (offline) |
-| `levh hook <sub>` | Git auto-capture hook |
-| `levh hook install` | Install post-commit capture hook |
-| `levh hook uninstall` | Remove the capture hook |
+| `levh hook <sub>` | Auto-capture and session-start hooks |
+| `levh hook install` | Install a hook |
+| `levh hook uninstall` | Remove a hook |
 | `levh mcp <sub>` | MCP server commands |
 | `levh mcp config` | Generate MCP client config JSON |
 | `levh mcp init` | Scaffold a new MCP server project (optionally with LEVH memory) |
@@ -66,4 +66,22 @@ levh context -o CLAUDE.md                          # compile memory into a conte
 levh hook install                                  # capture every git commit message
 levh mcp config cursor                             # print MCP config for a client
 levh mcp init my-server --with-memory              # scaffold a server on this database
+levh hook install --client claude-code             # start every session with your memory
 ```
+
+## Remembering across sessions
+
+A memory the assistant has to be *told* to consult is a filing cabinet, not a
+memory. `levh hook install --client claude-code` registers a Claude Code
+SessionStart hook, so every new session in this project begins with your
+continuity brief already in context — the rules you recorded, the memories you
+pinned, where you left off. Nothing to ask for.
+
+```bash
+levh hook install --client claude-code     # per project, writes .claude/
+levh hook uninstall --client claude-code
+```
+
+The hook prints nothing when there is nothing to say, and exits 0 even when
+LEVH is broken: a memory tool that stops you from starting work is worse than
+no memory tool.
