@@ -163,13 +163,39 @@ class MemoryContinuityMixin:
         if project:
             commit_memories = [m for m in commit_memories if m.project == project]
 
-        # Build the brief
+        # Build the brief. `lines` holds only the header until a section adds
+        # something, which is how the empty case is detected below — a brief
+        # that is all frame and no content is noise, and this one is injected
+        # into every new session.
         lines = []
         lines.append("=== LEVH Continuity Brief ===")
         lines.append("")
+        header_only = len(lines)
 
         if task:
             lines.append(f"Task: {task}")
+            lines.append("")
+
+        # Rules and pinned memories come first, and they come from the pin flag
+        # rather than from keyword guessing. Everything below this point is a
+        # heuristic read of recent activity; this part is what the user
+        # explicitly said never to forget, so it is the one section that must
+        # not depend on a phrase matching a keyword list.
+        pinned = [m for m in recent_memories if m.pinned]
+        rules = [m for m in pinned if RULE_TAG in (m.tags or [])]
+        notes = [m for m in pinned if RULE_TAG not in (m.tags or [])]
+
+        if rules:
+            lines.append("Rules (learned from mistakes — do not repeat these):")
+            for r in sorted(rules, key=lambda m: m.importance, reverse=True)[:10]:
+                lines.append(f"  ! {r.content.strip()}")
+            lines.append("")
+
+        if notes:
+            lines.append("Always Remember (pinned):")
+            for n in notes[:10]:
+                snippet = n.content.strip().replace("\n", " ")[:160]
+                lines.append(f"  - {snippet}")
             lines.append("")
 
         if sessions:
@@ -241,6 +267,9 @@ class MemoryContinuityMixin:
                 lines.append("  1. Continue from last session")
                 lines.append("  2. Check recent decisions above")
             lines.append("")
+
+        if len(lines) == header_only:
+            return ""
 
         lines.append("=============================")
         return "\n".join(lines)

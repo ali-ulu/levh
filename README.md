@@ -81,6 +81,7 @@ Then open **Settings** in the dashboard for copy-paste MCP configs, or run
 Optional, once you are set up:
 
 ```bash
+levh hook install --client claude-code   # every new session starts with your memory
 levh hook install               # capture every git commit message
 levh context -o CLAUDE.md       # compile memory into a context file
 levh mcp init my-server --with-memory   # scaffold an MCP server on this database
@@ -100,6 +101,7 @@ levh mcp init my-server --with-memory   # scaffold an MCP server on this databas
 - **Admission gate** — every incoming memory is screened before storage, on create *and* on update: duplicates flagged, secrets like API keys redacted before they are ever embedded. Deterministic, offline.
 - **Trust & provenance** — an explainable reliability score per memory from source type, corroboration and review history. Separate from ranking; not a truth claim.
 - **Entity knowledge graph** — memories indexed into real entity tables, so "which memories mention X" is a join, not a search.
+- **Remembers you without being asked** — a SessionStart hook puts your rules, your pinned facts and where you left off into every new Claude Code session automatically. A memory the assistant has to be told to consult is a filing cabinet, not a memory.
 - **Mistake guard** — a corrected mistake becomes a pinned rule plus an incident record. Pinned memories never decay, so the rule is still there weeks later, in a different session, and it leads the generated context file where the next session reads it before working.
 - **Encrypted backup & restore** — a full portable snapshot including decay state, optionally encrypted with a passphrase (PBKDF2 + AES).
 - **Consolidation & review** — aged clusters collapse into durable summaries; the fading queue becomes a keep / reinforce / forget flow.
