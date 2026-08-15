@@ -28,6 +28,23 @@ router = APIRouter()
 # No size limit is enforced here — attachments are meant to hold anything
 # from a screenshot to a meeting recording, and the app itself imposes no cap.
 
+# The on-disk suffix comes from this fixed table, keyed by the upload's own
+# extension — never from an arbitrary transform of the request. A regex
+# substitution over user input still carries taint as far as static analysis
+# is concerned (CodeQL py/path-injection flagged an earlier version of this
+# that built the suffix with re.sub); a membership test against a literal,
+# bounded set is what actually breaks that taint, same pattern already used
+# for connector uploads (see server/routes/connectors.py UPLOAD_SUFFIXES).
+SAFE_UPLOAD_SUFFIXES = {
+    ".txt", ".md", ".markdown", ".csv", ".tsv", ".json", ".log", ".yaml", ".yml",
+    ".html", ".htm", ".xml", ".rtf",
+    ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".odt", ".ods", ".odp",
+    ".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".tiff", ".heic", ".svg",
+    ".mp4", ".mov", ".mkv", ".avi", ".webm",
+    ".mp3", ".wav", ".m4a", ".ogg", ".flac",
+    ".zip",
+}
+
 
 def _display_name(filename: str) -> str:
     """The name shown back to the user. Never used to build a path."""
@@ -61,10 +78,11 @@ async def upload_attachment(req: AttachmentUploadRequest):
     if not blob:
         raise HTTPException(status_code=400, detail="uploaded file is empty")
 
-    # The suffix is kept (any file type is welcome — image, video, PDF, ...)
-    # but the basename is a fresh identifier, so nothing about the on-disk
-    # path is built from the request.
-    suffix = re.sub(r"[^A-Za-z0-9.]", "", os.path.splitext(display)[1])[:12]
+    # The suffix is kept when recognized (any common file type is welcome —
+    # image, video, PDF, ...) but the basename is always a fresh identifier,
+    # so nothing about the on-disk path is built from the request.
+    extension = os.path.splitext(display)[1].lower()
+    suffix = extension if extension in SAFE_UPLOAD_SUFFIXES else ""
     target = _attachments_dir() / f"{uuid.uuid4().hex}{suffix}"
     target.write_bytes(blob)
     return {"path": str(target), "filename": display, "bytes": len(blob)}

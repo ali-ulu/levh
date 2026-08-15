@@ -288,6 +288,28 @@ def test_upload_then_attach_the_returned_path(client):
     assert attach.json()["size"] == len(payload)
 
 
+def test_upload_keeps_a_recognized_suffix(client):
+    res = client.post(
+        "/api/attachments/upload",
+        json={"filename": "photo.PNG", "content_b64": base64.b64encode(b"x").decode()},
+    )
+    assert res.status_code == 200, res.text
+    assert res.json()["path"].endswith(".png")
+
+
+def test_upload_drops_an_unrecognized_suffix(client):
+    """The on-disk suffix comes from a fixed allowlist (SAFE_UPLOAD_SUFFIXES),
+    not a transform of the request — an unrecognized extension is dropped
+    rather than carried through, same as /api/connectors/upload."""
+    res = client.post(
+        "/api/attachments/upload",
+        json={"filename": "payload.sh", "content_b64": base64.b64encode(b"x").decode()},
+    )
+    assert res.status_code == 200, res.text
+    assert not os.path.basename(res.json()["path"]).endswith(".sh")
+    assert res.json()["filename"] == "payload.sh"
+
+
 def test_upload_rejects_empty_file(client):
     res = client.post(
         "/api/attachments/upload", json={"filename": "x.txt", "content_b64": ""}
