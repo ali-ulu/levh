@@ -28,21 +28,26 @@ router = APIRouter()
 # No size limit is enforced here — attachments are meant to hold anything
 # from a screenshot to a meeting recording, and the app itself imposes no cap.
 
-# The on-disk suffix comes from this fixed table, keyed by the upload's own
-# extension — never from an arbitrary transform of the request. A regex
-# substitution over user input still carries taint as far as static analysis
-# is concerned (CodeQL py/path-injection flagged an earlier version of this
-# that built the suffix with re.sub); a membership test against a literal,
-# bounded set is what actually breaks that taint, same pattern already used
-# for connector uploads (see server/routes/connectors.py UPLOAD_SUFFIXES).
+# The on-disk suffix comes from this fixed table's VALUES, keyed by the
+# upload's own extension — never from a transform of the request, and not
+# even from the tainted extension variable itself once matched. A regex
+# substitution, or even `x if x in allowed_set else ""`, still carries taint
+# as far as CodeQL's py/path-injection query is concerned: the assigned value
+# is structurally the same tainted variable, guard or not. A dict lookup that
+# *returns* one of its own hardcoded values is what actually breaks the
+# taint — the exact pattern connector uploads already use (see
+# server/routes/connectors.py UPLOAD_SUFFIXES / _stored_suffix).
 SAFE_UPLOAD_SUFFIXES = {
-    ".txt", ".md", ".markdown", ".csv", ".tsv", ".json", ".log", ".yaml", ".yml",
-    ".html", ".htm", ".xml", ".rtf",
-    ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".odt", ".ods", ".odp",
-    ".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".tiff", ".heic", ".svg",
-    ".mp4", ".mov", ".mkv", ".avi", ".webm",
-    ".mp3", ".wav", ".m4a", ".ogg", ".flac",
-    ".zip",
+    ".txt": ".txt", ".md": ".md", ".markdown": ".markdown", ".csv": ".csv",
+    ".tsv": ".tsv", ".json": ".json", ".log": ".log", ".yaml": ".yaml", ".yml": ".yml",
+    ".html": ".html", ".htm": ".htm", ".xml": ".xml", ".rtf": ".rtf",
+    ".pdf": ".pdf", ".doc": ".doc", ".docx": ".docx", ".xls": ".xls", ".xlsx": ".xlsx",
+    ".ppt": ".ppt", ".pptx": ".pptx", ".odt": ".odt", ".ods": ".ods", ".odp": ".odp",
+    ".png": ".png", ".jpg": ".jpg", ".jpeg": ".jpeg", ".gif": ".gif", ".webp": ".webp",
+    ".bmp": ".bmp", ".tiff": ".tiff", ".heic": ".heic", ".svg": ".svg",
+    ".mp4": ".mp4", ".mov": ".mov", ".mkv": ".mkv", ".avi": ".avi", ".webm": ".webm",
+    ".mp3": ".mp3", ".wav": ".wav", ".m4a": ".m4a", ".ogg": ".ogg", ".flac": ".flac",
+    ".zip": ".zip",
 }
 
 
@@ -81,8 +86,7 @@ async def upload_attachment(req: AttachmentUploadRequest):
     # The suffix is kept when recognized (any common file type is welcome —
     # image, video, PDF, ...) but the basename is always a fresh identifier,
     # so nothing about the on-disk path is built from the request.
-    extension = os.path.splitext(display)[1].lower()
-    suffix = extension if extension in SAFE_UPLOAD_SUFFIXES else ""
+    suffix = SAFE_UPLOAD_SUFFIXES.get(os.path.splitext(display)[1].lower(), "")
     target = _attachments_dir() / f"{uuid.uuid4().hex}{suffix}"
     target.write_bytes(blob)
     return {"path": str(target), "filename": display, "bytes": len(blob)}
