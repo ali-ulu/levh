@@ -36,14 +36,17 @@ def _detect_project() -> str | None:
             # repo reports the first ancestor that is. When someone has version
             # controlled their home directory, that makes every stray folder
             # under it claim to be the same "project" — named after the user.
-            # That is never what was meant, so fall back to the folder at hand.
+            # That is never what was meant.
             if root != os.path.normcase(os.path.abspath(os.path.expanduser("~"))):
                 return _slugify_project(os.path.basename(root))
     except (OSError, subprocess.TimeoutExpired):
         pass
 
-    current = os.path.basename(os.path.abspath(os.getcwd()))
-    return _slugify_project(current) or None
+    # No project rather than a guessed one. Naming the directory at hand would
+    # scope every lookup to a key nothing was ever stored under, and the caller
+    # would get an empty result with no way to tell it apart from having
+    # nothing to say. Unscoped is the honest answer.
+    return None
 
 
 def cmd_capture(args: argparse.Namespace) -> int:
