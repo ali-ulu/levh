@@ -56,13 +56,18 @@ class SnapshotQueries:
         return str(target)
 
     async def restore_snapshot_transaction(
-        self, memories: list[dict], sessions: list[dict], replace: bool
+        self,
+        memories: list[dict],
+        sessions: list[dict],
+        replace: bool,
+        attachments: list[dict] | None = None,
     ) -> None:
         """Atomically merge or replace a fully validated snapshot.
 
         Callers must validate every record before entering this method.  No
         destructive clear occurs until all validation has succeeded.
         """
+        attachments = attachments or []
         await self.conn.execute("BEGIN IMMEDIATE")
         try:
             memory_ids = [str(m["id"]) for m in memories]
@@ -71,6 +76,7 @@ class SnapshotQueries:
                 await self.conn.execute("DELETE FROM memory_trust_scores")
                 await self.conn.execute("DELETE FROM memory_entities")
                 await self.conn.execute("DELETE FROM entities")
+                # attachments cascades from memories via ON DELETE CASCADE
                 await self.conn.execute("DELETE FROM memories")
                 await self.conn.execute("DELETE FROM sessions")
             elif memory_ids:
@@ -135,6 +141,29 @@ class SnapshotQueries:
                         float(memory.get("decay_factor", 1.0)),
                         float(memory.get("stability_hours", 168.0)),
                         int(memory.get("recall_count", 0)),
+                    ),
+                )
+
+            for attachment in attachments:
+                await self.conn.execute(
+                    """
+                    INSERT OR REPLACE INTO attachments
+                        (id, memory_id, path, sha256, mime, size, derived_text,
+                         derived_by, status, created_at, verified_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        attachment["id"],
+                        attachment["memory_id"],
+                        attachment["path"],
+                        attachment["sha256"],
+                        attachment.get("mime"),
+                        int(attachment.get("size", 0)),
+                        attachment.get("derived_text"),
+                        attachment.get("derived_by", "none"),
+                        attachment.get("status", "ok"),
+                        attachment["created_at"],
+                        attachment.get("verified_at"),
                     ),
                 )
 

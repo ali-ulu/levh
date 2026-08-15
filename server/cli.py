@@ -159,7 +159,7 @@ if _REPO_ROOT not in sys.path:
 from server.cli_parsers import build_parser
 from server.commands.doctor import cmd_doctor
 from server.commands.diagnostics import cmd_init, cmd_serve, cmd_setup
-from server.commands.capture import cmd_admit, cmd_capture, cmd_sync
+from server.commands.capture import cmd_admit, cmd_attach, cmd_capture, cmd_sync
 from server.commands.context import cmd_context, cmd_continue, cmd_summarize
 from server.commands.hooks import cmd_hook
 from server.commands.quality import cmd_benchmark, cmd_eval_report, cmd_eval_run, cmd_review, cmd_tune
@@ -209,6 +209,8 @@ def main() -> int:
         return cmd_capture(args)
     elif args.command == "admit":
         return cmd_admit(args)
+    elif args.command == "attach":
+        return cmd_attach(args)
     elif args.command == "sync":
         return cmd_sync(args)
     elif args.command == "context":

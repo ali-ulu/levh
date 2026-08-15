@@ -154,8 +154,9 @@ class MemoryTransferMixin:
         memories = await self.episodic.search(limit=1_000_000)
         mem_dicts = [m.model_dump() for m in memories]
         sessions = await self.db.get_all_sessions(limit=1_000_000)
+        attachments = await self.db.all_attachments()
         created_at = datetime.now(timezone.utc).isoformat()
-        return make_snapshot(mem_dicts, sessions, app_version, created_at)
+        return make_snapshot(mem_dicts, sessions, app_version, created_at, attachments=attachments)
 
     async def restore(self, snapshot: dict, replace: bool = False) -> dict:
         """Atomically restore a fully validated backup snapshot.
@@ -173,11 +174,15 @@ class MemoryTransferMixin:
 
         raw_memories = snapshot.get("memories")
         raw_sessions = snapshot.get("sessions")
+        raw_attachments = snapshot.get("attachments", [])
         if not isinstance(raw_memories, list) or not isinstance(raw_sessions, list):
             raise ValueError("backup snapshot memories/sessions must be arrays")
+        if not isinstance(raw_attachments, list):
+            raise ValueError("backup snapshot attachments must be an array")
 
         memories: list[Memory] = []
         sessions: list[Session] = []
+        attachments: list[dict] = []
         try:
             for index, item in enumerate(raw_memories):
                 if not isinstance(item, dict):
@@ -187,15 +192,28 @@ class MemoryTransferMixin:
                 if not isinstance(item, dict):
                     raise ValueError(f"session[{index}] is not an object")
                 sessions.append(Session(**item))
+            memory_id_set = {m.id for m in memories}
+            for index, item in enumerate(raw_attachments):
+                if not isinstance(item, dict):
+                    raise ValueError(f"attachment[{index}] is not an object")
+                required = {"id", "memory_id", "path", "sha256", "size", "created_at"}
+                if not required.issubset(item):
+                    raise ValueError(f"attachment[{index}] is missing required fields")
+                if item["memory_id"] not in memory_id_set:
+                    raise ValueError(f"attachment[{index}] references an unknown memory")
+                attachments.append(item)
         except Exception as exc:
             raise ValueError(f"invalid backup snapshot record: {exc}") from exc
 
         memory_ids = [m.id for m in memories]
         session_ids = [s.id for s in sessions]
+        attachment_ids = [a["id"] for a in attachments]
         if len(memory_ids) != len(set(memory_ids)):
             raise ValueError("backup snapshot contains duplicate memory ids")
         if len(session_ids) != len(set(session_ids)):
             raise ValueError("backup snapshot contains duplicate session ids")
+        if len(attachment_ids) != len(set(attachment_ids)):
+            raise ValueError("backup snapshot contains duplicate attachment ids")
 
         safety_backup_path: str | None = None
         if replace:
@@ -211,6 +229,7 @@ class MemoryTransferMixin:
             [m.model_dump(mode="json") for m in memories],
             [s.model_dump(mode="json") for s in sessions],
             replace=replace,
+            attachments=attachments,
         )
 
         # Rebuild process-local state from committed SQLite, never from the
@@ -229,11 +248,17 @@ class MemoryTransferMixin:
 
         self._emit(
             "restored",
-            {"memories": len(memories), "sessions": len(sessions), "replace": replace},
+            {
+                "memories": len(memories),
+                "sessions": len(sessions),
+                "attachments": len(attachments),
+                "replace": replace,
+            },
         )
         return {
             "memories": len(memories),
             "sessions": len(sessions),
+            "attachments": len(attachments),
             "replace": replace,
             "safety_backup_path": safety_backup_path,
         }

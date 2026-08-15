@@ -55,7 +55,7 @@ async def test_status_uses_live_profile_registry_and_safe_journal_summary(tmp_pa
     await eng.initialize()
     try:
         status = await eng.onboarding_status()
-        assert status["profile_counts"] == {"minimal": 5, "work": 16, "admin": 56, "full": 61}
+        assert status["profile_counts"] == {"minimal": 5, "work": 17, "admin": 57, "full": 62}
         assert status["mcp_default_profile"] == "work"
         assert status["profiles_are_security_boundary"] is False
         assert status["dogfood_enabled"] is False

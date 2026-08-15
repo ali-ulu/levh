@@ -11,6 +11,7 @@ import aiosqlite
 from server.core.env import get_env
 from .db.schema import CURRENT_SCHEMA_VERSION, _DEFAULT_DB_PATH, _FTS_SCHEMA, _INDEXES, _MIGRATIONS, _SCHEMA
 from .db.aggregates import AggregateQueries
+from .db.attachments import AttachmentQueries
 from .db.entities import EntityQueries
 from .db.guard import GuardQueries
 from .db.memories import MemoryQueries
@@ -36,6 +37,7 @@ class Database(
     TrustQueries,
     GuardQueries,
     SnapshotQueries,
+    AttachmentQueries,
 ):
     """Async SQLite wrapper with auto-init."""
 

@@ -32,7 +32,7 @@ async def get_memory(memory_id: str):
     mem = await engine.get_memory(memory_id)
     if not mem:
         raise HTTPException(status_code=404, detail="memory not found")
-    return mem.model_dump()
+    return {**mem.model_dump(), "attachments": await engine.list_memory_attachments(memory_id)}
 
 
 @router.put("/api/memories/{memory_id}")

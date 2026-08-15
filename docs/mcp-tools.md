@@ -2,9 +2,9 @@
 
 The complete MCP tool surface. See the [README](../README.md) for an overview.
 
-> **Tool profiles.** Advertising all 61 tools to a client hurts tool-selection
+> **Tool profiles.** Advertising all 62 tools to a client hurts tool-selection
 > accuracy, so LEVH groups them into cumulative profiles —
-> `minimal` (5) ⊂ `work` (16) ⊂ `admin` (56) ⊂ `full` (61). Generated configs
+> `minimal` (5) ⊂ `work` (17) ⊂ `admin` (57) ⊂ `full` (62). Generated configs
 > default to **`work`**; run `levh mcp profiles` to see the bands, or set
 > `LEVH_MCP_PROFILE` / `mcp config --profile <name>` to change it. The
 > full table below is the `full` surface. Profiles only filter which tools a
@@ -33,6 +33,7 @@ The complete MCP tool surface. See the [README](../README.md) for an overview.
 | 18 | `get_connector_help` | Get config help for a connector |
 | 19 | `pin_memory` | Pin a memory — exempt from decay, always in context files |
 | 20 | `unpin_memory` | Restore normal decay |
+| 62 | `attach_file` | Attach a local file (screenshot, PDF, recording, ...) to a memory as evidence — reference + derived text, not blob |
 | 21 | `list_projects` | Workspaces with memory counts |
 | 22 | `list_sources` | Which AI clients stored memories |
 | 23 | `generate_context_file` | Compile memories into CLAUDE.md / .cursorrules |

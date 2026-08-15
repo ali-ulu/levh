@@ -16,7 +16,7 @@ hosted account required.
 
 What is included:
 
-- 61 MCP tools for capture, recall, review, trust, entities, conflicts and
+- 62 MCP tools for capture, recall, review, trust, entities, conflicts and
   project context.
 - Memory decay and reinforcement so important context stays available while
   stale detail fades.
@@ -49,7 +49,7 @@ local-first shared memory layer for MCP-compatible tools: store decisions and
 project context once, then surface it in later sessions.
 
 It uses SQLite, works without a hosted account, has deterministic offline
-fallbacks, and ships with a dashboard, REST API, WebSocket feed and 61 MCP
+fallbacks, and ships with a dashboard, REST API, WebSocket feed and 62 MCP
 tools. The memory model deliberately allows unused details to fade while
 reinforced or pinned information stays durable.
 

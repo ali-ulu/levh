@@ -160,6 +160,7 @@ middleware.install(app)
 # (GET /api/memories/fading would resolve as memory_id="fading").
 
 from server.routes import (  # noqa: E402
+    attachments,
     conflicts,
     connectors,
     context,
@@ -176,6 +177,7 @@ from server.routes import (  # noqa: E402
 )
 
 app.include_router(memories.router)
+app.include_router(attachments.router)
 app.include_router(memory_item.router)
 app.include_router(sessions.router)
 app.include_router(onboarding.router)

@@ -57,6 +57,12 @@ because it is a read that has to POST to carry its query.
 | GET | `/api/decisions` | Deterministic decision detection — statements like "we decided" / "agreed to" / "karar verdik" in recent episodic… |
 | GET | `/api/context` | The current context window — short-term, pinned and important memories |
 | POST | `/api/ask` | Ask your memory a question and get a synthesized, cited answer |
+| POST | `/api/attachments/upload` | Store an uploaded file locally and return the path to attach from |
+| POST | `/api/memories/{memory_id}/attachments` | Attach a local file to a memory by reference (path + sha256), with optional derived text (OCR/transcript/caption)… |
+| GET | `/api/memories/{memory_id}/attachments` | List the files attached to a memory |
+| POST | `/api/attachments/{attachment_id}/verify` | Re-check the file against what was recorded at attach time. A missing or changed file raises a conflict candidate… |
+| POST | `/api/attachments/verify-all` | Verify every attachment. Returns counts by resulting status |
+| DELETE | `/api/attachments/{attachment_id}` | Delete an attachment record (the referenced file on disk is left untouched) |
 | GET | `/api/entities` | Persisted entities (optionally filtered by type), most-mentioned first |
 | POST | `/api/entities/reindex` | Rebuild the persistent entity graph from every stored memory |
 | GET | `/api/entities/stats` | Counts of persisted entities by type |

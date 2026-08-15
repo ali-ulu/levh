@@ -14,6 +14,7 @@ Run `levh <command> --help` for the flags of any one of them.
 | `levh serve` | Launch the API server |
 | `levh capture` | Store a memory from the command line |
 | `levh admit` | Store a memory through the admission gate (dedupe + secret redaction) |
+| `levh attach` | Attach a local file to a memory as evidence (reference + derived text, not blob) |
 | `levh sync` | Connector v2: gate-filtered incremental import |
 | `levh context` | Generate CLAUDE.md / .cursorrules from memories |
 | `levh summarize` | Distill a session into one summary memory |
