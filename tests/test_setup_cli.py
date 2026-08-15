@@ -40,7 +40,7 @@ def test_setup_real_is_repeat_safe_and_does_not_seed(tmp_path):
     assert data["memory_count"] == 0
     assert data["mcp_default_profile"] == "work"
     assert (tmp_path / ".stackmemory" / "mcp" / "claude-work.json").exists()
-    receipt = json.loads((tmp_path / ".stackmemory" / "onboarding-receipt.json").read_text())
+    receipt = json.loads((tmp_path / ".stackmemory" / "onboarding-receipt.json").read_text(encoding="utf-8"))
     assert receipt["demo_mode"] is False
     assert receipt["mcp_profile"] == "work"
 
@@ -54,7 +54,7 @@ def test_setup_demo_seeds_deterministic_shape_and_never_overwrites(tmp_path):
     assert data["memory_count"] == 20
     assert data["demo_memory_count"] == 20
     assert data["demo_seeded"] is True
-    assert "minimal" in (tmp_path / ".stackmemory" / "mcp" / "cursor-minimal.json").read_text()
+    assert "minimal" in (tmp_path / ".stackmemory" / "mcp" / "cursor-minimal.json").read_text(encoding="utf-8")
 
     again = _run("setup", "--demo", "--client", "cursor", "--profile", "minimal", cwd=tmp_path, db_path=db)
     assert again.returncode == 0

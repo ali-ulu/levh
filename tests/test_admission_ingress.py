@@ -164,8 +164,8 @@ def test_non_loopback_serve_requires_token(monkeypatch):
 
 def test_container_defaults_are_local_and_non_root():
     root = Path(__file__).resolve().parents[1]
-    compose = (root / "docker-compose.yml").read_text()
-    dockerfile = (root / "Dockerfile").read_text()
+    compose = (root / "docker-compose.yml").read_text(encoding="utf-8")
+    dockerfile = (root / "Dockerfile").read_text(encoding="utf-8")
     assert '"127.0.0.1:8000:8000"' in compose
     assert "USER stackmemory" in dockerfile
     assert "HEALTHCHECK" in dockerfile

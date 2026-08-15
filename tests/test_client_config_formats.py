@@ -98,10 +98,10 @@ def test_generate_all_configs_writes_native_file_formats(tmp_path):
     for platform in PLATFORMS:
         assert platform in written
 
-    tomllib.loads((tmp_path / ".codex" / "config.toml").read_text())
-    assert (tmp_path / ".hermes" / "config.yaml").read_text().startswith("mcp_servers:")
-    json.loads((tmp_path / "opencode.json").read_text())
-    json.loads((tmp_path / ".jcode" / "mcp.json").read_text())
+    tomllib.loads((tmp_path / ".codex" / "config.toml").read_text(encoding="utf-8"))
+    assert (tmp_path / ".hermes" / "config.yaml").read_text(encoding="utf-8").startswith("mcp_servers:")
+    json.loads((tmp_path / "opencode.json").read_text(encoding="utf-8"))
+    json.loads((tmp_path / ".jcode" / "mcp.json").read_text(encoding="utf-8"))
 
 
 def test_env_values_are_quoted_in_toml_and_yaml(tmp_path):

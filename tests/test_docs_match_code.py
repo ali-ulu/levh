@@ -33,7 +33,7 @@ def api_paths() -> set[str]:
 
 @pytest.fixture(scope="module")
 def api_doc() -> str:
-    return (DOCS / "api-reference.md").read_text()
+    return (DOCS / "api-reference.md").read_text(encoding="utf-8")
 
 
 def test_every_route_is_documented(api_paths, api_doc):
@@ -61,7 +61,7 @@ def test_every_cli_command_is_documented():
 
     parser, _ = build_parser("levh")
     sub = next(a for a in parser._actions if a.__class__.__name__ == "_SubParsersAction")
-    doc = (DOCS / "cli.md").read_text()
+    doc = (DOCS / "cli.md").read_text(encoding="utf-8")
 
     missing = [name for name in sub.choices if f"`levh {name}" not in doc]
     assert not missing, f"undocumented CLI commands: {sorted(missing)}"
@@ -72,7 +72,7 @@ def test_every_cli_subcommand_is_documented():
 
     parser, _ = build_parser("levh")
     sub = next(a for a in parser._actions if a.__class__.__name__ == "_SubParsersAction")
-    doc = (DOCS / "cli.md").read_text()
+    doc = (DOCS / "cli.md").read_text(encoding="utf-8")
 
     missing = []
     for name, child in sub.choices.items():
@@ -90,7 +90,7 @@ def test_every_cli_subcommand_is_documented():
 def test_the_tool_list_matches_the_registry():
     from server.tools.profiles import TOOL_TIERS
 
-    doc = (DOCS / "mcp-tools.md").read_text()
+    doc = (DOCS / "mcp-tools.md").read_text(encoding="utf-8")
     documented = set(re.findall(r"\| `([a-z_]+)` \|", doc))
 
     assert not set(TOOL_TIERS) - documented, (
@@ -106,7 +106,7 @@ def test_the_profile_bands_in_the_docs_are_current():
     from server.tools.profiles import profile_counts
 
     counts = profile_counts()
-    doc = (DOCS / "mcp-tools.md").read_text()
+    doc = (DOCS / "mcp-tools.md").read_text(encoding="utf-8")
     band = f'`minimal` ({counts["minimal"]}) ⊂ `work` ({counts["work"]}) ⊂ ' \
            f'`admin` ({counts["admin"]}) ⊂ `full` ({counts["full"]})'
     assert band in doc, f"stale profile bands; expected {band}"
@@ -117,7 +117,7 @@ def test_no_document_quotes_a_stale_tool_count(doc_name):
     from server.tools.profiles import profile_counts
 
     total = profile_counts()["full"]
-    text = (DOCS / doc_name).read_text()
+    text = (DOCS / doc_name).read_text(encoding="utf-8")
     stale = [m for m in re.findall(r"(\d+) (?:MCP )?tools", text) if int(m) != total]
     assert not stale, f"{doc_name} quotes {stale} tools; there are {total}"
 
@@ -128,6 +128,6 @@ def test_no_document_quotes_a_stale_tool_count(doc_name):
 def test_every_supported_client_is_documented():
     from server.configs import PLATFORMS
 
-    doc = (DOCS / "mcp-client-config.md").read_text().lower()
+    doc = (DOCS / "mcp-client-config.md").read_text(encoding="utf-8").lower()
     missing = [name for name in PLATFORMS if name.replace("_", " ") not in doc and name not in doc]
     assert not missing, f"undocumented clients: {sorted(missing)}"
