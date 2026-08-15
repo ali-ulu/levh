@@ -162,6 +162,37 @@ def test_a_broken_settings_file_is_reported_not_overwritten(project):
     assert settings_path.read_text() == "{ this is not json"
 
 
+def test_a_broken_settings_file_leaves_no_hook_script_behind(project):
+    """A failed install must leave no trace on disk (#58): the settings file
+    is validated before the script is written, not after."""
+    settings_path = project / ".claude/settings.json"
+    settings_path.parent.mkdir(parents=True)
+    settings_path.write_text("{ this is not json")
+
+    assert _install() == 1
+    assert not (project / ".claude/hooks/levh-session-start.sh").exists()
+
+
+def test_a_broken_settings_file_does_not_disturb_an_existing_script(project):
+    """If a LEVH hook script from an earlier, successful install is already on
+    disk, a later failed install (settings corrupted in between) must not
+    touch its content or permissions."""
+    hook_path = project / ".claude/hooks/levh-session-start.sh"
+    hook_path.parent.mkdir(parents=True)
+    hook_path.write_text("#!/bin/sh\necho existing\n")
+    hook_path.chmod(0o755)
+    original = hook_path.read_text()
+    original_mode = hook_path.stat().st_mode
+
+    settings_path = project / ".claude/settings.json"
+    settings_path.parent.mkdir(parents=True, exist_ok=True)
+    settings_path.write_text("{ this is not json")
+
+    assert _install() == 1
+    assert hook_path.read_text() == original
+    assert hook_path.stat().st_mode == original_mode
+
+
 # ── Removal ──────────────────────────────────────────────────────────
 
 
