@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import os
+import shlex
 import subprocess
 import sys
 from pathlib import Path
@@ -66,6 +67,55 @@ def test_install_writes_an_executable_script_and_registers_it(project):
     entries = settings["hooks"]["SessionStart"][0]["hooks"]
     assert entries[0]["type"] == "command"
     assert "levh-session-start.sh" in entries[0]["command"]
+
+
+def test_the_registered_command_survives_a_project_path_with_spaces(project):
+    """Claude Code expands ``$CLAUDE_PROJECT_DIR`` into a shell command line.
+
+    Real project directories have spaces in them — "social mcp", "My Documents".
+    Unquoted, the expansion word-splits and the hook silently never runs. That
+    is the worst failure mode a memory tool has: the session starts blank and
+    nothing tells you why it forgot.
+    """
+    _install()
+    settings = json.loads((project / ".claude/settings.json").read_text())
+    command = settings["hooks"]["SessionStart"][0]["hooks"][0]["command"]
+
+    # What the shell sees once Claude Code has substituted the variable. Split
+    # with POSIX rules rather than by running a shell, so the test is offline
+    # and behaves the same on Windows as it does in CI.
+    expanded = command.replace("$CLAUDE_PROJECT_DIR", "/home/u/a project with spaces")
+    words = shlex.split(expanded)
+
+    assert words == ["/home/u/a project with spaces/.claude/hooks/levh-session-start.sh"], (
+        "the expansion word-split; the shell would look for a command called "
+        f"{words[0]!r} and silently find nothing"
+    )
+
+
+def test_installing_over_a_legacy_unquoted_entry_repairs_it(project):
+    """An upgrade has to fix the broken command, not step over it.
+
+    Every project installed before the quoting fix carries the unquoted entry.
+    Recognising it as "already installed" and returning leaves those projects
+    broken forever, because nothing in the output suggests uninstalling first.
+    """
+    settings_path = project / ".claude/settings.json"
+    settings_path.parent.mkdir(parents=True)
+    legacy = "$CLAUDE_PROJECT_DIR/.claude/hooks/levh-session-start.sh"
+    settings_path.write_text(
+        json.dumps(
+            {"hooks": {"SessionStart": [{"hooks": [{"type": "command", "command": legacy}]}]}}
+        )
+    )
+
+    assert _install() == 0
+
+    settings = json.loads(settings_path.read_text())
+    commands = [e["command"] for g in settings["hooks"]["SessionStart"] for e in g["hooks"]]
+    assert commands == ['"$CLAUDE_PROJECT_DIR/.claude/hooks/levh-session-start.sh"'], (
+        "the stale entry survived the upgrade"
+    )
 
 
 def test_installing_twice_changes_nothing(project):
