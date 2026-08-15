@@ -10,6 +10,7 @@ from server.commands.paths import _HOOK_MARKER, _HOOK_TEMPLATE, _SESSION_HOOK_TE
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -64,12 +65,26 @@ def _write_settings(settings: dict) -> None:
     SETTINGS_PATH.write_text(json.dumps(settings, indent=2) + "\n", encoding="utf-8")
 
 
+def _resolved_db_path() -> str:
+    """The database this machine actually uses, as an absolute path.
+
+    Mirrors ``server.core.db.schema``'s default. Resolving it here — at install
+    time, in the shell the user ran the command from — is the point: the hook
+    itself runs with an unpredictable working directory, so a relative default
+    would silently point at an empty per-directory database.
+    """
+    return os.path.abspath(os.getenv("SQLITE_DB_PATH", "./stackmemory.db"))
+
+
 def _install_session_hook(limit: int) -> int:
     """Register a SessionStart hook that injects the continuity brief."""
     SESSION_HOOK_PATH.parent.mkdir(parents=True, exist_ok=True)
     SESSION_HOOK_PATH.write_text(
         _SESSION_HOOK_TEMPLATE.format(
-            marker=_HOOK_MARKER, python=sys.executable, limit=limit
+            marker=_HOOK_MARKER,
+            python=sys.executable,
+            limit=limit,
+            db_path=_resolved_db_path(),
         ),
         encoding="utf-8",
     )
