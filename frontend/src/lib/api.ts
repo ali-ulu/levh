@@ -405,6 +405,23 @@ export const api = {
       body: JSON.stringify({ content_b64, passphrase: passphrase || "", replace }),
     }),
 
+  // File import — any file becomes one or more memories. Text is extracted
+  // server-side (PDF/Word/Excel/zip when the optional packages are
+  // installed, plain text otherwise); unrecognized types still record that
+  // the file arrived.
+  importFile: (filename: string, content_b64: string, project?: string, tags: string[] = []) =>
+    fetchApi<{
+      filename: string;
+      bytes: number;
+      parts: number;
+      memories_created: number;
+      chars_extracted: number;
+      warnings: string[];
+    }>("/api/import/file", {
+      method: "POST",
+      body: JSON.stringify({ filename, content_b64, project: project || undefined, tags }),
+    }),
+
   // Full export — memories + entity graph + trust scores + conflicts.
   // Binary response, so raw fetch (not fetchApi).
   exportFull: async (format: "json" | "sqlite" | "pdf"): Promise<{ blob: Blob; filename: string }> => {

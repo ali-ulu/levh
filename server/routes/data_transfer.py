@@ -10,7 +10,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import Response
 
 from server.routes.deps import get_engine
-from server.routes.models import BackupRequest, RestoreRequest
+from server.routes.models import BackupRequest, FileImportRequest, RestoreRequest
 from server.routes.deps import APP_VERSION
 
 router = APIRouter()
@@ -133,3 +133,72 @@ async def restore_backup(req: RestoreRequest):
 
     result = await engine.restore(snapshot, replace=req.replace)
     return result
+
+
+@router.post("/api/import/file")
+async def import_file(req: FileImportRequest):
+    """Turn an arbitrary uploaded file into memories.
+
+    Plain text, PDF, Word, Excel and zip archives are extracted to text and
+    admitted as one or more memories (split on paragraph boundaries for long
+    content). Formats with no extractor still get a memory recording that
+    the file arrived, so nothing silently disappears. Same base64-in-JSON
+    shape as ``/api/restore`` and ``/api/connectors/upload`` — keeps
+    python-multipart out of the runtime dependency list.
+    """
+
+    from server.core.file_import import chunk_text, extract_parts
+
+    try:
+        blob = base64.b64decode(req.content_b64, validate=True)
+    except (binascii.Error, ValueError):
+        raise HTTPException(status_code=400, detail="content_b64 is not valid base64")
+    if not blob:
+        raise HTTPException(status_code=400, detail="uploaded file is empty")
+
+    filename = req.filename.strip() or "upload"
+    parts, warnings = extract_parts(filename, blob)
+    engine = await get_engine()
+    tags = [*req.tags, "import:file"]
+
+    stored = 0
+    chars = 0
+    if not parts:
+        result = await engine.admit_memory(
+            content=f"Uploaded file '{filename}' ({len(blob)} bytes) — "
+            f"{'; '.join(warnings) if warnings else 'content not indexed'}.",
+            tags=tags,
+            project=req.project,
+            source="file-import",
+            metadata={"filename": filename, "bytes": len(blob), "extracted": False},
+        )
+        if result["stored"]:
+            stored += 1
+    else:
+        for label, text in parts:
+            chunks = chunk_text(text)
+            for i, chunk in enumerate(chunks):
+                chars += len(chunk)
+                result = await engine.admit_memory(
+                    content=chunk,
+                    tags=tags,
+                    project=req.project,
+                    source="file-import",
+                    metadata={
+                        "filename": filename,
+                        "part": label,
+                        "chunk": i + 1,
+                        "of": len(chunks),
+                    },
+                )
+                if result["stored"]:
+                    stored += 1
+
+    return {
+        "filename": filename,
+        "bytes": len(blob),
+        "parts": len(parts),
+        "memories_created": stored,
+        "chars_extracted": chars,
+        "warnings": warnings,
+    }
