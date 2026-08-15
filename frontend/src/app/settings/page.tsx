@@ -9,6 +9,7 @@ import { BackupRestore } from "./_sections/backup-restore";
 import { ConnectClient } from "./_sections/connect-client";
 import { Connectors } from "./_sections/connectors";
 import { DataManagement } from "./_sections/data-management";
+import { FileImport } from "./_sections/file-import";
 import { PrivacyRedaction } from "./_sections/privacy-redaction";
 import { RecallQuality } from "./_sections/recall-quality";
 import { ServerConfiguration } from "./_sections/server-configuration";
@@ -47,6 +48,7 @@ export default function SettingsPage() {
       <ConnectClient config={config} client={client} setClient={setClient} />
       <Connectors />
       <DataManagement />
+      <FileImport />
       <BackupRestore />
     </div>
   );

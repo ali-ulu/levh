@@ -39,6 +39,8 @@ openai = []
 secure = ["cryptography>=42"]
 # PDF rendering for the full-export audit report.
 pdf = ["fpdf2>=2.7"]
+# Text extraction for the file-import feature (PDF/Word/Excel uploads).
+files = ["pypdf>=4.0", "python-docx>=1.1", "openpyxl>=3.1"]
 dev = ["pytest", "pytest-asyncio", "build", "twine", "fpdf2>=2.7"]
 
 [project.urls]

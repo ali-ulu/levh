@@ -2,6 +2,13 @@
 
 Hatalardan çıkan kalıcı dersler. Her görev öncesi ilgili anahtar kelimeyle aranır, her RCA sonrası güncellenir.
 
+## 2026-08-15 — levh / server.core.file_import
+
+- HATA: Dosya import özelliği ilk taslağında, binary bir dosya (ör. PNG) "metin olarak okunamadı" uyarısı vermek yerine anlamsız çöp karakterlerle bir memory olarak kaydediliyordu.
+- KÖK NEDEN: `_decode_text` fallback zincirinin son adımı `latin-1` idi; latin-1 her byte dizisini hatasız decode eder, dolayısıyla hiçbir binary blob asla decode hatası vermiyor ve "bilinmeyen uzantı → düz metin dene" yolu her zaman "başarılı" dönüyordu.
+- KURAL: Bir decode denemesinin "başarılı" sayılması yetmez — bir baytın gerçekten metin olup olmadığını NUL byte / non-printable oranı gibi bir sezgisel ile ayrıca doğrula. Kod yazarken bunu bir test ile (binary payload → warning bekleniyor) doğrula, yalnızca mutlu yol testiyle yetinme.
+- KAPSAM: `server/core/file_import.py` ve içerik türü sezen (content-sniffing) tüm modüller.
+
 ## KALICI KURALLAR
 
 - Yeni bir CLI alt komutu eklerken mevcut `sub.add_parser(...)` bloklarının üzerine yazma; parser ile `main()` içindeki `elif args.command == ...` dispatch'i daima birlikte kontrol et.

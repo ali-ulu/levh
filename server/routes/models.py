@@ -55,6 +55,13 @@ class BackupRequest(BaseModel):
     passphrase: str = ""
 
 
+class FileImportRequest(BaseModel):
+    filename: str
+    content_b64: str
+    project: Optional[str] = None
+    tags: list[str] = []
+
+
 class RestoreRequest(BaseModel):
     content_b64: str
     passphrase: str = ""

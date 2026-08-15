@@ -78,6 +78,7 @@ because it is a read that has to POST to carry its query.
 | GET | `/api/export/full.sqlite` | Raw SQLite copy of the live database, taken via the online backup API |
 | POST | `/api/backup` | Full portable snapshot (all memories + sessions) as a downloadable file. When ``passphrase`` is set the file is… |
 | POST | `/api/restore` | Restore from a backup file. ``content_b64`` is the base64-encoded backup bytes (encrypted or plain — auto-detected).… |
+| POST | `/api/import/file` | Turn an arbitrary uploaded file into memories. Plain text, PDF, Word, Excel and zip archives are extracted to text… |
 | POST | `/api/onboarding/mcp-config` | Generate a focused MCP client config without persisting secrets |
 | POST | `/api/onboarding/remove-demo` | Remove only metadata.demo=true memories using the audited purge path |
 | GET | `/api/onboarding/status` | Real first-run readiness derived from local storage/configuration |
