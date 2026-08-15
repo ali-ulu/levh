@@ -4,10 +4,13 @@ Guidance for Claude Code and other AI agents working in this repository.
 
 ## Hata disiplini
 
-LESSONS.md dosyasını her görev öncesi kontrol et, her hata sonrası güncelle. Detay: hata-disiplini skill.
+`LESSONS.md` dosyasını her görev öncesi kontrol et, her hata sonrası güncelle. Detay: hata-disiplini skill.
 
 - Göreve başlamadan önce `LESSONS.md` içinde görev/modül adıyla eşleşen anahtar kelimeyi ara ve `## KALICI KURALLAR` bölümünü tara.
 - Bir hata düzelttikten sonra RCA özetini (`HATA` / `KÖK NEDEN` / `KURAL` / `KAPSAM`) `LESSONS.md`'ye ekle.
+
+`LESSONS.md` repoda **takip edilmez** — çalışma günlüğü niteliğinde ve yereldir
+(`.gitignore`'da). Dosya yoksa oluştur; bu bölümdeki iki kural yine geçerlidir.
 
 ## What this project is
 

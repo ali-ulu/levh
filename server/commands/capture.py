@@ -12,6 +12,16 @@ import sys
 
 
 
+def _slugify_project(name: str) -> str:
+    """Normalise a directory name into the project key agents actually use.
+
+    A folder called "social mcp" and a memory tagged "social-mcp" are the same
+    project to everyone except an exact-match query, which is how a brief ends
+    up empty while the memories sit right there.
+    """
+    return "-".join(name.lower().split())
+
+
 def _detect_project() -> str | None:
     """Use the current git repo's directory name as the project, if any."""
     import subprocess
@@ -21,9 +31,21 @@ def _detect_project() -> str | None:
             capture_output=True, text=True, timeout=5,
         )
         if top.returncode == 0 and top.stdout.strip():
-            return os.path.basename(top.stdout.strip())
+            root = os.path.normcase(os.path.abspath(top.stdout.strip()))
+            # `git rev-parse` walks upwards, so a directory that is not itself a
+            # repo reports the first ancestor that is. When someone has version
+            # controlled their home directory, that makes every stray folder
+            # under it claim to be the same "project" — named after the user.
+            # That is never what was meant.
+            if root != os.path.normcase(os.path.abspath(os.path.expanduser("~"))):
+                return _slugify_project(os.path.basename(root))
     except (OSError, subprocess.TimeoutExpired):
         pass
+
+    # No project rather than a guessed one. Naming the directory at hand would
+    # scope every lookup to a key nothing was ever stored under, and the caller
+    # would get an empty result with no way to tell it apart from having
+    # nothing to say. Unscoped is the honest answer.
     return None
 
 

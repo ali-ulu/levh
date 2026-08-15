@@ -14,6 +14,7 @@ from __future__ import annotations
 import json
 import os
 import shlex
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -188,10 +189,23 @@ def test_uninstalling_when_nothing_is_installed_is_not_an_error(project):
 
 # ── The script itself ────────────────────────────────────────────────
 
+# Windows cannot exec a .sh directly (WinError 193), so the script is always
+# handed to a shell. Claude Code runs the hook the same way, and on POSIX this
+# is equivalent to executing it — the shebang asks for /bin/sh either way.
+SH = shutil.which("sh")
+
+needs_shell = pytest.mark.skipif(
+    SH is None, reason="no POSIX shell available to run the hook script"
+)
+
+
+def _hook_argv(project: Path) -> list[str]:
+    return [SH, str(project / ".claude/hooks/levh-session-start.sh")]
+
 
 def _run_hook(project: Path, db: Path) -> subprocess.CompletedProcess:
     return subprocess.run(
-        [str(project / ".claude/hooks/levh-session-start.sh")],
+        _hook_argv(project),
         cwd=project,
         capture_output=True,
         text=True,
@@ -205,6 +219,7 @@ def _run_hook(project: Path, db: Path) -> subprocess.CompletedProcess:
     )
 
 
+@needs_shell
 def test_the_hook_stays_silent_when_there_is_nothing_to_say(project):
     """An empty brief in every conversation is noise, not memory."""
     _install()
@@ -215,12 +230,13 @@ def test_the_hook_stays_silent_when_there_is_nothing_to_say(project):
     assert result.stdout.strip() == ""
 
 
+@needs_shell
 def test_the_hook_never_fails_the_session(project):
     """A memory tool that stops you starting work is worse than none."""
     _install()
 
     result = subprocess.run(
-        [str(project / ".claude/hooks/levh-session-start.sh")],
+        _hook_argv(project),
         cwd=project,
         capture_output=True,
         text=True,

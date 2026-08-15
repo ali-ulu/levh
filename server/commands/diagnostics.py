@@ -47,7 +47,14 @@ def cmd_setup(args: argparse.Namespace) -> int:
     mode = "demo" if args.demo else "real" if args.real else ""
     if not mode:
         if sys.stdin.isatty():
-            choice = input("  Choose setup mode: [d]emo or [r]eal data? ").strip().lower()
+            # isatty() is a guess about whether anyone is there to answer; the
+            # read is the fact. A terminal handed to a CI runner or a test
+            # harness still reports as a tty and then hands back EOF, and an
+            # unhandled EOFError turns "you forgot a flag" into a traceback.
+            try:
+                choice = input("  Choose setup mode: [d]emo or [r]eal data? ").strip().lower()
+            except (EOFError, KeyboardInterrupt):
+                choice = ""
             mode = "demo" if choice in {"d", "demo"} else "real" if choice in {"r", "real"} else ""
         if not mode:
             print("  Choose one: --demo or --real", file=sys.stderr)
