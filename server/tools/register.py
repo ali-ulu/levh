@@ -79,6 +79,7 @@ def _register(mcp: FastMCP, engine: MemoryEngine) -> None:
     from .export_import import register as reg_export
     from .connectors import register as reg_connectors
     from .pin import register as reg_pin
+    from .attach_file import register as reg_attach_file
     from .projects import register as reg_projects
     from .context_file import register as reg_context_file
     from .dedupe import register as reg_dedupe
@@ -120,6 +121,7 @@ def _register(mcp: FastMCP, engine: MemoryEngine) -> None:
     reg_export(mcp, engine)
     reg_connectors(mcp, engine)
     reg_pin(mcp, engine)
+    reg_attach_file(mcp, engine)
     reg_projects(mcp, engine)
     reg_context_file(mcp, engine)
     reg_dedupe(mcp, engine)

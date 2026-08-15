@@ -108,6 +108,27 @@ CREATE TABLE IF NOT EXISTS memory_conflict_candidates (
     reviewed_at         TEXT
 );
 
+-- Files attached to a memory as evidence, not content. The memory stays text
+-- (so decay/H(x,psi) keep working); the file lives on disk and is referenced
+-- by path + hash. derived_text is what recall actually searches — OCR/
+-- transcript/caption text, populated by an optional local extractor or typed
+-- in by hand. status flips to 'missing'/'changed' when a verify pass finds
+-- the file gone or its hash no longer matches, which is also what raises a
+-- conflict candidate (see server.core.engine.attachments).
+CREATE TABLE IF NOT EXISTS attachments (
+    id           TEXT PRIMARY KEY,
+    memory_id    TEXT NOT NULL REFERENCES memories(id) ON DELETE CASCADE,
+    path         TEXT NOT NULL,
+    sha256       TEXT NOT NULL,
+    mime         TEXT,
+    size         INTEGER NOT NULL,
+    derived_text TEXT,
+    derived_by   TEXT NOT NULL DEFAULT 'none',   -- tesseract|whisper|manual|none
+    status       TEXT NOT NULL DEFAULT 'ok',     -- ok|missing|changed
+    created_at   TEXT NOT NULL,
+    verified_at  TEXT
+);
+
 -- Provenance / trust scores (deterministic reliability signal, NOT truth).
 CREATE TABLE IF NOT EXISTS memory_trust_scores (
     memory_id           TEXT PRIMARY KEY,
@@ -142,6 +163,7 @@ CREATE INDEX IF NOT EXISTS idx_me_entity     ON memory_entities(entity_id);
 CREATE INDEX IF NOT EXISTS idx_me_memory     ON memory_entities(memory_id);
 CREATE INDEX IF NOT EXISTS idx_viol_rule     ON violations(rule_id);
 CREATE INDEX IF NOT EXISTS idx_viol_when     ON violations(occurred_at DESC);
+CREATE INDEX IF NOT EXISTS idx_attach_memory ON attachments(memory_id);
 """
 
 

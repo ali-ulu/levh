@@ -62,6 +62,17 @@ class FileImportRequest(BaseModel):
     tags: list[str] = []
 
 
+class AttachmentUploadRequest(BaseModel):
+    filename: str
+    content_b64: str
+
+
+class AttachFileRequest(BaseModel):
+    path: str
+    derived_text: Optional[str] = None
+    derived_by: str = "manual"
+
+
 class RestoreRequest(BaseModel):
     content_b64: str
     passphrase: str = ""

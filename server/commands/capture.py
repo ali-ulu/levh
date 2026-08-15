@@ -97,6 +97,39 @@ def cmd_capture(args: argparse.Namespace) -> int:
     return asyncio.run(_run())
 
 
+def cmd_attach(args: argparse.Namespace) -> int:
+    """Attach a local file to an existing memory as evidence (reference +
+    optional derived text), not as blob content."""
+    import asyncio
+
+    from server.core import engine_provider
+
+    async def _run() -> dict:
+        engine = engine_provider.get_engine()
+        await engine.initialize()
+        try:
+            return await engine.attach_file(
+                args.memory_id,
+                args.path,
+                derived_text=args.derived_text or None,
+                derived_by=args.derived_by,
+            )
+        finally:
+            await engine.shutdown()
+
+    try:
+        attachment = asyncio.run(_run())
+    except ValueError as exc:
+        print(f"  {exc}", file=sys.stderr)
+        return 1
+
+    print(f"  Attached {args.path}")
+    print(f"  Attachment ID: {attachment['id']}")
+    print(f"  sha256: {attachment['sha256'][:16]}... | {attachment['size']} bytes"
+          f" | {attachment['mime'] or 'unknown MIME'}")
+    return 0
+
+
 def cmd_admit(args: argparse.Namespace) -> int:
     """Store a memory through the admission gate (dedupe + secret redaction)."""
     import asyncio

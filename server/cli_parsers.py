@@ -76,6 +76,13 @@ def build_parser(prog: str) -> tuple[argparse.ArgumentParser, dict[str, argparse
     admit_p.add_argument("--project", type=str, default="")
     admit_p.add_argument("--force", action="store_true", help="Store even if the gate would reject/hold it")
 
+    # attach
+    attach_p = sub.add_parser("attach", help="Attach a local file to a memory as evidence (reference + derived text, not blob)")
+    attach_p.add_argument("memory_id", help="ID of the memory to attach the file to")
+    attach_p.add_argument("path", help="Local path to the file")
+    attach_p.add_argument("--derived-text", type=str, default="", help="OCR/transcript/caption text recall can search")
+    attach_p.add_argument("--derived-by", type=str, default="manual", help="Who/what produced --derived-text (default: manual)")
+
     # sync (Connector Framework v2)
     sync_p = sub.add_parser("sync", help="Connector v2: gate-filtered incremental import")
     sync_p.add_argument("connector", nargs="?", help="Connector name (e.g. calendar, local_files)")

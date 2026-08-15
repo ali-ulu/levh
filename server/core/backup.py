@@ -28,16 +28,22 @@ class BackupError(ValueError):
 
 
 def make_snapshot(memories: list[dict], sessions: list[dict], app_version: str,
-                  created_at: str) -> dict[str, Any]:
+                  created_at: str, attachments: list[dict] | None = None) -> dict[str, Any]:
     """Assemble the snapshot envelope from already-serialised records."""
+    attachments = attachments or []
     return {
         "format": BACKUP_FORMAT,
         "backup_version": BACKUP_VERSION,
         "app_version": app_version,
         "created_at": created_at,
-        "counts": {"memories": len(memories), "sessions": len(sessions)},
+        "counts": {
+            "memories": len(memories),
+            "sessions": len(sessions),
+            "attachments": len(attachments),
+        },
         "memories": memories,
         "sessions": sessions,
+        "attachments": attachments,
     }
 
 

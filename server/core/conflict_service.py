@@ -121,6 +121,12 @@ class ConflictService:
 
         stale_pruned = 0
         for existing in await self.db.list_conflicts(status="open", limit=100000):
+            # Attachment candidates (memory_id_a == memory_id_b) come from
+            # verify_attachment, not this pairwise entity-overlap sweep — they
+            # are never in current_candidate_ids and would otherwise be wiped
+            # out on every read that triggers a derived-state refresh.
+            if existing["memory_id_a"] == existing["memory_id_b"]:
+                continue
             if existing["id"] not in current_candidate_ids:
                 if await self.db.delete_conflict(existing["id"]):
                     stale_pruned += 1

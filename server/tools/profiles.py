@@ -1,6 +1,6 @@
 """MCP tool profiles — control how many tools a client actually sees.
 
-Advertising all 61 tools to every AI client hurts tool-selection accuracy:
+Advertising all 62 tools to every AI client hurts tool-selection accuracy:
 selection quality falls off as the tool list grows, so a public demo where the
 agent must pick the right tool from 61 is a reliability risk. Profiles let a
 client mount a focused subset instead.
@@ -48,6 +48,7 @@ TOOL_TIERS: dict[str, str] = {
     "ask_memory": "work",
     "reinforce_memory": "work",
     "pin_memory": "work",
+    "attach_file": "work",
     "briefing": "work",
     "meeting_prep": "work",
     "list_entities": "work",

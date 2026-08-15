@@ -71,7 +71,11 @@ async def list_memories(
         limit=limit,
         offset=offset,
     )
-    return [m.model_dump(exclude={"embedding"}) for m in memories]
+    attachments_by_memory = await engine.db.list_attachments_for_memories([m.id for m in memories])
+    return [
+        {**m.model_dump(exclude={"embedding"}), "attachments": attachments_by_memory.get(m.id, [])}
+        for m in memories
+    ]
 
 
 @router.get("/api/memories/fading")
@@ -149,8 +153,14 @@ async def recall_memories(req: RecallRequest):
         # what everyone else sees.
         reinforce=False if public_demo() else req.reinforce,
     )
+    attachments_by_memory = await engine.db.list_attachments_for_memories(
+        [m.id for m in result.memories]
+    )
     return {
-        "memories": [m.model_dump(exclude={"embedding"}) for m in result.memories],
+        "memories": [
+            {**m.model_dump(exclude={"embedding"}), "attachments": attachments_by_memory.get(m.id, [])}
+            for m in result.memories
+        ],
         "scores": result.scores,
     }
 
