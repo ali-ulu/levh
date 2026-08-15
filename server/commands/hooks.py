@@ -78,6 +78,15 @@ def _resolved_db_path() -> str:
 
 def _install_session_hook(limit: int) -> int:
     """Register a SessionStart hook that injects the continuity brief."""
+    # Validate the settings file BEFORE writing anything to disk. A failed
+    # install must leave no trace — otherwise the script sits on disk,
+    # unregistered and unused, while the CLI reports failure.
+    try:
+        settings = _read_settings()
+    except ValueError as exc:
+        print(f"  {exc}", file=sys.stderr)
+        return 1
+
     SESSION_HOOK_PATH.parent.mkdir(parents=True, exist_ok=True)
     SESSION_HOOK_PATH.write_text(
         _SESSION_HOOK_TEMPLATE.format(
@@ -89,12 +98,6 @@ def _install_session_hook(limit: int) -> int:
         encoding="utf-8",
     )
     SESSION_HOOK_PATH.chmod(0o755)
-
-    try:
-        settings = _read_settings()
-    except ValueError as exc:
-        print(f"  {exc}", file=sys.stderr)
-        return 1
 
     # Merge rather than replace: the file may already carry hooks that have
     # nothing to do with LEVH, and overwriting someone's settings to install a
