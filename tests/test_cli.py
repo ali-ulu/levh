@@ -28,10 +28,19 @@ os.environ["EMBEDDER_MODE"] = "hash"
 def _run_cli(
     *args: str,
     cwd: str | None = None,
-    timeout: int = 30,
+    timeout: int = 120,
     extra_env: dict | None = None,
 ) -> subprocess.CompletedProcess:
-    """Run the CLI via python -m server.cli with given arguments."""
+    """Run the CLI via python -m server.cli with given arguments.
+
+    The timeout is deliberately generous. Every call is a cold Python process
+    that imports the whole package before doing anything; `doctor` alone takes
+    about ten seconds on an idle Windows box and several times that when the
+    rest of the suite is competing for the same disk. The old 30s cap passed in
+    isolation and failed in a full run — the worst kind of red, because it
+    looks like a defect and moves when you look at it. The bound still catches
+    a genuine hang; it is just no longer a stopwatch on how busy the machine is.
+    """
     cmd = [sys.executable, "-m", "server.cli", *args]
     return subprocess.run(
         cmd,
