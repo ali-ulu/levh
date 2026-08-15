@@ -48,3 +48,6 @@ worklog.md
 # machine absolute interpreter and database paths.
 .claude/
 frontend/tsconfig.tsbuildinfo
+
+# Local working journal: RCA notes, not a repo artefact.
+LESSONS.md
