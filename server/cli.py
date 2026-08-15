@@ -169,7 +169,27 @@ from server.commands.data import cmd_dogfood_export, cmd_dogfood_status, cmd_exp
 from server.commands.mcp import cmd_mcp_config, cmd_mcp_init, cmd_mcp_profiles, cmd_mcp_stdio
 
 
+def _make_stdio_unicode_safe() -> None:
+    """Never let the console encoding decide whether a command can print.
+
+    Memories are arbitrary user text — a star, an em dash, an emoji, Turkish
+    diacritics. On Windows the console defaults to a legacy code page (cp1252),
+    so printing any of that raises UnicodeEncodeError and the command exits
+    non-zero. That is fatal for the session hook, which redirects stderr to
+    /dev/null and falls back to `exit 0`: the brief is built correctly and then
+    silently discarded, with nothing anywhere to explain the empty session.
+    """
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is not None:
+            try:
+                reconfigure(encoding="utf-8", errors="replace")
+            except (OSError, ValueError):
+                pass  # A redirected or exotic stream is not worth failing over.
+
+
 def main() -> int:
+    _make_stdio_unicode_safe()
     invoked_as = Path(sys.argv[0]).stem.lower()
     legacy_invocation = invoked_as == "stackmemory"
     if legacy_invocation:

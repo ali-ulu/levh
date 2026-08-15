@@ -269,7 +269,7 @@ export default function Dashboard() {
               <Link href="/briefing" className="text-link">View all</Link>
             </div>
             <div className="space-y-1.5">
-              {briefing?.today.slice(0, 2).map((item) => (
+              {(briefing?.today ?? []).slice(0, 2).map((item) => (
                 <div key={item.id} className="briefing-row">
                   <span className="briefing-dot tone-blue"><Radio className="h-3.5 w-3.5" /></span>
                   <span className="min-w-0 flex-1"><strong>{item.summary}</strong><small>{item.source || "memory"}</small></span>
@@ -281,7 +281,7 @@ export default function Dashboard() {
                   <span className="min-w-0 flex-1"><strong>{item.text}</strong><small>{item.project || item.source || "commitment"}</small></span>
                 </div>
               ))}
-              {(briefing?.today.length ?? 0) === 0 && (briefing?.commitments.length ?? 0) === 0 && (
+              {(briefing?.today?.length ?? 0) === 0 && (briefing?.commitments?.length ?? 0) === 0 && (
                 <div className="empty-panel">Your briefing is clear. New decisions and commitments will surface here.</div>
               )}
             </div>

@@ -43,3 +43,11 @@ worklog.md
 # Release artifacts
 *-delta.zip
 *.zip
+
+# Machine-local Claude Code config: the installed session hook bakes in this
+# machine absolute interpreter and database paths.
+.claude/
+frontend/tsconfig.tsbuildinfo
+
+# Local working journal: RCA notes, not a repo artefact.
+LESSONS.md

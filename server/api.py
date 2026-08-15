@@ -220,10 +220,36 @@ def _dashboard_dir() -> str | None:
     return None
 
 
+class DashboardStaticFiles(StaticFiles):
+    """StaticFiles that tells the browser which assets are safe to keep.
+
+    Next.js emits content-hashed bundles under ``_next/static``: the filename
+    changes whenever the contents do, so they can be cached forever. The HTML
+    documents that *point* at those bundles must never be cached blindly —
+    without an explicit header a browser applies heuristic freshness (roughly
+    10% of the Last-Modified age) and will happily reuse a stale document for
+    hours. After an upgrade that document references bundle hashes that no
+    longer exist on disk, every one of them 404s, React cannot hydrate, and the
+    app dies with "a client-side exception has occurred" until the user knows
+    to hard-reload. ``no-cache`` still allows a cheap ETag revalidation (304).
+    """
+
+    IMMUTABLE_PREFIX = "_next/static"
+
+    def file_response(self, full_path, stat_result, scope, status_code=200):
+        response = super().file_response(full_path, stat_result, scope, status_code)
+        path = scope.get("path", "").lstrip("/")
+        if path.startswith(self.IMMUTABLE_PREFIX):
+            response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        else:
+            response.headers["Cache-Control"] = "no-cache"
+        return response
+
+
 _FRONTEND_DIR = _dashboard_dir()
 
 if _FRONTEND_DIR:
-    app.mount("/", StaticFiles(directory=_FRONTEND_DIR, html=True), name="dashboard")
+    app.mount("/", DashboardStaticFiles(directory=_FRONTEND_DIR, html=True), name="dashboard")
 else:
 
     @app.get("/", response_class=PlainTextResponse)
