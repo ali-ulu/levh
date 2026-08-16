@@ -30,8 +30,34 @@ def levh_version() -> str:
         return get_env("LEVH_VERSION", "unknown")
 
 
+def _default_receipt_path() -> Path:
+    """Resolve the default receipt location, preferring a writable directory.
+
+    Happy path: the project-local ``.stackmemory`` next to the current working
+    directory. But the process cwd may be read-only (for example the API server
+    started from a system directory such as ``C:\\Windows\\System32``), which
+    would make ``write_receipt`` raise PermissionError and turn a harmless
+    onboarding endpoint into an HTTP 500. In that case fall back to the user
+    config directory (``~/.stackmemory``), which is always writable for the
+    user, so onboarding never fails purely because of a non-writable cwd.
+    """
+    local = Path(DEFAULT_RECEIPT_PATH)
+    try:
+        local.parent.mkdir(parents=True, exist_ok=True)
+        return local
+    except OSError:
+        home = Path.home() / ".stackmemory" / "onboarding-receipt.json"
+        home.parent.mkdir(parents=True, exist_ok=True)
+        return home
+
+
 def receipt_path(explicit_path: str | os.PathLike | None = None) -> Path:
-    return Path(explicit_path or get_env(RECEIPT_ENV, DEFAULT_RECEIPT_PATH))
+    if explicit_path is not None:
+        return Path(explicit_path)
+    explicit = get_env(RECEIPT_ENV, "").strip()
+    if explicit:
+        return Path(explicit)
+    return _default_receipt_path()
 
 
 def read_receipt(path: str | os.PathLike | None = None) -> dict[str, Any] | None:
