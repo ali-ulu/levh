@@ -143,6 +143,35 @@ CREATE TABLE IF NOT EXISTS memory_trust_scores (
     breakdown_json      TEXT NOT NULL
 );
 
+-- Candidates the admission gate answered "review" for: near-duplicates that
+-- are redundant but not identical, which the gate deliberately declines to
+-- decide on its own. "review" has always meant "hold for a human" -- this is
+-- the place that holds them. Without it the verdict had no store behind it and
+-- the content was dropped, which is the one thing a memory layer must not do
+-- quietly.
+--
+-- These are NOT memories. They are unadmitted candidates: no embedding, no
+-- hscore, no decay. They never appear in recall, and one becomes a memory only
+-- when a human admits it.
+CREATE TABLE IF NOT EXISTS held_memories (
+    id                 TEXT PRIMARY KEY,
+    content            TEXT NOT NULL,
+    importance         REAL NOT NULL,
+    tags_json          TEXT NOT NULL,
+    session_id         TEXT,
+    project            TEXT,
+    source             TEXT,
+    memory_type        TEXT NOT NULL,
+    pinned             INTEGER NOT NULL DEFAULT 0,
+    metadata_json      TEXT NOT NULL,
+    reasons_json       TEXT NOT NULL,
+    max_similarity     REAL NOT NULL,
+    status             TEXT NOT NULL DEFAULT 'held',  -- held|admitted|discarded
+    created_at         TEXT NOT NULL,
+    decided_at         TEXT,
+    admitted_memory_id TEXT
+);
+
 """
 
 
@@ -164,6 +193,8 @@ CREATE INDEX IF NOT EXISTS idx_me_memory     ON memory_entities(memory_id);
 CREATE INDEX IF NOT EXISTS idx_viol_rule     ON violations(rule_id);
 CREATE INDEX IF NOT EXISTS idx_viol_when     ON violations(occurred_at DESC);
 CREATE INDEX IF NOT EXISTS idx_attach_memory ON attachments(memory_id);
+-- The queue is read as "what is still waiting", newest first.
+CREATE INDEX IF NOT EXISTS idx_held_status ON held_memories(status, created_at DESC);
 """
 
 

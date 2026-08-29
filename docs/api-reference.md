@@ -20,6 +20,9 @@ because it is a read that has to POST to carry its query.
 | POST | `/api/memories/evaluate-admission` | Preview the admission gate's verdict for a candidate memory WITHOUT storing it: admit / review / redact / reject |
 | POST | `/api/memories/export` | Export every memory as JSON |
 | GET | `/api/memories/fading` | Memories predicted to be nearly forgotten — the review queue |
+| GET | `/api/memories/held` | Candidates the admission gate answered `review` for and parked for a human. Not memories yet — distinct from `/api/memories/review`. `status=""` lists every decision state |
+| POST | `/api/memories/held/{held_id}/admit` | Keep a held candidate: store it as the memory it was going to be, with the importance, tags, session, project, source and type it arrived with |
+| POST | `/api/memories/held/{held_id}/discard` | Drop a held candidate. The row stays with its verdict, so the discard is recorded |
 | POST | `/api/memories/import` | Import memories from JSON |
 | GET | `/api/memories/low-trust` | Stored memories whose provenance/trust confidence is below ``threshold`` (least confident first). Run… |
 | POST | `/api/memories/recall` | Recall by query, ranked by H(x,ψ). Reinforcement is forced off in public demo mode |

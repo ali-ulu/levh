@@ -47,9 +47,18 @@ def register(mcp: FastMCP, engine: MemoryEngine) -> None:
         )
         decision = result["decision"]
         if not result["stored"]:
+            # A held candidate is not lost, and reporting "not stored" without
+            # saying where it went is what made the old message misleading.
+            held = (
+                f"  Held for review as {result['held_id']} — list it with "
+                "GET /api/memories/held, then admit or discard it.\n"
+                if result.get("held_id")
+                else ""
+            )
             return (
                 f"Memory not stored (admission: {decision['action']}).\n"
                 f"  Reasons: {', '.join(decision['reasons'])}\n"
+                f"{held}"
                 "Use the admin admit_memory tool with force=true only when an audited override is intended."
             )
         memory = result["memory"]

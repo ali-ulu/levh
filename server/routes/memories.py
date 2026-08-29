@@ -107,6 +107,52 @@ async def get_review_queue(threshold: float = 0.5, project: str = "", limit: int
     }
 
 
+@router.get("/api/memories/held")
+async def list_held_memories(status: str = "held", project: str = "", limit: int = 50):
+    """Candidates the admission gate answered ``review`` for and parked for a
+    human — near-duplicates it declined to decide on its own.
+
+    Distinct from ``/api/memories/review``, which is the spaced-repetition queue
+    over memories that were already admitted. Nothing listed here is a memory
+    yet. ``status=""`` returns every decision state, which is how the queue
+    doubles as a record of what was decided."""
+    engine = await get_engine()
+    return {
+        "held": await engine.db.list_held_memories(
+            status=status, project=project or None, limit=limit
+        ),
+        "waiting": await engine.db.count_held_memories(),
+    }
+
+
+@router.post("/api/memories/held/{held_id}/admit")
+async def admit_held_memory(held_id: str):
+    """Keep a held candidate: store it as the memory it was going to be, with
+    the importance, tags, session, project, source and type it arrived with."""
+    engine = await get_engine()
+    result = await engine.admit_held_memory(held_id)
+    if not result["ok"]:
+        raise HTTPException(
+            status_code=404 if result["error"] == "not_found" else 409,
+            detail=result["error"],
+        )
+    return result
+
+
+@router.post("/api/memories/held/{held_id}/discard")
+async def discard_held_memory(held_id: str):
+    """Drop a held candidate. The row stays with its verdict, so a discard is
+    recorded rather than leaving no trace."""
+    engine = await get_engine()
+    result = await engine.discard_held_memory(held_id)
+    if not result["ok"]:
+        raise HTTPException(
+            status_code=404 if result["error"] == "not_found" else 409,
+            detail=result["error"],
+        )
+    return result
+
+
 @router.get("/api/memories/audit-secrets")
 async def get_audit_secrets():
     """Read-only scan for secrets (credentials, tokens) that slipped into
