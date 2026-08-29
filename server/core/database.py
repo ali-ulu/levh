@@ -14,6 +14,7 @@ from .db.aggregates import AggregateQueries
 from .db.attachments import AttachmentQueries
 from .db.entities import EntityQueries
 from .db.guard import GuardQueries
+from .db.held import HeldMemoryQueries
 from .db.memories import MemoryQueries
 from .db.sessions import SessionQueries
 from .db.snapshot import SnapshotQueries
@@ -38,6 +39,7 @@ class Database(
     GuardQueries,
     SnapshotQueries,
     AttachmentQueries,
+    HeldMemoryQueries,
 ):
     """Async SQLite wrapper with auto-init."""
 

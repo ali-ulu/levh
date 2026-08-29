@@ -65,9 +65,11 @@ class MemoryTransferMixin:
 
         The record's portable identity and lifecycle fields are preserved, but
         untrusted embeddings are discarded and recomputed from the admitted
-        (possibly redacted) content using the active embedder.  Reject/review
-        decisions are not persisted.  Each item is isolated and the returned
-        breakdown makes partial imports explicit.
+        (possibly redacted) content using the active embedder.  Rejected items
+        are dropped; ``review`` items are held for a human (see
+        ``hold_for_review``) rather than discarded, so an import cannot silently
+        lose the half of a file the gate declined to decide on.  Each item is
+        isolated and the returned breakdown makes partial imports explicit.
         """
         imported = redacted = duplicates = held = errors = 0
 
@@ -80,6 +82,18 @@ class MemoryTransferMixin:
                 action = decision["action"]
                 if action in ("reject", "review"):
                     if action == "review":
+                        await self.hold_for_review(
+                            content=mem.content,
+                            decision=decision,
+                            importance=mem.importance,
+                            tags=mem.tags,
+                            session_id=mem.session_id,
+                            project=mem.project,
+                            source=mem.source,
+                            pinned=mem.pinned,
+                            memory_type=mem.memory_type.value,
+                            metadata=mem.metadata,
+                        )
                         held += 1
                     else:
                         duplicates += 1

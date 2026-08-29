@@ -69,20 +69,46 @@ class MemoryIngestMixin:
     ) -> dict:
         """Run the admission gate, then act on its verdict:
 
-          - ``reject`` / ``review`` → NOT stored (unless ``force=True``);
+          - ``reject``              → NOT stored, and not kept;
+          - ``review``              → NOT stored, but HELD for a human;
           - ``redact``              → stored with secrets stripped;
           - ``admit``               → stored as-is.
 
         The verdict is recorded in the stored memory's ``metadata.admission``.
-        Returns ``{"stored": bool, "decision": <gate result>, "memory": <dict|None>}``.
+        Returns ``{"stored": bool, "decision": <gate result>, "memory":
+        <dict|None>, "held_id": <str|None>}``.
+
+        ``review`` and ``reject`` are not the same refusal and must not share a
+        path. ``reject`` is the gate deciding — too short, or a near-exact
+        duplicate of something already remembered, so nothing is lost by
+        dropping it. ``review`` is the gate declining to decide: the candidate
+        is close to an existing memory but not identical, which is exactly the
+        case where the difference may be the part worth keeping. Discarding it
+        would throw away content on the strength of a judgement the gate itself
+        refused to make.
         """
         decision = await self.evaluate_admission(
             content, project=project, min_length=min_length
         )
         action = decision["action"]
 
-        if action in ("reject", "review") and not force:
-            return {"stored": False, "decision": decision, "memory": None}
+        if action == "review" and not force:
+            held_id = await self.hold_for_review(
+                content=content,
+                decision=decision,
+                importance=importance,
+                tags=tags,
+                session_id=session_id,
+                project=project,
+                source=source,
+                pinned=pinned,
+                memory_type=memory_type,
+                metadata=metadata,
+            )
+            return {"stored": False, "decision": decision, "memory": None, "held_id": held_id}
+
+        if action == "reject" and not force:
+            return {"stored": False, "decision": decision, "memory": None, "held_id": None}
 
         store_content = (
             decision["redacted_content"] if decision["redacted"] else content
@@ -108,7 +134,122 @@ class MemoryIngestMixin:
             source=source,
             pinned=pinned,
         )
-        return {"stored": True, "decision": decision, "memory": mem.model_dump(exclude={"embedding"})}
+        return {
+            "stored": True,
+            "decision": decision,
+            "memory": mem.model_dump(exclude={"embedding"}),
+            "held_id": None,
+        }
+
+    async def hold_for_review(
+        self,
+        content: str,
+        decision: dict,
+        importance: float = 0.5,
+        tags: list[str] | None = None,
+        session_id: str | None = None,
+        project: str | None = None,
+        source: str | None = None,
+        pinned: bool = False,
+        memory_type: str = "short_term",
+        metadata: dict | None = None,
+    ) -> str:
+        """Park a ``review`` candidate where a human can find it, and return its
+        id.
+
+        The candidate is stored verbatim, with everything needed to admit it
+        later unchanged -- importance, tags, session, project, source, pinned,
+        type. Admitting it must produce the memory the caller originally asked
+        for, not a reconstruction of it.
+
+        Secrets are the one exception: the redacted text is what gets held. The
+        gate has already found them, and a queue a person reads later is no
+        place to keep a live credential.
+        """
+        import json
+        import uuid
+        from datetime import datetime, timezone
+
+        held_id = uuid.uuid4().hex
+        await self.db.insert_held_memory(
+            {
+                "id": held_id,
+                "content": decision["redacted_content"] if decision["redacted"] else content,
+                "importance": max(0.0, min(1.0, importance)),
+                "tags_json": json.dumps(tags or []),
+                "session_id": session_id,
+                "project": project,
+                "source": source,
+                "memory_type": memory_type,
+                "pinned": int(bool(pinned)),
+                "metadata_json": json.dumps(metadata or {}),
+                "reasons_json": json.dumps(decision.get("reasons") or []),
+                "max_similarity": float(decision.get("max_similarity") or 0.0),
+                "status": "held",
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "decided_at": None,
+                "admitted_memory_id": None,
+            }
+        )
+        return held_id
+
+    async def admit_held_memory(self, held_id: str) -> dict:
+        """A human's decision to keep a held candidate.
+
+        Stores it with ``force=True``: the gate already judged this content and
+        returned ``review``, so re-running it would return ``review`` again and
+        hold the candidate a second time. The decision being recorded here is
+        the human's, and it overrides the gate by design -- ``metadata.admission
+        .forced`` already records that it was overridden.
+        """
+        from datetime import datetime, timezone
+
+        held = await self.db.get_held_memory(held_id)
+        if held is None:
+            return {"ok": False, "error": "not_found"}
+        if held["status"] != "held":
+            return {"ok": False, "error": "already_decided", "status": held["status"]}
+
+        import json
+
+        result = await self.admit_memory(
+            content=held["content"],
+            importance=float(held["importance"]),
+            tags=json.loads(held["tags_json"] or "[]"),
+            session_id=held["session_id"],
+            project=held["project"],
+            source=held["source"],
+            pinned=bool(held["pinned"]),
+            memory_type=held["memory_type"],
+            metadata=json.loads(held["metadata_json"] or "{}"),
+            force=True,
+        )
+        memory_id = (result.get("memory") or {}).get("id")
+        # The row is closed only after the memory exists. If the store above
+        # raises, the candidate stays 'held' and can be retried -- losing it
+        # here would reintroduce exactly the bug this table was added to fix.
+        claimed = await self.db.mark_held_memory_decided(
+            held_id, "admitted", datetime.now(timezone.utc).isoformat(), memory_id
+        )
+        if not claimed:
+            return {"ok": False, "error": "already_decided"}
+        return {"ok": True, "memory": result.get("memory"), "held_id": held_id}
+
+    async def discard_held_memory(self, held_id: str) -> dict:
+        """A human's decision to drop a held candidate. The row stays, with its
+        verdict, so the queue is an auditable record of what was decided rather
+        than only of what is still waiting."""
+        from datetime import datetime, timezone
+
+        held = await self.db.get_held_memory(held_id)
+        if held is None:
+            return {"ok": False, "error": "not_found"}
+        claimed = await self.db.mark_held_memory_decided(
+            held_id, "discarded", datetime.now(timezone.utc).isoformat(), None
+        )
+        if not claimed:
+            return {"ok": False, "error": "already_decided", "status": held["status"]}
+        return {"ok": True, "held_id": held_id}
 
     async def ingest_items(
         self,
