@@ -45,6 +45,7 @@ because it is a read that has to POST to carry its query.
 | GET | `/api/sessions` | List sessions |
 | POST | `/api/sessions` | Create a named session |
 | GET | `/api/sessions/{session_id}` | Get one session |
+| DELETE | `/api/sessions/{session_id}` | Delete a session. `memories=refuse` (default) deletes only an empty one and answers 409 with the count otherwise; `detach` keeps the memories and drops their session link; `delete` removes them too |
 | PATCH | `/api/sessions/{session_id}/end` | End a session and consolidate its memories |
 | POST | `/api/sessions/{session_id}/summarize` | Distill a session's memories into one durable summary memory (LLM when OPENAI_API_KEY is set, deterministic… |
 | GET | `/api/projects` | Projects with memory counts |

@@ -112,6 +112,70 @@ class MemorySessionsMixin:
         row = await self.db.get_session(session_id)
         return Session(**row) if row else None
 
+    async def delete_session(self, session_id: str, memories: str = "refuse") -> dict:
+        """Delete a session, saying out loud what happens to its memories.
+
+        A session that was created by mistake, or left empty, had no way out
+        through the API: there was no DELETE, so removing one meant opening
+        ``stackmemory.db`` and running SQL by hand. A product whose claim is
+        auditability cannot have a write path that goes around its own API — a
+        hand-edit leaves no trace anyone can read back.
+
+        ``memories`` names the policy, and the default refuses rather than
+        guesses:
+
+          - ``refuse``  — delete only an empty session; otherwise report the
+            count and change nothing. Deleting a session is a tidying action,
+            and tidying must not quietly take memories with it.
+          - ``detach``  — keep the memories, drop their session link.
+          - ``delete``  — remove the memories too, through the same cascade a
+            single delete uses, so entity/trust/conflict rows go with them.
+
+        The policy is a required decision, not a flag with a convenient
+        default: ``refuse`` is the only value that cannot lose anything.
+        """
+        if memories not in ("refuse", "detach", "delete"):
+            return {"ok": False, "error": "invalid_memories_policy"}
+
+        row = await self.db.get_session(session_id)
+        if row is None:
+            return {"ok": False, "error": "not_found"}
+
+        memory_ids = await self.db.list_session_memory_ids(session_id)
+        if memory_ids and memories == "refuse":
+            return {
+                "ok": False,
+                "error": "session_not_empty",
+                "memory_count": len(memory_ids),
+            }
+
+        detached = deleted_memories = 0
+        if memories == "detach":
+            detached = await self.db.detach_session_memories(session_id)
+            # recall() scores from the vector store's cached Memory objects, so
+            # a SQLite-only update would leave them carrying a session_id that
+            # no longer resolves. They are refreshed, not evicted: a detached
+            # memory must stay fully recallable — losing it from the cache
+            # would be the same data loss by a slower route.
+            for memory_id in memory_ids:
+                memory = await self.episodic.get(memory_id)
+                if memory is not None:
+                    self._refresh_memory_caches(memory)
+        elif memories == "delete":
+            for memory_id in memory_ids:
+                if await self.forget(memory_id):
+                    deleted_memories += 1
+
+        await self.db.delete_session(session_id)
+        result = {
+            "ok": True,
+            "session_id": session_id,
+            "memories_detached": detached,
+            "memories_deleted": deleted_memories,
+        }
+        self._emit("session_deleted", result)
+        return result
+
     async def list_projects(self) -> list[dict]:
         return await self.db.list_projects()
 
