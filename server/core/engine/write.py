@@ -248,3 +248,6 @@ class MemoryWriteMixin:
             st.project = memory.project
             st.pinned = memory.pinned
             st.stability_hours = memory.stability_hours
+            # Mutable since delete_session(memories="detach"): a short-term copy
+            # left holding a deleted session's id would outlive the session.
+            st.session_id = memory.session_id

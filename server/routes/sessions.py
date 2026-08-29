@@ -34,6 +34,29 @@ async def get_session(session_id: str):
     return session.model_dump()
 
 
+@router.delete("/api/sessions/{session_id}")
+async def delete_session(session_id: str, memories: str = "refuse"):
+    """Delete a session, saying what happens to its memories.
+
+    ``memories=refuse`` (default) deletes only an empty session and answers 409
+    with the count otherwise — tidying up a session must not quietly take
+    memories with it. ``detach`` keeps the memories and drops their session
+    link; ``delete`` removes them too, through the same cascade a single
+    memory delete uses."""
+    engine = await get_engine()
+    result = await engine.delete_session(session_id, memories=memories)
+    if not result["ok"]:
+        if result["error"] == "not_found":
+            raise HTTPException(status_code=404, detail="session not found")
+        if result["error"] == "invalid_memories_policy":
+            raise HTTPException(
+                status_code=400,
+                detail="memories must be one of: refuse, detach, delete",
+            )
+        raise HTTPException(status_code=409, detail=result)
+    return result
+
+
 @router.patch("/api/sessions/{session_id}/end")
 async def end_session(session_id: str):
     engine = await get_engine()

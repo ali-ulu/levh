@@ -22,6 +22,44 @@ class SessionQueries:
         await self.conn.commit()
         return cursor.rowcount
 
+    async def delete_session(self, session_id: str) -> bool:
+        """Delete one session row. Whatever referenced it is the caller's to
+        settle first — see :meth:`MemorySessionsMixin.delete_session`, which
+        does not call this while memories still point at the session."""
+        cursor = await self.conn.execute(
+            "DELETE FROM sessions WHERE id = ?", (session_id,)
+        )
+        changed = cursor.rowcount
+        await cursor.close()
+        await self.conn.commit()
+        return bool(changed)
+
+    async def detach_session_memories(self, session_id: str) -> int:
+        """Unlink a session's memories without deleting them.
+
+        ``memories.session_id`` carries no foreign key, so deleting a session
+        row on its own would leave memories pointing at an id that no longer
+        resolves: still in recall, no longer reachable through the session that
+        produced them. Detaching makes the unlinking explicit — the memory
+        survives, only its provenance link is dropped.
+        """
+        cursor = await self.conn.execute(
+            "UPDATE memories SET session_id = NULL WHERE session_id = ?",
+            (session_id,),
+        )
+        changed = cursor.rowcount
+        await cursor.close()
+        await self.conn.commit()
+        return int(changed)
+
+    async def list_session_memory_ids(self, session_id: str) -> list[str]:
+        cursor = await self.conn.execute(
+            "SELECT id FROM memories WHERE session_id = ?", (session_id,)
+        )
+        rows = await cursor.fetchall()
+        await cursor.close()
+        return [r["id"] for r in rows]
+
     async def insert_session(self, session: dict) -> None:
         await self.conn.execute(
             """
