@@ -2,9 +2,16 @@
 
 A backup is a single self-describing snapshot of everything a user would lose
 if their database vanished: every memory (with its full decay state — stability,
-recall counts, importance, pins, metadata) plus every session. It serialises to
-a JSON envelope and can optionally be encrypted at rest with a passphrase
+recall counts, importance, pins, metadata), every session, and the bytes of
+every attachment LEVH itself uploaded and owns. It serialises to a JSON
+envelope and can optionally be encrypted at rest with a passphrase
 (see ``crypto.py``).
+
+An attachment the user pointed at from elsewhere on their disk travels as a
+reference, not a copy — their original is the copy that matters, and a backup
+of memories has no business hoovering up documents around it. ``counts``
+reports both numbers, so the gap between them is stated rather than discovered
+on the day someone restores.
 
 The blob is format-detecting on the way back in: an encrypted blob starts with
 the crypto magic bytes; anything else is treated as plaintext JSON. So
@@ -40,6 +47,12 @@ def make_snapshot(memories: list[dict], sessions: list[dict], app_version: str,
             "memories": len(memories),
             "sessions": len(sessions),
             "attachments": len(attachments),
+            # How many attachment files actually travel inside this envelope.
+            # An attachment that is only a reference restores as a path, so the
+            # gap between these two numbers is exactly what a restore on
+            # another machine will not be able to produce on its own.
+            "attachments_carried": sum(1 for a in attachments if a.get("carried")),
+            "attachments_by_reference": sum(1 for a in attachments if not a.get("carried")),
         },
         "memories": memories,
         "sessions": sessions,

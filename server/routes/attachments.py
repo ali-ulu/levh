@@ -63,12 +63,11 @@ def _display_name(filename: str) -> str:
 
 
 def _attachments_dir() -> Path:
-    from server.core.runtime_config import resolve_runtime_config
+    # Shared with backup/restore, which has to know which files LEVH owns —
+    # see server.core.attachment_store.
+    from server.core.attachment_store import attachments_dir
 
-    base = Path(resolve_runtime_config().database_path).resolve().parent
-    target = base / "attachments"
-    target.mkdir(parents=True, exist_ok=True)
-    return target
+    return attachments_dir()
 
 
 @router.post("/api/attachments/upload")
