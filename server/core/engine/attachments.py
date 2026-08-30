@@ -154,8 +154,16 @@ class MemoryAttachmentsMixin:
             "explanation_json": json.dumps(explanation),
             "created_at": datetime.now(timezone.utc).isoformat(),
         }
-        if await self.db.insert_conflict_if_absent(row):
-            self._emit("conflicts_detected", {"new": 1, "attachment_id": attachment["id"]})
+        # Not insert_conflict_if_absent: this candidate's id is derived from the
+        # attachment, so a second break re-uses it, the insert is refused, and a
+        # resolved row is left standing against a file that is broken again. The
+        # pairwise contract is untouched — see upsert_attachment_conflict.
+        outcome = await self.db.upsert_attachment_conflict(row)
+        if outcome in ("inserted", "reopened"):
+            self._emit(
+                "conflicts_detected",
+                {"new": 1, "attachment_id": attachment["id"], "outcome": outcome},
+            )
 
     @staticmethod
     async def _sha256_file(path: str) -> str:
