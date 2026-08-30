@@ -64,7 +64,7 @@ def test_install_writes_an_executable_script_and_registers_it(project):
     assert script.is_file()
     assert os.access(script, os.X_OK), "Claude Code has to be able to run it"
 
-    settings = json.loads((project / ".claude/settings.json").read_text())
+    settings = json.loads((project / ".claude/settings.json").read_text(encoding="utf-8"))
     entries = settings["hooks"]["SessionStart"][0]["hooks"]
     assert entries[0]["type"] == "command"
     assert "levh-session-start.sh" in entries[0]["command"]
@@ -79,7 +79,7 @@ def test_the_registered_command_survives_a_project_path_with_spaces(project):
     nothing tells you why it forgot.
     """
     _install()
-    settings = json.loads((project / ".claude/settings.json").read_text())
+    settings = json.loads((project / ".claude/settings.json").read_text(encoding="utf-8"))
     command = settings["hooks"]["SessionStart"][0]["hooks"][0]["command"]
 
     # What the shell sees once Claude Code has substituted the variable. Split
@@ -112,7 +112,7 @@ def test_installing_over_a_legacy_unquoted_entry_repairs_it(project):
 
     assert _install() == 0
 
-    settings = json.loads(settings_path.read_text())
+    settings = json.loads(settings_path.read_text(encoding="utf-8"))
     commands = [e["command"] for g in settings["hooks"]["SessionStart"] for e in g["hooks"]]
     assert commands == ['"$CLAUDE_PROJECT_DIR/.claude/hooks/levh-session-start.sh"'], (
         "the stale entry survived the upgrade"
@@ -121,10 +121,10 @@ def test_installing_over_a_legacy_unquoted_entry_repairs_it(project):
 
 def test_installing_twice_changes_nothing(project):
     _install()
-    first = (project / ".claude/settings.json").read_text()
+    first = (project / ".claude/settings.json").read_text(encoding="utf-8")
 
     assert _install() == 0
-    assert (project / ".claude/settings.json").read_text() == first
+    assert (project / ".claude/settings.json").read_text(encoding="utf-8") == first
 
 
 def test_install_keeps_hooks_that_are_not_ours(project):
@@ -144,7 +144,7 @@ def test_install_keeps_hooks_that_are_not_ours(project):
     )
 
     _install()
-    settings = json.loads(settings_path.read_text())
+    settings = json.loads(settings_path.read_text(encoding="utf-8"))
 
     commands = [e["command"] for g in settings["hooks"]["SessionStart"] for e in g["hooks"]]
     assert "./setup.sh" in commands
@@ -159,7 +159,7 @@ def test_a_broken_settings_file_is_reported_not_overwritten(project):
     settings_path.write_text("{ this is not json")
 
     assert _install() == 1
-    assert settings_path.read_text() == "{ this is not json"
+    assert settings_path.read_text(encoding="utf-8") == "{ this is not json"
 
 
 def test_a_broken_settings_file_leaves_no_hook_script_behind(project):
@@ -209,7 +209,7 @@ def test_uninstall_removes_only_our_entry(project):
     assert _uninstall() == 0
 
     assert not (project / ".claude/hooks/levh-session-start.sh").exists()
-    settings = json.loads(settings_path.read_text())
+    settings = json.loads(settings_path.read_text(encoding="utf-8"))
     commands = [e["command"] for g in settings["hooks"]["SessionStart"] for e in g["hooks"]]
     assert commands == ["./setup.sh"]
 
@@ -321,4 +321,4 @@ def test_the_git_hook_is_unchanged_by_the_new_flag(project):
     )
     hook = project / ".git/hooks/post-commit"
     assert hook.is_file()
-    assert "capture" in hook.read_text()
+    assert "capture" in hook.read_text(encoding="utf-8")

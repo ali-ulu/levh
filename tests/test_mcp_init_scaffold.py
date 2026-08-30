@@ -60,14 +60,14 @@ def test_memory_projects_depend_on_levh_and_plain_ones_do_not(tmp_path):
     generate_project("with-mem", tmp_path, with_memory=True)
     generate_project("without-mem", tmp_path, with_memory=False)
 
-    assert "levh" in (tmp_path / "with-mem" / "requirements.txt").read_text()
-    assert "levh" not in (tmp_path / "without-mem" / "requirements.txt").read_text()
+    assert "levh" in (tmp_path / "with-mem" / "requirements.txt").read_text(encoding="utf-8")
+    assert "levh" not in (tmp_path / "without-mem" / "requirements.txt").read_text(encoding="utf-8")
 
 
 def test_the_env_example_never_ships_a_real_secret(tmp_path):
     generate_project("srv", tmp_path, with_memory=True)
 
-    env = (tmp_path / "srv" / ".env.example").read_text()
+    env = (tmp_path / "srv" / ".env.example").read_text(encoding="utf-8")
     assert "OPENAI_API_KEY" in env
     # Present as a commented placeholder, never as a live value.
     assert "# OPENAI_API_KEY=sk-..." in env
@@ -80,7 +80,7 @@ def test_the_env_example_never_ships_a_real_secret(tmp_path):
 def test_the_generated_gitignore_covers_the_database_and_env(tmp_path):
     generate_project("srv", tmp_path, with_memory=True)
 
-    ignored = (tmp_path / "srv" / ".gitignore").read_text()
+    ignored = (tmp_path / "srv" / ".gitignore").read_text(encoding="utf-8")
     assert ".env" in ignored
     assert "*.db" in ignored
 
@@ -89,7 +89,7 @@ def test_the_chosen_profile_reaches_the_generated_server(tmp_path):
     generate_project("srv", tmp_path, with_memory=True, profile="minimal")
 
     source = tmp_path / "srv" / "srv" / "server.py"
-    assert 'MEMORY_PROFILE = "minimal"' in source.read_text()
+    assert 'MEMORY_PROFILE = "minimal"' in source.read_text(encoding="utf-8")
 
 
 def test_an_unknown_template_is_refused(tmp_path):
@@ -275,7 +275,7 @@ def test_the_generated_fly_config_parses_as_toml(tmp_path):
     import tomllib
 
     generate_project("srv", tmp_path, with_memory=True, deploy="fly")
-    config = tomllib.loads((tmp_path / "srv" / "fly.toml").read_text())
+    config = tomllib.loads((tmp_path / "srv" / "fly.toml").read_text(encoding="utf-8"))
 
     assert config["app"] == "srv"
     # The mount is the point: without it the database is ephemeral.
@@ -287,7 +287,7 @@ def test_the_generated_railway_config_parses_as_json(tmp_path):
     import json as _json
 
     generate_project("srv", tmp_path, with_memory=True, deploy="railway")
-    config = _json.loads((tmp_path / "srv" / "railway.json").read_text())
+    config = _json.loads((tmp_path / "srv" / "railway.json").read_text(encoding="utf-8"))
 
     assert config["build"]["builder"] == "DOCKERFILE"
     assert "srv.server" in config["deploy"]["startCommand"]
@@ -297,7 +297,7 @@ def test_the_generated_render_config_parses_as_yaml(tmp_path):
     yaml = pytest.importorskip("yaml")
 
     generate_project("srv", tmp_path, with_memory=True, deploy="render")
-    config = yaml.safe_load((tmp_path / "srv" / "render.yaml").read_text())
+    config = yaml.safe_load((tmp_path / "srv" / "render.yaml").read_text(encoding="utf-8"))
 
     service = config["services"][0]
     assert service["dockerfilePath"] == "./Dockerfile"
@@ -308,7 +308,7 @@ def test_the_image_stores_the_database_on_the_volume(tmp_path):
     """An ephemeral filesystem would lose the memory on every restart."""
     generate_project("srv", tmp_path, with_memory=True, deploy="docker")
 
-    dockerfile = (tmp_path / "srv" / "Dockerfile").read_text()
+    dockerfile = (tmp_path / "srv" / "Dockerfile").read_text(encoding="utf-8")
     assert "ENV SQLITE_DB_PATH=/data/levh.db" in dockerfile
     assert 'VOLUME ["/data"]' in dockerfile
     assert 'CMD ["python", "-m", "srv.server"]' in dockerfile

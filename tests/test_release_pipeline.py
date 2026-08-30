@@ -104,15 +104,15 @@ def test_bump_rewrites_temp_tree(tmp_path, monkeypatch):
     monkeypatch.setattr(release, "REPO_ROOT", tmp_path)
     _write_min_tree(tmp_path, version="2.22.1", minor="2.22", dashboard_badge="2.22")
     release.bump("2.23.0")
-    assert 'version = "2.23.0"' in (tmp_path / "pyproject.toml").read_text()
-    assert '"version": "2.23.0"' in (tmp_path / "frontend" / "package.json").read_text()
-    assert 'version="2.23.0"' in (tmp_path / "server" / "api.py").read_text()
-    lock = json.loads((tmp_path / "frontend" / "package-lock.json").read_text())
+    assert 'version = "2.23.0"' in (tmp_path / "pyproject.toml").read_text(encoding="utf-8")
+    assert '"version": "2.23.0"' in (tmp_path / "frontend" / "package.json").read_text(encoding="utf-8")
+    assert 'version="2.23.0"' in (tmp_path / "server" / "api.py").read_text(encoding="utf-8")
+    lock = json.loads((tmp_path / "frontend" / "package-lock.json").read_text(encoding="utf-8"))
     assert lock["version"] == "2.23.0"
     assert lock["packages"][""]["version"] == "2.23.0"
     sidebar = (
         tmp_path / "frontend" / "src" / "components" / "layout" / "sidebar.tsx"
-    ).read_text()
+    ).read_text(encoding="utf-8")
     assert "LEVH Engine v2.23" in sidebar
     assert "v2.22" not in sidebar
 
@@ -136,7 +136,7 @@ def test_release_excludes_build_and_egg_info_artifacts():
 
 def test_frontend_lock_supports_react_19_without_legacy_peer_bypass():
     root = Path(__file__).resolve().parents[1]
-    lock = json.loads((root / "frontend" / "package-lock.json").read_text())
+    lock = json.loads((root / "frontend" / "package-lock.json").read_text(encoding="utf-8"))
     for package in ("node_modules/lucide-react", "node_modules/next-themes"):
         peer = lock["packages"][package].get("peerDependencies", {})
         assert "19" in peer.get("react", ""), f"{package} does not advertise React 19 support"
@@ -152,8 +152,8 @@ def test_frontend_lock_supports_react_19_without_legacy_peer_bypass():
 
 def test_frontend_runtime_versions_are_pinned_to_supported_major():
     root = Path(__file__).resolve().parents[1]
-    package = json.loads((root / "frontend" / "package.json").read_text())
+    package = json.loads((root / "frontend" / "package.json").read_text(encoding="utf-8"))
     assert package["engines"]["node"] == ">=20 <23"
     assert package["engines"]["npm"] == ">=10 <11"
     assert package["packageManager"].startswith("npm@10.")
-    assert (root / ".nvmrc").read_text().strip() == "22"
+    assert (root / ".nvmrc").read_text(encoding="utf-8").strip() == "22"

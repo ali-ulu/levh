@@ -15,13 +15,23 @@ from fastapi.testclient import TestClient
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-os.environ["EMBEDDER_MODE"] = "hash"
+os.environ.setdefault("EMBEDDER_MODE", "hash")
 
-from server import api  # noqa: E402
+
+# `server.api` is imported inside the fixtures rather than at module scope.
+# Importing it during collection pins this module to one instance of it, and
+# another test file reloads `server.api` mid-run; the two together left an
+# earlier test talking to a stale app. Nothing here needs the module before a
+# test actually asks for it.
+@pytest.fixture
+def api():
+    from server import api as api_module
+
+    return api_module
 
 
 @pytest.fixture
-def client():
+def client(api):
     if api._FRONTEND_DIR is None:
         pytest.skip("dashboard static export not built in this checkout")
     # The remote-access boundary only trusts loopback clients.
@@ -42,7 +52,7 @@ def test_nested_dashboard_routes_are_always_revalidated(client):
     assert response.headers["cache-control"] == "no-cache"
 
 
-def test_content_hashed_bundles_are_cached_forever(client):
+def test_content_hashed_bundles_are_cached_forever(client, api):
     static_root = os.path.join(api._FRONTEND_DIR, "_next", "static")
     if not os.path.isdir(static_root):
         pytest.skip("no _next/static directory in the built export")

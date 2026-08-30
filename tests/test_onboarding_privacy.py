@@ -49,4 +49,4 @@ def test_onboarding_helpers_make_no_network_calls(tmp_path, monkeypatch):
         dogfood_enabled=False,
         path=path,
     )
-    assert json.loads(path.read_text())["mcp_profile"] == "minimal"
+    assert json.loads(path.read_text(encoding="utf-8"))["mcp_profile"] == "minimal"
