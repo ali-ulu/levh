@@ -30,6 +30,35 @@ def levh_version() -> str:
         return get_env("LEVH_VERSION", "unknown")
 
 
+def _home_receipt_path() -> Path:
+    home = Path.home() / ".stackmemory" / "onboarding-receipt.json"
+    home.parent.mkdir(parents=True, exist_ok=True)
+    return home
+
+
+def _is_writable(directory: Path) -> bool:
+    """Prove a directory is writable by writing to it.
+
+    ``os.access`` answers what the permission bits say, which is a different
+    question: it does not account for Windows ACLs, a read-only mount, a
+    container's user mapping, or an immutable flag. The only reliable check for
+    "can this process create a file here" is to create one.
+    """
+    probe = directory / f".levh-write-probe-{os.getpid()}"
+    try:
+        with open(probe, "w", encoding="utf-8"):
+            pass
+    except OSError:
+        return False
+    try:
+        probe.unlink()
+    except OSError:
+        # Writability is already proven; a probe file left behind is untidy,
+        # not a reason to declare the directory unusable.
+        pass
+    return True
+
+
 def _default_receipt_path() -> Path:
     """Resolve the default receipt location, preferring a writable directory.
 
@@ -40,15 +69,26 @@ def _default_receipt_path() -> Path:
     onboarding endpoint into an HTTP 500. In that case fall back to the user
     config directory (``~/.stackmemory``), which is always writable for the
     user, so onboarding never fails purely because of a non-writable cwd.
+
+    Creatability is not writability. ``mkdir(parents=True, exist_ok=True)``
+    succeeds as a no-op against a ``.stackmemory`` that already exists and
+    cannot be written to, so the old check passed and handed back a path the
+    next ``write_text`` would fail on — the fallback this function exists for
+    never ran.
     """
     local = Path(DEFAULT_RECEIPT_PATH)
     try:
         local.parent.mkdir(parents=True, exist_ok=True)
-        return local
+        if _is_writable(local.parent):
+            return local
     except OSError:
-        home = Path.home() / ".stackmemory" / "onboarding-receipt.json"
-        home.parent.mkdir(parents=True, exist_ok=True)
-        return home
+        pass
+    return _home_receipt_path()
+
+
+def _explicitly_requested(explicit_path: str | os.PathLike | None) -> bool:
+    """True when the caller (or the environment) named the receipt location."""
+    return explicit_path is not None or bool(get_env(RECEIPT_ENV, "").strip())
 
 
 def receipt_path(explicit_path: str | os.PathLike | None = None) -> Path:
@@ -94,10 +134,28 @@ def write_receipt(
         "dogfood_enabled": bool(dogfood_enabled),
         "completed_at": completed_at or datetime.now(timezone.utc).isoformat(),
     }
+    body = json.dumps(receipt, indent=2, ensure_ascii=False) + "\n"
     target = receipt_path(path)
-    target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(json.dumps(receipt, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    return receipt
+    try:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(body, encoding="utf-8")
+        return receipt
+    except OSError:
+        # The probe in _default_receipt_path narrows this window; it does not
+        # close it. A directory can lose its permissions between the check and
+        # the write, and a probe cannot predict a full disk.
+        if _explicitly_requested(path):
+            # A caller who named the path gets the error. Quietly writing the
+            # receipt somewhere else would leave them looking for a file that
+            # is not where they asked for it.
+            raise
+        fallback = _home_receipt_path()
+        if fallback == target:
+            # Already the fallback. Re-raising keeps the failure visible
+            # instead of pretending a receipt was written.
+            raise
+        fallback.write_text(body, encoding="utf-8")
+        return receipt
 
 
 def public_client_options() -> list[dict[str, str]]:
