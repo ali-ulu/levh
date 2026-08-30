@@ -98,12 +98,12 @@ levh mcp init my-server --with-memory   # scaffold an MCP server on this databas
 - **People, organizations & timeline** — who you interact with and what happened when, extracted automatically from calendars, email and transcripts. No manual tagging.
 - **Daily briefing & meeting prep** — today's events, open commitments detected from your own words, and who you're about to meet. Fully offline.
 - **Decisions & conflicts** — decision statements pulled out of your memories, and a review signal when two memories appear to disagree. A signal, never a verdict; nothing is auto-deleted.
-- **Admission gate** — every incoming memory is screened before storage, on create *and* on update: duplicates flagged, secrets like API keys redacted before they are ever embedded. Deterministic, offline.
+- **Admission gate** — every incoming memory is screened before storage, on create *and* on update: duplicates flagged, secrets like API keys redacted before they are ever embedded. Deterministic, offline. When the gate declines to decide — close to something you already have, but not identical — the candidate is **held for you** rather than dropped, to admit or discard later. A refusal the gate cannot justify never costs you the content.
 - **Trust & provenance** — an explainable reliability score per memory from source type, corroboration and review history. Separate from ranking; not a truth claim.
 - **Entity knowledge graph** — memories indexed into real entity tables, so "which memories mention X" is a join, not a search.
 - **Remembers you without being asked** — a SessionStart hook puts your rules, your pinned facts and where you left off into every new Claude Code session automatically. A memory the assistant has to be told to consult is a filing cabinet, not a memory.
 - **Mistake guard** — a corrected mistake becomes a pinned rule plus an incident record. Pinned memories never decay, so the rule is still there weeks later, in a different session, and it leads the generated context file where the next session reads it before working.
-- **Encrypted backup & restore** — a full portable snapshot including decay state, optionally encrypted with a passphrase (PBKDF2 + AES).
+- **Encrypted backup & restore** — a full portable snapshot including decay state and the bytes of every attachment LEVH uploaded, so a restore on another machine produces readable files rather than dangling paths. Files you attached from your own disk stay references — your original is the copy that matters. Optionally encrypted with a passphrase (PBKDF2 + AES).
 - **Consolidation & review** — aged clusters collapse into durable summaries; the fading queue becomes a keep / reinforce / forget flow.
 - **62 MCP tools**, a REST API, a WebSocket feed, and a live Next.js dashboard served by the API itself — one process, one port.
 - **4 embedding modes** — OpenAI, local `all-MiniLM-L6-v2`, Ollama (fully offline), or a deterministic hash fallback. The system always works.
