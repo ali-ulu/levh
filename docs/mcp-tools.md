@@ -4,7 +4,7 @@ The complete MCP tool surface. See the [README](../README.md) for an overview.
 
 > **Tool profiles.** Advertising all 69 tools to a client hurts tool-selection
 > accuracy, so LEVH groups them into cumulative profiles —
-> `minimal` (5) ⊂ `work` (17) ⊂ `admin` (57) ⊂ `full` (62). Generated configs
+> `minimal` (5) ⊂ `work` (24) ⊂ `admin` (64) ⊂ `full` (69). Generated configs
 > default to **`work`**; run `levh mcp profiles` to see the bands, or set
 > `LEVH_MCP_PROFILE` / `mcp config --profile <name>` to change it. The
 > full table below is the `full` surface. Profiles only filter which tools a

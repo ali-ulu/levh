@@ -30,7 +30,7 @@ from server.tools.register import register_all_tools
 # ── pure profile logic ────────────────────────────────────────────
 def test_counts_are_the_expected_bands():
     # Small minimal, tight work, broad admin, complete full.
-    assert profile_counts() == {"minimal": 5, "work": 17, "admin": 57, "full": 62}
+    assert profile_counts() == {"minimal": 5, "work": 24, "admin": 64, "full": 69}
 
 
 def test_default_profile_is_work():
