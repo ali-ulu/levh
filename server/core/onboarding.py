@@ -203,8 +203,10 @@ def _journal_location_summary(db_path: str | os.PathLike | None) -> dict[str, st
 async def onboarding_status(engine) -> dict[str, Any]:
     """Compute first-run readiness from real storage and local configuration."""
     memory_count = await engine.episodic.count()
-    memories = await engine.episodic.get_all(limit=max(memory_count, 1)) if memory_count else []
-    demo_count = sum(1 for m in memories if bool((m.metadata or {}).get("demo")))
+    # Counted in SQL. Reading every memory to arrive at one number made a status
+    # endpoint cost as much as the corpus it was reporting on, while the total
+    # on the line above was already an aggregate.
+    demo_count = await engine.db.count_demo_memories()
     receipt = read_receipt()
     mcp_client = receipt.get("mcp_client") if receipt else None
     mcp_profile = receipt.get("mcp_profile") if receipt else DEFAULT_PROFILE
