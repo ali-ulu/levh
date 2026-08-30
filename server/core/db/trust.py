@@ -102,6 +102,72 @@ class TrustQueries:
         )
         return True
 
+    async def upsert_attachment_conflict(self, row: dict) -> str:
+        """Record the *current* physical state of an attachment.
+
+        Attachment candidates are not like pairwise ones, and
+        :meth:`insert_conflict_if_absent` is the wrong primitive for them. A
+        pairwise candidate describes a relationship between two memories that
+        does not change on its own, so refusing to touch an existing row is
+        exactly right there: a re-run must never reset a human's verdict.
+
+        An attachment candidate describes a *file on disk*, which changes
+        underneath both the row and the human. Its id is deterministic
+        (``attachment:<id>``), so once a candidate had been resolved, a second
+        break re-used that id, the insert was refused, and the row stayed
+        ``resolved`` — a broken attachment with nothing open against it.
+
+        What happens depends on who wrote the current status:
+
+          - ``resolved`` — written by verification, not by a person. A fresh
+            break reopens it; no one's decision is being overridden.
+          - ``open`` — already waiting. The signal and explanation are
+            refreshed, so a file that went from changed to missing says so.
+          - ``dismissed`` / ``confirmed`` — a person's verdict, and it stands
+            for the state they judged. It reopens only when the signal itself
+            is different, which is a fact they never saw; a still-changed file
+            they already dismissed does not nag them again.
+
+        Returns what happened: ``inserted`` | ``reopened`` | ``refreshed`` |
+        ``unchanged``.
+        """
+        existing = await self.get_conflict(row["id"])
+        if existing is None:
+            await self.conn.execute(
+                """
+                INSERT INTO memory_conflict_candidates
+                    (id, memory_id_a, memory_id_b, shared_entities_json, signal_type,
+                     confidence, status, explanation_json, created_at, reviewed_at)
+                VALUES
+                    (:id, :memory_id_a, :memory_id_b, :shared_entities_json, :signal_type,
+                     :confidence, :status, :explanation_json, :created_at, NULL)
+                """,
+                row,
+            )
+            await self.conn.commit()
+            return "inserted"
+
+        signal_changed = existing["signal_type"] != row["signal_type"]
+        if existing["status"] in ("dismissed", "confirmed") and not signal_changed:
+            return "unchanged"
+
+        outcome = "refreshed" if existing["status"] == "open" else "reopened"
+        await self.conn.execute(
+            """
+            UPDATE memory_conflict_candidates
+               SET signal_type = :signal_type,
+                   explanation_json = :explanation_json,
+                   confidence = :confidence,
+                   status = 'open',
+                   created_at = :created_at,
+                   reviewed_at = NULL
+             WHERE id = :id
+            """,
+            row,
+        )
+        await self.conn.commit()
+        return outcome
+
     async def list_conflicts(self, status: Optional[str] = None, limit: int = 100) -> list[dict]:
         if status:
             cursor = await self.conn.execute(
