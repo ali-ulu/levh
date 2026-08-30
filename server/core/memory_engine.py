@@ -40,9 +40,8 @@ from .engine.privacy import MemoryPrivacyMixin
 from .engine.demo import MemoryDemoMixin
 from .engine.graph import MemoryGraphMixin
 from .engine.dedupe import MemoryDedupeMixin
-from .engine.attachments import MemoryAttachmentsMixin
-
-from .engine.helpers import EventListener  # noqa: F401
+from .engine.attachments import MemoryAttachmentsMixinfrom .engine.helpers import EventListener  # noqa: F401
+from .agent_tracker import AgentTracker
 
 
 
@@ -116,6 +115,9 @@ class MemoryEngine(
             self.memory_feedback,
             self._mark_derived_dirty,
         )
+
+        # Agent tracker: tracks connected agents, presence, checkpoints
+        self.agent_tracker = AgentTracker(self.db, self._emit)
 
         # Retroactive interference: a new memory that is near-identical to an
         # older one weakens the older one (it is being superseded). The default

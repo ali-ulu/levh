@@ -19,6 +19,7 @@ import {
   Settings,
   ShieldAlert,
   Sunrise,
+  Bot,
   Users,
 } from "lucide-react";
 
@@ -51,6 +52,7 @@ const groups = [
       { href: "/people", label: "People", icon: Users },
       { href: "/organizations", label: "Organizations", icon: Building2 },
       { href: "/sessions", label: "Sessions", icon: History },
+      { href: "/agents", label: "Agent Activity", icon: Bot },
       { href: "/settings", label: "Settings", icon: Settings },
     ],
   },
