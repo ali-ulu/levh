@@ -75,7 +75,16 @@ def test_backup_blob_plaintext_round_trip():
     blob = backup_mod.make_backup_blob(snap)
     assert not crypto.is_encrypted(blob)
     out = backup_mod.read_backup_blob(blob)
-    assert out["counts"] == {"memories": 1, "sessions": 1, "attachments": 0}
+    assert out["counts"] == {
+        "memories": 1,
+        "sessions": 1,
+        "attachments": 0,
+        # The envelope now states how many attachment files it actually
+        # carries. The gap between these two numbers is precisely what a
+        # restore on another machine cannot reproduce on its own.
+        "attachments_carried": 0,
+        "attachments_by_reference": 0,
+    }
     assert out["format"] == backup_mod.BACKUP_FORMAT
 
 

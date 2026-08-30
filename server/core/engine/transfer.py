@@ -17,6 +17,13 @@ from ..types import (
 )
 
 
+# A backup is a JSON envelope, so a carried file is base64 inside it — roughly
+# a third larger than the file. The ceiling keeps one long video from turning a
+# memory backup into something nobody can open, and anything over it is
+# recorded as skipped rather than dropped.
+MAX_CARRIED_ATTACHMENT_BYTES = 25 * 1024 * 1024
+
+
 class MemoryTransferMixin:
     """Export, import, backup and restore."""
 
@@ -158,17 +165,65 @@ class MemoryTransferMixin:
             self._emit("imported", result)
         return result
 
-    async def backup(self, app_version: str = "") -> dict:
+    async def backup(
+        self,
+        app_version: str = "",
+        max_attachment_bytes: int = MAX_CARRIED_ATTACHMENT_BYTES,
+    ) -> dict:
         """Build a full portable snapshot: every memory (with its complete
-        decay state) plus every session. The returned dict is the plain
-        snapshot; encrypting it into a file blob is the caller's job (see
-        ``server.core.backup.make_backup_blob``)."""
+        decay state), every session, and the bytes of every attachment LEVH
+        itself owns. The returned dict is the plain snapshot; encrypting it into
+        a file blob is the caller's job (see
+        ``server.core.backup.make_backup_blob``).
+
+        Attachment rows used to travel as a path, a hash and a size, and nothing
+        else. Restoring on another machine wrote the same absolute path back, so
+        the record looked restored while the file it named was not there — the
+        first verification pass turned it up as ``missing``. For a file LEVH
+        uploaded into its own store that is data loss, because no other copy of
+        it exists.
+
+        A referenced file — one the user attached from somewhere they chose —
+        deliberately still travels as a reference. Its bytes are already theirs,
+        and pulling arbitrary documents into a memory backup would take more
+        than was offered.
+
+        Nothing is dropped quietly: every attachment records ``carried`` and,
+        when false, the ``carry_skipped`` reason (``referenced``, ``too_large``
+        or ``unreadable``), and the counts appear in the envelope.
+        """
+        import base64
+
+        from ..attachment_store import is_managed
         from ..backup import make_snapshot
 
         memories = await self.episodic.search(limit=1_000_000)
         mem_dicts = [m.model_dump() for m in memories]
         sessions = await self.db.get_all_sessions(limit=1_000_000)
-        attachments = await self.db.all_attachments()
+        attachments = [dict(row) for row in await self.db.all_attachments()]
+
+        for row in attachments:
+            row["carried"] = False
+            if not is_managed(row.get("path") or ""):
+                row["carry_skipped"] = "referenced"
+                continue
+            if int(row.get("size") or 0) > max_attachment_bytes:
+                # Base64 in a JSON envelope is a poor container for a large
+                # video. Saying so on the record beats producing a backup that
+                # is quietly enormous or quietly incomplete.
+                row["carry_skipped"] = "too_large"
+                continue
+            try:
+                with open(row["path"], "rb") as handle:
+                    row["content_b64"] = base64.b64encode(handle.read()).decode("ascii")
+                row["carried"] = True
+                row.pop("carry_skipped", None)
+            except OSError:
+                # Already gone or unreadable. The row still travels, so the
+                # restored instance reports it missing rather than forgetting
+                # the attachment ever existed.
+                row["carry_skipped"] = "unreadable"
+
         created_at = datetime.now(timezone.utc).isoformat()
         return make_snapshot(mem_dicts, sessions, app_version, created_at, attachments=attachments)
 
@@ -229,6 +284,10 @@ class MemoryTransferMixin:
         if len(attachment_ids) != len(set(attachment_ids)):
             raise ValueError("backup snapshot contains duplicate attachment ids")
 
+        # After validation, before anything destructive: a carried file that
+        # cannot be written should not have cost the caller their current data.
+        attachments, attachment_files = self._materialize_carried_attachments(attachments)
+
         safety_backup_path: str | None = None
         if replace:
             existing_items = await self.db.count_memories() + await self.db.count_sessions()
@@ -267,6 +326,7 @@ class MemoryTransferMixin:
                 "sessions": len(sessions),
                 "attachments": len(attachments),
                 "replace": replace,
+                **attachment_files,
             },
         )
         return {
@@ -275,4 +335,69 @@ class MemoryTransferMixin:
             "attachments": len(attachments),
             "replace": replace,
             "safety_backup_path": safety_backup_path,
+            **attachment_files,
+        }
+
+    @staticmethod
+    def _materialize_carried_attachments(attachments: list[dict]) -> tuple[list[dict], dict]:
+        """Write back the attachment files a snapshot carried, and rewrite each
+        row to point at the copy this instance now owns.
+
+        A carried file cannot keep the path it had on the machine that made the
+        backup -- that path belongs to another database directory, and on a
+        clean install it does not exist at all. It is written into *this*
+        instance's store under a fresh name, and the row's ``path`` is rewritten
+        to match. Everything else about the row, ``sha256`` included, is left
+        alone: it is the hash of what was attached, and it is what a later
+        verification pass compares against.
+
+        The bytes are checked against that hash before they are written. A
+        snapshot is untrusted input, and restoring a file whose content does not
+        match the hash the row asserts would manufacture a ``changed``
+        attachment out of a backup the user believed was intact.
+
+        Rows carrying no bytes pass through untouched: a referenced file is
+        still expected at its own path, which is the correct behaviour for a
+        file the user owns.
+        """
+        import base64
+        import binascii
+        import hashlib
+        import os
+        import uuid
+
+        from ..attachment_store import attachments_dir
+
+        restored: list[dict] = []
+        written = failed = referenced = 0
+
+        for row in attachments:
+            row = dict(row)
+            encoded = row.pop("content_b64", None)
+            row.pop("carried", None)
+            row.pop("carry_skipped", None)
+            if not encoded:
+                referenced += 1
+                restored.append(row)
+                continue
+            try:
+                blob = base64.b64decode(encoded, validate=True)
+                if hashlib.sha256(blob).hexdigest() != row["sha256"]:
+                    raise ValueError("carried bytes do not match the recorded sha256")
+                suffix = os.path.splitext(row.get("path") or "")[1]
+                target = attachments_dir() / f"{uuid.uuid4().hex}{suffix}"
+                target.write_bytes(blob)
+                row["path"] = str(target)
+                written += 1
+            except (binascii.Error, ValueError, OSError):
+                # The row still lands, pointing where it did. The attachment is
+                # then reported missing by a verify pass -- visible, which is
+                # the whole difference from the behaviour being fixed here.
+                failed += 1
+            restored.append(row)
+
+        return restored, {
+            "attachment_files_written": written,
+            "attachment_files_failed": failed,
+            "attachments_by_reference": referenced,
         }
