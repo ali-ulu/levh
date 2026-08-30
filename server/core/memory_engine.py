@@ -40,7 +40,8 @@ from .engine.privacy import MemoryPrivacyMixin
 from .engine.demo import MemoryDemoMixin
 from .engine.graph import MemoryGraphMixin
 from .engine.dedupe import MemoryDedupeMixin
-from .engine.attachments import MemoryAttachmentsMixinfrom .engine.helpers import EventListener  # noqa: F401
+from .engine.attachments import MemoryAttachmentsMixin
+from .engine.helpers import EventListener  # noqa: F401
 from .agent_tracker import AgentTracker
 
 
