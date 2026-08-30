@@ -7,6 +7,7 @@ file readable. Bodies are unchanged from the single-file version.
 from __future__ import annotations
 
 import json
+import sqlite3
 from typing import Optional
 
 
@@ -23,6 +24,62 @@ class AggregateQueries:
         row = await cursor.fetchone()
         await cursor.close()
         return row[0]
+
+    async def count_demo_memories(self) -> int:
+        """How many memories the demo seeded, as an aggregate.
+
+        The onboarding status endpoint needs one number. It used to get it by
+        loading every memory — ``SELECT *``, embeddings included, each row
+        deserialised into a ``Memory`` — and counting in Python, so the cost of
+        showing a demo badge grew with the corpus it was reporting on.
+
+        ``demo`` is a key inside the JSON ``metadata`` column and the Python
+        side tested it with ``bool(...)``, so this has to reproduce *Python*
+        truthiness rather than SQLite's. Absent, JSON null, ``false``, ``0``,
+        ``""``, ``[]`` and ``{}`` are falsy; everything else counts — including
+        the string ``"false"``, which is truthy in Python and would be a real
+        divergence if this were written the obvious way.
+        """
+        try:
+            cursor = await self.conn.execute(
+                """
+                SELECT COUNT(*) FROM memories
+                 WHERE metadata IS NOT NULL
+                   AND json_valid(metadata)
+                   AND json_extract(metadata, '$.demo') IS NOT NULL
+                   AND json_extract(metadata, '$.demo') NOT IN (0, '', '[]', '{}')
+                """
+            )
+        except sqlite3.OperationalError:
+            # SQLite built without the JSON1 extension. Nothing else in the
+            # codebase relies on it yet, so the count falls back rather than
+            # making onboarding fail on an unusual build.
+            return await self._count_demo_memories_without_json1()
+        row = await cursor.fetchone()
+        await cursor.close()
+        return row[0]
+
+    async def _count_demo_memories_without_json1(self) -> int:
+        """The same count where ``json_extract`` is unavailable.
+
+        Still bounded where it actually mattered: only the ``metadata`` column
+        is read, so the embeddings are never pulled off disk and no ``Memory``
+        objects are built.
+        """
+        cursor = await self.conn.execute(
+            "SELECT metadata FROM memories WHERE metadata IS NOT NULL"
+        )
+        rows = await cursor.fetchall()
+        await cursor.close()
+        total = 0
+        for row in rows:
+            try:
+                parsed = json.loads(row[0])
+            except (TypeError, ValueError):
+                continue
+            if isinstance(parsed, dict) and bool(parsed.get("demo")):
+                total += 1
+        return total
 
     async def count_pinned(self) -> int:
         cursor = await self.conn.execute("SELECT COUNT(*) FROM memories WHERE pinned = 1")
