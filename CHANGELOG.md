@@ -2,6 +2,71 @@
 
 ## Unreleased
 
+### The admission gate stops losing what it will not decide
+
+- **A `review` verdict now holds the candidate instead of dropping it.** The
+  gate has four verdicts; three had a destination and `review` did not. The
+  caller was told the memory was not stored, and the content was gone — while
+  the docstring said "hold for a human". `reject` and `review` are not the same
+  refusal: `reject` is the gate deciding (too short, or a near-exact duplicate
+  of something already remembered), `review` is the gate *declining* to decide,
+  which is exactly the case where the difference may be the part worth keeping.
+  Held candidates live in a new `held_memories` table, readable at
+  `GET /api/memories/held` and settled with
+  `POST /api/memories/held/{id}/admit` or `.../discard`. A held row is not a
+  memory: no embedding, no decay, and it never answers a recall. Admitting one
+  reproduces the memory you originally asked for — importance, tags, session,
+  project, source and type all survive the detour. Secrets are redacted before
+  holding, because a queue a person reads later is no place for a live
+  credential.
+
+### Backups carry the files they promised
+
+- **A portable backup now contains the bytes of every attachment LEVH owns.**
+  Attachment rows travelled as a path, a hash and a size; restoring on another
+  machine wrote the same absolute path back, so the record looked restored while
+  the file it named was not there. For a file uploaded through LEVH that is data
+  loss — no other copy exists. A file you attached from your own disk still
+  travels as a reference: your original is the copy that matters, and a backup
+  of your *memories* has no business collecting the documents around them. The
+  envelope reports both counts, so the gap is stated rather than discovered on
+  the day you restore, and carried bytes are checked against the recorded
+  sha256 before they are written.
+- **A re-broken attachment shows up as open again.** An attachment candidate's
+  id is derived from the attachment, so once one had been resolved a second
+  break re-used that id, the insert was refused, and the row stayed `resolved` —
+  a broken file with nothing open against it. Verification's own `resolved` is
+  now reopened; an open candidate is refreshed so a file that went from changed
+  to missing says so; and a verdict *you* gave stands for the state you judged,
+  reopening only when the signal itself is different.
+
+### Sessions can be deleted
+
+- **`DELETE /api/sessions/{id}`**, with the memory policy stated rather than
+  assumed. `memories=refuse` (the default) deletes only an empty session and
+  answers 409 with the count otherwise — tidying up a session is not a decision
+  to delete the memories it produced. `detach` keeps them and drops the session
+  link; `delete` removes them through the same cascade a single delete uses.
+  Removing a session used to mean opening `stackmemory.db` and running SQL by
+  hand, which is a write path around the product's own API.
+
+### Fixes
+
+- Onboarding writes its receipt where it can actually write. The previous check
+  proved the directory could be *created*, and `mkdir(exist_ok=True)` succeeds
+  as a no-op against a `.stackmemory` that already exists and is read-only — so
+  the fallback never ran and the write failed instead. Writability is now proven
+  by writing, and a write that fails anyway falls back at that point too. A path
+  you named explicitly still fails loudly rather than being relocated behind
+  your back.
+- The onboarding status endpoint counts demo memories in SQL. It was loading
+  every memory — content, embeddings and all — to produce one number, so the
+  cost of showing a demo badge grew with the corpus it was reporting on.
+- Tests read documents as UTF-8 instead of the console code page, and two tests
+  no longer fail purely because the suite is busy.
+
+### Sessions and continuity
+
 - **Sessions start with your memory already in them.** `levh hook install
   --client claude-code` registers a Claude Code SessionStart hook, so a new
   session opens with the rules you recorded, the memories you pinned and where
