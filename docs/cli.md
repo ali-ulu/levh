@@ -55,6 +55,7 @@ Run `levh <command> --help` for the flags of any one of them.
 | `levh checkpoint` | Save or list work checkpoints |
 | `levh checkpoint create` | Create a checkpoint of current work state |
 | `levh checkpoint list` | List recent checkpoints |
+| `levh checkpoint auto` | Start auto-checkpoint timer |
 
 | `levh conflicts <sub>` | Deterministic conflict-candidate review |
 | `levh conflicts detect` | Detect conflict candidates |

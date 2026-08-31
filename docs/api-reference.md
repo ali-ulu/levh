@@ -106,5 +106,9 @@ because it is a read that has to POST to carry its query.
 | GET | `/api/agents/stats` | Aggregate agent usage statistics |
 | POST | `/api/checkpoints` | Create a checkpoint of current work state |
 | GET | `/api/checkpoints` | List recent checkpoints, optionally filtered by agent or project |
+| GET | `/api/agents/{agent_name}/metrics` | Get performance metrics for a specific agent |
+| GET | `/api/agents/metrics/usage` | Get usage billing metrics for all agents |
+| GET | `/api/agents/collaboration/{project}` | Get collaboration info for agents on the same project |
+| WS | `/ws/agents` | WebSocket for real-time agent presence updates |
 | WS | `/ws/memory` | Real-time event stream + RPC actions (recall/stats/ping; writes blocked in public demo mode) |
 | SSE | `/api/mcp/sse` | MCP SSE stream endpoint |

@@ -108,6 +108,9 @@ TOOL_TIERS: dict[str, str] = {
     "list_agent_activity": "work",
     "list_checkpoints": "work",
     "get_agent_stats": "work",
+    "agent_metrics": "work",
+    "usage_billing": "work",
+    "project_collaboration": "work",
     # ── full: connectors + niche helpers ─────────────────────────────
     "list_connectors": "full",
     "get_connector_help": "full",

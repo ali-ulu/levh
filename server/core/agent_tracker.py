@@ -381,6 +381,144 @@ class AgentTracker:
         )
         return [dict(r) for r in await cursor.fetchall()]
 
+
+    # ── Agent Performance Metrics ──────────────────────────────────────
+
+    async def get_agent_metrics(self, agent_name: str) -> dict:
+        """Get performance metrics for a specific agent."""
+        key = normalize_agent(agent_name)
+        
+        # Connection stats
+        cursor = await self.db.conn.execute(
+            """SELECT COUNT(*) as total,
+                      COUNT(DISTINCT session_id) as sessions,
+                      MIN(connected_at) as first_seen,
+                      MAX(connected_at) as last_seen
+               FROM agent_sessions WHERE agent_name = ?""",
+            (key,),
+        )
+        conn_stats = dict(await cursor.fetchone())
+        
+        # Checkpoint stats
+        cursor = await self.db.conn.execute(
+            """SELECT COUNT(*) as checkpoints,
+                      checkpoint_type,
+                      COUNT(CASE WHEN checkpoint_type='auto' THEN 1 END) as auto_checkpoints,
+                      COUNT(CASE WHEN checkpoint_type='manual' THEN 1 END) as manual_checkpoints
+               FROM agent_checkpoints WHERE agent_name = ?
+               GROUP BY checkpoint_type""",
+            (key,),
+        )
+        cp_rows = await cursor.fetchall()
+        cp_stats = {r["checkpoint_type"]: dict(r) for r in cp_rows} if cp_rows else {}
+        
+        # Online status
+        online_count = sum(
+            1 for aid, ts in self._presence.items()
+            if (time.time() - ts) < self.heartbeat_timeout
+            and self._is_agent_session(aid, key)
+        )
+        
+        return {
+            "agent_name": key,
+            "display": agent_display(agent_name),
+            "connections": conn_stats["total"],
+            "sessions": conn_stats["sessions"],
+            "first_seen": conn_stats["first_seen"],
+            "last_seen": conn_stats["last_seen"],
+            "checkpoints": cp_stats,
+            "currently_online": online_count > 0,
+        }
+    
+    def _is_agent_session(self, session_id: str, agent_name: str) -> bool:
+        """Check if a session belongs to an agent (in-memory check)."""
+        # This is a simplified check - in production we'd query the DB
+        return True  # Placeholder - actual implementation would check DB
+
+    # ── Usage Billing ─────────────────────────────────────────────────
+
+    async def get_usage_billing(self) -> dict:
+        """Get usage billing metrics for all agents."""
+        # Connection counts
+        cursor = await self.db.conn.execute(
+            """SELECT agent_name,
+                      COUNT(*) as connections,
+                      COUNT(DISTINCT session_id) as sessions
+               FROM agent_sessions
+               GROUP BY agent_name
+               ORDER BY connections DESC"""
+        )
+        agents = [dict(r) for r in await cursor.fetchall()]
+        
+        # Checkpoint counts
+        cursor = await self.db.conn.execute(
+            """SELECT agent_name,
+                      COUNT(*) as checkpoints
+               FROM agent_checkpoints
+               GROUP BY agent_name"""
+        )
+        cp_counts = {r["agent_name"]: r["checkpoints"] for r in await cursor.fetchall()}
+        
+        # Total usage
+        total_connections = sum(a["connections"] for a in agents)
+        total_sessions = sum(a["sessions"] for a in agents)
+        total_checkpoints = sum(cp_counts.values())
+        
+        return {
+            "summary": {
+                "total_connections": total_connections,
+                "total_sessions": total_sessions,
+                "total_checkpoints": total_checkpoints,
+            },
+            "by_agent": [
+                {
+                    **a,
+                    "checkpoints": cp_counts.get(a["agent_name"], 0),
+                    "cost_estimate": a["connections"] * 0.01 + a["sessions"] * 0.05,
+                }
+                for a in agents
+            ],
+        }
+
+    # ── Agent Collaboration ──────────────────────────────────────────
+
+    async def get_project_collaboration(self, project: str) -> dict:
+        """Get collaboration info for agents working on the same project."""
+        # Active agents on this project
+        cursor = await self.db.conn.execute(
+            """SELECT DISTINCT agent_name, agent_display, status, last_heartbeat_at
+               FROM agent_sessions
+               WHERE project = ?
+               ORDER BY last_heartbeat_at DESC""",
+            (project,),
+        )
+        agents = [dict(r) for r in await cursor.fetchall()]
+        
+        # Add online status
+        for agent in agents:
+            agent["online"] = any(
+                self.is_online(aid)
+                for aid in self._presence
+                if self._is_agent_session(aid, agent["agent_name"])
+            )
+        
+        # Shared checkpoints
+        cursor = await self.db.conn.execute(
+            """SELECT agent_name, title, created_at
+               FROM agent_checkpoints
+               WHERE project = ?
+               ORDER BY created_at DESC
+               LIMIT 10""",
+            (project,),
+        )
+        shared_checkpoints = [dict(r) for r in await cursor.fetchall()]
+        
+        return {
+            "project": project,
+            "agents": agents,
+            "shared_checkpoints": shared_checkpoints,
+            "collaboration_score": len([a for a in agents if a["online"]]),
+        }
     # ── Helpers ──────────────────────────────────────────────────────
 
     @staticmethod

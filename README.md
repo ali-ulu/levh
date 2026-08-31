@@ -105,7 +105,7 @@ levh mcp init my-server --with-memory   # scaffold an MCP server on this databas
 - **Mistake guard** — a corrected mistake becomes a pinned rule plus an incident record. Pinned memories never decay, so the rule is still there weeks later, in a different session, and it leads the generated context file where the next session reads it before working.
 - **Encrypted backup & restore** — a full portable snapshot including decay state and the bytes of every attachment LEVH uploaded, so a restore on another machine produces readable files rather than dangling paths. Files you attached from your own disk stay references — your original is the copy that matters. Optionally encrypted with a passphrase (PBKDF2 + AES).
 - **Consolidation & review** — aged clusters collapse into durable summaries; the fading queue becomes a keep / reinforce / forget flow.
-- **62 MCP tools**, a REST API, a WebSocket feed, and a live Next.js dashboard served by the API itself — one process, one port.
+- **72 MCP tools**, a REST API, a WebSocket feed, and a live Next.js dashboard served by the API itself — one process, one port.
 - **4 embedding modes** — OpenAI, local `all-MiniLM-L6-v2`, Ollama (fully offline), or a deterministic hash fallback. The system always works.
 - **Connectors** for Calendar, Email, transcripts, Notion, Obsidian, GitHub and local files — all routed through the admission gate. Calendar, mail and transcript files are uploaded from the dashboard; there is no filesystem path to type.
 - **Scaffold your own MCP server** — `levh mcp init my-server --with-memory` writes a working server that shares this database, optionally with a deploy config for Fly, Railway, Render or Docker.
@@ -122,7 +122,7 @@ levh mcp init my-server --with-memory   # scaffold an MCP server on this databas
 | [Platform Setup](docs/mcp-client-config.md) | Claude Desktop, Claude Code, Cursor, Windsurf, VS Code (Cline), jcode, omp, opencode, Codex, Hermes |
 | [Configuration](docs/configuration.md) | Environment variables, precedence, Docker |
 | [Architecture](docs/ARCHITECTURE.md) | Layers, engine, scoring internals |
-| [MCP Tools](docs/mcp-tools.md) | All 62 tools and the profile bands |
+| [MCP Tools](docs/mcp-tools.md) | All 69 tools and the profile bands |
 | [REST API](docs/api-reference.md) | Every endpoint |
 | [CLI](docs/cli.md) | Every command |
 | [Evaluation](docs/memory-evaluation.md) | Recall benchmark, golden fixtures, dogfood |

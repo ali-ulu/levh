@@ -16,7 +16,7 @@ hosted account required.
 
 What is included:
 
-- 69 MCP tools for capture, recall, review, trust, entities, conflicts and
+- 72 MCP tools for capture, recall, review, trust, entities, conflicts and
   project context.
 - Memory decay and reinforcement so important context stays available while
   stale detail fades.
