@@ -340,3 +340,168 @@
   box-shadow: 0 12px 32px rgba(65, 104, 255, .2), inset 0 1px 0 rgba(255,255,255,.08);
 }
 .dark .levh-logo-mark { filter: none; }
+
+/* FAB - Floating Action Button */
+.fab-button {
+  position: fixed;
+  bottom: 28px;
+  right: 28px;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  border: none;
+  color: white;
+  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  box-shadow: 0 8px 24px rgba(99, 102, 241, 0.35), inset 0 1px 0 rgba(255,255,255,0.3);
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.fab-button:hover {
+  transform: scale(1.08);
+  box-shadow: 0 12px 32px rgba(99, 102, 241, 0.45), inset 0 1px 0 rgba(255,255,255,0.3);
+}
+@media (max-width: 640px) {
+  .fab-button { bottom: 16px; right: 16px; width: 52px; height: 52px; }
+}
+
+/* Template cards (Memory Quick Add) */
+.template-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--panel-border);
+  background: rgba(255,255,255,0.3);
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+.template-card:hover {
+  border-color: hsl(var(--primary) / 0.3);
+  background: rgba(255,255,255,0.5);
+  transform: translateY(-1px);
+}
+.dark .template-card { background: rgba(10, 20, 40, 0.4); }
+.dark .template-card:hover { background: rgba(20, 35, 60, 0.5); }
+
+/* Tag chips */
+.tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--panel-border);
+  background: rgba(255,255,255,0.3);
+  font-size: 11px;
+  font-weight: 500;
+  color: hsl(var(--muted-foreground));
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.tag-chip:hover, .tag-chip.active {
+  border-color: hsl(var(--primary) / 0.4);
+  background: hsl(var(--primary) / 0.08);
+  color: hsl(var(--primary));
+}
+.dark .tag-chip { background: rgba(10, 20, 40, 0.4); }
+
+/* Skeleton card loading */
+.skeleton-card {
+  border-radius: 16px;
+  border: 1px solid var(--panel-border);
+  background: linear-gradient(90deg, var(--muted) 25%, rgba(255,255,255,0.3) 50%, var(--muted) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+@keyframes skeleton-pulse {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Memory card (Memories page) */
+.memory-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid var(--panel-border);
+  background: var(--panel-bg);
+  backdrop-filter: blur(16px);
+  transition: all 0.18s ease;
+}
+.memory-card:hover {
+  border-color: color-mix(in srgb, hsl(var(--primary)) 20%, var(--panel-border));
+  background: var(--panel-bg-strong);
+  transform: translateX(2px);
+}
+.memory-card.pinned {
+  border-color: rgba(245, 158, 11, 0.25);
+  background: linear-gradient(90deg, rgba(245, 158, 11, 0.03), var(--panel-bg));
+}
+.memory-type-indicator {
+  width: 3px;
+  min-height: 24px;
+  border-radius: 999px;
+  flex-shrink: 0;
+  margin-right: 12px;
+}
+.memory-type-indicator.episodic { background: linear-gradient(to bottom, #3b82f6, #8b5cf6); }
+.memory-type-indicator.short-term { background: linear-gradient(to bottom, #f59e0b, #ef4444); }
+
+/* Connector cards */
+.connector-card {
+  display: flex;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--panel-border);
+  background: rgba(255,255,255,0.25);
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+.connector-card:hover {
+  border-color: hsl(var(--primary) / 0.2);
+  background: rgba(255,255,255,0.4);
+}
+.connector-card.active {
+  border-color: hsl(var(--primary) / 0.4);
+  background: hsl(var(--primary) / 0.06);
+  box-shadow: 0 0 0 1px hsl(var(--primary) / 0.1);
+}
+.dark .connector-card { background: rgba(10, 20, 40, 0.35); }
+.dark .connector-card:hover { background: rgba(20, 35, 60, 0.45); }
+.dark .connector-card.active { background: hsl(var(--primary) / 0.1); }
+
+/* Client cards */
+.client-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 8px;
+  border-radius: 12px;
+  border: 1px solid var(--panel-border);
+  background: rgba(255,255,255,0.25);
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+.client-card:hover {
+  border-color: hsl(var(--primary) / 0.2);
+  background: rgba(255,255,255,0.4);
+  transform: translateY(-1px);
+}
+.client-card.active {
+  border-color: hsl(var(--primary) / 0.4);
+  background: hsl(var(--primary) / 0.06);
+  box-shadow: 0 0 0 1px hsl(var(--primary) / 0.1);
+}
+.dark .client-card { background: rgba(10, 20, 40, 0.35); }
+.dark .client-card:hover { background: rgba(20, 35, 60, 0.45); }
+.dark .client-card.active { background: hsl(var(--primary) / 0.1); }

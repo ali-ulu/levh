@@ -24,6 +24,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { MemoryDetailDrawer } from "@/components/memory-detail-drawer";
 import type { Memory, Project, Source } from "@/types";
 import {
+  Clock,
   Eye,
   FolderGit2,
   Loader2,
@@ -31,16 +32,33 @@ import {
   Pin,
   PinOff,
   Search,
+  Sparkles,
+  Tag,
   Trash2,
 } from "lucide-react";
 
 const ALL = "__all__";
+
+function relativeTime(dateStr: string) {
+  const time = new Date(dateStr).getTime();
+  if (!Number.isFinite(time)) return "";
+  const delta = Math.max(0, Date.now() - time);
+  const minutes = Math.floor(delta / 60000);
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}d ago`;
+  return new Date(dateStr).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+}
 
 export default function MemoriesPage() {
   const [memories, setMemories] = useState<Memory[]>([]);
   const [loading, setLoading] = useState(true);
   const [projects, setProjects] = useState<Project[]>([]);
   const [sources, setSources] = useState<Source[]>([]);
+  const [allTags, setAllTags] = useState<string[]>([]);
 
   // Filters
   const [q, setQ] = useState("");
@@ -49,6 +67,7 @@ export default function MemoriesPage() {
   const [sourceFilter, setSourceFilter] = useState(ALL);
   const [sessionFilter, setSessionFilter] = useState("");
   const [pinnedOnly, setPinnedOnly] = useState(false);
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
 
   // Deep links: /memories/?project=X or /memories/?session=Y
   useEffect(() => {
@@ -56,9 +75,11 @@ export default function MemoriesPage() {
     const project = params.get("project");
     const session = params.get("session");
     const query = params.get("q");
+    const tag = params.get("tag");
     if (project) setProjectFilter(project);
     if (session) setSessionFilter(session);
     if (query) setQ(query);
+    if (tag) setSelectedTag(tag);
   }, []);
 
   const [selectedMemory, setSelectedMemory] = useState<Memory | null>(null);
@@ -74,7 +95,7 @@ export default function MemoriesPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [mems, projs, srcs] = await Promise.all([
+      const [mems, projs, srcs, tags] = await Promise.all([
         api.listMemories({
           q: q.trim() || undefined,
           memory_type: typeFilter === ALL ? undefined : typeFilter,
@@ -86,10 +107,12 @@ export default function MemoriesPage() {
         }),
         api.listProjects(),
         api.listSources(),
+        api.listTags(),
       ]);
       setMemories(mems);
       setProjects(projs.projects);
       setSources(srcs.sources);
+      setAllTags(tags.tags.map((t) => t.name));
     } catch {}
     setLoading(false);
   }, [q, typeFilter, projectFilter, sourceFilter, sessionFilter, pinnedOnly]);
@@ -98,6 +121,11 @@ export default function MemoriesPage() {
     const t = setTimeout(load, q ? 300 : 0);
     return () => clearTimeout(t);
   }, [load, q]);
+
+  // Filter by tag client-side if tag selected
+  const displayed = selectedTag
+    ? memories.filter((m) => m.tags.includes(selectedTag))
+    : memories;
 
   const togglePin = async (m: Memory) => {
     try {
@@ -138,28 +166,66 @@ export default function MemoriesPage() {
     setSaving(false);
   };
 
+  // Collect top tags from displayed memories for the tag cloud
+  const topTags = allTags.slice(0, 12);
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Memories</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Browse, filter, pin, edit, and delete everything your AI remembers.
-        </p>
+      {/* Header */}
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-[-0.02em]">Memories</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Browse, search, and manage everything your AI remembers.
+          </p>
+        </div>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <span className="tabular-nums">{displayed.length}</span> memories
+          {selectedTag && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 gap-1"
+              onClick={() => setSelectedTag(null)}
+            >
+              <Tag className="h-3 w-3" />
+              {selectedTag} ×
+            </Button>
+          )}
+        </div>
       </div>
+
+      {/* Search bar */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          className="pl-10 h-11 text-sm"
+          placeholder="Search memories by content..."
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+        />
+      </div>
+
+      {/* Tag cloud */}
+      {topTags.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {topTags.map((tag) => (
+            <button
+              key={tag}
+              onClick={() => setSelectedTag(selectedTag === tag ? null : tag)}
+              className={`tag-chip ${selectedTag === tag ? "active" : ""}`}
+            >
+              <Tag className="h-2.5 w-2.5" />
+              {tag}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Filter bar */}
       <div className="flex flex-wrap items-center gap-2">
-        <div className="relative flex-1 min-w-56">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            className="pl-8"
-            placeholder="Filter by text..."
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-          />
-        </div>
         <Select value={typeFilter} onValueChange={setTypeFilter}>
-          <SelectTrigger className="w-36">
+          <SelectTrigger className="w-32">
             <SelectValue placeholder="Type" />
           </SelectTrigger>
           <SelectContent>
@@ -169,7 +235,7 @@ export default function MemoriesPage() {
           </SelectContent>
         </Select>
         <Select value={projectFilter} onValueChange={setProjectFilter}>
-          <SelectTrigger className="w-40">
+          <SelectTrigger className="w-36">
             <SelectValue placeholder="Project" />
           </SelectTrigger>
           <SelectContent>
@@ -182,7 +248,7 @@ export default function MemoriesPage() {
           </SelectContent>
         </Select>
         <Select value={sourceFilter} onValueChange={setSourceFilter}>
-          <SelectTrigger className="w-40">
+          <SelectTrigger className="w-36">
             <SelectValue placeholder="Source" />
           </SelectTrigger>
           <SelectContent>
@@ -197,14 +263,18 @@ export default function MemoriesPage() {
         <Button
           variant={pinnedOnly ? "default" : "outline"}
           size="sm"
-          className="h-10"
+          className="h-9"
           onClick={() => setPinnedOnly(!pinnedOnly)}
         >
           <Pin className="h-3.5 w-3.5 mr-1.5" />
           Pinned
         </Button>
         {sessionFilter && (
-          <Badge variant="secondary" className="h-10 px-3 cursor-pointer" onClick={() => setSessionFilter("")}>
+          <Badge
+            variant="secondary"
+            className="h-9 px-3 cursor-pointer"
+            onClick={() => setSessionFilter("")}
+          >
             session: {sessionFilter.slice(0, 8)}… ✕
           </Badge>
         )}
@@ -212,73 +282,111 @@ export default function MemoriesPage() {
 
       {/* Results */}
       {loading ? (
-        <div className="flex justify-center py-12">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <div className="space-y-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="skeleton-card h-20" />
+          ))}
         </div>
-      ) : memories.length === 0 ? (
+      ) : displayed.length === 0 ? (
         <Card>
-          <CardContent className="py-12 text-center text-sm text-muted-foreground">
-            No memories match these filters.
+          <CardContent className="py-16 text-center">
+            <div className="flex flex-col items-center gap-3">
+              <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center">
+                <Search className="h-5 w-5 text-muted-foreground" />
+              </div>
+              <p className="text-sm text-muted-foreground">
+                {q
+                  ? `No memories match "${q}"`
+                  : "No memories yet. Add your first memory to get started."}
+              </p>
+            </div>
           </CardContent>
         </Card>
       ) : (
         <div className="space-y-2">
-          <p className="text-xs text-muted-foreground">{memories.length} memories</p>
-          {memories.map((m) => (
-            <Card key={m.id} className={m.pinned ? "border-primary/40" : undefined}>
-              <CardContent className="p-3">
-                <div className="flex items-start gap-3">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm leading-relaxed line-clamp-2">{m.content}</p>
-                    <div className="flex flex-wrap items-center gap-1.5 mt-2">
-                      {m.pinned && (
-                        <Badge variant="secondary" className="text-[11px]">
-                          <Pin className="h-2.5 w-2.5 mr-1" />
-                          pinned
-                        </Badge>
-                      )}
+          {displayed.map((m) => (
+            <div
+              key={m.id}
+              className={`memory-card group ${m.pinned ? "pinned" : ""}`}
+            >
+              <div className="flex items-start gap-3">
+                {/* Memory type indicator */}
+                <div
+                  className={`memory-type-indicator ${
+                    m.memory_type === "episodic" ? "episodic" : "short-term"
+                  }`}
+                />
+
+                {/* Content */}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm leading-relaxed line-clamp-2">
+                    {m.content}
+                  </p>
+                  <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                    {m.pinned && (
                       <Badge
-                        variant={m.memory_type === "episodic" ? "default" : "secondary"}
-                        className="text-[11px]"
+                        variant="secondary"
+                        className="text-[11px] bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
                       >
-                        {m.memory_type === "episodic" ? "episodic" : "short-term"}
+                        <Pin className="h-2.5 w-2.5 mr-1" />
+                        pinned
                       </Badge>
-                      {m.project && (
-                        <Badge variant="outline" className="text-[11px]">
-                          <FolderGit2 className="h-2.5 w-2.5 mr-1" />
-                          {m.project}
-                        </Badge>
-                      )}
-                      {m.source && (
-                        <Badge variant="outline" className="text-[11px]">
-                          {m.source}
-                        </Badge>
-                      )}
-                      {m.tags.slice(0, 5).map((t) => (
-                        <Badge key={t} variant="outline" className="text-[11px]">
-                          {t}
-                        </Badge>
-                      ))}
-                      <span className="text-[11px] text-muted-foreground ml-auto">
-                        imp {m.importance.toFixed(1)} · freq {m.frequency} ·{" "}
-                        {new Date(m.created_at).toLocaleDateString("en-GB")}
+                    )}
+                    {m.project && (
+                      <Badge variant="outline" className="text-[11px]">
+                        <FolderGit2 className="h-2.5 w-2.5 mr-1" />
+                        {m.project}
+                      </Badge>
+                    )}
+                    {m.source && (
+                      <Badge variant="outline" className="text-[11px]">
+                        {m.source}
+                      </Badge>
+                    )}
+                    {m.tags.slice(0, 4).map((t) => (
+                      <button
+                        key={t}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedTag(t);
+                        }}
+                        className="inline-flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded border border-dashed border-muted-foreground/30 text-muted-foreground hover:border-primary/50 hover:text-primary transition-colors"
+                      >
+                        {t}
+                      </button>
+                    ))}
+                    {m.tags.length > 4 && (
+                      <span className="text-[10px] text-muted-foreground/60">
+                        +{m.tags.length - 4}
                       </span>
-                    </div>
+                    )}
                   </div>
-                  <div className="flex items-center gap-0.5 shrink-0">
+                </div>
+
+                {/* Meta + actions */}
+                <div className="flex flex-col items-end gap-1 shrink-0">
+                  <span className="flex items-center gap-1 text-[11px] text-muted-foreground tabular-nums">
+                    <Clock className="h-3 w-3" />
+                    {relativeTime(m.created_at)}
+                  </span>
+                  <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8"
+                      className="h-7 w-7"
                       onClick={() => togglePin(m)}
                       aria-label={m.pinned ? "Unpin" : "Pin"}
                     >
-                      {m.pinned ? <PinOff className="h-3.5 w-3.5" /> : <Pin className="h-3.5 w-3.5" />}
+                      {m.pinned ? (
+                        <PinOff className="h-3.5 w-3.5" />
+                      ) : (
+                        <Pin className="h-3.5 w-3.5" />
+                      )}
                     </Button>
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8"
+                      className="h-7 w-7"
                       onClick={() => setSelectedMemory(m)}
                       aria-label="View"
                     >
@@ -287,7 +395,7 @@ export default function MemoriesPage() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8"
+                      className="h-7 w-7"
                       onClick={() => openEdit(m)}
                       aria-label="Edit"
                     >
@@ -296,7 +404,7 @@ export default function MemoriesPage() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8"
+                      className="h-7 w-7"
                       onClick={() => remove(m)}
                       aria-label="Delete"
                     >
@@ -304,8 +412,8 @@ export default function MemoriesPage() {
                     </Button>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           ))}
         </div>
       )}
@@ -319,7 +427,11 @@ export default function MemoriesPage() {
           <div className="space-y-3">
             <div className="space-y-1">
               <Label className="text-xs">Content</Label>
-              <Textarea value={editContent} onChange={(e) => setEditContent(e.target.value)} rows={4} />
+              <Textarea
+                value={editContent}
+                onChange={(e) => setEditContent(e.target.value)}
+                rows={4}
+              />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">

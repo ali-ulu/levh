@@ -327,9 +327,7 @@ export default function Dashboard() {
         </aside>
       </section>
 
-      <section id="quick-capture" className="scroll-mt-24">
-        <MemoryQuickAdd onAdded={load} />
-      </section>
+
 
       {selectedMemory && (
         <MemoryDetailDrawer
@@ -339,6 +337,8 @@ export default function Dashboard() {
           onSelectRelated={setSelectedMemory}
         />
       )}
+
+      <MemoryQuickAdd onAdded={load} />
     </div>
   );
 }
