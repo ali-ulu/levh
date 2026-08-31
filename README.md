@@ -34,6 +34,53 @@ Everything runs locally on SQLite. No accounts, no cloud, no external services.
 
 ---
 
+## One memory, every agent on your machine
+
+Most memory layers are built for one client. LEVH is not — it is one SQLite
+file that any number of MCP-speaking agents read and write concurrently,
+because they are separate processes talking to the same database, not
+separate memories synced after the fact.
+
+In daily use on one machine that means Claude Code, Claude Desktop, Cursor,
+Windsurf, VS Code (Cline), opencode, jcode, Codex, Hermes, kilocode and
+oh-my-cli all resolve the same query the same way — an agent never re-solves
+a problem another agent already closed, and never asks you to repeat
+something you already said to a different tool. `Cross-process coherence`
+below is not a footnote; it is the property that makes this safe under
+concurrent writers.
+
+Two things make this workable instead of noisy at that scale:
+
+- **The admission gate has a fourth verdict.** Store / reject / update are
+  obvious. The fourth is *review*: a candidate close enough to something you
+  already have that auto-storing risks a duplicate, but different enough that
+  discarding risks losing the one detail that mattered. It used to be
+  dropped silently. Now it is held — visible, admittable, discardable — so no
+  agent's write is ever the one that vanishes.
+- **Sessions start already briefed, not told to go look — where the client
+  supports it.** `levh hook install --client claude-code` (and the same for
+  Claude Desktop, Cursor, Windsurf, VS Code/Cline) wires a native
+  session-start hook that pushes pinned rules, recent sessions and open
+  blockers in front of the agent before the first prompt. Codex and Hermes
+  get the same brief through their own hook systems (`hooks.SessionStart` in
+  `config.toml`, a `pre_llm_call` shell hook in `~/.hermes/config.yaml`) —
+  same `levh continue --limit 5 --if-any` call, different wiring per client.
+  Clients without a documented hook surface (opencode, kilocode, jcode, pi,
+  the standalone Cline CLI) still get full MCP tool access and an AGENTS.md
+  rule to call `recall_memory` first — active, not passive, until one of
+  them ships a hookable session-start event. A memory tool an agent has to
+  be reminded to consult is a filing cabinet with extra steps; not being
+  able to remind it automatically yet is a narrower problem than not having
+  the memory at all.
+
+This isn't the first shared-MCP-memory idea — mem0's OpenMemory does the same
+loopback-server pattern for a smaller client set. What's specific to LEVH is
+combining that breadth with the decay model above and the hold-don't-drop
+gate: memory that stays *useful* across a dozen concurrently-running agents,
+not just present.
+
+---
+
 ## How memory works here
 
 This is the core mechanic, not a footnote:
