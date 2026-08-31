@@ -233,3 +233,106 @@ def register(mcp: FastMCP, engine: MemoryEngine) -> None:
                 )
 
         return "\n".join(lines)
+
+    @mcp.tool()
+    @mcp.tool()
+    async def agent_metrics(agent_name: str = "") -> str:
+        """Get performance metrics for a specific agent.
+
+        Shows connection history, session count, checkpoint stats,
+        and online/offline status for the agent.
+
+        Args:
+            agent_name: Agent name (e.g. "claude-code", "cursor").
+        """
+        tracker = engine.agent_tracker
+        if not tracker:
+            return "Agent tracker not available."
+
+        if not agent_name:
+            return "agent_name is required."
+
+        metrics = await tracker.get_agent_metrics(agent_name)
+
+        lines = []
+        lines.append("Metrics for " + metrics['display'] + " (" + metrics['agent_name'] + "):")
+        lines.append("  Connections: " + str(metrics['connections']))
+        lines.append("  Sessions: " + str(metrics['sessions']))
+        lines.append("  First seen: " + str(metrics.get('first_seen', 'never')))
+        lines.append("  Last seen: " + str(metrics.get('last_seen', 'never')))
+        lines.append("  Online: Yes" if metrics['currently_online'] else "  Online: No")
+
+        if metrics.get("checkpoints"):
+            lines.append("")
+            lines.append("  Checkpoints:")
+            for cp_type, cp_data in metrics["checkpoints"].items():
+                lines.append("    " + cp_type + ": " + str(cp_data.get('checkpoints', 0)))
+
+        return "\n".join(lines)
+
+    @mcp.tool()
+    async def usage_billing() -> str:
+        """Get usage billing metrics for all agents.
+
+        Shows connection counts, session counts, checkpoint counts,
+        and estimated cost per agent.
+        """
+        tracker = engine.agent_tracker
+        if not tracker:
+            return "Agent tracker not available."
+
+        billing = await tracker.get_usage_billing()
+
+        lines = []
+        lines.append("Usage Billing:")
+        summary = billing["summary"]
+        lines.append("  Total connections: " + str(summary['total_connections']))
+        lines.append("  Total sessions: " + str(summary['total_sessions']))
+        lines.append("  Total checkpoints: " + str(summary['total_checkpoints']))
+
+        if billing["by_agent"]:
+            lines.append("")
+            lines.append("  Per-agent:")
+            for a in billing["by_agent"]:
+                cost = a['cost_estimate']
+                lines.append("    " + a['agent_name'] + ": " + str(a['connections']) + " connections, " + str(a['sessions']) + " sessions, " + str(a['checkpoints']) + " checkpoints, ~$" + f"{cost:.2f}")
+
+        return "\n".join(lines)
+
+    @mcp.tool()
+    async def project_collaboration(project: str = "") -> str:
+        """Get collaboration info for agents working on the same project.
+
+        Shows which agents are active on a project, their online status,
+        and shared checkpoints.
+
+        Args:
+            project: Project name to check collaboration for.
+        """
+        tracker = engine.agent_tracker
+        if not tracker:
+            return "Agent tracker not available."
+
+        if not project:
+            return "project is required."
+
+        collab = await tracker.get_project_collaboration(project)
+
+        lines = []
+        lines.append("Collaboration for '" + project + "':")
+        lines.append("  Collaboration score: " + str(collab['collaboration_score']))
+
+        if collab["agents"]:
+            lines.append("")
+            lines.append("  Active agents:")
+            for a in collab["agents"]:
+                status = "online" if a.get("online") else "offline"
+                lines.append("    " + a['agent_display'] + " - " + status)
+
+        if collab["shared_checkpoints"]:
+            lines.append("")
+            lines.append("  Shared checkpoints:")
+            for cp in collab["shared_checkpoints"][:5]:
+                lines.append("    - " + cp['title'] + " (" + cp['agent_name'] + ", " + cp['created_at'][:16] + ")")
+
+        return "\n".join(lines)

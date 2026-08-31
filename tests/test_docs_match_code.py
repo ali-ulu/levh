@@ -49,7 +49,7 @@ def test_the_api_doc_invents_no_routes(api_paths, api_doc):
     }
     # Neither of these is an HTTP route: the MCP app is mounted, and the
     # WebSocket has no OpenAPI schema.
-    extra = sorted(documented - api_paths - {"/api/mcp/sse", "/ws/memory"})
+    extra = sorted(documented - api_paths - {"/api/mcp/sse", "/ws/memory", "/ws/agents"})
     assert not extra, f"documented but not served: {extra}"
 
 

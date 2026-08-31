@@ -30,7 +30,7 @@ from server.tools.register import register_all_tools
 # ── pure profile logic ────────────────────────────────────────────
 def test_counts_are_the_expected_bands():
     # Small minimal, tight work, broad admin, complete full.
-    assert profile_counts() == {"minimal": 5, "work": 24, "admin": 64, "full": 69}
+    assert profile_counts() == {"minimal": 5, "work": 27, "admin": 67, "full": 72}
 
 
 def test_default_profile_is_work():
@@ -109,7 +109,7 @@ async def test_full_registration_has_no_drift(engine):
     register_all_tools(mcp, engine, profile="full")
     advertised = await _advertised(mcp)
     assert advertised == set(TOOL_TIERS)
-    assert len(advertised) == 69
+    assert len(advertised) == 72
 
 
 @pytest.mark.asyncio
