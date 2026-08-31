@@ -16,9 +16,7 @@
   <a href="https://www.producthunt.com/products/levh?embed=true&utm_source=badge-featured&utm_medium=badge&utm_campaign=badge-levh" target="_blank"><img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1199355&theme=light" alt="Levh - Local-first memory for AI agents and workflows | Product Hunt" style="width: 250px; height: 54px;" width="250" height="54" /></a>
 </p>
 
-<p align="center">
-  <a href="docs/demo/5-minute-demo.md"><img src="docs/assets/levh-demo-tour.gif" alt="LEVH demo: local memory dashboard, entity graph, and conflict review" width="960" /></a>
-</p>
+
 
 ---
 

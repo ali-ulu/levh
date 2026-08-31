@@ -1,8 +1,0 @@
-engine A: pid=<PID> db=<TEMP_ROOT>\pytest-36\test_engine_cross_process_cohe0\engine-coherence.db
-engine B: pid=<PID> db=<TEMP_ROOT>\pytest-36\test_engine_cross_process_cohe0\engine-coherence.db
-engine B-restarted: pid=<PID> db=<TEMP_ROOT>\pytest-36\test_engine_cross_process_cohe0\engine-coherence.db
-engine A-restarted: pid=<PID> db=<TEMP_ROOT>\pytest-36\test_engine_cross_process_cohe0\engine-coherence.db
-REST initial: pid=<PID> url=http://127.0.0.1:<PORT> db=<TEMP_ROOT>\pytest-36\test_real_mcp_stdio_and_rest_c0\transport-coherence.db
-MCP initial: transport=stdio launcher=mcp.client.stdio db=<TEMP_ROOT>\pytest-36\test_real_mcp_stdio_and_rest_c0\transport-coherence.db pid=not_exposed_by_client_helper
-MCP restarted: transport=stdio launcher=mcp.client.stdio db=<TEMP_ROOT>\pytest-36\test_real_mcp_stdio_and_rest_c0\transport-coherence.db pid=not_exposed_by_client_helper
-REST restarted: pid=<PID> url=http://127.0.0.1:<PORT> db=<TEMP_ROOT>\pytest-36\test_real_mcp_stdio_and_rest_c0\transport-coherence.db

@@ -1,4 +1,0 @@
-INFO:     127.0.0.1:<PORT> - "GET /api/memories?limit=1 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:<PORT> - "POST /api/memories/recall HTTP/1.1" 200 OK
-INFO:     127.0.0.1:<PORT> - "POST /api/memories/recall HTTP/1.1" 200 OK
-INFO:     127.0.0.1:<PORT> - "POST /api/memories/recall HTTP/1.1" 200 OK

@@ -1,6 +1,0 @@
-{"label": "standalone-default-no-token", "database": "<TEMP_ROOT>\\pytest-45\\test_01_standalone_default_wit0\\standalone-default-no-token.db", "integrity_check": "ok", "memory_count": 0, "rows": []}
-{"label": "standalone-profile-minimal", "database": "<TEMP_ROOT>\\pytest-45\\test_02_standalone_minimal_wor0\\standalone-profile-minimal.db", "integrity_check": "ok", "memory_count": 0, "rows": []}
-{"label": "standalone-profile-work", "database": "<TEMP_ROOT>\\pytest-45\\test_02_standalone_minimal_wor0\\standalone-profile-work.db", "integrity_check": "ok", "memory_count": 0, "rows": []}
-{"label": "standalone-profile-full", "database": "<TEMP_ROOT>\\pytest-45\\test_02_standalone_minimal_wor0\\standalone-profile-full.db", "integrity_check": "ok", "memory_count": 0, "rows": []}
-{"label": "standalone-token-set-client-omits-token", "database": "<TEMP_ROOT>\\pytest-45\\test_03_standalone_ignores_lev0\\standalone-token-set-client-omits-token.db", "integrity_check": "ok", "memory_count": 0, "rows": []}
-{"label": "main-fastapi-mounted-token-set", "database": "<TEMP_ROOT>\\pytest-45\\test_04_main_fastapi_mounted_m0\\mounted-fastapi.db", "integrity_check": "ok", "memory_count": 0, "rows": []}

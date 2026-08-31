@@ -19,11 +19,7 @@ the upper form represents present context and the three lower planes represent
 retained memory layers.
 
 - App/dashboard mark and favicon: `frontend/public/brand/levh-mark.png`
-- Design reference (icon sizes, mono variants — not for hero/social use):
-  `docs/assets/levh-brand-board.png`
 - Favicon source: `frontend/src/app/icon.png`
-- Website hero and social-share image (`og:image`/`twitter:image`):
-  a real product screenshot, currently `docs/assets/levh-demo-graph.png`
 
 Use the board's normal `LEVH` wordmark in product UI. The stylised three-bar `E`
 belongs to campaign art only; at small sizes it can be misread as an equals sign.
