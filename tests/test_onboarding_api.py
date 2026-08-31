@@ -30,7 +30,7 @@ async def test_onboarding_api_status_config_and_demo_cleanup(tmp_path, monkeypat
             assert config.status_code == 200
             body = config.json()
             assert body["profile"] == "work"
-            assert body["tool_count"] == 17
+            assert body["tool_count"] == 24
             assert body["profiles_are_security_boundary"] is False
             assert body["onboarding_receipt_written"] is True
             assert body["onboarding_ready"] is False

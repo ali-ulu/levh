@@ -109,7 +109,7 @@ async def test_full_registration_has_no_drift(engine):
     register_all_tools(mcp, engine, profile="full")
     advertised = await _advertised(mcp)
     assert advertised == set(TOOL_TIERS)
-    assert len(advertised) == 62
+    assert len(advertised) == 69
 
 
 @pytest.mark.asyncio
