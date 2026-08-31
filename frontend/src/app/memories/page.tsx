@@ -113,7 +113,7 @@ export default function MemoriesPage() {
       setProjects(projs.projects);
       setSources(srcs.sources);
       setAllTags(tags.tags.map((t) => t.name));
-    } catch {}
+    } catch (e) { console.error("Memories load error:", e); }
     setLoading(false);
   }, [q, typeFilter, projectFilter, sourceFilter, sessionFilter, pinnedOnly]);
 
@@ -131,7 +131,7 @@ export default function MemoriesPage() {
     try {
       await api.pinMemory(m.id, !m.pinned);
       load();
-    } catch {}
+    } catch (e) { console.error("Memories load error:", e); }
   };
 
   const remove = async (m: Memory) => {
@@ -139,7 +139,7 @@ export default function MemoriesPage() {
     try {
       await api.deleteMemory(m.id);
       load();
-    } catch {}
+    } catch (e) { console.error("Memories load error:", e); }
   };
 
   const openEdit = (m: Memory) => {
@@ -162,7 +162,7 @@ export default function MemoriesPage() {
       });
       setEditMemory(null);
       load();
-    } catch {}
+    } catch (e) { console.error("Memories load error:", e); }
     setSaving(false);
   };
 
