@@ -2,6 +2,35 @@
 
 ## Unreleased
 
+### Universal Agent Tracking System
+
+- **Track any AI agent.** `server/core/agent_tracker.py` monitors agent activity
+  across sessions — heartbeats, tool calls, memory usage — without requiring
+  agent-specific integrations.
+- **Auto-heartbeat.** Agents automatically send periodic heartbeats via
+  `agent_heartbeat.py`, so the server always knows which agents are active.
+- **Agent Activity dashboard.** New `/agents/` page shows real-time agent status,
+  recent activity, and performance metrics.
+- **Agent collaboration tools.** `server/tools/agent_tracking.py` provides MCP
+  tools for agents to discover and coordinate with each other.
+- **Auto-connect hooks.** `server/commands/universal_hooks.py` generates
+  agent-specific configs that auto-connect to LEVH on startup and inject a
+  continuity brief with recent sessions, pinned memories, and guard rules.
+
+### Frontend UX Redesign
+
+- **Memory Quick Add FAB.** Floating action button with template picker for
+  decisions, conventions, context, and insights. Modal-based form with tag
+  chips, project selector, and importance slider.
+- **Improved Memories page.** Prominent search bar, clickable tag cloud,
+  color-coded type indicators, skeleton loading, and better empty states.
+- **Visual Connectors.** Card grid grouped by category (Files, Productivity,
+  Notes, Development) with icons, descriptions, and sync status.
+- **Client selector cards.** Visual cards for Claude Desktop, Claude Code,
+  Cursor, Windsurf, and VS Code (Cline) with copy-to-clipboard.
+- **New CSS components.** FAB, template, tag, skeleton, memory, connector,
+  and client card styles with full dark mode and responsive support.
+
 ### The admission gate stops losing what it will not decide
 
 - **A `review` verdict now holds the candidate instead of dropping it.** The
