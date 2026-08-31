@@ -62,7 +62,16 @@ mcp_sse._mcp_server.version = levh_version()
 # surface is controlled by LEVH_MCP_PROFILE (minimal / work / admin /
 # full); unset defaults to "full" for backward compatibility.
 _MCP_PROFILE = get_env("LEVH_MCP_PROFILE", "full")
-register_all_tools(mcp_sse, engine_provider.get_engine(), profile=_MCP_PROFILE)
+_registered = register_all_tools(mcp_sse, engine_provider.get_engine(), profile=_MCP_PROFILE)
+
+# Auto-inject: Log continuity brief hint for agents.
+if "get_continuity_brief" in _registered:
+    import sys as _sys
+    print(
+        "[levh] 💡 Tip: Call 'get_continuity_brief' at session start to load "
+        "context from previous work.",
+        file=_sys.stderr,
+    )
 
 # ── ASGI app (returned by .sse_app()) ────────────────────────────────
 

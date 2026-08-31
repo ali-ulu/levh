@@ -97,11 +97,16 @@ export function Connectors() {
   const [syncState, setSyncState] = useState<SyncState[]>([]);
   const [uploadingKey, setUploadingKey] = useState("");
 
+  const [serverError, setServerError] = useState(false);
+
   useEffect(() => {
     api
       .listConnectors()
       .then((r) => setConnectors(r.connectors))
-      .catch(() => setConnectors([]));
+      .catch(() => {
+        setConnectors([]);
+        setServerError(true);
+      });
     api
       .connectorSyncState()
       .then((r) => setSyncState(r.sync_state))
@@ -201,6 +206,21 @@ export function Connectors() {
         </p>
       </CardHeader>
       <CardContent className="space-y-5">
+        {/* Server offline notice */}
+        {serverError && connectors.length === 0 && (
+          <div className="rounded-xl border border-dashed border-amber-500/30 bg-amber-500/5 p-4 text-center">
+            <Plug className="h-8 w-8 mx-auto mb-2 text-amber-500/50" />
+            <p className="text-sm font-medium text-amber-600 dark:text-amber-400">
+              LEVH server not running
+            </p>
+            <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
+              Start the server with <code className="bg-muted px-1 rounded">levh serve</code> to
+              connect external data sources. Connectors import data from your files into local memory —
+              nothing leaves your machine.
+            </p>
+          </div>
+        )}
+
         {/* Connector grid */}
         <div className="space-y-3">
           {categories.map((cat) => (

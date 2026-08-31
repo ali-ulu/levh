@@ -2,9 +2,9 @@
 
 The complete MCP tool surface. See the [README](../README.md) for an overview.
 
-> **Tool profiles.** Advertising all 69 tools to a client hurts tool-selection
+> **Tool profiles.** Advertising all 70 tools to a client hurts tool-selection
 > accuracy, so LEVH groups them into cumulative profiles —
-> `minimal` (5) ⊂ `work` (27) ⊂ `admin` (67) ⊂ `full` (72). Generated configs
+> `minimal` (6) ⊂ `work` (28) ⊂ `admin` (68) ⊂ `full` (73). Generated configs
 > default to **`work`**; run `levh mcp profiles` to see the bands, or set
 > `LEVH_MCP_PROFILE` / `mcp config --profile <name>` to change it. The
 > full table below is the `full` surface. Profiles only filter which tools a
@@ -24,6 +24,7 @@ The complete MCP tool surface. See the [README](../README.md) for an overview.
 | 9 | `clear_short_term` | Clear the live FIFO deque |
 | 10 | `set_importance` | Set importance (0.0-1.0) |
 | 11 | `get_context` | Build context window (short-term + pinned + important) |
+| 73 | `get_continuity_brief` | Get continuity brief — call at session start to load context from previous work |
 | 12 | `create_session` | Start a named session |
 | 13 | `end_session` | End session + consolidate its memories |
 | 14 | `export_memories` | Export all memories as JSON |

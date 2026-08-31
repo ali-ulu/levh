@@ -72,6 +72,15 @@ print(
     file=sys.stderr,
 )
 
+# Auto-inject: Print continuity brief hint so agents know to call it.
+# This appears in the agent's stderr log, reminding it to load context.
+if "get_continuity_brief" in _registered:
+    print(
+        "[levh] 💡 Tip: Call 'get_continuity_brief' at session start to load "
+        "context from previous work.",
+        file=sys.stderr,
+    )
+
 
 # ── Run ─────────────────────────────────────────────────────────────
 

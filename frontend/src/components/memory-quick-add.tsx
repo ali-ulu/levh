@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import {
@@ -129,8 +129,21 @@ export function MemoryQuickAdd({ onAdded }: { onAdded?: () => void }) {
 
   const activeTemplate = TEMPLATES.find((t) => t.id === selectedTemplate);
 
+  // Listen for hash #quick-capture to auto-open
+  useEffect(() => {
+    const onHash = () => {
+      if (window.location.hash === "#quick-capture") {
+        reset();
+        setOpen(true);
+      }
+    };
+    onHash();
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
+
   return (
-    <>
+    <div id="quick-capture">
       {/* Floating Action Button */}
       <button
         onClick={() => {
@@ -314,6 +327,6 @@ export function MemoryQuickAdd({ onAdded }: { onAdded?: () => void }) {
           </div>
         </DialogContent>
       </Dialog>
-    </>
+    </div>
   );
 }

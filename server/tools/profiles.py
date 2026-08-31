@@ -43,6 +43,7 @@ TOOL_TIERS: dict[str, str] = {
     "search_memory": "minimal",
     "get_context": "minimal",
     "get_memory_stats": "minimal",
+    "get_continuity_brief": "minimal",  # Call at session start
     # ── work: everyday memory use ────────────────────────────────────
     "list_memories": "work",
     "ask_memory": "work",
