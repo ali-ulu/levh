@@ -62,6 +62,7 @@ async def test_mcp_stdio_protocol_blackbox(tmp_path):
                     "search_memory",
                     "get_memory_stats",
                     "get_context",
+                    "get_continuity_brief",
                 ]
                 stored = await session.call_tool(
                     "store_memory",
@@ -125,7 +126,7 @@ async def test_mcp_sse_protocol_blackbox(tmp_path):
                 # needed, and got, the same fix independently.
                 assert init_result.serverInfo.version == LEVH_VERSION
                 tools = await session.list_tools()
-                assert len(tools.tools) == 5
+                assert len(tools.tools) == 6
                 stored = await session.call_tool(
                     "store_memory",
                     {"content": "SSE protocol black-box memory", "memory_type": "episodic"},
