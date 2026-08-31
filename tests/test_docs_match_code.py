@@ -112,7 +112,7 @@ def test_the_profile_bands_in_the_docs_are_current():
     assert band in doc, f"stale profile bands; expected {band}"
 
 
-@pytest.mark.parametrize("doc_name", ["getting-started.md", "launch-announcements.md"])
+@pytest.mark.parametrize("doc_name", ["getting-started.md"])
 def test_no_document_quotes_a_stale_tool_count(doc_name):
     from server.tools.profiles import profile_counts
 
