@@ -176,7 +176,22 @@ def _uninstall_session_hook() -> int:
 
 def cmd_hook(args: argparse.Namespace) -> int:
     """Install/uninstall an auto-capture or session-start hook."""
-    if getattr(args, "client", "git") == "claude-code":
+    client = getattr(args, "client", "git")
+    
+    # Universal hook installation for all supported agents
+    if client in ("cursor", "vscode", "windsurf", "claude-desktop", "all"):
+        from .universal_hooks import install_universal_hook, uninstall_universal_hook
+        limit = getattr(args, "limit", 5)
+        if args.hook_command == "uninstall":
+            results = uninstall_universal_hook(client)
+        else:
+            results = install_universal_hook(client, limit)
+        for agent, result in results.items():
+            status = "OK" if result.get("ok") else "FAIL"
+            print(f"  {status} {agent}: {result.get('config_path', result.get('error', 'done'))}")
+        return 0 if all(r.get("ok") for r in results.values()) else 1
+    
+    if client == "claude-code":
         if args.hook_command == "uninstall":
             return _uninstall_session_hook()
         return _install_session_hook(getattr(args, "limit", 5))

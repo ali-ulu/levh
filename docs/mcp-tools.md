@@ -2,9 +2,9 @@
 
 The complete MCP tool surface. See the [README](../README.md) for an overview.
 
-> **Tool profiles.** Advertising all 62 tools to a client hurts tool-selection
+> **Tool profiles.** Advertising all 69 tools to a client hurts tool-selection
 > accuracy, so LEVH groups them into cumulative profiles —
-> `minimal` (5) ⊂ `work` (17) ⊂ `admin` (57) ⊂ `full` (62). Generated configs
+> `minimal` (5) ⊂ `work` (24) ⊂ `admin` (64) ⊂ `full` (69). Generated configs
 > default to **`work`**; run `levh mcp profiles` to see the bands, or set
 > `LEVH_MCP_PROFILE` / `mcp config --profile <name>` to change it. The
 > full table below is the `full` surface. Profiles only filter which tools a
@@ -75,3 +75,10 @@ The complete MCP tool surface. See the [README](../README.md) for an overview.
 | 59 | `review_conflict_candidate` | Human review — dismiss / confirm / keep-A / keep-B / both-valid |
 | 60 | `record_mistake` | Record a corrected mistake as a pinned rule — never decays, leads generated context files |
 | 61 | `list_mistakes` | Read the incident log back, newest first (filter by days / severity) |
+| 62 | `agent_connect` | Connect this agent to LEVH and create a tracking session |
+| 63 | `agent_heartbeat` | Send a heartbeat to keep your agent connection alive |
+| 64 | `agent_disconnect` | Disconnect this agent from LEVH |
+| 65 | `create_checkpoint` | Save a checkpoint of your current work state |
+| 66 | `list_agent_activity` | List recent agent activity — who connected, when, status |
+| 67 | `list_checkpoints` | List recent checkpoints from agent sessions |
+| 68 | `get_agent_stats` | Get aggregate statistics about agent usage |

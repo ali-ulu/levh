@@ -52,6 +52,10 @@ Run `levh <command> --help` for the flags of any one of them.
 | `levh trust show` | Show a memory's trust breakdown |
 | `levh trust recompute` | Recompute all trust scores |
 | `levh trust low` | List low-trust memories |
+| `levh checkpoint` | Save or list work checkpoints |
+| `levh checkpoint create` | Create a checkpoint of current work state |
+| `levh checkpoint list` | List recent checkpoints |
+
 | `levh conflicts <sub>` | Deterministic conflict-candidate review |
 | `levh conflicts detect` | Detect conflict candidates |
 | `levh conflicts list` | List conflict candidates |

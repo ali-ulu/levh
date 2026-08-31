@@ -165,6 +165,7 @@ from server.commands.hooks import cmd_hook
 from server.commands.quality import cmd_benchmark, cmd_eval_report, cmd_eval_run, cmd_review, cmd_tune
 from server.commands.knowledge import cmd_conflicts, cmd_entities, cmd_trust
 from server.commands.privacy import cmd_audit_secrets, cmd_purge, cmd_redact
+from server.commands.checkpoint import cmd_checkpoint
 from server.commands.data import cmd_dogfood_export, cmd_dogfood_status, cmd_export_full, cmd_remove_demo, cmd_seed_demo
 from server.commands.mcp import cmd_mcp_config, cmd_mcp_init, cmd_mcp_profiles, cmd_mcp_stdio
 
@@ -250,6 +251,8 @@ def main() -> int:
             return cmd_trust(args)
         groups["trust_p"].print_help()
         return 1
+    elif args.command == "checkpoint":
+        return cmd_checkpoint(args)
     elif args.command == "conflicts":
         if args.conflicts_command in ("detect", "list", "review"):
             return cmd_conflicts(args)

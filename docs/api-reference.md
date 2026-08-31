@@ -98,5 +98,13 @@ because it is a read that has to POST to carry its query.
 | GET | `/api/health` | Health |
 | POST | `/api/benchmark/recall` | Run the recall-quality benchmark harness (hit@k / MRR on a labelled corpus) and return the metrics — powers the… |
 | POST | `/api/context-file` | Generate a CLAUDE.md / .cursorrules style context file from memories |
+| POST | `/api/agents/connect` | Record an agent connecting to LEVH. Returns agent session ID and presence info |
+| POST | `/api/agents/{agent_session_id}/heartbeat` | Send a heartbeat to keep an agent connection alive |
+| POST | `/api/agents/{agent_session_id}/disconnect` | Disconnect an agent from LEVH |
+| GET | `/api/agents` | List all agent connections (active and disconnected) |
+| GET | `/api/agents/online` | List currently online agents |
+| GET | `/api/agents/stats` | Aggregate agent usage statistics |
+| POST | `/api/checkpoints` | Create a checkpoint of current work state |
+| GET | `/api/checkpoints` | List recent checkpoints, optionally filtered by agent or project |
 | WS | `/ws/memory` | Real-time event stream + RPC actions (recall/stats/ping; writes blocked in public demo mode) |
 | SSE | `/api/mcp/sse` | MCP SSE stream endpoint |

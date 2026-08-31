@@ -100,6 +100,14 @@ TOOL_TIERS: dict[str, str] = {
     "audit_secrets": "admin",
     "redact_secrets": "admin",
     "purge_memory": "admin",
+    # ── work: agent tracking & checkpoints (daily driver visibility) ──
+    "agent_connect": "work",
+    "agent_heartbeat": "work",
+    "agent_disconnect": "work",
+    "create_checkpoint": "work",
+    "list_agent_activity": "work",
+    "list_checkpoints": "work",
+    "get_agent_stats": "work",
     # ── full: connectors + niche helpers ─────────────────────────────
     "list_connectors": "full",
     "get_connector_help": "full",

@@ -125,7 +125,7 @@ def build_parser(prog: str) -> tuple[argparse.ArgumentParser, dict[str, argparse
             "--client",
             type=str,
             default="git",
-            choices=["git", "claude-code"],
+            choices=["git", "claude-code", "cursor", "vscode", "windsurf", "claude-desktop", "all"],
             help=(
                 "git (default): capture every commit message. "
                 "claude-code: start every session with the continuity brief"
@@ -312,6 +312,19 @@ def build_parser(prog: str) -> tuple[argparse.ArgumentParser, dict[str, argparse
     tl = trust_sub.add_parser("low", help="List low-trust memories")
     tl.add_argument("--threshold", type=float, default=0.4)
     tl.add_argument("--limit", type=int, default=20)
+
+    # checkpoint (agent work state snapshots)
+    cp_p = sub.add_parser("checkpoint", help="Save or list work checkpoints")
+    cp_sub = cp_p.add_subparsers(dest="checkpoint_command", help="Checkpoint subcommands")
+    cp_create = cp_sub.add_parser("create", help="Create a checkpoint")
+    cp_create.add_argument("--agent", type=str, default="cli", help="Agent name")
+    cp_create.add_argument("--title", type=str, default="Manual checkpoint", help="Checkpoint title")
+    cp_create.add_argument("--type", type=str, default="manual", choices=["manual", "auto"], help="Checkpoint type")
+    cp_create.add_argument("--project", type=str, default="", help="Project filter")
+    cp_list = cp_sub.add_parser("list", help="List recent checkpoints")
+    cp_list.add_argument("--agent", type=str, default="", help="Filter by agent")
+    cp_list.add_argument("--project", type=str, default="", help="Filter by project")
+    cp_list.add_argument("--limit", type=int, default=20, help="Max results")
 
     # conflicts (deterministic conflict-candidate review)
     conf_p = sub.add_parser("conflicts", help="Deterministic conflict-candidate review")

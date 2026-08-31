@@ -49,6 +49,9 @@ class MemoryLifecycleMixin:
             # Materialized graph/trust/conflict rows may come from an older
             # version or interrupted process. Reconcile lazily on first read.
             self._derived_dirty = True
+            # Initialize agent tracker tables
+            if self.agent_tracker:
+                await self.agent_tracker.initialize()
             self._initialized = True
 
     async def _sync_with_external_writes(self) -> None:
