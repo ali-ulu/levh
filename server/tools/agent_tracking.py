@@ -235,6 +235,7 @@ def register(mcp: FastMCP, engine: MemoryEngine) -> None:
         return "\n".join(lines)
 
     @mcp.tool()
+    @mcp.tool()
     async def agent_metrics(agent_name: str = "") -> str:
         """Get performance metrics for a specific agent.
 
@@ -253,22 +254,21 @@ def register(mcp: FastMCP, engine: MemoryEngine) -> None:
 
         metrics = await tracker.get_agent_metrics(agent_name)
 
-        lines = [f"Metrics for {metrics['display']} ({metrics['agent_name']}):
-"]
-        lines.append(f"  Connections: {metrics['connections']}")
-        lines.append(f"  Sessions: {metrics['sessions']}")
-        lines.append(f"  First seen: {metrics.get('first_seen', 'never')}")
-        lines.append(f"  Last seen: {metrics.get('last_seen', 'never')}")
-        lines.append(f"  Online: {'Yes' if metrics['currently_online'] else 'No'}")
+        lines = []
+        lines.append("Metrics for " + metrics['display'] + " (" + metrics['agent_name'] + "):")
+        lines.append("  Connections: " + str(metrics['connections']))
+        lines.append("  Sessions: " + str(metrics['sessions']))
+        lines.append("  First seen: " + str(metrics.get('first_seen', 'never')))
+        lines.append("  Last seen: " + str(metrics.get('last_seen', 'never')))
+        lines.append("  Online: Yes" if metrics['currently_online'] else "  Online: No")
 
         if metrics.get("checkpoints"):
-            lines.append("
-  Checkpoints:")
+            lines.append("")
+            lines.append("  Checkpoints:")
             for cp_type, cp_data in metrics["checkpoints"].items():
-                lines.append(f"    {cp_type}: {cp_data.get('checkpoints', 0)}")
+                lines.append("    " + cp_type + ": " + str(cp_data.get('checkpoints', 0)))
 
-        return "
-".join(lines)
+        return "\n".join(lines)
 
     @mcp.tool()
     async def usage_billing() -> str:
@@ -283,25 +283,21 @@ def register(mcp: FastMCP, engine: MemoryEngine) -> None:
 
         billing = await tracker.get_usage_billing()
 
-        lines = ["Usage Billing:
-"]
+        lines = []
+        lines.append("Usage Billing:")
         summary = billing["summary"]
-        lines.append(f"  Total connections: {summary['total_connections']}")
-        lines.append(f"  Total sessions: {summary['total_sessions']}")
-        lines.append(f"  Total checkpoints: {summary['total_checkpoints']}")
+        lines.append("  Total connections: " + str(summary['total_connections']))
+        lines.append("  Total sessions: " + str(summary['total_sessions']))
+        lines.append("  Total checkpoints: " + str(summary['total_checkpoints']))
 
         if billing["by_agent"]:
-            lines.append("
-  Per-agent:")
+            lines.append("")
+            lines.append("  Per-agent:")
             for a in billing["by_agent"]:
-                lines.append(
-                    f"    {a['agent_name']}: {a['connections']} connections, "
-                    f"{a['sessions']} sessions, {a['checkpoints']} checkpoints, "
-                    f"~${a['cost_estimate']:.2f}"
-                )
+                cost = a['cost_estimate']
+                lines.append("    " + a['agent_name'] + ": " + str(a['connections']) + " connections, " + str(a['sessions']) + " sessions, " + str(a['checkpoints']) + " checkpoints, ~$" + f"{cost:.2f}")
 
-        return "
-".join(lines)
+        return "\n".join(lines)
 
     @mcp.tool()
     async def project_collaboration(project: str = "") -> str:
@@ -322,23 +318,21 @@ def register(mcp: FastMCP, engine: MemoryEngine) -> None:
 
         collab = await tracker.get_project_collaboration(project)
 
-        lines = [f"Collaboration for '{project}':
-"]
-        lines.append(f"  Collaboration score: {collab['collaboration_score']}")
+        lines = []
+        lines.append("Collaboration for '" + project + "':")
+        lines.append("  Collaboration score: " + str(collab['collaboration_score']))
 
         if collab["agents"]:
-            lines.append("
-  Active agents:")
+            lines.append("")
+            lines.append("  Active agents:")
             for a in collab["agents"]:
-                status = "🟢 online" if a.get("online") else "⚪ offline"
-                lines.append(f"    {a['agent_display']} — {status}")
+                status = "online" if a.get("online") else "offline"
+                lines.append("    " + a['agent_display'] + " - " + status)
 
         if collab["shared_checkpoints"]:
-            lines.append("
-  Shared checkpoints:")
+            lines.append("")
+            lines.append("  Shared checkpoints:")
             for cp in collab["shared_checkpoints"][:5]:
-                lines.append(f"    - {cp['title']} ({cp['agent_name']}, {cp['created_at'][:16]})")
+                lines.append("    - " + cp['title'] + " (" + cp['agent_name'] + ", " + cp['created_at'][:16] + ")")
 
-        return "
-".join(lines)
-
+        return "\n".join(lines)
