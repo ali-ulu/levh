@@ -357,12 +357,97 @@ def install_universal_hook(
                 results[agent] = install_windsurf_hook(limit)
             elif agent == "claude-desktop":
                 results[agent] = install_claude_desktop_hook(limit)
+            elif agent == "shell":
+                results[agent] = install_shell_hook(limit)
             else:
                 results[agent] = {"ok": False, "error": f"Unknown agent: {agent}"}
         except Exception as exc:
             results[agent] = {"ok": False, "error": str(exc)}
 
     return results
+
+
+def install_shell_hook(limit: int = 5) -> dict:
+    """Install an opt-in ``levh brief`` helper for CLI agents.
+
+    Adds a ``levh brief`` shell function (bash/zsh) or ``levh-brief`` function
+    (PowerShell) that prints the continuity brief on demand. Unlike a hard
+    SessionStart hook it never runs on its own, so it won't spam every new
+    shell - a CLI agent wrapper or the user invokes it explicitly:
+
+        levh brief        # bash / zsh
+        levh-brief        # PowerShell
+
+    Installing twice is a no-op (idempotent via a marker comment).
+    """
+    from pathlib import Path
+
+    home = Path.home()
+    bash_line = (
+        "# LEVH auto-brief helper (opt-in)\n"
+        "levh brief() { levh continue --limit %d --if-any 2>/dev/null; }\n" % limit
+    )
+    ps_line = (
+        "# LEVH auto-brief helper (opt-in)\n"
+        "function levh-brief { levh continue --limit %d --if-any *> $null }\n" % limit
+    )
+    marker = "LEVH auto-brief helper"
+
+    updated = []
+    targets = [
+        ("bash", home / ".bashrc", bash_line),
+        ("zsh", home / ".zshrc", bash_line),
+        ("powershell", home / "Documents/WindowsPowerShell/Microsoft.PowerShell_profile.ps1", ps_line),
+        ("pwsh", home / "Documents/PowerShell/Microsoft.PowerShell_profile.ps1", ps_line),
+    ]
+
+    for kind, path, line in targets:
+        try:
+            if not path.exists():
+                continue
+            existing = path.read_text(encoding="utf-8", errors="ignore")
+            if marker in existing:
+                continue
+            path.write_text(existing.rstrip() + "\n\n" + line, encoding="utf-8")
+            updated.append(kind)
+        except OSError:
+            continue
+
+    return {
+        "ok": True,
+        "agent": "shell",
+        "updated": updated,
+        "commands": ["levh brief", "levh-brief"],
+    }
+
+
+def uninstall_shell_hook() -> dict:
+    """Remove any ``levh brief`` helpers previously written to shell profiles."""
+    from pathlib import Path
+
+    home = Path.home()
+    marker = "LEVH auto-brief helper"
+    removed = []
+    targets = [
+        home / ".bashrc",
+        home / ".zshrc",
+        home / "Documents/WindowsPowerShell/Microsoft.PowerShell_profile.ps1",
+        home / "Documents/PowerShell/Microsoft.PowerShell_profile.ps1",
+    ]
+    for path in targets:
+        try:
+            if not path.exists():
+                continue
+            existing = path.read_text(encoding="utf-8", errors="ignore")
+            if marker not in existing:
+                continue
+            before, sep, _after = existing.partition("# " + marker)
+            if sep:
+                path.write_text(before.rstrip() + "\n", encoding="utf-8")
+                removed.append(str(path))
+        except OSError:
+            continue
+    return {"ok": True, "agent": "shell", "removed": removed}
 
 
 def uninstall_universal_hook(client: str = "all") -> dict:
@@ -401,6 +486,8 @@ def uninstall_universal_hook(client: str = "all") -> dict:
                     config.get("mcpServers", {}).pop("levh", None)
                     config_path.write_text(json.dumps(config, indent=2) + "\n")
                 results[agent] = {"ok": True}
+            elif agent == "shell":
+                results[agent] = uninstall_shell_hook()
             else:
                 results[agent] = {"ok": False, "error": f"Unknown agent: {agent}"}
         except Exception as exc:

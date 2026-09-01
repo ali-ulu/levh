@@ -125,10 +125,11 @@ def build_parser(prog: str) -> tuple[argparse.ArgumentParser, dict[str, argparse
             "--client",
             type=str,
             default="git",
-            choices=["git", "claude-code", "cursor", "vscode", "windsurf", "claude-desktop", "all"],
+            choices=["git", "claude-code", "cursor", "vscode", "windsurf", "claude-desktop", "shell", "all"],
             help=(
                 "git (default): capture every commit message. "
-                "claude-code: start every session with the continuity brief"
+                "claude-code: start every session with the continuity brief. "
+                "shell: install the opt-in `levh brief` helper in shell profiles"
             ),
         )
         hook_verb.add_argument(
