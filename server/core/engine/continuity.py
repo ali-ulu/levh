@@ -176,6 +176,26 @@ class MemoryContinuityMixin:
             lines.append(f"Task: {task}")
             lines.append("")
 
+        # Last checkpoint answers "where did we leave off" directly, so it
+        # leads the brief — before rules/pinned, which are standing context
+        # rather than "what just happened". Without this section the brief
+        # only offered a session list with memory counts, forcing a manual
+        # list_checkpoints call (or the user asking) to find the actual
+        # last-session recap.
+        checkpoints = await self.agent_tracker.list_checkpoints(project=project, limit=1)
+        if checkpoints:
+            cp = checkpoints[0]
+            lines.append("Last Checkpoint:")
+            title = (cp.get("title") or "").strip()
+            summary = (cp.get("summary") or "").strip()
+            agent = cp.get("agent_name") or "unknown"
+            created = cp.get("created_at") or ""
+            lines.append(f"  [{cp.get('checkpoint_type', 'auto')}] {title}")
+            if summary and summary != title:
+                lines.append(f"  {summary}")
+            lines.append(f"  ({agent} · {created})")
+            lines.append("")
+
         # Rules and pinned memories come first, and they come from the pin flag
         # rather than from keyword guessing. Everything below this point is a
         # heuristic read of recent activity; this part is what the user
