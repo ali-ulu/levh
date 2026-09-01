@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+### The embedder tells you when it degrades
+
+- **`auto` falling back to hash embeddings was silent.** A missing or
+  broken `sentence-transformers` install (stale `huggingface-hub`, in one
+  observed case) made `mode=auto` resolve to the non-semantic hash
+  embedder with no signal anywhere — not a log line, not `/api/config`,
+  nothing. Hash's non-semantic scoring then produced false "possible
+  duplicate" admission-gate holds on genuinely distinct content, and
+  there was no way to tell that was why short of reading source. `GET
+  /api/config` now reports `requested_embedder_mode` alongside the
+  effective `embedder_mode`, plus `embedder_fallback_reason` when they
+  differ; the same reason is logged as a warning at the point the
+  embedder is constructed. (#78)
+
 ### Universal Agent Tracking System
 
 - **Track any AI agent.** `server/core/agent_tracker.py` monitors agent activity

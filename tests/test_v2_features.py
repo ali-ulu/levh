@@ -654,6 +654,19 @@ async def test_api_config_includes_reinforcement_settings(api_client):
 
 
 @pytest.mark.asyncio
+async def test_api_config_reports_embedder_fallback_state(api_client):
+    # #78: a mode==auto request silently resolving to hash gave no visible
+    # signal. The requested mode and the reason for any fallback must both
+    # be readable here, not just the effective mode.
+    r = await api_client.get("/api/config")
+    body = r.json()
+    assert "requested_embedder_mode" in body
+    assert "embedder_fallback_reason" in body
+    if body["embedder_mode"] == "hash" and body["requested_embedder_mode"] != "hash":
+        assert body["embedder_fallback_reason"]
+
+
+@pytest.mark.asyncio
 async def test_api_feedback_endpoint(api_client):
     r = await api_client.post("/api/memories", json={"content": "feedback via api", "memory_type": "episodic"})
     body = r.json()
