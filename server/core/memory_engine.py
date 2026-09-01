@@ -152,6 +152,18 @@ class MemoryEngine(
         if self._embedder is None:
             self._embedder = Embedder(mode=self._embedder_mode)
             self.vector_store.dimension = self._embedder.dimension
+            if self._embedder.fallback_reason:
+                # `auto`/`local` silently degrading to hash embeddings is not
+                # a crash, so nothing else would ever tell an operator it
+                # happened -- and hash's non-semantic scoring can misfire on
+                # the admission gate's duplicate check for genuinely distinct
+                # content (#78). Loud at the point of decision, not buried in
+                # a debug flag.
+                logger.warning(
+                    "Embedder requested=%s resolved=hash: %s",
+                    self._embedder.requested_mode,
+                    self._embedder.fallback_reason,
+                )
         return self._embedder
 
     # ── Events ─────────────────────────────────────────────────────

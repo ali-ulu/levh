@@ -27,6 +27,11 @@ async def get_config():
     return {
         "db_path": engine.db.db_path,
         "embedder_mode": embedder_mode,
+        # The mode actually asked for (config/env) vs what's running, plus why
+        # they differ when they do -- silently degrading to non-semantic hash
+        # scoring gave no visible signal before this (#78).
+        "requested_embedder_mode": engine._embedder.requested_mode if engine._embedder else engine._embedder_mode,
+        "embedder_fallback_reason": engine._embedder.fallback_reason if engine._embedder else None,
         "embedder_dimension": engine._embedder.dimension if engine._embedder else None,
         "short_term_max": engine.short_term.max_size,
         "weights": {
