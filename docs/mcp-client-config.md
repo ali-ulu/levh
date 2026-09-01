@@ -175,6 +175,39 @@ boundary. The standalone server keeps the backward-compatible `full` profile
 when `LEVH_MCP_PROFILE` is unset, so explicitly choose `work` or `minimal` when
 that is all the client needs.
 
+### Continuous brief & auto-checkpoint (agent memory loop)
+
+LEVH can hand an agent its continuity brief without it asking, and can fold a
+working session's new memories into periodic summaries. Both are opt-in and
+default to off, so the server stays inert until you ask for it. Control them
+with environment variables on the MCP server:
+
+| Variable | Default | Effect |
+| --- | --- | --- |
+| `LEVH_AUTO_CONNECT` | `1` | Auto-detect agent + project (env / git remote), create a tracking session, start the heartbeat loop. Set `0` to disable. |
+| `LEVH_AUTO_BRIEF` | `1` | Print the continuity brief to the server's stderr at startup, so terminal-side MCP clients (Claude Code, Codex, …) receive it without calling a tool. Set `0` to disable. |
+| `LEVH_AUTO_CHECKPOINT` | `0` | Enable the background auto-checkpoint loop (`1`/`true`). |
+| `LEVH_AUTO_CHECKPOINT_INTERVAL` | `300` | Seconds between auto-checkpoints (minimum sensible value ~60). |
+
+The auto-checkpoint loop is **delta-based and non-repeating**: each run folds
+only memories created since the last checkpoint, summarizes them, and skips the
+write entirely when nothing is new — so consecutive summaries never repeat the
+same boilerplate. The summary uses the offline extractive path unless
+`SUMMARY_MODE=llm` is set.
+
+The same logic powers the interactive scheduler:
+
+```bash
+levh checkpoint auto --interval 300    # summarize new memories every 5 min
+```
+
+For CLI agents, `levh brief` is an opt-in shell helper that prints the brief on
+demand (idempotent installer, never runs on its own):
+
+```bash
+levh hook install --client shell      # adds `levh brief` (bash/zsh) / `levh-brief` (PowerShell)
+levh hook uninstall --client shell
+```
 Keep the standalone server on loopback unless remote access is intentional.
 Before any non-loopback bind, set a strong `LEVH_TOKEN`. Header-capable clients
 must include it in `X-LEVH-Token` on every SSE transport request (the legacy

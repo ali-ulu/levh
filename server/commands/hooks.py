@@ -179,7 +179,7 @@ def cmd_hook(args: argparse.Namespace) -> int:
     client = getattr(args, "client", "git")
     
     # Universal hook installation for all supported agents
-    if client in ("cursor", "vscode", "windsurf", "claude-desktop", "all"):
+    if client in ("cursor", "vscode", "windsurf", "claude-desktop", "shell", "all"):
         from .universal_hooks import install_universal_hook, uninstall_universal_hook
         limit = getattr(args, "limit", 5)
         if args.hook_command == "uninstall":
