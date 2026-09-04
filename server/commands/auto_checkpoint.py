@@ -24,7 +24,7 @@ def cmd_auto_checkpoint(args: argparse.Namespace) -> int:
     """Run auto-checkpoint with a timer."""
     global _auto_checkpoint_running
 
-    interval = getattr(args, "interval", 300) or 300
+    interval = getattr(args, "interval", 600) or 600
     project = getattr(args, "project", "") or None
     agent = getattr(args, "agent", "cli") or "cli"
 
@@ -211,7 +211,7 @@ def start_background_auto_checkpoint(
     agent: str = "cli",
     session_id: str | None = None,
     project: str | None = None,
-    interval: int = 300,
+    interval: int = 600,
 ) -> asyncio.Task | None:
     """Start the periodic auto-checkpoint background task (MCP server side).
 

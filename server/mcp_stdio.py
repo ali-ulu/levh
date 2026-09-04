@@ -86,7 +86,7 @@ async def _lifespan(_server: FastMCP) -> AsyncIterator[None]:
                 _project = detect_project_from_git()
             except Exception:
                 _project = None
-            _interval = _env_int("LEVH_AUTO_CHECKPOINT_INTERVAL", 300)
+            _interval = _env_int("LEVH_AUTO_CHECKPOINT_INTERVAL", 600)
             _checkpoint_task = start_background_auto_checkpoint(
                 engine=engine,
                 agent=detect_agent_from_env(),

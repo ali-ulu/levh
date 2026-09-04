@@ -19,16 +19,28 @@ Two backends:
 from __future__ import annotations
 
 import os
+import re
 
 import httpx
 
 from server.core import llm_policy as policy
 
 _SUMMARY_MODEL = os.getenv("SUMMARY_MODEL", "gpt-4o-mini")
+# OpenAI-compatible endpoint. Point OPENAI_BASE_URL at a LOCAL server
+# (Ollama: http://localhost:11434/v1/chat/completions, LM Studio, vLLM, ...)
+# to summarize fully offline with a local model; defaults to the real API.
+_SUMMARY_URL = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1/chat/completions")
 _SYSTEM_PROMPT = (
     "You compress a coding session's memories into a durable summary for an "
     "AI assistant's long-term memory. Output 3-8 terse bullet points capturing "
     "decisions, facts, and unresolved threads. No preamble, bullets only."
+)
+
+# Shell boilerplate that adds no durable value to a session summary: session
+# captures often fold `cd <tmpdir>` / `sleep N` noise into every note, which
+# makes consecutive notes near-duplicates of each other.
+_NOISE_LINE_RE = re.compile(
+    r"(?i)^(?:\s*(?:cd|sleep|pushd|popd)\b[^;|&]*[;|&]?)+\s*$"
 )
 
 
@@ -41,7 +53,11 @@ def _extractive_fallback(texts: list[str], max_chars: int = 800) -> str:
         if not line or line in seen:
             continue
         seen.add(line)
+        if _NOISE_LINE_RE.match(line):
+            continue
         kept.append(f"- {line}")
+    if not kept:  # everything was noise — never return an empty summary
+        return "\n".join(f"- {t.strip()[:120]}" for t in texts if t.strip())
     body = "\n".join(kept)
     if len(body) > max_chars:
         body = body[:max_chars].rsplit("\n", 1)[0]
@@ -82,10 +98,10 @@ async def summarize_texts(
         "Content-Type": "application/json",
     }
     owns_client = client is None
-    client = client or httpx.AsyncClient(timeout=30.0)
+    client = client or httpx.AsyncClient(timeout=60.0)
     try:
         resp = await client.post(
-            "https://api.openai.com/v1/chat/completions",
+            _SUMMARY_URL,
             headers=headers,
             json=payload,
         )

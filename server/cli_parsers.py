@@ -327,7 +327,7 @@ def build_parser(prog: str) -> tuple[argparse.ArgumentParser, dict[str, argparse
     cp_list.add_argument("--project", type=str, default="", help="Filter by project")
     cp_list.add_argument("--limit", type=int, default=20, help="Max results")
     cp_auto = cp_sub.add_parser("auto", help="Start auto-checkpoint timer")
-    cp_auto.add_argument("--interval", type=int, default=300, help="Interval in seconds (default: 300)")
+    cp_auto.add_argument("--interval", type=int, default=600, help="Interval in seconds (default: 600)")
     cp_auto.add_argument("--agent", type=str, default="cli", help="Agent name")
     cp_auto.add_argument("--project", type=str, default="", help="Project filter")
     cp_auto.add_argument("--stop", action="store_true", help="Stop auto-checkpoint")

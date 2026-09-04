@@ -95,8 +95,17 @@ async def lifespan(app: FastAPI):
     global _event_loop
     _event_loop = asyncio.get_running_loop()
     engine = await get_engine()
-    yield
-    await engine.shutdown()
+    # Librarian bekçi ajanı — sunucu açılınca başlar, kapanırken durur.
+    librarian_task = None
+    if get_env("LEVH_LIBRARIAN", "1").strip().lower() not in {"0", "false", "off"}:
+        from server.core import librarian
+        librarian_task = librarian.start_background()
+    try:
+        yield
+    finally:
+        if librarian_task:
+            librarian_task.cancel()
+        await engine.shutdown()
 
 
 # ── FastAPI app ─────────────────────────────────────────────────────
@@ -192,6 +201,47 @@ app.include_router(entities.router)
 app.include_router(guard.router)
 app.include_router(conflicts.router)
 app.include_router(live.router)
+
+# ── Librarian bekçi ajanı ──────────────────────────────────────────
+from server.routes.librarian import router as librarian_router  # noqa: E402
+
+app.include_router(librarian_router)
+
+
+# ── Librarian chat widget enjeksiyonu ──────────────────────────────
+# Dashboard (Next.js export) yeniden derlemeden: her HTML sayfasının
+# </body>'sinden önce widget script'i eklenir. Sağ altta sohbet düğmesi.
+
+from starlette.responses import Response as _StarletteResponse  # noqa: E402
+
+
+@app.middleware("http")
+async def _inject_librarian_widget(request, call_next):
+    response = await call_next(request)
+    content_type = response.headers.get("content-type", "")
+    if "text/html" not in content_type:
+        return response
+    body = b""
+    async for chunk in response.body_iterator:
+        body += chunk
+    try:
+        text = body.decode(response.charset or "utf-8")
+        if "</body>" in text and "/librarian.js" not in text:
+            text = text.replace(
+                "</body>", '<script src="/librarian.js"></script></body>', 1
+            )
+        headers = dict(response.headers)
+        headers.pop("content-length", None)
+        response = _StarletteResponse(
+            text, status_code=response.status_code,
+            headers=headers, media_type="text/html; charset=utf-8",
+        )
+    except UnicodeDecodeError:
+        return _StarletteResponse(
+            body, status_code=response.status_code,
+            headers=dict(response.headers),
+        )
+    return response
 
 
 # ── MCP SSE mount ──────────────────────────────────────────────────
