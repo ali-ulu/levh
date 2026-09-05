@@ -77,6 +77,15 @@ because it is a read that has to POST to carry its query.
 | GET | `/api/conflicts` | List conflict candidates, optionally filtered by status. Pass an empty status to list every status |
 | POST | `/api/conflicts/detect` | Scan stored memories for conflict CANDIDATES — pairs that share an entity and show an opposing surface pattern.… |
 | POST | `/api/conflicts/{conflict_id}/review` | Apply a human review decision to a conflict candidate. ``conflict_id`` may contain ``|`` so the path converter is used |
+| GET | `/api/findings` | The findings inbox: what LEVH noticed about itself, newest sighting first. Pass an empty status to list every state |
+| POST | `/api/findings` | Record a finding. Scrubbed (home paths, username, secrets) and fingerprinted before storage, so a repeat folds into the existing row instead of adding one |
+| POST | `/api/findings/{finding_id}/decide` | Apply a human decision: `ack`, `resolved`, `ignored`, or `open` to reopen. The only way a finding changes state |
+| DELETE | `/api/findings/{finding_id}` | Delete a finding outright |
+| GET | `/api/librarian/status` | The watcher's current scan: which agents are connected to levh, and 24h memory activity. Read-only |
+| POST | `/api/librarian/scan` | Run one scan now and write any findings to the inbox |
+| POST | `/api/librarian/chat` | Ask the watcher a question. **Can execute shell commands and edit agent config files when the model proposes an action** — set `LEVH_LIBRARIAN=0` to disable the watcher, and see the security note below |
+| GET | `/librarian` | Standalone watcher chat page (HTML) |
+| GET | `/librarian.js` | Chat widget script injected into dashboard pages |
 | GET | `/api/connectors` | List available connectors and their status |
 | POST | `/api/connectors/import` | Import data from an external app via connector |
 | POST | `/api/connectors/sync` | Connector v2 ingest: fetch, then route items through the admission gate (dedupe + secret redaction), with… |

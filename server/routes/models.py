@@ -112,6 +112,19 @@ class RedactAllRequest(BaseModel):
     dry_run: bool = True
 
 
+class FindingReportRequest(BaseModel):
+    title: str
+    detail: str = ""
+    category: str = "other"
+    severity: str = "medium"
+    source: str = "librarian"
+
+
+class FindingDecisionRequest(BaseModel):
+    status: str
+    note: str = ""
+
+
 class AskRequest(BaseModel):
     question: str
     top_k: int = 6

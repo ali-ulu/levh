@@ -23,9 +23,15 @@ import re
 from typing import Any
 
 # Value-bearing secret assignments: keep the label, redact the value.
+#
+# The label may carry an env-var style prefix (OPENAI_API_KEY, GH_TOKEN): an
+# underscore is a word character, so a bare \b in front of the keyword never
+# matches those — which is precisely the form a secret takes when it is pasted
+# out of a shell or a .env file.
 _ASSIGNMENT_RE = re.compile(
-    r"(?i)\b(password|passwd|pwd|secret|api[_-]?key|apikey|access[_-]?key|"
-    r"secret[_-]?key|auth[_-]?token|token|client[_-]?secret)\b"
+    r"(?i)\b((?:[a-z0-9]+[_-])*"
+    r"(?:password|passwd|pwd|secret|api[_-]?key|apikey|access[_-]?key|"
+    r"secret[_-]?key|auth[_-]?token|token|client[_-]?secret))\b"
     r"(\s*[:=]\s*)"
     r"(\"[^\"]+\"|'[^']+'|\S+)"
 )
@@ -36,6 +42,7 @@ _STANDALONE_PATTERNS: list[tuple[str, re.Pattern]] = [
     ("private_key_block", re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----")),
     ("bearer_token", re.compile(r"(?i)\bbearer\s+[A-Za-z0-9._\-]{16,}")),
     ("github_token", re.compile(r"\bgh[pousr]_[A-Za-z0-9]{20,}\b")),
+    ("openai_key", re.compile(r"\bsk-(?:proj-)?[A-Za-z0-9_\-]{16,}\b")),
     ("slack_token", re.compile(r"\bxox[baprs]-[A-Za-z0-9-]{10,}\b")),
 ]
 

@@ -227,6 +227,24 @@ export interface ConflictCandidate {
   reviewed_at: string | null;
 }
 
+// Something LEVH noticed about itself or its environment, waiting for a human.
+// A report, never an action: see server/core/findings.py.
+export interface Finding {
+  id: string;
+  title: string;
+  detail: string;
+  category: string;
+  severity: string;
+  source: string;
+  status: string;
+  occurrences: number;
+  first_seen_at: string;
+  last_seen_at: string;
+  decided_at: string | null;
+  note: string | null;
+  external_ref: string | null;
+}
+
 export interface ServerConfig {
   db_path: string;
   embedder_mode: string;

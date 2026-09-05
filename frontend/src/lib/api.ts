@@ -7,6 +7,7 @@ import type {
   GuardRule,
   GuardViolation,
   EntityRow,
+  Finding,
   ForgettingCurve,
   MeetingPrep,
   Memory,
@@ -371,6 +372,21 @@ export const api = {
       `/api/conflicts/${encodeURIComponent(id)}/review`,
       { method: "POST", body: JSON.stringify({ action }) }
     ),
+
+  // Findings inbox — what LEVH noticed, waiting for a human decision.
+  listFindings: (status = "open", limit = 100) =>
+    fetchApi<{ findings: Finding[]; counts: Record<string, number> }>(
+      `/api/findings?status=${status}&limit=${limit}`
+    ),
+  decideFinding: (id: string, status: string, note = "") =>
+    fetchApi<Finding>(`/api/findings/${encodeURIComponent(id)}/decide`, {
+      method: "POST",
+      body: JSON.stringify({ status, note }),
+    }),
+  deleteFinding: (id: string) =>
+    fetchApi<{ ok: boolean }>(`/api/findings/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+    }),
 
   // Timeline
   timeline: (days = 30) => fetchApi<{ timeline: TimelineDay[] }>(`/api/timeline?days=${days}`),

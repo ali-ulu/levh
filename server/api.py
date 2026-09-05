@@ -180,6 +180,7 @@ from server.routes import (  # noqa: E402
     context,
     data_transfer,
     entities,
+    findings,
     guard,
     knowledge,
     live,
@@ -204,6 +205,7 @@ app.include_router(connectors.router)
 app.include_router(entities.router)
 app.include_router(guard.router)
 app.include_router(conflicts.router)
+app.include_router(findings.router)
 app.include_router(live.router)
 
 # ── Librarian bekçi ajanı ──────────────────────────────────────────
