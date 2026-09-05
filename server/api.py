@@ -96,8 +96,12 @@ async def lifespan(app: FastAPI):
     _event_loop = asyncio.get_running_loop()
     engine = await get_engine()
     # Librarian bekçi ajanı — sunucu açılınca başlar, kapanırken durur.
+    # Public demo'da çalışmaz: orada her yazma zaten reddedilir ve bekçinin
+    # kendi bulguları demo korpusunu kirletir.
     librarian_task = None
-    if get_env("LEVH_LIBRARIAN", "1").strip().lower() not in {"0", "false", "off"}:
+    if not deps.public_demo() and get_env("LEVH_LIBRARIAN", "1").strip().lower() not in {
+        "0", "false", "off",
+    }:
         from server.core import librarian
         librarian_task = librarian.start_background()
     try:
