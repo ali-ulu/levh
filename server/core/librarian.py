@@ -32,6 +32,12 @@ logger = logging.getLogger("levh.librarian")
 LIBRARIAN_SOURCE = "librarian"
 DEFAULT_INTERVAL = 600  # 10 dk
 _CHAT_HISTORY: list[dict] = []
+_HISTORY_TURNS = 5  # LLM'e taşınan soru/yanıt çifti sayısı
+
+# Tarama bir worker thread'inde koşar (``asyncio.to_thread``), ama motorun
+# aiosqlite bağlantısı sunucunun event loop'una bağlıdır. Bulguyu yazmak için
+# o loop'a geri dönmek gerekir; burada tutulan referans o köprüdür.
+_OWNER_LOOP: asyncio.AbstractEventLoop | None = None
 
 _SYSTEM_PROMPT = (
     "Sen LEVH'in kütüphane memurusun: hafıza katmanını içeriden yöneten "
@@ -57,10 +63,28 @@ _SYSTEM_PROMPT = (
 
 
 def _db_path() -> str:
-    return os.getenv(
-        "SQLITE_DB_PATH",
-        os.path.join(os.path.expanduser("~"), "AppData", "Local", "stackmemory.db"),
-    )
+    """The database the ENGINE uses — not a guess at where it might live.
+
+    Reading a different file than the engine writes to made the activity
+    report describe an empty database and call every agent silent.
+    """
+    try:
+        from server.core import engine_provider
+
+        path = engine_provider.get_engine().db.db_path
+        if path:
+            return str(path)
+    except Exception:  # noqa: BLE001 — motor yoksa (CLI) yapılandırmaya düş
+        logger.debug("librarian could not read the engine db path")
+    try:
+        from server.core.runtime_config import resolve_runtime_config
+
+        return resolve_runtime_config().database_path
+    except Exception:  # noqa: BLE001 — config bozuksa rapor yine de çıksın
+        return os.getenv(
+            "SQLITE_DB_PATH",
+            os.path.join(os.path.expanduser("~"), "AppData", "Local", "stackmemory.db"),
+        )
 
 
 def _ro_conn() -> sqlite3.Connection:
@@ -117,36 +141,69 @@ def _llm_ready() -> bool:
     return bool(os.getenv("OPENAI_API_KEY", "").strip())
 
 
-def _store_finding(content: str) -> None:
-    """Bulguyu hafızaya yaz (admission gate'ten geçer)."""
-    try:
-        from server.core import engine_provider
+def set_owner_loop(loop: asyncio.AbstractEventLoop | None) -> None:
+    """Bulguların yazılacağı event loop'u kaydet (sunucu açılışında çağrılır)."""
+    global _OWNER_LOOP
+    _OWNER_LOOP = loop
 
-        engine = engine_provider.get_engine()
-        coro = engine.admit_memory(
-            content=content,
-            importance=0.5,
-            tags=["librarian", "rapor"],
-            source=LIBRARIAN_SOURCE,
-            memory_type="short_term",
-        )
+
+def _target_loop() -> asyncio.AbstractEventLoop | None:
+    """Motorun bağlı olduğu, hâlâ çalışan loop — yoksa None."""
+    if _OWNER_LOOP is not None and _OWNER_LOOP.is_running():
+        return _OWNER_LOOP
+    try:  # sunucu ayakta ama start_background çağrılmadıysa (ör. sadece route)
+        from server import api
+
+        loop = api._event_loop
+    except Exception:  # noqa: BLE001 — api import edilemiyorsa loop da yok
+        return None
+    return loop if loop is not None and loop.is_running() else None
+
+
+async def _admit_finding(content: str) -> dict:
+    from server.core import engine_provider
+
+    engine = engine_provider.get_engine()
+    await engine.initialize()  # idempotent; CLI/test yolunda bağlantıyı açar
+    return await engine.admit_memory(
+        content=content,
+        importance=0.5,
+        tags=["librarian", "rapor"],
+        source=LIBRARIAN_SOURCE,
+        memory_type="short_term",
+    )
+
+
+def _store_finding(content: str) -> None:
+    """Bulguyu hafızaya yaz (admission gate'ten geçer).
+
+    Üç çağrı bağlamı var ve üçü de çalışmak zorunda: (1) sunucunun loop'unun
+    içinden (route), (2) ``to_thread`` worker'ından (periyodik tarama),
+    (3) hiç loop olmayan bir süreçten (CLI, test). Yeni bir loop açıp motorun
+    coroutine'ini orada koşturmak (2)'de sessizce patlıyordu — aiosqlite
+    bağlantısı sunucunun loop'una bağlı.
+    """
+    try:
         try:
-            loop = asyncio.get_running_loop()
+            running = asyncio.get_running_loop()
         except RuntimeError:
-            loop = None
-        if loop is not None and loop.is_running():
-            loop.create_task(coro)
+            running = None
+
+        if running is not None:
+            running.create_task(_admit_finding(content))
+            return
+
+        target = _target_loop()
+        if target is not None:
+            future = asyncio.run_coroutine_threadsafe(_admit_finding(content), target)
+            result = future.result(timeout=30)
         else:
-            try:
-                asyncio.run(coro)
-            except RuntimeError:
-                # zaten bir loop var ama get_running_loop yakalayamadi (thread siniri)
-                # fallback: yeni loop ac
-                new_loop = asyncio.new_event_loop()
-                try:
-                    new_loop.run_until_complete(coro)
-                finally:
-                    new_loop.close()
+            result = asyncio.run(_admit_finding(content))
+        if not result.get("stored"):
+            logger.debug(
+                "librarian finding not stored (%s)",
+                result.get("decision", {}).get("action"),
+            )
     except Exception:  # noqa: BLE001 — rapor yazımı sunucuyu düşürmesin
         logger.exception("librarian could not store finding")
 
@@ -179,9 +236,17 @@ def scan(store_memory: bool = True) -> dict:
 
 # ── Aksiyon çalıştırıcı (terminal + config kurulumu) ──────────────────
 
+# Tek ters bölü ile yazılır: kaçışlar iki kat yazıldığında desen `C:\` yerine
+# `C:\\` arıyordu, yani prompt'ta "engellenir" denen komutun ta kendisi geçiyordu.
 _BLOCKED_RE = re.compile(
-    r"(?i)\bformat\b|remove-item\s+.*-recurse\s+[a-z]:\\\\?\\s*$|reg\s+delete|"
-    r"rd\s+/s|del\s+/[fq]\s+[a-z]:\\\\|diskpart|cipher\s+/w|bcdedit"
+    r"(?i)\bformat\b"
+    r"|remove-item\b[^\n]*-recurse\b[^\n]*\b[a-z]:\\"  # sürücü kökünü özyineli sil
+    r"|reg\s+delete"
+    r"|rd\s+/s"
+    r"|del\s+/[fq]\b[^\n]*\b[a-z]:\\"
+    r"|diskpart"
+    r"|cipher\s+/w"
+    r"|bcdedit"
 )
 
 
@@ -215,7 +280,6 @@ _ALL_AGENTS = {
 
 def discover_installed() -> list[dict]:
     """PATH'te kurulu + yapılandırılmış tüm ajanları bul; levh bağlantısı var mı?"""
-    home = Path.home()
     out = []
     for name, (exe, configs) in _ALL_AGENTS.items():
         path = shutil.which(exe)
@@ -352,8 +416,22 @@ def add_levh_mcp(agent: str) -> dict:
     return {"ok": False, "msg": f"bilinmeyen ajan: {agent}"}
 
 
+def shell_enabled() -> bool:
+    """Terminal yetkisi açık mı? (``LEVH_LIBRARIAN_SHELL=0`` ile kapatılır)"""
+    return os.getenv("LEVH_LIBRARIAN_SHELL", "1").strip().lower() not in {
+        "0", "false", "off",
+    }
+
+
 def run_shell(command: str) -> dict:
-    """Librarian'ın terminal yetkisi — engelli desenler hariç."""
+    """Librarian'ın terminal yetkisi — engelli desenler hariç.
+
+    Desen listesi kara listedir, yani kanıt değil güvence: bilinen yıkıcı
+    kalıpları durdurur, hepsini değil. Yetkiyi tümden kapatmak için
+    ``LEVH_LIBRARIAN_SHELL=0``.
+    """
+    if not shell_enabled():
+        return {"ok": False, "msg": "terminal yetkisi kapali (LEVH_LIBRARIAN_SHELL=0)"}
     if _BLOCKED_RE.search(command):
         _store_finding(f"LIBRARIAN GUVENLIK: yikici komut engellendi: {command[:120]}")
         return {"ok": False, "msg": "yikici komut engellendi"}
@@ -395,14 +473,20 @@ _BARE_ACTION_RE = re.compile(r"^\s*\{.*\}\s*$", re.DOTALL)
 
 
 def _parse_json_block(text: str) -> tuple[str, dict | None]:
-    """Dönen metinden aksiyon JSON'unu ayıklar. Fenced ya da ham JSON."""
+    """Dönen metinden aksiyon JSON'unu ayıklar. Fenced ya da ham JSON.
+
+    Sistem promptu modele açıklamayı JSON'un ``reply`` alanına yazmasını
+    söylüyor; blok dışında metin kalmadığında kullanıcıya gösterilecek yanıt
+    oradan alınır — yoksa modele tam uyan bir cevap boş baloncuk olarak
+    görünüyordu.
+    """
     match = _ACTION_RE.search(text)
     if not match:
         if _BARE_ACTION_RE.match(text):
             try:
                 parsed = json.loads(text)
                 if isinstance(parsed, dict) and "action" in parsed:
-                    return "", parsed.get("action")
+                    return str(parsed.get("reply", "") or "").strip(), parsed.get("action")
             except json.JSONDecodeError:
                 pass
         return text.strip(), None
@@ -411,6 +495,8 @@ def _parse_json_block(text: str) -> tuple[str, dict | None]:
     except json.JSONDecodeError:
         return text.strip(), None
     reply = (text[: match.start()] + text[match.end():]).strip()
+    if not reply:
+        reply = str(parsed.get("reply", "") or "").strip()
     return reply, parsed.get("action")
 
 
@@ -432,7 +518,9 @@ async def run_loop(interval: int = DEFAULT_INTERVAL) -> None:
 
 def start_background() -> asyncio.Task:
     interval = int(os.getenv("LEVH_LIBRARIAN_INTERVAL", str(DEFAULT_INTERVAL)) or DEFAULT_INTERVAL)
-    return asyncio.get_running_loop().create_task(run_loop(interval))
+    loop = asyncio.get_running_loop()
+    set_owner_loop(loop)
+    return loop.create_task(run_loop(interval))
 
 
 # ── Chat ──────────────────────────────────────────────────────────────
@@ -447,8 +535,11 @@ def _context_block() -> str:
 async def chat(question: str) -> dict:
     """Kullanıcı sorusu + canlı bağlam → LLM → (önerilen aksiyonu çalıştır) → yanıt."""
     context = _context_block()
+    # Geçmiş olmadan widget her soruyu ilk soru sanıyordu ("evet, yap" gibi bir
+    # yanıt havada kalıyordu). Son turlar sistem promptundan sonra taşınır.
     messages: list[dict] = [
         {"role": "system", "content": _SYSTEM_PROMPT},
+        *_CHAT_HISTORY[-_HISTORY_TURNS * 2:],
         {"role": "user", "content": f"{context}\n\nSORU: {question}"},
     ]
 
@@ -491,6 +582,15 @@ async def chat(question: str) -> dict:
             "yeni JSON bloğunu ekle, gerekmiyorsa 'none' yaz."
         )})
         reply = reply_text
+
+    if not reply.strip():
+        # Sohbet penceresine boş baloncuk düşürmektense ne olduğunu yaz.
+        if executed:
+            reply = "Aksiyon calistirildi: " + json.dumps(
+                executed[-1]["result"], ensure_ascii=False
+            )
+        else:
+            reply = "Model bos yanit dondu; soruyu yeniden sorar misin?"
 
     _CHAT_HISTORY.append({"role": "user", "content": question})
     _CHAT_HISTORY.append({"role": "assistant", "content": reply})

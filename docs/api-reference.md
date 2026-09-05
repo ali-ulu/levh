@@ -109,6 +109,11 @@ because it is a read that has to POST to carry its query.
 | GET | `/api/agents/{agent_name}/metrics` | Get performance metrics for a specific agent |
 | GET | `/api/agents/metrics/usage` | Get usage billing metrics for all agents |
 | GET | `/api/agents/collaboration/{project}` | Get collaboration info for agents on the same project |
+| GET | `/api/librarian/status` | Librarian watchdog snapshot: which agents on this machine are wired to levh, plus 24h memory activity per source (read-only, stores nothing) |
+| POST | `/api/librarian/scan` | Run a scan now and record the findings as a `librarian`-sourced memory |
+| POST | `/api/librarian/chat` | Ask the librarian a question; live context goes to the LLM, and an action it proposes (shell command / MCP wiring) may be executed |
+| GET | `/librarian` | Librarian chat page |
+| GET | `/librarian.js` | Chat widget script injected into every dashboard HTML page |
 | WS | `/ws/agents` | WebSocket for real-time agent presence updates |
 | WS | `/ws/memory` | Real-time event stream + RPC actions (recall/stats/ping; writes blocked in public demo mode) |
 | SSE | `/api/mcp/sse` | MCP SSE stream endpoint |

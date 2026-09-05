@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, PlainTextResponse
 
 from server.core import librarian
 from server.routes.models import AskRequest
@@ -32,10 +32,16 @@ async def librarian_chat_page():
     return _CHAT_PAGE_HTML
 
 
-@router.get("/librarian.js", response_class=HTMLResponse)
+@router.get("/librarian.js")
 async def librarian_widget_js():
-    """Dashboard'un her sayfasına enjekte edilen sağ-alt chat widget'ı."""
-    return _WIDGET_JS
+    """Dashboard'un her sayfasına enjekte edilen sağ-alt chat widget'ı.
+
+    text/html olarak servis edilirse nosniff uygulayan tarayıcılar
+    ``<script src>``'i çalıştırmayı reddeder — MIME tipi açıkça verilir.
+    """
+    return PlainTextResponse(
+        _WIDGET_JS, media_type="application/javascript; charset=utf-8"
+    )
 
 
 _WIDGET_JS = """(function () {

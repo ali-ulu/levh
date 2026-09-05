@@ -21,6 +21,11 @@ async def test_ambient_key_alone_never_activates_answer_or_summary_network(
 ) -> None:
     monkeypatch.setenv("OPENAI_API_KEY", "gt00a5-synthetic-never-valid")
     monkeypatch.setenv("AUTO_SUMMARIZE_SESSIONS", "1")
+    # The invariant is about an ambient KEY, so the opt-ins must be absent —
+    # otherwise an operator's own ANSWER_MODE/SUMMARY_MODE decides the verdict
+    # and the test reports on the machine it runs on, not on the code.
+    monkeypatch.delenv("ANSWER_MODE", raising=False)
+    monkeypatch.delenv("SUMMARY_MODE", raising=False)
     calls: list[dict[str, Any]] = []
 
     async def intercepted_post(

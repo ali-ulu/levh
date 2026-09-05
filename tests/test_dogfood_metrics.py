@@ -27,12 +27,19 @@ def journal(tmp_path):
 
 @pytest.fixture()
 def no_network(monkeypatch):
-    """Any attempt to open a socket during the test explodes."""
+    """Any attempt to reach the network during the test explodes.
+
+    The trap is on connecting, not on constructing a socket: replacing
+    ``socket.socket`` itself also breaks the event loop's own self-pipe, which
+    on Windows made these tests hang forever instead of passing. Journalling
+    never dials out, so a blocked ``connect`` proves exactly as much.
+    """
 
     def _boom(*args, **kwargs):  # pragma: no cover - triggered only on violation
         raise AssertionError("dogfood journal attempted network access")
 
-    monkeypatch.setattr(socket, "socket", _boom)
+    monkeypatch.setattr(socket.socket, "connect", _boom, raising=False)
+    monkeypatch.setattr(socket.socket, "connect_ex", _boom, raising=False)
     monkeypatch.setattr(socket, "create_connection", _boom)
 
 

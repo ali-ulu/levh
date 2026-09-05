@@ -123,7 +123,10 @@ async def test_product_surfaces_emit_dogfood_events(engine, tmp_path, monkeypatc
     def _boom(*args, **kwargs):  # pragma: no cover
         raise AssertionError("dogfood wiring attempted network access")
 
-    monkeypatch.setattr(socket, "socket", _boom)
+    # Trap the dial-out, not the socket constructor: replacing socket.socket
+    # also breaks the event loop's self-pipe and hangs the test on Windows.
+    monkeypatch.setattr(socket.socket, "connect", _boom, raising=False)
+    monkeypatch.setattr(socket.socket, "connect_ex", _boom, raising=False)
     monkeypatch.setattr(socket, "create_connection", _boom)
 
     journal = DogfoodJournal(tmp_path / "j.jsonl")
