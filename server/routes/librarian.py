@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import asyncio
+
 from fastapi import APIRouter
-from fastapi.responses import HTMLResponse, PlainTextResponse
+from fastapi.responses import HTMLResponse, Response
 
 from server.core import librarian
 from server.routes.models import AskRequest
@@ -13,13 +15,21 @@ router = APIRouter()
 
 @router.get("/api/librarian/status")
 async def librarian_status():
-    return librarian.scan(store_memory=False)
+    """Tarama sonucu; hiçbir şey yazmaz.
+
+    ``scan`` senkron: dosya sistemini gezip SQLite sorguluyor. Doğrudan
+    çağrılsaydı bu rota, işi sürerken sunucunun TÜM isteklerini bekletirdi —
+    tek bir event loop var ve senkron kod onu bırakmaz.
+    """
+    return await asyncio.to_thread(librarian.scan)
 
 
 @router.post("/api/librarian/scan")
 async def librarian_scan():
-    """Manuel tarama — bulguları hafızaya da yazar."""
-    return librarian.scan(store_memory=True)
+    """Manuel tarama — çıkan bulguları gelen kutusuna da yazar."""
+    report = await asyncio.to_thread(librarian.scan)
+    report["findings_recorded"] = await librarian.record_findings(report)
+    return report
 
 
 @router.post("/api/librarian/chat")
@@ -36,12 +46,11 @@ async def librarian_chat_page():
 async def librarian_widget_js():
     """Dashboard'un her sayfasına enjekte edilen sağ-alt chat widget'ı.
 
-    text/html olarak servis edilirse nosniff uygulayan tarayıcılar
-    ``<script src>``'i çalıştırmayı reddeder — MIME tipi açıkça verilir.
+    JavaScript olarak servis edilir. ``text/html`` ile dönüyordu; tarayıcı
+    betiği yanlış MIME ile ya hiç çalıştırmaz ya da ``nosniff`` eklendiği an
+    çalıştırmayı bırakır — belirti "widget görünmüyor" olur, sebebi görünmez.
     """
-    return PlainTextResponse(
-        _WIDGET_JS, media_type="application/javascript; charset=utf-8"
-    )
+    return Response(_WIDGET_JS, media_type="application/javascript; charset=utf-8")
 
 
 _WIDGET_JS = """(function () {

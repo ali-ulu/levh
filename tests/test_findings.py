@@ -268,3 +268,21 @@ def test_a_held_queue_below_the_threshold_is_not_a_finding():
     )
     assert below == []
     assert [r["category"] for r in at] == ["memory"]
+
+
+def test_an_agent_whose_config_location_is_unknown_is_not_a_finding():
+    """hermes and aider have no known MCP config path, so "not connected" is
+    something we cannot determine — only something we could not check. Filing
+    it produces a row the user can never close, and one uncloseable row makes
+    the whole inbox unreadable."""
+    from server.core import librarian
+
+    rows = librarian.findings_from_report({
+        "agents": [
+            {"agent": "hermes", "levh_connected": False, "configs": []},
+            {"agent": "codex", "levh_connected": False,
+             "configs": [{"config": "c", "levh_connected": False}]},
+        ],
+        "activity": {"held_memories": 0},
+    })
+    assert [r["title"] for r in rows] == ["codex: levh MCP baglantisi yok"]

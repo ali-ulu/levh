@@ -10,6 +10,7 @@ Usage:
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import logging
 import os
@@ -109,6 +110,11 @@ async def lifespan(app: FastAPI):
     finally:
         if librarian_task:
             librarian_task.cancel()
+            # Cancel only *requests* cancellation. Without awaiting, shutdown
+            # races the task: the engine can close under a scan still mid-write,
+            # and Python reports it as "Task was destroyed but it is pending".
+            with contextlib.suppress(asyncio.CancelledError):
+                await librarian_task
         await engine.shutdown()
 
 
@@ -215,10 +221,18 @@ app.include_router(librarian_router)
 
 
 # ── Librarian chat widget enjeksiyonu ──────────────────────────────
-# Dashboard (Next.js export) yeniden derlemeden: her HTML sayfasının
-# </body>'sinden önce widget script'i eklenir. Sağ altta sohbet düğmesi.
+# Dashboard'un her HTML sayfasına, </body>'den önce widget script'i eklenir.
+#
+# Yeniden yazılan gövde, orijinalin header'larını olduğu gibi devralamaz:
+# content-length artık yanlıştır, content-encoding gövdenin sıkıştırılmış
+# olduğunu söyler (değildir) ve etag/content-digest artık başka bir gövdeyi
+# tarifler. Üçünü de bırakmak, tarayıcının çözemediği bozuk bir yanıt üretir —
+# ve hata görünür bir hata değil, sessiz bir bozulma olarak çıkar.
 
 from starlette.responses import Response as _StarletteResponse  # noqa: E402
+
+# Yeniden yazılan gövdeyi artık tarif etmeyen header'lar.
+_STALE_AFTER_REWRITE = ("content-length", "content-encoding", "etag", "content-digest")
 
 
 _WIDGET_TAG = '<script src="/librarian.js"></script>'
@@ -230,28 +244,34 @@ async def _inject_librarian_widget(request, call_next):
     content_type = response.headers.get("content-type", "")
     if "text/html" not in content_type or response.status_code != 200:
         return response
+    # Sıkıştırılmış gövdeyi burada çözmüyoruz; dokunmadan geçirmek, yanlış
+    # header'la bozuk metin döndürmekten iyidir.
+    if response.headers.get("content-encoding"):
+        return response
+    if not hasattr(response, "body_iterator"):
+        return response
 
     body = b""
     async for chunk in response.body_iterator:
         body += chunk
-    headers = dict(response.headers)
 
+    headers = {
+        k: v for k, v in response.headers.items()
+        if k.lower() not in _STALE_AFTER_REWRITE
+    }
     try:
         text = body.decode(response.charset or "utf-8")
     except UnicodeDecodeError:
-        return _StarletteResponse(body, status_code=200, headers=headers)
+        return _StarletteResponse(
+            body, status_code=response.status_code,
+            headers=headers, media_type=content_type,
+        )
 
-    if "</body>" not in text or _WIDGET_TAG in text:
-        return _StarletteResponse(body, status_code=200, headers=headers)
-
-    text = text.replace("</body>", _WIDGET_TAG + "</body>", 1)
-    # The bytes are no longer the ones the upstream response described: its
-    # length is wrong and its ETag now names content nobody will be served.
-    headers.pop("content-length", None)
-    headers.pop("etag", None)
+    if "</body>" in text and _WIDGET_TAG not in text:
+        text = text.replace("</body>", _WIDGET_TAG + "</body>", 1)
     return _StarletteResponse(
-        text, status_code=200, headers=headers,
-        media_type="text/html; charset=utf-8",
+        text, status_code=response.status_code,
+        headers=headers, media_type="text/html; charset=utf-8",
     )
 
 
