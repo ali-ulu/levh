@@ -125,6 +125,42 @@ def discover_agents() -> list[dict]:
 
 # ── Aktivite izleme ───────────────────────────────────────────────────
 
+# Ajanlar kendi adlarını tek biçimde yazmıyor: aynı Cline "cline",
+# "cline-session" ve "Cline" olarak, Claude Code "claude-code" ve "Claude Code"
+# olarak kaydediyor. Normalize edilmezse yazan bir ajan "sessiz" görünür —
+# bekçinin tek işi buysa, yanlış alarm en pahalı çıktısıdır.
+_SOURCE_ALIASES = {
+    "cline-session": "cline",
+    "claude code": "claude-code",
+    "claudecode": "claude-code",
+    "kilo": "kilo-code",
+    "kilocode": "kilo-code",
+    "oh-my-cli": "oh-my-cli",
+}
+
+
+def _normalize_source(source: str | None) -> str:
+    key = (source or "").strip().lower()
+    return _SOURCE_ALIASES.get(key, key)
+
+
+def _silent_agents(per_source: dict) -> list[str]:
+    """levh'e BAĞLI olduğu hâlde pencerede hiç yazmayan ajanlar.
+
+    Bağlı olmayan bir ajanın sessizliği haber değil — o zaten "levh MCP yok"
+    bulgusunun konusu. Haber, bağlanmış ama kullanılmayan ajan.
+    """
+    written = {
+        _normalize_source(name)
+        for name, count in per_source.items()
+        if count
+    }
+    return [
+        agent
+        for agent in _ALL_AGENTS
+        if describe_agent(agent)["levh_connected"] and agent not in written
+    ]
+
 
 def _activity_report() -> dict:
     cutoff = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
@@ -145,12 +181,10 @@ def _activity_report() -> dict:
         logger.warning("librarian activity query failed: %s", exc)
         return {"error": str(exc)}
 
-    known = ["cline", "claude-code", "codex", "cli", "dashboard"]
-    silent = [s for s in known if per_source.get(s, 0) == 0]
     return {
         "window_hours": 24,
         "memories_per_source": per_source,
-        "silent_agents": silent,
+        "silent_agents": _silent_agents(per_source),
         "held_memories": held,
         "last_memory_at": last_mem,
     }
@@ -201,7 +235,11 @@ _ALL_AGENTS = {
     "opencode": ("opencode", [Path.home() / ".opencode" / "mcp.json"]),
     "opencodex": ("opencodex", [Path.home() / ".opencodex" / "mcp.json"]),
     "jcode": ("jcode", [Path.home() / ".jcode" / "mcp.json"]),
-    "kilo-code": ("kilocode", [Path.home() / ".kilocode" / "mcp.json",
+    # kilo'nun OKUDUĞU dosya ~/.config/kilo/kilo.json; diğer ikisi eski
+    # şemadan kalma ve kilo onlara bakmıyor, yani oradaki bir levh girdisi
+    # "bağlı" demek değil. Sıralama bilerek böyle: gerçek config önce.
+    "kilo-code": ("kilocode", [Path.home() / ".config" / "kilo" / "kilo.json",
+                               Path.home() / ".kilocode" / "mcp.json",
                                Path.home() / ".kilo" / "kilo.json"]),
     "oh-my-cli": ("oh-my-cli", [Path.home() / ".oh-my-cli" / "mcp.json"]),
     "gemini": ("gemini", [Path.home() / ".gemini" / "config" / "mcp_config.json"]),
@@ -620,6 +658,47 @@ def _context_block() -> str:
     return "CONTEXT:\n" + json.dumps(report, ensure_ascii=False, indent=1)
 
 
+def _reset_clock(response) -> str:
+    """Kotanın ne zaman sıfırlanacağı — sağlayıcının söylediği biçimden okunur."""
+    reset = response.headers.get("x-ratelimit-reset")
+    if reset:
+        try:  # OpenRouter epoch'u milisaniye verir, bazıları saniye
+            value = float(reset)
+            if value > 1e11:
+                value /= 1000.0
+            local = datetime.fromtimestamp(value).strftime("%H:%M")
+            return f" Sifirlanma: {local}."
+        except (TypeError, ValueError):
+            pass
+    retry_after = response.headers.get("retry-after")
+    if retry_after:
+        return f" {retry_after} saniye sonra tekrar denenebilir."
+    return ""
+
+
+def _llm_failure_reply(exc: Exception, context: str) -> str:
+    """Sağlayıcı hatasını kullanıcının ne yapacağını bilebileceği bir cümleye çevir.
+
+    429 ham hâliyle ("Client error '429 Too Many Requests'...") levh'te bir
+    arıza varmış gibi görünüyordu; oysa istek sağlayıcıya ulaşıyor ve kota
+    dolduğu için geri çevriliyor. Ne olduğu ve ne zaman geçeceği yazılır,
+    ardından yine de işe yarayan tek şey — canlı bağlam — verilir.
+    """
+    response = getattr(exc, "response", None)
+    if response is not None and getattr(response, "status_code", None) == 429:
+        detail = ""
+        try:
+            body = response.json()
+            detail = str(body.get("error", {}).get("message", "")).strip()
+        except Exception:  # noqa: BLE001 — gövde JSON olmayabilir
+            detail = ""
+        head = "Model saglayicisi kotayi doldurdugumuzu soyluyor (429)."
+        if detail:
+            head += f" Saglayici: {detail}"
+        return head + _reset_clock(response) + "\n" + context
+    return f"LLM'e su an ulasamadim ({exc}).\n" + context
+
+
 async def chat(question: str) -> dict:
     """Kullanıcı sorusu + canlı bağlam → LLM → (önerilen aksiyonu çalıştır) → yanıt."""
     # Tarama dosya sistemi ve SQLite'a gidiyor; bir thread'e alınmazsa
@@ -646,6 +725,7 @@ async def chat(question: str) -> dict:
 
     executed: list[dict] = []
     reply = ""
+    reached_model = True
     for _step in range(3):  # max 3 tur: düşün → aksiyon → sonuç → yanıt
         payload = {"model": model, "messages": messages, "temperature": 0.3}
         try:
@@ -655,7 +735,8 @@ async def chat(question: str) -> dict:
                 reply = resp.json()["choices"][0]["message"]["content"].strip()
         except Exception as exc:  # noqa: BLE001 — chat asla 500 dömesin
             logger.warning("librarian chat LLM failed: %s", exc)
-            reply = f"LLM'e su an ulasamadim ({exc})."
+            reply = _llm_failure_reply(exc, context)
+            reached_model = False
             break
 
         reply_text, action = _split_reply_and_action(reply)
@@ -685,4 +766,8 @@ async def chat(question: str) -> dict:
     _CHAT_HISTORY.append({"role": "user", "content": question})
     _CHAT_HISTORY.append({"role": "assistant", "content": reply})
     del _CHAT_HISTORY[:-CHAT_HISTORY_TURNS]
-    return {"answer": reply, "backend": "llm", "actions": executed}
+    return {
+        "answer": reply,
+        "backend": "llm" if reached_model else "offline",
+        "actions": executed,
+    }
