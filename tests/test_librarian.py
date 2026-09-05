@@ -12,7 +12,9 @@ import asyncio
 import os
 import sys
 import tempfile
+from datetime import datetime
 
+import httpx
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
@@ -81,6 +83,33 @@ async def test_activity_report_reads_the_engine_database(engine):
     assert "error" not in activity, activity
     assert activity["memories_per_source"].get("codex") == 1
     assert "codex" not in activity["silent_agents"]
+
+
+def test_a_source_that_spells_its_name_differently_is_not_called_silent(monkeypatch):
+    """Cline writes as "cline", "cline-session" and "Cline" — one agent, still.
+
+    A hard-coded name list called a working agent silent, which is the one
+    output of this watcher nobody can afford to distrust.
+    """
+    monkeypatch.setattr(
+        librarian, "describe_agent",
+        lambda agent: {"agent": agent, "levh_connected": True, "configs": []},
+    )
+    per_source = {"Cline": 3, "cline-session": 2, "Claude Code": 1, "kilo": 1}
+
+    silent = librarian._silent_agents(per_source)
+
+    for agent in ("cline", "claude-code", "kilo-code"):
+        assert agent not in silent, silent
+    assert "codex" in silent  # genuinely wrote nothing
+
+
+def test_only_connected_agents_can_be_silent():
+    """An unwired agent's silence is not news — "no levh MCP" already says it."""
+    silent = librarian._silent_agents({})
+
+    for agent in silent:
+        assert librarian.describe_agent(agent)["levh_connected"], agent
 
 
 @pytest.mark.asyncio
@@ -206,6 +235,58 @@ async def test_chat_never_answers_with_an_empty_bubble(monkeypatch):
 
     out = await librarian.chat("durum?")
     assert out["answer"].strip()
+
+
+@pytest.mark.asyncio
+async def test_a_provider_quota_error_is_explained_not_dumped(monkeypatch):
+    """A 429 is the provider's quota, not a levh failure — say which, and when.
+
+    The raw text ("Client error '429 Too Many Requests' for url ...") read like
+    the watcher had broken. The request reached the provider; it was refused.
+    """
+    reset_at = datetime(2026, 9, 6, 3, 0, 0)
+
+    class _Refused(_FakeAsyncClient):
+        async def post(self, _url, headers=None, json=None):
+            request = httpx.Request("POST", "https://openrouter.ai/api/v1/chat/completions")
+            response = httpx.Response(
+                429,
+                request=request,
+                headers={"x-ratelimit-reset": str(int(reset_at.timestamp() * 1000))},
+                json={"error": {"message": "Rate limit exceeded: free-models-per-day"}},
+            )
+            raise httpx.HTTPStatusError("429", request=request, response=response)
+
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    monkeypatch.setattr(librarian, "_context_block", lambda: "CONTEXT: {}")
+    monkeypatch.setattr(librarian.httpx, "AsyncClient", _Refused)
+    librarian._CHAT_HISTORY.clear()
+
+    out = await librarian.chat("durum?")
+
+    assert "429" in out["answer"]
+    assert "free-models-per-day" in out["answer"]
+    assert reset_at.strftime("%H:%M") in out["answer"]
+    # The context is the part that still works without a model.
+    assert "CONTEXT:" in out["answer"]
+    assert out["backend"] == "offline"
+
+
+@pytest.mark.asyncio
+async def test_an_unreachable_provider_still_answers_with_the_context(monkeypatch):
+    class _Down(_FakeAsyncClient):
+        async def post(self, _url, headers=None, json=None):
+            raise httpx.ConnectError("getaddrinfo failed")
+
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    monkeypatch.setattr(librarian, "_context_block", lambda: "CONTEXT: {}")
+    monkeypatch.setattr(librarian.httpx, "AsyncClient", _Down)
+    librarian._CHAT_HISTORY.clear()
+
+    out = await librarian.chat("durum?")
+
+    assert "CONTEXT:" in out["answer"]
+    assert out["backend"] == "offline"
 
 
 @pytest.mark.asyncio
