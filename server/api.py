@@ -215,33 +215,38 @@ app.include_router(librarian_router)
 from starlette.responses import Response as _StarletteResponse  # noqa: E402
 
 
+_WIDGET_TAG = '<script src="/librarian.js"></script>'
+
+
 @app.middleware("http")
 async def _inject_librarian_widget(request, call_next):
     response = await call_next(request)
     content_type = response.headers.get("content-type", "")
-    if "text/html" not in content_type:
+    if "text/html" not in content_type or response.status_code != 200:
         return response
+
     body = b""
     async for chunk in response.body_iterator:
         body += chunk
+    headers = dict(response.headers)
+
     try:
         text = body.decode(response.charset or "utf-8")
-        if "</body>" in text and "/librarian.js" not in text:
-            text = text.replace(
-                "</body>", '<script src="/librarian.js"></script></body>', 1
-            )
-        headers = dict(response.headers)
-        headers.pop("content-length", None)
-        response = _StarletteResponse(
-            text, status_code=response.status_code,
-            headers=headers, media_type="text/html; charset=utf-8",
-        )
     except UnicodeDecodeError:
-        return _StarletteResponse(
-            body, status_code=response.status_code,
-            headers=dict(response.headers),
-        )
-    return response
+        return _StarletteResponse(body, status_code=200, headers=headers)
+
+    if "</body>" not in text or _WIDGET_TAG in text:
+        return _StarletteResponse(body, status_code=200, headers=headers)
+
+    text = text.replace("</body>", _WIDGET_TAG + "</body>", 1)
+    # The bytes are no longer the ones the upstream response described: its
+    # length is wrong and its ETag now names content nobody will be served.
+    headers.pop("content-length", None)
+    headers.pop("etag", None)
+    return _StarletteResponse(
+        text, status_code=200, headers=headers,
+        media_type="text/html; charset=utf-8",
+    )
 
 
 # ── MCP SSE mount ──────────────────────────────────────────────────

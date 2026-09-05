@@ -35,6 +35,11 @@ the process that launches it when environment overrides are required.
 | `INTERFERENCE_FACTOR` | `0.6` | Stability multiplier applied to superseded memories |
 | `AUTO_SUMMARIZE_SESSIONS` | `false` | Auto-summarize a session's memories on `end_session` |
 | `SUMMARY_MODEL` | `gpt-4o-mini` | OpenAI chat model used for session summaries |
+| `OPENAI_BASE_URL` | OpenAI's endpoint | OpenAI-compatible chat completions URL. Point it at a local server (Ollama, LM Studio, vLLM) to summarize and chat fully offline |
+| `LEVH_LIBRARIAN` | `1` | Librarian watchdog: periodically scans which agents on this machine are wired to levh and how memory is being used. `0`/`false`/`off` disables it |
+| `LEVH_LIBRARIAN_INTERVAL` | `600` | Seconds between librarian scans |
+| `LEVH_LIBRARIAN_SHELL` | `1` | Lets the librarian run a shell command the LLM proposes. The destructive-command filter is a blocklist, so it stops known patterns, not all of them — set `0` to remove the capability |
+| `LEVH_AUTO_CHECKPOINT_INTERVAL` | `600` | Seconds between automatic checkpoints on the MCP server side |
 | `LEVH_TOKEN` | — | Shared-secret gate required for non-loopback access unless an external boundary is explicitly declared |
 | `LEVH_ALLOW_REMOTE_WITHOUT_TOKEN` | `false` | Advanced operator assertion that an external network boundary protects tokenless non-loopback traffic; never use with a public port |
 | `LEVH_CORS_ORIGINS` | localhost only | Comma-separated allowed browser origins (`*` for wildcard) |

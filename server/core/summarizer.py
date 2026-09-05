@@ -26,10 +26,21 @@ import httpx
 from server.core import llm_policy as policy
 
 _SUMMARY_MODEL = os.getenv("SUMMARY_MODEL", "gpt-4o-mini")
-# OpenAI-compatible endpoint. Point OPENAI_BASE_URL at a LOCAL server
-# (Ollama: http://localhost:11434/v1/chat/completions, LM Studio, vLLM, ...)
-# to summarize fully offline with a local model; defaults to the real API.
-_SUMMARY_URL = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1/chat/completions")
+DEFAULT_SUMMARY_URL = "https://api.openai.com/v1/chat/completions"
+
+
+def _summary_url() -> str:
+    """OpenAI-compatible endpoint, read per call.
+
+    Point ``OPENAI_BASE_URL`` at a LOCAL server (Ollama:
+    ``http://localhost:11434/v1/chat/completions``, LM Studio, vLLM, ...) to
+    summarize fully offline with a local model; defaults to the real API.
+    Read at call time, not import time: at import the environment may not be
+    loaded yet, and a value frozen then cannot be changed or tested.
+    """
+    return os.getenv("OPENAI_BASE_URL", "").strip() or DEFAULT_SUMMARY_URL
+
+
 _SYSTEM_PROMPT = (
     "You compress a coding session's memories into a durable summary for an "
     "AI assistant's long-term memory. Output 3-8 terse bullet points capturing "
@@ -101,7 +112,7 @@ async def summarize_texts(
     client = client or httpx.AsyncClient(timeout=60.0)
     try:
         resp = await client.post(
-            _SUMMARY_URL,
+            _summary_url(),
             headers=headers,
             json=payload,
         )

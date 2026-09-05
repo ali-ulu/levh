@@ -17,7 +17,7 @@ import pytest
 from server.core import llm_policy as policy
 from server.core.answerer import answer_question
 from server.core.memory_engine import MemoryEngine
-from server.core.summarizer import summarize_texts
+from server.core.summarizer import DEFAULT_SUMMARY_URL, summarize_texts
 
 AMBIENT_KEY = "sk-test-never-valid"
 
@@ -162,5 +162,16 @@ async def test_explicit_opt_in_does_reach_the_model(monkeypatch, captured_posts)
     """The opt-in has to actually work, or the feature is merely broken."""
     monkeypatch.setenv("OPENAI_API_KEY", AMBIENT_KEY)
     monkeypatch.setenv("SUMMARY_MODE", "llm")
+    monkeypatch.delenv("OPENAI_BASE_URL", raising=False)
     await summarize_texts(["canary one", "canary two"])
-    assert captured_posts == ["https://api.openai.com/v1/chat/completions"]
+    assert captured_posts == [DEFAULT_SUMMARY_URL]
+
+
+@pytest.mark.asyncio
+async def test_a_local_endpoint_replaces_the_openai_one(monkeypatch, captured_posts):
+    """OPENAI_BASE_URL is how a summary can stay on the machine — it must be used."""
+    monkeypatch.setenv("OPENAI_API_KEY", AMBIENT_KEY)
+    monkeypatch.setenv("SUMMARY_MODE", "llm")
+    monkeypatch.setenv("OPENAI_BASE_URL", "http://localhost:11434/v1/chat/completions")
+    await summarize_texts(["canary one", "canary two"])
+    assert captured_posts == ["http://localhost:11434/v1/chat/completions"]

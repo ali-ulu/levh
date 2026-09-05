@@ -37,7 +37,9 @@ def api_doc() -> str:
 
 
 def test_every_route_is_documented(api_paths, api_doc):
-    documented = {_normalize(m) for m in re.findall(r"`(/(?:api|ws)[^`]*)`", api_doc)}
+    # Any backticked path counts, not just /api and /ws: the app also serves
+    # pages (/librarian, /librarian.js) that belong in the same table.
+    documented = {_normalize(m) for m in re.findall(r"`(/[^`]*)`", api_doc)}
     missing = sorted(api_paths - documented)
     assert not missing, f"undocumented routes: {missing}"
 
