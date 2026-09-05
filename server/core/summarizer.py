@@ -23,24 +23,17 @@ import re
 
 import httpx
 
+from server.core import llm_endpoint
 from server.core import llm_policy as policy
 
-_SUMMARY_MODEL = os.getenv("SUMMARY_MODEL", "gpt-4o-mini")
-DEFAULT_SUMMARY_URL = "https://api.openai.com/v1/chat/completions"
-
-
-def _summary_url() -> str:
-    """OpenAI-compatible endpoint, read per call.
-
-    Point ``OPENAI_BASE_URL`` at a LOCAL server (Ollama:
-    ``http://localhost:11434/v1/chat/completions``, LM Studio, vLLM, ...) to
-    summarize fully offline with a local model; defaults to the real API.
-    Read at call time, not import time: at import the environment may not be
-    loaded yet, and a value frozen then cannot be changed or tested.
-    """
-    return os.getenv("OPENAI_BASE_URL", "").strip() or DEFAULT_SUMMARY_URL
-
-
+# Model and endpoint come from server.core.llm_endpoint so this module and the
+# librarian cannot disagree about them — they read the same two variables, and
+# a second default here is how they came to disagree before. Read per call, not
+# frozen at import: tests and a reloaded process both change the environment
+# after this module is first imported.
+#
+# Point OPENAI_BASE_URL at a LOCAL server (Ollama, LM Studio, vLLM) to
+# summarize fully offline; the base and the full endpoint path both work.
 _SYSTEM_PROMPT = (
     "You compress a coding session's memories into a durable summary for an "
     "AI assistant's long-term memory. Output 3-8 terse bullet points capturing "
@@ -97,7 +90,7 @@ async def summarize_texts(
 
     joined = "\n".join(f"- {t.strip()}" for t in texts)
     payload = {
-        "model": _SUMMARY_MODEL,
+        "model": llm_endpoint.chat_model(),
         "messages": [
             {"role": "system", "content": _SYSTEM_PROMPT},
             {"role": "user", "content": f"Session memories:\n{joined}"},
@@ -105,14 +98,14 @@ async def summarize_texts(
         "temperature": 0.2,
     }
     headers = {
-        "Authorization": f"Bearer {os.getenv('OPENAI_API_KEY')}",
+        "Authorization": f"Bearer {llm_endpoint.api_key()}",
         "Content-Type": "application/json",
     }
     owns_client = client is None
     client = client or httpx.AsyncClient(timeout=60.0)
     try:
         resp = await client.post(
-            _summary_url(),
+            llm_endpoint.chat_completions_url(),
             headers=headers,
             json=payload,
         )

@@ -36,10 +36,16 @@ def api_doc() -> str:
     return (DOCS / "api-reference.md").read_text(encoding="utf-8")
 
 
+# Routes are documented as table rows, and the app serves paths outside the
+# /api namespace too (the librarian's page and its widget script). Reading the
+# rows — the same extraction the "invents no routes" test below uses — is what
+# lets this test see them; matching on the /api prefix made any non-/api route
+# impossible to document rather than merely undocumented.
+_DOC_ROW_RE = re.compile(r"^\| [A-Z]+ \| `(/[^`]+)`", re.M)
+
+
 def test_every_route_is_documented(api_paths, api_doc):
-    # Any backticked path counts, not just /api and /ws: the app also serves
-    # pages (/librarian, /librarian.js) that belong in the same table.
-    documented = {_normalize(m) for m in re.findall(r"`(/[^`]*)`", api_doc)}
+    documented = {_normalize(m) for m in _DOC_ROW_RE.findall(api_doc)}
     missing = sorted(api_paths - documented)
     assert not missing, f"undocumented routes: {missing}"
 

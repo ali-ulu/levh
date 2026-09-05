@@ -172,6 +172,32 @@ CREATE TABLE IF NOT EXISTS held_memories (
     admitted_memory_id TEXT
 );
 
+-- Findings: problems LEVH noticed about itself or about its environment.
+--
+-- A finding is a REPORT, never an action. A watcher writes here and stops; a
+-- human reads the inbox and decides what to do. Nothing in this table reaches
+-- the outside world (a GitHub issue, say) without an explicit human step.
+--
+-- ``id`` is a fingerprint of the problem, not a random uuid: the same problem
+-- seen a hundred times collapses onto one row with a rising ``occurrences``
+-- count. That is what keeps a watcher on a 10-minute loop from burying the
+-- inbox under copies of one finding.
+CREATE TABLE IF NOT EXISTS findings (
+    id            TEXT PRIMARY KEY,              -- fingerprint of the problem
+    title         TEXT NOT NULL,
+    detail        TEXT NOT NULL,                 -- evidence, already scrubbed
+    category      TEXT NOT NULL,                 -- bug|config|memory|agent|other
+    severity      TEXT NOT NULL,                 -- critical|high|medium|low
+    source        TEXT NOT NULL,                 -- who reported it
+    status        TEXT NOT NULL DEFAULT 'open',  -- open|ack|resolved|ignored
+    occurrences   INTEGER NOT NULL DEFAULT 1,
+    first_seen_at TEXT NOT NULL,
+    last_seen_at  TEXT NOT NULL,
+    decided_at    TEXT,
+    note          TEXT,                          -- the human's verdict / fix note
+    external_ref  TEXT                           -- set only by a manual export
+);
+
 """
 
 
@@ -195,6 +221,8 @@ CREATE INDEX IF NOT EXISTS idx_viol_when     ON violations(occurred_at DESC);
 CREATE INDEX IF NOT EXISTS idx_attach_memory ON attachments(memory_id);
 -- The queue is read as "what is still waiting", newest first.
 CREATE INDEX IF NOT EXISTS idx_held_status ON held_memories(status, created_at DESC);
+-- The inbox is read as "what is still open", most recently seen first.
+CREATE INDEX IF NOT EXISTS idx_find_status ON findings(status, last_seen_at DESC);
 """
 
 

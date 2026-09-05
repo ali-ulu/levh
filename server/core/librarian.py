@@ -1,15 +1,29 @@
-"""Librarian — LEVH'in içinden hafızayı yöneten bekçi ajanı.
+"""Librarian — LEVH'in içinden hafızayı izleyen bekçi ajanı.
 
 Sunucu açılınca arka plan görevi olarak başlar (api.lifespan). Periyodik:
 
   1. KEŞİF  — makinedeki ajan konfigürasyonlarını tarar (Cline, Claude Code,
              Codex); hangisi levh MCP'sine bağlı, hangisi değil?
-  2. İZLEME — son 24 saatte hangi ajan hiç kayıt yapmamış? held_memories
-             kuyruğu birikmiş mi?
-  3. AKSİYON — bulguları ``source="librarian"`` hafıza olarak kaydeder.
-             Yıkıcı işlem YAPMAZ — sadece öneri üretir.
+  2. İZLEME — hafıza aktivitesi ve held_memories kuyruğu.
+  3. RAPOR  — bulguları ``findings`` gelen kutusuna yazar. Karar insanındır.
 
 Chat: ``POST /api/librarian/chat`` — soru + canlı bağlam LLM'e gider.
+
+YETKİ SINIRI — burada bilerek yapılmayan şey:
+
+Bu modül keyfi terminal komutu ÇALIŞTIRMAZ. Daha önce çalıştırıyordu: model
+bir ``shell`` aksiyonu önerirse PowerShell'e gidiyordu ve tek koruma bir kara
+liste regex'iydi. O regex kaçış hatası yüzünden hiçbir şeyi tutmuyordu —
+``Remove-Item -Recurse -Force <HOME>`` bile geçiyordu — ama regex düzeltilse
+bile tasarım yanlıştı: kimlik doğrulaması varsayılan olarak kapalı olan bir
+uçtan, modelin ürettiği metne bakarak komut çalıştırmak, sunucuya istek
+atabilen herkese makinede kod çalıştırma yetkisi vermek demektir. Kara liste
+bunu daraltmaz, sadece daraltıyormuş gibi gösterir.
+
+Kalan tek yazma yetkisi ``add_levh_mcp``: kapsamı bilinen ajan config
+dosyalarına levh MCP kaydını ekler, önce yedek alır, dosyayı ayrıştırıp geri
+yazar. Bu bir sınırdır, "şimdilik böyle" değil — yeni bir aksiyon tipi
+eklemek, o tipin neyi yapamayacağını da yazmayı gerektirir.
 """
 
 from __future__ import annotations
@@ -21,23 +35,24 @@ import os
 import re
 import shutil
 import sqlite3
-import subprocess
+import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import httpx
 
+from server.core import llm_endpoint
+from server.core.findings import build_row as build_finding_row
+
 logger = logging.getLogger("levh.librarian")
 
 LIBRARIAN_SOURCE = "librarian"
 DEFAULT_INTERVAL = 600  # 10 dk
+# Kuyruktaki birkaç kayıt normal çalışmadır; bulgu olması için birikmesi gerek.
+HELD_QUEUE_THRESHOLD = 20
+# Prompt'a taşınan önceki mesaj sayısı (soru + cevap = 2 mesaj).
+CHAT_HISTORY_TURNS = 20
 _CHAT_HISTORY: list[dict] = []
-_HISTORY_TURNS = 5  # LLM'e taşınan soru/yanıt çifti sayısı
-
-# Tarama bir worker thread'inde koşar (``asyncio.to_thread``), ama motorun
-# aiosqlite bağlantısı sunucunun event loop'una bağlıdır. Bulguyu yazmak için
-# o loop'a geri dönmek gerekir; burada tutulan referans o köprüdür.
-_OWNER_LOOP: asyncio.AbstractEventLoop | None = None
 
 _SYSTEM_PROMPT = (
     "Sen LEVH'in kütüphane memurusun: hafıza katmanını içeriden yöneten "
@@ -46,19 +61,23 @@ _SYSTEM_PROMPT = (
     "bağlantı sorunlarını DÜZELTMEK, hafıza kalitesini korumak ve kullanıcıya "
     "Türkçe, kısa, net yanıt vermek. Sana verilen CONTEXT bloğu canlı "
     "veritabanı ve keşif verisidir; dışını tahmin etme.\n\n"
-    "AKSİYON YETENEĞİN var: bir aksiyon gerekiyorsa yanıtının EN SONUNA şu "
-    "biçimde bir JSON bloğu ekle:\n"
+    "AKSİYON YETENEĞİN var ama DARDIR: bir aksiyon gerekiyorsa yanıtının EN "
+    "SONUNA şu biçimde bir JSON bloğu ekle:\n"
     "```json\n{\"action\": {\"type\": \"...\", ...}, \"reply\": \"kullanıcıya "
     "Türkçe açıklama\"}\n```\n"
-    "Aksiyon tipleri:\n"
-    "- {\"type\": \"shell\", \"command\": \"<terminal komutu>\"} — PowerShell "
-    "komutu çalıştırır (kurulum, config düzenleme, teşhis). Max 120 sn.\n"
-    "- {\"type\": \"add_levh_mcp\", \"agent\": \"cline\"|\"codex\"|\"claude-code\"} — "
-    "o ajanın config'ine levh MCP sunucusunu ekler (yedek alır).\n"
+    "Aksiyon tipleri — bunlardan BAŞKASI YOKTUR:\n"
+    "- {\"type\": \"add_levh_mcp\", \"agent\": \"cline\"|\"codex\"|\"claude-code\"|"
+    "\"opencode\"|\"opencodex\"|\"jcode\"|\"kilo-code\"|\"oh-my-cli\"|\"gemini\"} — "
+    "o ajanın config'ine levh MCP sunucusunu ekler (önce yedek alır).\n"
+    "- {\"type\": \"report_finding\", \"title\": \"...\", \"detail\": \"...\", "
+    "\"category\": \"bug\"|\"config\"|\"memory\"|\"agent\"|\"other\", "
+    "\"severity\": \"critical\"|\"high\"|\"medium\"|\"low\"} — bulguyu gelen "
+    "kutusuna yazar; kullanıcı orada görüp karar verir.\n"
     "- {\"type\": \"none\"} — aksiyon gerekmiyorsa.\n"
-    "Kurallar: Her shell komutu loglanır. 'format', 'Remove-Item -Recurse "
-    "C:\\', 'reg delete' gibi yıkıcı komutlar ENGELLENİR. Aynı aksiyonu "
-    "tekrar tekrar önerme. reply alanını her zaman yaz."
+    "TERMINAL KOMUTU ÇALIŞTIRAMAZSIN. 'shell', 'run', 'exec' gibi bir aksiyon "
+    "önerme; reddedilir. Bir sorunun terminal gerektirdiğini düşünüyorsan "
+    "komutu ÇALIŞTIRMA, report_finding ile yaz ve kullanıcıya öner. "
+    "Aynı aksiyonu tekrar tekrar önerme. reply alanını her zaman yaz."
 )
 
 
@@ -137,122 +156,36 @@ def _activity_report() -> dict:
     }
 
 
-def _llm_ready() -> bool:
-    return bool(os.getenv("OPENAI_API_KEY", "").strip())
+def scan() -> dict:
+    """Tek tur keşif + izleme. Saf okuma: hiçbir şey yazmaz.
 
-
-def set_owner_loop(loop: asyncio.AbstractEventLoop | None) -> None:
-    """Bulguların yazılacağı event loop'u kaydet (sunucu açılışında çağrılır)."""
-    global _OWNER_LOOP
-    _OWNER_LOOP = loop
-
-
-def _target_loop() -> asyncio.AbstractEventLoop | None:
-    """Motorun bağlı olduğu, hâlâ çalışan loop — yoksa None."""
-    if _OWNER_LOOP is not None and _OWNER_LOOP.is_running():
-        return _OWNER_LOOP
-    try:  # sunucu ayakta ama start_background çağrılmadıysa (ör. sadece route)
-        from server import api
-
-        loop = api._event_loop
-    except Exception:  # noqa: BLE001 — api import edilemiyorsa loop da yok
-        return None
-    return loop if loop is not None and loop.is_running() else None
-
-
-async def _admit_finding(content: str) -> dict:
-    from server.core import engine_provider
-
-    engine = engine_provider.get_engine()
-    await engine.initialize()  # idempotent; CLI/test yolunda bağlantıyı açar
-    return await engine.admit_memory(
-        content=content,
-        importance=0.5,
-        tags=["librarian", "rapor"],
-        source=LIBRARIAN_SOURCE,
-        memory_type="short_term",
-    )
-
-
-def _store_finding(content: str) -> None:
-    """Bulguyu hafızaya yaz (admission gate'ten geçer).
-
-    Üç çağrı bağlamı var ve üçü de çalışmak zorunda: (1) sunucunun loop'unun
-    içinden (route), (2) ``to_thread`` worker'ından (periyodik tarama),
-    (3) hiç loop olmayan bir süreçten (CLI, test). Yeni bir loop açıp motorun
-    coroutine'ini orada koşturmak (2)'de sessizce patlıyordu — aiosqlite
-    bağlantısı sunucunun loop'una bağlı.
+    Yazma işi çağırana ait (``record_findings``) ve çağıranın event loop'unda
+    olur. Bu ayrım kasıtlı: tarama senkron olduğu için bir thread'de koşuyor,
+    ve motorun paylaşılan SQLite bağlantısını o thread'den ikinci bir loop
+    açarak sürmek — ``asyncio.run`` ile olsa bile — kaçınılması gereken şeydi.
     """
-    try:
-        try:
-            running = asyncio.get_running_loop()
-        except RuntimeError:
-            running = None
-
-        if running is not None:
-            running.create_task(_admit_finding(content))
-            return
-
-        target = _target_loop()
-        if target is not None:
-            future = asyncio.run_coroutine_threadsafe(_admit_finding(content), target)
-            result = future.result(timeout=30)
-        else:
-            result = asyncio.run(_admit_finding(content))
-        if not result.get("stored"):
-            logger.debug(
-                "librarian finding not stored (%s)",
-                result.get("decision", {}).get("action"),
-            )
-    except Exception:  # noqa: BLE001 — rapor yazımı sunucuyu düşürmesin
-        logger.exception("librarian could not store finding")
-
-
-def scan(store_memory: bool = True) -> dict:
-    """Tek tur keşif + izleme. Bulguları hafızaya da yazar."""
-    report = {
+    return {
         "at": datetime.now(timezone.utc).isoformat(),
         "agents": discover_agents(),
         "activity": _activity_report(),
     }
 
-    if store_memory:
-        unconnected = [a["agent"] for a in report["agents"] if not a["levh_connected"]]
-        silent = report["activity"].get("silent_agents", [])
-        held = report["activity"].get("held_memories", 0)
-        lines = ["LEVH LIBRARIAN taraması:"]
-        for a in report["agents"]:
-            lines.append(f"- {a['agent']}: {'bagli' if a['levh_connected'] else 'levh MCP YOK'}")
-        if unconnected:
-            lines.append(f"- Bagli olmayan: {', '.join(unconnected)} (mcp.json'a levh eklenmeli)")
-        if silent:
-            lines.append(f"- Son 24s sessiz ajanlar: {', '.join(silent)}")
-        if held:
-            lines.append(f"- held_memories kuyrugunda {held} kayit (review bekliyor)")
-        _store_finding("\n".join(lines))
 
-    return report
-
-
-# ── Aksiyon çalıştırıcı (terminal + config kurulumu) ──────────────────
-
-# Tek ters bölü ile yazılır: kaçışlar iki kat yazıldığında desen `C:\` yerine
-# `C:\\` arıyordu, yani prompt'ta "engellenir" denen komutun ta kendisi geçiyordu.
-_BLOCKED_RE = re.compile(
-    r"(?i)\bformat\b"
-    r"|remove-item\b[^\n]*-recurse\b[^\n]*\b[a-z]:\\"  # sürücü kökünü özyineli sil
-    r"|reg\s+delete"
-    r"|rd\s+/s"
-    r"|del\s+/[fq]\b[^\n]*\b[a-z]:\\"
-    r"|diskpart"
-    r"|cipher\s+/w"
-    r"|bcdedit"
-)
+# ── Aksiyon çalıştırıcı (yalnızca config kurulumu) ────────────────────
 
 
 def _backup(path: Path) -> Path | None:
+    """Config'i değiştirmeden önce zaman damgalı bir kopya bırak.
+
+    Damga şart: sabit adlı tek bir ``.bak`` her çalıştırmada kendini ezerdi,
+    yani ikinci bir hatalı yazımdan sonra geri dönülecek sağlam kopya kalmazdı
+    — yedek almanın tek sebebi buyken.
+    """
     try:
-        bak = path.with_suffix(path.suffix + ".librarian-bak")
+        # Mikrosaniye dahil: aynı saniye içinde iki yedek alınabiliyor ve
+        # saniye çözünürlüğünde ikincisi birinciyi ezerdi.
+        stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%f")
+        bak = path.with_suffix(f"{path.suffix}.{stamp}.librarian-bak")
         shutil.copy2(path, bak)
         return bak
     except OSError:
@@ -281,11 +214,10 @@ _ALL_AGENTS = {
 def discover_installed() -> list[dict]:
     """PATH'te kurulu + yapılandırılmış tüm ajanları bul; levh bağlantısı var mı?"""
     out = []
-    for name, (exe, configs) in _ALL_AGENTS.items():
+    for name, (exe, _configs) in _ALL_AGENTS.items():
         path = shutil.which(exe)
-        connected = describe_agent(name)["levh_connected"]
         out.append({"agent": name, "installed": bool(path), "path": path,
-                    "levh_connected": connected})
+                    "levh_connected": describe_agent(name)["levh_connected"]})
     return out
 
 
@@ -311,6 +243,21 @@ def describe_agent(agent: str) -> dict:
             "configs": configs_read}
 
 
+def _levh_executable_fallback() -> str:
+    """``levh`` PATH'te bulunamazsa makul bir yol üret.
+
+    Sunucu bir sanal ortamdan koşuyorsa konsol betiği o ortamın Scripts/bin
+    dizinindedir ve PATH'te olmayabilir; oradan bulmak, yazdığımız config'in
+    gerçekten çalışması demek.
+    """
+    scripts = Path(sys.executable).parent
+    for candidate in (scripts / "levh.exe", scripts / "levh",
+                      scripts / "Scripts" / "levh.exe"):
+        if candidate.is_file():
+            return str(candidate)
+    return "levh"
+
+
 def add_levh_mcp(agent: str) -> dict:
     """Ajanın config dosyasına levh MCP sunucusunu ekler (yedek alarak).
 
@@ -319,7 +266,10 @@ def add_levh_mcp(agent: str) -> dict:
     codex kendi formatlarıyla ele alınır.
     """
     home = Path.home()
-    levh_exe = shutil.which("levh") or r"C:\Users\sonfi\AppData\Local\Programs\Python\Python312\Scripts\levh.exe"
+    # PATH'te yoksa kendi yorumlayıcımızın Scripts/bin dizinine bak; oraya da
+    # düşmezse "levh" adının kendisi kalır. Buraya bir makinenin mutlak yolunu
+    # gömmek, o config'i başka her makinede bozuk üretir.
+    levh_exe = shutil.which("levh") or _levh_executable_fallback()
     env_block = {
         "SQLITE_DB_PATH": os.getenv("SQLITE_DB_PATH", str(home / "AppData/Local/stackmemory.db")),
         "EMBEDDER_MODE": "auto",
@@ -369,7 +319,14 @@ def add_levh_mcp(agent: str) -> dict:
         if not cfg.is_file():
             return {"ok": False, "msg": ".claude.json bulunamadi"}
         _backup(cfg)
-        data = json.loads(cfg.read_text(encoding="utf-8-sig", errors="ignore"))
+        # errors="ignore" YOK: .claude.json oturum durumunu taşır ve bu kod
+        # dosyayı ayrıştırıp baştan yazıyor. Çözülemeyen bir baytı sessizce
+        # atmak, geri yazarken o baytın kalıcı kaybı demek — okunamıyorsa
+        # dosyaya hiç dokunmamak doğru davranış.
+        try:
+            data = json.loads(cfg.read_text(encoding="utf-8-sig"))
+        except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+            return {"ok": False, "msg": f".claude.json okunamadi, dokunulmadi: {exc}"}
         mcp = data.setdefault("mcpServers", {})
         if "levh" in mcp:
             return {"ok": True, "msg": "claude-code zaten levh'e bagli"}
@@ -416,54 +373,87 @@ def add_levh_mcp(agent: str) -> dict:
     return {"ok": False, "msg": f"bilinmeyen ajan: {agent}"}
 
 
-def shell_enabled() -> bool:
-    """Terminal yetkisi açık mı? (``LEVH_LIBRARIAN_SHELL=0`` ile kapatılır)"""
-    return os.getenv("LEVH_LIBRARIAN_SHELL", "1").strip().lower() not in {
-        "0", "false", "off",
-    }
+# Modelin önerebileceği aksiyonların TAMAMI. Beyaz liste, kara liste değil:
+# tanınmayan her tip reddedilir, dolayısıyla yeni bir yetenek ancak buraya
+# bilerek eklenerek doğar — modelin bir tip adı uydurmasıyla değil.
+_ALLOWED_ACTIONS = {"add_levh_mcp", "report_finding", "none"}
 
 
-def run_shell(command: str) -> dict:
-    """Librarian'ın terminal yetkisi — engelli desenler hariç.
+async def execute_action(action: dict) -> dict:
+    """LLM'in önerdiği aksiyonu çalıştırır ve sonucu döner.
 
-    Desen listesi kara listedir, yani kanıt değil güvence: bilinen yıkıcı
-    kalıpları durdurur, hepsini değil. Yetkiyi tümden kapatmak için
-    ``LEVH_LIBRARIAN_SHELL=0``.
+    Terminal yetkisi yoktur; ``shell`` gibi bir tip gelirse çalıştırılmaz,
+    reddedilir ve reddin kendisi gelen kutusuna bulgu olarak düşer — modelin
+    komut çalıştırmaya çalışması, kullanıcının görmesi gereken bir olaydır.
     """
-    if not shell_enabled():
-        return {"ok": False, "msg": "terminal yetkisi kapali (LEVH_LIBRARIAN_SHELL=0)"}
-    if _BLOCKED_RE.search(command):
-        _store_finding(f"LIBRARIAN GUVENLIK: yikici komut engellendi: {command[:120]}")
-        return {"ok": False, "msg": "yikici komut engellendi"}
-    try:
-        proc = subprocess.run(
-            ["powershell", "-NoProfile", "-NonInteractive", "-Command", command],
-            capture_output=True, text=True, timeout=120,
-            encoding="utf-8", errors="replace",
+    a_type = str(action.get("type", "none"))
+
+    if a_type not in _ALLOWED_ACTIONS:
+        await _record_one(
+            title=f"Librarian izinsiz aksiyon denedi: {a_type}",
+            detail=(
+                f"Model '{a_type}' tipinde bir aksiyon onerdi; bu tip beyaz "
+                f"listede degil, calistirilmadi.\nOneri: {json.dumps(action, ensure_ascii=False)[:1000]}"
+            ),
+            category="agent",
+            severity="high",
         )
-        out = (proc.stdout or "").strip()
-        err = (proc.stderr or "").strip()
-        result = (out + ("\n[STDERR] " + err if err else ""))[:2000] or "(bos cikti)"
-        _store_finding(f"LIBRARIAN SHELL: {command[:200]}\nSonuc: {result[:400]}")
-        return {"ok": proc.returncode == 0, "msg": result}
-    except subprocess.TimeoutExpired:
-        return {"ok": False, "msg": "komut 120 sn'de bitmedi"}
-    except OSError as exc:
-        return {"ok": False, "msg": f"shell hatasi: {exc}"}
+        return {"ok": False, "msg": f"izin verilmeyen aksiyon tipi: {a_type}"}
 
-
-def execute_action(action: dict) -> dict:
-    """LLM'in önerdiği aksiyonu çalıştırır ve sonucu döner."""
-    a_type = action.get("type", "none")
-    if a_type == "shell":
-        return run_shell(str(action.get("command", "")))
     if a_type == "add_levh_mcp":
-        result = add_levh_mcp(str(action.get("agent", "")))
-        _store_finding(f"LIBRARIAN MCP KURULUM: {action.get('agent')} -> {result}")
+        agent = str(action.get("agent", ""))
+        result = await asyncio.to_thread(add_levh_mcp, agent)
+        await _record_one(
+            title=f"{agent}: levh MCP kaydi eklendi",
+            detail=f"Sonuc: {result.get('msg', '')}",
+            category="config",
+            severity="low",
+        )
         return result
-    if a_type == "none":
-        return {"ok": True, "msg": "aksiyon gerekmedi"}
-    return {"ok": False, "msg": f"bilinmeyen aksiyon tipi: {a_type}"}
+
+    if a_type == "report_finding":
+        return await _record_one(
+            title=str(action.get("title", "")),
+            detail=str(action.get("detail", "")),
+            category=str(action.get("category", "other")),
+            severity=str(action.get("severity", "medium")),
+        )
+
+    return {"ok": True, "msg": "aksiyon gerekmedi"}
+
+
+async def _connected_engine():
+    """Paylaşılan motoru, DB bağlantısı kurulmuş halde döndür.
+
+    ``initialize`` idempotent. Buradan çağrılmasının sebebi: librarian arka
+    plan görevi olarak da, sohbetten de tetiklenebiliyor ve ikisi de motorun
+    bağlanmasını beklemiş olmak zorunda değil — bağlanmamış bir motora yazmak
+    "Database not connected" ile düşerdi.
+    """
+    from server.core import engine_provider
+
+    engine = engine_provider.get_engine()
+    await engine.initialize()
+    return engine
+
+
+async def _record_one(
+    title: str, detail: str, category: str, severity: str
+) -> dict:
+    """Tek bir bulguyu gelen kutusuna yaz; hata sohbeti düşürmesin."""
+    if not title.strip():
+        return {"ok": False, "msg": "baslik bos"}
+    row = build_finding_row(
+        title=title, detail=detail, category=category,
+        severity=severity, source=LIBRARIAN_SOURCE,
+    )
+    try:
+        stored = await (await _connected_engine()).db.record_finding(row)
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("librarian could not record finding")
+        return {"ok": False, "msg": f"bulgu yazilamadi: {exc}"}
+    return {"ok": True, "msg": f"bulgu gelen kutusuna yazildi: {stored['id']}",
+            "finding_id": stored["id"]}
 
 
 _ACTION_RE = re.compile(r"```json\s*(\{.*?\})\s*```", re.DOTALL)
@@ -504,11 +494,111 @@ def _split_reply_and_action(text: str) -> tuple[str, dict | None]:
     return _parse_json_block(text)
 
 
+# ── Bulgu üretimi ─────────────────────────────────────────────────────
+
+
+def findings_from_report(report: dict) -> list[dict]:
+    """Bir tarama raporunu bulgu satırlarına çevirir.
+
+    Her gözlem bulgu değildir. Buradan çıkan tek şey, kullanıcının bir karar
+    verebileceği durumlar: bağlı olmayan bir ajan, birikmiş bir inceleme
+    kuyruğu, okunamayan bir veritabanı. "Her şey yolunda" bir bulgu değildir,
+    çünkü boş bir gelen kutusu zaten bunu söylüyor.
+
+    Başlıklar sabit tutulur (sayı ve zaman başlığa girmez): parmak izi
+    başlıktan üretiliyor, değişken bir başlık aynı sorunu her turda yeni bir
+    satır yapardı.
+    """
+    out: list[dict] = []
+
+    # Config yolu bilinmeyen ajanlar (hermes, aider) atlanır. Onlar için
+    # "bağlı değil" diyemeyiz, sadece "bakamadık" diyebiliriz — ve bakamadığımız
+    # şeyi bulgu diye yazmak, kullanıcının hiçbir zaman kapatamayacağı bir satır
+    # üretir. Kapatılamayan bulgu, gelen kutusunun tamamını okunmaz yapar.
+    unconnected = [
+        a["agent"] for a in report.get("agents", [])
+        if not a["levh_connected"] and a.get("configs")
+    ]
+    for agent in unconnected:
+        out.append(
+            build_finding_row(
+                title=f"{agent}: levh MCP baglantisi yok",
+                detail=(
+                    f"'{agent}' ajaninin config dosyalarinda levh MCP kaydi bulunamadi, "
+                    "yani bu ajan ortak hafizaya yazmiyor ve okumuyor.\n"
+                    "Kontrol edilen dosyalar:\n"
+                    + "\n".join(
+                        f"  - {c['config']}"
+                        for a in report.get("agents", [])
+                        if a["agent"] == agent
+                        for c in a.get("configs", [])
+                    )
+                ),
+                category="config",
+                severity="medium",
+                source=LIBRARIAN_SOURCE,
+            )
+        )
+
+    activity = report.get("activity", {})
+    if activity.get("error"):
+        out.append(
+            build_finding_row(
+                title="Hafiza veritabani okunamiyor",
+                detail=f"Aktivite sorgusu basarisiz: {activity['error']}",
+                category="bug",
+                severity="high",
+                source=LIBRARIAN_SOURCE,
+            )
+        )
+
+    held = activity.get("held_memories", 0) or 0
+    if held >= HELD_QUEUE_THRESHOLD:
+        out.append(
+            build_finding_row(
+                title="held_memories kuyrugu birikti",
+                detail=(
+                    f"Inceleme bekleyen {held} kayit var (esik: {HELD_QUEUE_THRESHOLD}). "
+                    "Bunlar kabul kapisinin 'insan karar versin' dedigi yakin "
+                    "kopyalar; karara baglanmazsa hafizaya hic girmezler."
+                ),
+                category="memory",
+                severity="low",
+                source=LIBRARIAN_SOURCE,
+            )
+        )
+
+    return out
+
+
+async def record_findings(report: dict) -> int:
+    """Rapordan çıkan bulguları gelen kutusuna yazar; yazılan satır sayısını döner.
+
+    Motorun kendi event loop'unda çağrılır — tarama bir thread'de koşsa da
+    yazma burada, çağıran loop'ta olur. Motorun paylaşılan SQLite bağlantısını
+    ikinci bir loop'tan sürmek, ``asyncio.run`` ile açılan geçici bir loop
+    üstünden olsa bile, kaçınılması gereken şeydi.
+    """
+    rows = findings_from_report(report)
+    if not rows:
+        return 0
+    engine = await _connected_engine()
+    written = 0
+    for row in rows:
+        try:
+            await engine.db.record_finding(row)
+            written += 1
+        except Exception:  # noqa: BLE001 — tek bir bulgu döngüyü düşürmesin
+            logger.exception("librarian could not record finding %s", row["id"])
+    return written
+
+
 async def run_loop(interval: int = DEFAULT_INTERVAL) -> None:
     logger.info("Librarian loop started (interval=%ss)", interval)
     while True:
         try:
-            await asyncio.to_thread(scan, True)
+            report = await asyncio.to_thread(scan)
+            await record_findings(report)
         except asyncio.CancelledError:
             raise
         except Exception:  # noqa: BLE001
@@ -518,41 +608,41 @@ async def run_loop(interval: int = DEFAULT_INTERVAL) -> None:
 
 def start_background() -> asyncio.Task:
     interval = int(os.getenv("LEVH_LIBRARIAN_INTERVAL", str(DEFAULT_INTERVAL)) or DEFAULT_INTERVAL)
-    loop = asyncio.get_running_loop()
-    set_owner_loop(loop)
-    return loop.create_task(run_loop(interval))
+    return asyncio.get_running_loop().create_task(run_loop(interval))
 
 
 # ── Chat ──────────────────────────────────────────────────────────────
 
 
 def _context_block() -> str:
-    report = scan(store_memory=False)
+    report = scan()
     report["installed_agents"] = discover_installed()
     return "CONTEXT:\n" + json.dumps(report, ensure_ascii=False, indent=1)
 
 
 async def chat(question: str) -> dict:
     """Kullanıcı sorusu + canlı bağlam → LLM → (önerilen aksiyonu çalıştır) → yanıt."""
-    context = _context_block()
-    # Geçmiş olmadan widget her soruyu ilk soru sanıyordu ("evet, yap" gibi bir
-    # yanıt havada kalıyordu). Son turlar sistem promptundan sonra taşınır.
+    # Tarama dosya sistemi ve SQLite'a gidiyor; bir thread'e alınmazsa
+    # sorunun süresince tüm sunucunun event loop'unu bloke eder.
+    context = await asyncio.to_thread(_context_block)
     messages: list[dict] = [
         {"role": "system", "content": _SYSTEM_PROMPT},
-        *_CHAT_HISTORY[-_HISTORY_TURNS * 2:],
+        # Önceki turlar: sohbetin "hafızası" burada. Liste tutuluyor ama
+        # isteğe hiç konmuyordu, yani her soru ilk soruymuş gibi cevaplanıyordu.
+        *_CHAT_HISTORY,
         {"role": "user", "content": f"{context}\n\nSORU: {question}"},
     ]
 
-    if not _llm_ready():
+    if not llm_endpoint.api_key():
         return {"answer": "LLM beyin ayarli degil (OPENAI_API_KEY yok).\n" + context,
                 "backend": "offline", "actions": []}
 
     headers = {
-        "Authorization": f"Bearer {os.getenv('OPENAI_API_KEY')}",
+        "Authorization": f"Bearer {llm_endpoint.api_key()}",
         "Content-Type": "application/json",
     }
-    url = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1/chat/completions")
-    model = os.getenv("SUMMARY_MODEL", "nvidia/nemotron-3.5-lightning:free")
+    url = llm_endpoint.chat_completions_url()
+    model = llm_endpoint.chat_model()
 
     executed: list[dict] = []
     reply = ""
@@ -573,13 +663,13 @@ async def chat(question: str) -> dict:
             reply = reply_text
             break
 
-        result = await asyncio.to_thread(execute_action, action)
+        result = await execute_action(action)
         executed.append({"action": action, "result": result})
         messages.append({"role": "assistant", "content": reply})
         messages.append({"role": "user", "content": (
             f"AKSIYON SONUCU: {json.dumps(result, ensure_ascii=False)}\n"
             "Bu sonucu kullaniciya Turkce ozetle; baska aksiyon gerekiyorsa "
-            "yeni JSON bloğunu ekle, gerekmiyorsa 'none' yaz."
+            "yeni JSON blogunu ekle, gerekmiyorsa 'none' yaz."
         )})
         reply = reply_text
 
@@ -594,5 +684,5 @@ async def chat(question: str) -> dict:
 
     _CHAT_HISTORY.append({"role": "user", "content": question})
     _CHAT_HISTORY.append({"role": "assistant", "content": reply})
-    del _CHAT_HISTORY[:-20]
+    del _CHAT_HISTORY[:-CHAT_HISTORY_TURNS]
     return {"answer": reply, "backend": "llm", "actions": executed}

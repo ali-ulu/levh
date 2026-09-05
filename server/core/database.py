@@ -13,6 +13,7 @@ from .db.schema import CURRENT_SCHEMA_VERSION, _DEFAULT_DB_PATH, _FTS_SCHEMA, _I
 from .db.aggregates import AggregateQueries
 from .db.attachments import AttachmentQueries
 from .db.entities import EntityQueries
+from .db.findings import FindingQueries
 from .db.guard import GuardQueries
 from .db.held import HeldMemoryQueries
 from .db.memories import MemoryQueries
@@ -40,6 +41,7 @@ class Database(
     SnapshotQueries,
     AttachmentQueries,
     HeldMemoryQueries,
+    FindingQueries,
 ):
     """Async SQLite wrapper with auto-init."""
 
