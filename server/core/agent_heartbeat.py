@@ -125,7 +125,13 @@ def detect_project_from_git() -> str | None:
 
 
 def detect_agent_from_env() -> str:
-    """Auto-detect agent name from environment or fallback to 'unknown'"""
+    """Auto-detect agent name from environment, or a best-effort label.
+
+    Falls back to ``auto-connect`` (not ``unknown``): when a client connects
+    via smart auto-connect without exposing an identity we cannot know who
+    it is, so labelling it "auto-connect" is honest where "unknown" only
+    implied a problem. Real tools are covered by the env vars below.
+    """
     # Check common env vars
     for var in ("LEVH_AGENT", "AGENT_NAME", "CLAUDE_AGENT", "CURSOR_AGENT"):
         val = os.environ.get(var, "").strip()
@@ -136,7 +142,7 @@ def detect_agent_from_env() -> str:
     if os.environ.get("MCP_SERVER", ""):
         return "mcp-client"
 
-    return "unknown"
+    return "auto-connect"
 
 
 async def smart_auto_connect(engine: Any) -> str | None:

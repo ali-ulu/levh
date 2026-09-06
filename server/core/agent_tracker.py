@@ -35,6 +35,8 @@ KNOWN_AGENTS: dict[str, dict[str, str]] = {
     "connector": {"display": "Connector", "icon": "🔗"},
     "dashboard": {"display": "Dashboard", "icon": "📊"},
     "cli": {"display": "CLI", "icon": "⌨️"},
+    "mcp-client": {"display": "MCP Client", "icon": "🔌"},
+    "auto-connect": {"display": "Auto-Connect", "icon": "🔀"},
     "api": {"display": "REST API", "icon": "🌐"},
     "unknown": {"display": "Unknown Agent", "icon": "❓"},
 }
