@@ -254,20 +254,20 @@ class NotionConnector(BaseConnector):
             return None
 
         # Extract properties as tags
-        tags = ["notion"]
+        tags_set: set[str] = {"notion"}
         if source_db:
-            tags.append(f"db:{source_db}")
+            tags_set.add(f"db:{source_db}")
 
         properties = page.get("properties", {})
         for prop_key, prop_val in properties.items():
             prop_type = prop_val.get("type", "")
             if prop_type == "select" and prop_val.get("select"):
-                tags.append(prop_val["select"].get("name", ""))
+                tags_set.add(prop_val["select"].get("name", ""))
             elif prop_type == "multi_select":
                 for sel in prop_val.get("multi_select", []):
-                    tags.append(sel.get("name", ""))
+                    tags_set.add(sel.get("name", ""))
             elif prop_type == "status" and prop_val.get("status"):
-                tags.append(prop_val["status"].get("name", ""))
+                tags_set.add(prop_val["status"].get("name", ""))
 
         # Add tags from properties metadata
         if "tags" in properties:
@@ -275,8 +275,10 @@ class NotionConnector(BaseConnector):
             if tags_prop.get("type") == "multi_select":
                 for sel in tags_prop.get("multi_select", []):
                     tag_name = sel.get("name", "")
-                    if tag_name and tag_name not in tags:
-                        tags.append(tag_name)
+                    if tag_name:
+                        tags_set.add(tag_name)
+
+        tags = list(tags_set)
 
         metadata: dict[str, Any] = {
             "source": "notion",
