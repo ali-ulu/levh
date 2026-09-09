@@ -79,6 +79,36 @@ function timeAgo(dateStr: string): string {
   return `${Math.floor(seconds / 86400)}d ago`;
 }
 
+// Animated Agent Avatar Component
+function AgentAvatar({ name, online }: { name: string; online: boolean }) {
+  const icon = getAgentIcon(name);
+  
+  return (
+    <div className="relative flex items-center justify-center">
+      {/* Animated glow effect for online agents */}
+      {online && (
+        <>
+          <div className="absolute inset-0 bg-primary/20 rounded-full animate-ping" style={{ animationDuration: '2s' }} />
+          <div className="absolute inset-0 bg-primary/10 rounded-full animate-pulse" />
+        </>
+      )}
+      {/* Avatar circle with gradient border */}
+      <div className={`relative w-12 h-12 rounded-full flex items-center justify-center text-xl font-bold
+        ${online 
+          ? 'bg-gradient-to-br from-primary/20 to-primary/5 border-2 border-primary/30 shadow-lg shadow-primary/20' 
+          : 'bg-muted border-2 border-border'
+        }
+        transition-all duration-300`}>
+        {icon}
+      </div>
+      {/* Status indicator */}
+      <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-background
+        ${online ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`} 
+      />
+    </div>
+  );
+}
+
 export default function AgentsPage() {
   const [stats, setStats] = useState<AgentStats | null>(null);
   const [activities, setActivities] = useState<AgentActivity[]>([]);
@@ -198,9 +228,7 @@ export default function AgentsPage() {
                   className="flex items-center justify-between p-3 rounded-lg border"
                 >
                   <div className="flex items-center gap-3">
-                    <span className="text-2xl">
-                      {getAgentIcon(agent.agent_name)}
-                    </span>
+                    <AgentAvatar name={agent.agent_name} online={true} />
                     <div>
                       <div className="font-medium">{agent.agent_display}</div>
                       <div className="text-xs text-muted-foreground">
@@ -242,9 +270,7 @@ export default function AgentsPage() {
                   className="flex items-center justify-between p-3 rounded-lg border"
                 >
                   <div className="flex items-center gap-3">
-                    <span className="text-xl">
-                      {getAgentIcon(activity.agent_name)}
-                    </span>
+                    <AgentAvatar name={activity.agent_name} online={activity.online} />
                     <div>
                       <div className="font-medium">
                         {activity.agent_display}
@@ -294,9 +320,7 @@ export default function AgentsPage() {
                   className="flex items-center justify-between p-3 rounded-lg border"
                 >
                   <div className="flex items-center gap-3">
-                    <span className="text-xl">
-                      {getAgentIcon(cp.agent_name)}
-                    </span>
+                    <AgentAvatar name={cp.agent_name} online={false} />
                     <div>
                       <div className="font-medium">{cp.title}</div>
                       <div className="text-xs text-muted-foreground">
