@@ -251,9 +251,10 @@ async def _inject_librarian_widget(request, call_next):
     if not hasattr(response, "body_iterator"):
         return response
 
-    body = b""
+    body_parts = []
     async for chunk in response.body_iterator:
-        body += chunk
+        body_parts.append(chunk)
+    body = b"".join(body_parts)
 
     headers = {
         k: v for k, v in response.headers.items()

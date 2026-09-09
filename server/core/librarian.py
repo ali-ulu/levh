@@ -692,10 +692,13 @@ def _llm_failure_reply(exc: Exception, context: str) -> str:
             detail = str(body.get("error", {}).get("message", "")).strip()
         except Exception:  # noqa: BLE001 — gövde JSON olmayabilir
             detail = ""
-        head = "Model saglayicisi kotayi doldurdugumuzu soyluyor (429)."
+        parts = ["Model saglayicisi kotayi doldurdugumuzu soyluyor (429)."]
         if detail:
-            head += f" Saglayici: {detail}"
-        return head + _reset_clock(response) + "\n" + context
+            parts.append(f"Saglayici: {detail}")
+        reset_info = _reset_clock(response)
+        if reset_info:
+            parts.append(reset_info.lstrip())
+        return " ".join(parts) + "\\n" + context
     return f"LLM'e su an ulasamadim ({exc}).\n" + context
 
 

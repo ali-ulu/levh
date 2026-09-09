@@ -158,23 +158,32 @@ def chunk_text(text: str, chunk_chars: int = CHUNK_CHARS) -> list[str]:
     if len(text) <= chunk_chars:
         return [text]
 
+    paragraphs = [p.strip() for p in text.split("\n\n") if p.strip()]
     chunks: list[str] = []
-    current = ""
-    for para in text.split("\n\n"):
-        para = para.strip()
-        if not para:
-            continue
-        if current and len(current) + len(para) + 2 > chunk_chars:
-            chunks.append(current)
-            current = para
-        elif len(para) > chunk_chars:
-            if current:
-                chunks.append(current)
-                current = ""
-            for i in range(0, len(para), chunk_chars):
+    current_parts: list[str] = []
+    current_len = 0
+
+    for para in paragraphs:
+        para_len = len(para)
+        # +2 for the "\n\n" separator
+        if current_len and current_len + para_len + 2 > chunk_chars:
+            chunks.append("\n\n".join(current_parts))
+            current_parts = [para]
+            current_len = para_len
+        elif para_len > chunk_chars:
+            if current_parts:
+                chunks.append("\n\n".join(current_parts))
+                current_parts = []
+                current_len = 0
+            for i in range(0, para_len, chunk_chars):
                 chunks.append(para[i : i + chunk_chars])
         else:
-            current = f"{current}\n\n{para}" if current else para
-    if current:
-        chunks.append(current)
+            if current_parts:
+                current_len += 2 + para_len
+            else:
+                current_len = para_len
+            current_parts.append(para)
+
+    if current_parts:
+        chunks.append("\n\n".join(current_parts))
     return chunks
