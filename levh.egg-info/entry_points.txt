@@ -1,0 +1,3 @@
+[console_scripts]
+levh = server.entrypoint:main
+stackmemory = server.entrypoint:main

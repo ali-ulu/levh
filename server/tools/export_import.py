@@ -30,6 +30,9 @@ def register(mcp: FastMCP, engine: MemoryEngine) -> None:
         """
         try:
             parsed = json.loads(data)
+            # MCP auto-parses JSON strings, so we may need to parse again
+            if isinstance(parsed, str):
+                parsed = json.loads(parsed)
             if not isinstance(parsed, list):
                 return "Error: data must be a JSON array of memory objects."
         except json.JSONDecodeError as e:

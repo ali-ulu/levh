@@ -216,8 +216,9 @@ async def test_mcp_json_import_is_admission_gated(tmp_path):
     try:
         mcp = FastMCP("test")
         register(mcp, engine)
-        payload = json.dumps([{"content": SECRET, "memory_type": "episodic"}])
-        result = await mcp.call_tool("import_memories", {"data": payload})
+        payload = [{"content": SECRET, "memory_type": "episodic"}]
+        # MCP auto-parses JSON strings, so we need to double-encode
+        result = await mcp.call_tool("import_memories", {"data": json.dumps(json.dumps(payload))})
         text = str(result).lower()
         assert "admission gate" in text
         assert "redacted=1" in text

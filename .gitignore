@@ -1,53 +1,69 @@
-# Python
-__pycache__/
+# Compiled and build artifacts
 *.pyc
-*.pyo
+__pycache__/
+*.o
+*.obj
+*.class
+*.so
+*.dll
+*.exe
+*.out
+
+# Dependencies
 .venv/
 venv/
-*.egg-info/
+node_modules/
+.mypy_cache/
+.pytest_cache/
 dist/
 build/
-.pytest_cache/
+target/
+.gradle/
 
-# SQLite
-*.db
-*.db-journal
-*.db-wal
-
-# Files uploaded for connector imports (written next to the database)
-uploads/
+# Logs and temp files
+*.log
+*.tmp
+*.swp
+*.swo
 
 # Environment
 .env
+.env.local
+*.env.*
 
-# IDE
+# Editors
 .vscode/
 .idea/
-*.swp
 
-# OS
+# System files
 .DS_Store
 Thumbs.db
 
-# Downloads
-download/
+# Coverage
+coverage/
+htmlcov/
+.coverage
 
-# Frontend build
-frontend/.next/
-frontend/node_modules/
-frontend/.env.local
-
-# Worklog / dev artifacts
-worklog.md
-
-# Release artifacts
-*-delta.zip
+# Compressed files
 *.zip
-
-# Machine-local Claude Code config: the installed session hook bakes in this
-# machine absolute interpreter and database paths.
-.claude/
-frontend/tsconfig.tsbuildinfo
-
-# Local working journal: RCA notes, not a repo artefact.
-LESSONS.md
+*.gz
+*.tar
+*.tgz
+*.bz2
+*.xz
+*.7z
+*.rar
+*.zst
+*.lz4
+*.lzh
+*.cab
+*.arj
+*.rpm
+*.deb
+*.Z
+*.lz
+*.lzo
+*.tar.gz
+*.tar.bz2
+*.tar.xz
+*.tar.zst
