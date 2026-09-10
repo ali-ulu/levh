@@ -56,4 +56,4 @@ jobs:
           NEXT_TELEMETRY_DISABLED: "1"
         run: npm run build
       - name: Audit production dependencies
-        run: npm audit --omit=dev
+        run: npm audit --omit=dev --audit-level=high
