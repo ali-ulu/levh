@@ -1,5 +1,48 @@
 # Changelog
 
+## 2.31.0
+
+### Now installable, offline-first (PWA) (#86)
+
+- LEVH can be *installed as a standalone app*: `manifest.webmanifest` (name,
+  theme color, maskable 192/512 icons), an offline-first service worker
+  (`sw.js`, static assets cache-first, shell network-first with an offline
+  fallback, API/MCP passthrough) and deferred registration
+  (`pwa-register.js`).
+
+### Findings inbox — LEVH reports what it noticed, a human decides (#83)
+
+- A new inbox where internally-noticed items surface instead of disappearing.
+  The dashboard lists them under **Findings**; each can be accepted
+  (`/api/findings/{id}/decide`) or left. Nothing is auto-applied or deleted.
+
+### A safer, quieter librarian (#84)
+
+- Removed the librarian's shell authority and resolved the LLM endpoint once
+  at startup instead of per unit of work.
+- Provider quota refusals are now explained (model/supplier 429) instead of
+  hidden, and active agents are no longer mislabelled as silent.
+- Watchdog/event-loop robustness fixes.
+
+### Continuity briefs for every agent (#81)
+
+- Auto-brief and non-repeating auto-summary for all agents; a
+  `get_continuity_brief` MCP tool with auto-inject, and the brief now leads
+  with the last checkpoint.
+
+### The embedder tells you when it degrades
+
+- `GET /api/config` now reports `requested_embedder_mode` alongside the
+  effective `embedder_mode`, plus `embedder_fallback_reason` when an
+  `auto` → hash fallback happens, so degraded scoring is never silent.
+
+### Build & reliability
+
+- Pinned `mcp<2` (the 2.x SDK renamed `FastMCP` to `MCPServer`), fixing CI.
+- Anchored the frontend workspace root (`outputFileTracingRoot`) so a stray
+  `package-lock.json` in a user's home can no longer break local `@/*`
+  alias resolution.
+- Docs/README hygiene: removed roadmap, demo assets, and stale references.
 ## Unreleased
 
 ### The embedder tells you when it degrades

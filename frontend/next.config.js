@@ -1,5 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Anchor the project root to this directory. Without this, Next.js walks up
+  // looking for a lockfile to infer the workspace root and can pick a stray
+  // package-lock.json in the user's home directory, which silently breaks
+  // every "@/*" alias import with "Module not found". CI/Docker are unaffected
+  // (no home lockfile there), but local builds hit it.
+  outputFileTracingRoot: __dirname,
   // Static export: `npm run build` emits frontend/out/, which the FastAPI
   // server serves at / — one process, one port, zero frontend infra.
   output: "export",
