@@ -55,29 +55,33 @@ CHAT_HISTORY_TURNS = 20
 _CHAT_HISTORY: list[dict] = []
 
 _SYSTEM_PROMPT = (
-    "Sen LEVH'in kütüphane memurusun: hafıza katmanını içeriden yöneten "
-    "ajansın. Görevin: makinedeki AI ajanlarını (Cline, Claude Code, Codex...) "
-    "bulmak, levh araçlarını onlara bağlamak, hafıza kullanımını izlemek, "
-    "bağlantı sorunlarını DÜZELTMEK, hafıza kalitesini korumak ve kullanıcıya "
-    "Türkçe, kısa, net yanıt vermek. Sana verilen CONTEXT bloğu canlı "
-    "veritabanı ve keşif verisidir; dışını tahmin etme.\n\n"
-    "AKSİYON YETENEĞİN var ama DARDIR: bir aksiyon gerekiyorsa yanıtının EN "
-    "SONUNA şu biçimde bir JSON bloğu ekle:\n"
-    "```json\n{\"action\": {\"type\": \"...\", ...}, \"reply\": \"kullanıcıya "
-    "Türkçe açıklama\"}\n```\n"
-    "Aksiyon tipleri — bunlardan BAŞKASI YOKTUR:\n"
-    "- {\"type\": \"add_levh_mcp\", \"agent\": \"cline\"|\"codex\"|\"claude-code\"|"
-    "\"opencode\"|\"opencodex\"|\"jcode\"|\"kilo-code\"|\"oh-my-cli\"|\"gemini\"} — "
-    "o ajanın config'ine levh MCP sunucusunu ekler (önce yedek alır).\n"
-    "- {\"type\": \"report_finding\", \"title\": \"...\", \"detail\": \"...\", "
-    "\"category\": \"bug\"|\"config\"|\"memory\"|\"agent\"|\"other\", "
-    "\"severity\": \"critical\"|\"high\"|\"medium\"|\"low\"} — bulguyu gelen "
-    "kutusuna yazar; kullanıcı orada görüp karar verir.\n"
-    "- {\"type\": \"none\"} — aksiyon gerekmiyorsa.\n"
-    "TERMINAL KOMUTU ÇALIŞTIRAMAZSIN. 'shell', 'run', 'exec' gibi bir aksiyon "
-    "önerme; reddedilir. Bir sorunun terminal gerektirdiğini düşünüyorsan "
-    "komutu ÇALIŞTIRMA, report_finding ile yaz ve kullanıcıya öner. "
-    "Aynı aksiyonu tekrar tekrar önerme. reply alanını her zaman yaz."
+    "Sen LEVH'in 'hafıza operatörüsün' — AI ajanlarının hafıza katmanını "
+    "izleyen, analiz eden ve iyileştiren otonom bekçi ajanısın.\n\n"
+    "TEMEL PRENSİPLER:\n"
+    "- Kullanıcıya TÜRKÇE, KISA, NET, EYLEM ODAKLI yanıt ver.\n"
+    "- SOR-SOR-VER değil, KENDİN ANALİZ YAP ve ÖNER.\n"
+    "- Soruyu anlamadan generic cevap verme; anlamadıysa soruyu netleştir.\n"
+    "- Veriyi olduğu gibi sun; uydurma bilgi ekleme.\n\n"
+    "YETENEKLERİN (ne yapabileceğin):\n"
+    "1. ANALİZ: Hafıza kalitesi (duplicate, fading, importance dağılımı, tip dengesi)\n"
+    "2. TESPİT: Bozuk bağlantı, sessiz ajan, duplicate memory, unutulmuş önemli bilgi\n"
+    "3. RAPOR: Kullanıcıya anlaşılır özet hazırla (JSON değil, düz metin)\n"
+    "4. YÖNLENDİR: 'Şunu yapmalısın' de, adım adım açıkla\n"
+    "5. İLETİŞİM: Kullanıcıyı findings'e yönet, karar ondan iste\n\n"
+    "KOMUTLARI ANALİZ ET:\n"
+    "- 'hafızamı analiz et' → duplicate, fading, importance dağılımını raporla\n"
+    "- 'bağlantı sorunlarını göster' → hangi ajan bağlı/değil, neden\n"
+    "- 'temizlik öner' → hangi memory'ler silinebilir/birleştirilebilir\n"
+    "- 'rapor ver' → genel hafıza durumu özeti\n"
+    "- 'X ajanını bağla' → add_levh_mcp aksiyonu öner\n\n"
+    "AKSİYON (aksiyon gerekiyorsa yanıtının SONUNA ekle, yoksa sadece yaz):\n"
+    "```json\n{\"action\": {\"type\": \"...\", ...}, \"reply\": \"Türkçe özet\"}\n```\n"
+    "Geçerli tipler:\n"
+    "- `add_levh_mcp` — agent: cline|codex|claude-code|opencode|opencodex|jcode|kilo-code|oh-my-cli|gemini\n"
+    "- `report_finding` — title, detail, category: bug|config|memory|agent|other, severity: critical|high|medium|low\n"
+    "- `none` — aksiyon gerekmiyorsa\n"
+    "TERMINAL KOMUTU ÇALIŞTIRMA. 'shell', 'run', 'exec' önerme; reddedilir.\n"
+    "reply alanını HER ZAMAN yaz; boş bırakma."
 )
 
 
@@ -414,7 +418,44 @@ def add_levh_mcp(agent: str) -> dict:
 # Modelin önerebileceği aksiyonların TAMAMI. Beyaz liste, kara liste değil:
 # tanınmayan her tip reddedilir, dolayısıyla yeni bir yetenek ancak buraya
 # bilerek eklenerek doğar — modelin bir tip adı uydurmasıyla değil.
-_ALLOWED_ACTIONS = {"add_levh_mcp", "report_finding", "none"}
+_ALLOWED_ACTIONS = {"add_levh_mcp", "report_finding", "none",
+                     "analyze_memory", "suggest_cleanup", "memory_report", "check_connections"}
+
+
+async def _memory_analysis() -> dict:
+    """Hafıza kalitesi analizi — duplicate, importance dağılımı, tip dengesi."""
+    try:
+        conn = _ro_conn()
+        try:
+            total = conn.execute("SELECT COUNT(*) FROM memories").fetchone()[0]
+            type_dist = dict(conn.execute(
+                "SELECT memory_type, COUNT(*) FROM memories GROUP BY memory_type"
+            ).fetchall())
+            importance_dist = dict(conn.execute(
+                "SELECT CASE WHEN importance >= 0.7 THEN 'high' "
+                "WHEN importance >= 0.4 THEN 'medium' ELSE 'low' END as tier, "
+                "COUNT(*) FROM memories GROUP BY tier"
+            ).fetchall())
+            pinned = conn.execute(
+                "SELECT COUNT(*) FROM memories WHERE pinned = 1"
+            ).fetchone()[0]
+            held = conn.execute(
+                "SELECT COUNT(*) FROM held_memories WHERE status='held'"
+            ).fetchone()[0]
+            dup_candidates = conn.execute(
+                "SELECT COUNT(*) FROM ("
+                "  SELECT content FROM memories "
+                "  GROUP BY content HAVING COUNT(*) > 1"
+                ")"
+            ).fetchone()[0]
+        finally:
+            conn.close()
+    except sqlite3.Error as exc:
+        return {"error": str(exc)}
+    return {"total": total, "type_distribution": type_dist,
+            "importance_distribution": importance_dist,
+            "pinned": pinned, "held": held,
+            "duplicate_candidates": dup_candidates}
 
 
 async def execute_action(action: dict) -> dict:
@@ -456,6 +497,33 @@ async def execute_action(action: dict) -> dict:
             category=str(action.get("category", "other")),
             severity=str(action.get("severity", "medium")),
         )
+
+    if a_type == "analyze_memory":
+        return {"ok": True, "analysis": await _memory_analysis()}
+
+    if a_type == "suggest_cleanup":
+        data = await _memory_analysis()
+        suggestions = []
+        if isinstance(data, dict) and not data.get("error"):
+            dups = data.get("duplicate_candidates", 0)
+            if dups:
+                suggestions.append(f"{dups} duplicate aday� var")
+            low_imp = data.get("importance_distribution", {}).get("low", 0)
+            if low_imp:
+                suggestions.append(f"{low_imp} d���k �nemli kay�t")
+            if not suggestions:
+                suggestions.append("Temizlik gerekmiyor")
+        return {"ok": True, "suggestions": suggestions, "analysis": data}
+
+    if a_type == "memory_report":
+        return {"ok": True, "report": await _memory_analysis()}
+
+    if a_type == "check_connections":
+        report = await asyncio.to_thread(scan)
+        agents = report.get("agents", [])
+        return {"ok": True,
+                "connected": [a["agent"] for a in agents if a.get("levh_connected")],
+                "disconnected": [a["agent"] for a in agents if not a.get("levh_connected") and a.get("configs")]}
 
     return {"ok": True, "msg": "aksiyon gerekmedi"}
 
