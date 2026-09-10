@@ -12,7 +12,6 @@ fallback the function exists for never ran.
 from __future__ import annotations
 
 import json
-import os
 import stat
 import sys
 

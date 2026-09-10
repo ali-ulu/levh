@@ -25,6 +25,9 @@ uploads/
 .idea/
 *.swp
 
+# Ruff
+.ruff_cache/
+
 # OS
 .DS_Store
 Thumbs.db

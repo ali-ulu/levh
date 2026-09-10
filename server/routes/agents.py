@@ -10,8 +10,6 @@ Enhanced with:
 from __future__ import annotations
 
 import json
-import time
-from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, Field
@@ -36,7 +34,10 @@ async def broadcast_agent_event(event: str, data: dict) -> None:
             await ws.send_text(message)
         except Exception:
             stale.add(ws)
-    _agent_ws_clients -= stale
+    # difference_update, not `-=`: an augmented assignment would make this
+    # name function-local, so the early read above would raise
+    # UnboundLocalError on every call (all agent REST endpoints 500'd).
+    _agent_ws_clients.difference_update(stale)
 
 
 @router.websocket("/ws/agents")

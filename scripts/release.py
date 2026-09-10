@@ -115,7 +115,12 @@ def bump(version: str) -> None:
     for path, pattern, kind in VERSION_SITES:
         target = version if kind == FULL else minor
         text = _read(path)
-        new, count = pattern.subn(lambda m: f"{m.group(1)}{target}{m.group(3)}", text)
+        # Bind `target` as a default argument (B023): subn calls the lambda
+        # during this same iteration, but a late-binding capture would write
+        # the LAST loop value if the call order ever changed.
+        new, count = pattern.subn(
+            lambda m, t=target: f"{m.group(1)}{t}{m.group(3)}", text
+        )
         if count == 0:
             raise ReleaseError(f"version pattern not found in {path} — file drifted?")
         if count > 1 and kind == FULL:

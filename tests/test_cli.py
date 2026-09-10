@@ -16,10 +16,7 @@ import os
 import re
 import subprocess
 import sys
-import tempfile
-from pathlib import Path
 
-import pytest
 
 # Ensure EMBEDDER_MODE=hash for all tests
 os.environ["EMBEDDER_MODE"] = "hash"

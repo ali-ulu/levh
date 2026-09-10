@@ -1,0 +1,33 @@
+# Ruff: catch real errors and likely bugs. This is not a style gate — the
+# existing codebase predates it, so stylistic families (import sorting,
+# PEP-604 unions, blind-except...) are deliberately out of scope. What must
+# never reach main: syntax errors, undefined names, unused names that hide
+# typos, and the bugbear bug classes.
+target-version = "py311"
+line-length = 120
+extend-exclude = ["frontend", "server/dashboard", "build", "dist"]
+
+[lint]
+select = [
+    "E9",    # syntax errors / runtime errors
+    "F",     # pyflakes: undefined & unused names, format errors
+    "B",     # bugbear: likely bugs (mutable defaults, loop binding, ...)
+]
+ignore = [
+    "B008",  # FastAPI Depends() in defaults is the framework's idiom
+    "B904",  # `raise ... from` style; not a correctness issue here
+    "B905",  # zip() strict= is a Python-3.10+ style choice
+    "B017",  # pytest.raises(Exception) used deliberately in a few tests
+    "B011",  # `assert False` in test scaffolding
+    "B028",  # warnings without stacklevel; noise for this codebase
+    "F841",  # parser/variable scaffolding; a deliberate future-cleanup list
+    "B007",  # unused loop variables (parsers use `_`-adjacent patterns)
+]
+
+[lint.flake8-builtins]
+builtins-ignorelist = ["id", "type", "input", "format"]
+
+[format]
+# Never auto-format; this repo keeps its historical style. Only `check`
+# (lint) runs in CI.
+quote-style = "preserve"

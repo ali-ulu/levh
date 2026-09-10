@@ -14,7 +14,6 @@ import pytest_asyncio
 from mcp.server.fastmcp import FastMCP
 
 from server.core.memory_engine import MemoryEngine
-from server.tools import profiles
 from server.tools.profiles import (
     DEFAULT_PROFILE,
     PROFILE_ORDER,

@@ -116,7 +116,7 @@ def cmd_mcp_profiles(_args: argparse.Namespace) -> int:
         print(f"  {name:8s} {count:3d} tools{marker}")
     print("  " + "=" * 52)
     print("  minimal ⊂ work ⊂ admin ⊂ full")
-    print(f"  Set LEVH_MCP_PROFILE or `mcp config --profile <name>`.\n")
+    print("  Set LEVH_MCP_PROFILE or `mcp config --profile <name>`.\n")
     # Show the minimal set explicitly — it's short and clarifies the core loop.
     print("  minimal tools: " + ", ".join(sorted(tools_for_profile("minimal"))))
     return 0

@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections import deque
 from typing import Optional
 
-from .types import Memory, MemoryType
+from .types import Memory
 
 
 class ShortTermMemory:

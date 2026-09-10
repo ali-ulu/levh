@@ -12,10 +12,9 @@ from __future__ import annotations
 import json
 import time
 from datetime import datetime, timezone
-from typing import Any, Callable, Optional
+from typing import Any, Callable
 
 from .database import Database
-from .types import Session, SessionStatus
 
 
 # ── Agent types (known clients) ──────────────────────────────────────

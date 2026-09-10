@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Optional
 
 from .database import Database
-from .types import Memory, MemoryType
+from .types import Memory
 
 
 class EpisodicMemory:

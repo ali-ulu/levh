@@ -13,9 +13,9 @@ import pytest_asyncio
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 os.environ["EMBEDDER_MODE"] = "hash"
 
-from server.core.hscore import HScoreCalculator, HScoreWeights
+from server.core.hscore import HScoreCalculator
 from server.core.memory_engine import MemoryEngine
-from server.core.types import Memory, MemoryType
+from server.core.types import Memory
 from server.core.vector_store import VectorStore
 
 

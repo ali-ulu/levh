@@ -8,7 +8,7 @@ Score 0 = perfect relevance, Score 1 = irrelevant.
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
 
 import numpy as np

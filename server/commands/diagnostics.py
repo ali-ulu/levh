@@ -149,7 +149,7 @@ def cmd_init(args: argparse.Namespace) -> int:
 
     if config_file.exists() and not args.force:
         print(f"  Config already exists: {config_file}")
-        print(f"  Use --force to overwrite.")
+        print("  Use --force to overwrite.")
         return 1
 
     config_dir.mkdir(parents=True, exist_ok=True)
