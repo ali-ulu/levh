@@ -146,7 +146,7 @@ class Embedder:
                     resp.raise_for_status()
                 resp.raise_for_status()
                 return resp.json()
-            except (httpx.HTTPError,) as exc:
+            except httpx.HTTPError as exc:
                 last_exc = exc
                 if attempt < 2:
                     await asyncio.sleep(0.5 * (2 ** attempt))

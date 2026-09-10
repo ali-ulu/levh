@@ -9,7 +9,6 @@ Tests cover:
   6. Component sum approximately equals score
 """
 
-import asyncio
 import os
 import sys
 import tempfile

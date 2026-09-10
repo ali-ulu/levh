@@ -13,8 +13,6 @@ transition back the other way is what these tests pin.
 from __future__ import annotations
 
 import json
-import os
-import tempfile
 
 import pytest
 import pytest_asyncio

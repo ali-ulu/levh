@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 import socket
 
-import pytest
 
 from server.core.onboarding import read_receipt, write_receipt
 

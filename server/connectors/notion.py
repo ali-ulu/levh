@@ -197,7 +197,6 @@ class NotionConnector(BaseConnector):
 
     async def _fetch_page(self, client: Any, page_id: str) -> dict | None:
         """Fetch a single Notion page with its content blocks."""
-        import httpx
 
         resp = await client.get(
             f"{NOTION_API}/pages/{page_id}",

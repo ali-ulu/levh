@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import importlib
 import json
-import re
 from pathlib import Path
 
 import pytest
@@ -26,8 +25,11 @@ def test_all_version_sites_bump_exactly_once():
     for path, pattern, kind in release.VERSION_SITES:
         text = release._read(path)
         target = "9.9.9" if kind == release.FULL else "9.9"
+        # Bind `target` as a default argument: subn invokes the lambda during
+        # this same iteration today, but a late-binding capture would silently
+        # write the LAST loop value if the call order ever changed.
         _new, count = pattern.subn(
-            lambda m: f"{m.group(1)}{target}{m.group(3)}", text
+            lambda m, t=target: f"{m.group(1)}{t}{m.group(3)}", text
         )
         assert count == 1, f"{path} matched {count} times (want 1)"
 
