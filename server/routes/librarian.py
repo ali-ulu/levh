@@ -153,7 +153,7 @@ _CHAT_PAGE_HTML = """<!DOCTYPE html>
 <p style="padding:0 20px;color:#9ca3af">Sağ alttaki sohbet penceresinden hafızayla ilgili her şeyi sorabilirsin. Durum: <a style="color:#60a5fa" href="/api/librarian/status">/api/librarian/status</a></p>
 <div id="widget">
   <div id="head"><span><span class="dot"></span>Librarian</span><small>LEVH</small></div>
-  <div id="log"><div class="msg lib">Merhaba! Hafıza kütüphanesinin memuruyum. Ne sormak istersin?</div></div>
+  <div id="log"><div class="msg lib">Merhaba! LEVH hafıza operatörüyüm. Hafızayı analiz et, bağlantıları kontrol et, temizlik öner gibi işlemleri yapabilirim. Ne yapayım?</div></div>
   <div id="row">
     <input id="q" placeholder="Soru yaz..." onkeydown="if(event.key==='Enter')send()">
     <button onclick="send()">Gönder</button>
