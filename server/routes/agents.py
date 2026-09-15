@@ -11,10 +11,10 @@ from __future__ import annotations
 
 import json
 
-from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, Field
 
-from server.routes.deps import get_engine
+from server.routes.deps import get_engine, get_engine_for
 
 router = APIRouter()
 
@@ -44,10 +44,10 @@ async def broadcast_agent_event(event: str, data: dict) -> None:
 async def agent_websocket(ws: WebSocket):
     """WebSocket endpoint for real-time agent presence updates."""
     await ws.accept()
+    engine = await get_engine_for(ws)  # DI for sockets: no Request to inject
     _agent_ws_clients.add(ws)
     try:
         # Send initial state
-        engine = await get_engine()
         tracker = engine.agent_tracker
         if tracker:
             online = await tracker.get_online_agents()
@@ -89,9 +89,8 @@ class CheckpointRequest(BaseModel):
 # ── Agent connection ─────────────────────────────────────────────────
 
 @router.post("/api/agents/connect")
-async def agent_connect(req: AgentConnectRequest):
+async def agent_connect(req: AgentConnectRequest, engine=Depends(get_engine)):
     """Record an agent connecting to LEVH."""
-    engine = await get_engine()
     tracker = engine.agent_tracker
     if not tracker:
         raise HTTPException(status_code=503, detail="Agent tracker not available")
@@ -107,9 +106,8 @@ async def agent_connect(req: AgentConnectRequest):
 
 
 @router.post("/api/agents/{agent_session_id}/heartbeat")
-async def agent_heartbeat(agent_session_id: str):
+async def agent_heartbeat(agent_session_id: str, engine=Depends(get_engine)):
     """Send a heartbeat to keep an agent connection alive."""
-    engine = await get_engine()
     tracker = engine.agent_tracker
     if not tracker:
         raise HTTPException(status_code=503, detail="Agent tracker not available")
@@ -123,9 +121,8 @@ async def agent_heartbeat(agent_session_id: str):
 
 
 @router.post("/api/agents/{agent_session_id}/disconnect")
-async def agent_disconnect(agent_session_id: str):
+async def agent_disconnect(agent_session_id: str, engine=Depends(get_engine)):
     """Disconnect an agent from LEVH."""
-    engine = await get_engine()
     tracker = engine.agent_tracker
     if not tracker:
         raise HTTPException(status_code=503, detail="Agent tracker not available")
@@ -137,9 +134,8 @@ async def agent_disconnect(agent_session_id: str):
 # ── Agent queries ────────────────────────────────────────────────────
 
 @router.get("/api/agents")
-async def list_agents(limit: int = 50):
+async def list_agents(limit: int = 50, engine=Depends(get_engine)):
     """List all agent connections (active and disconnected)."""
-    engine = await get_engine()
     tracker = engine.agent_tracker
     if not tracker:
         raise HTTPException(status_code=503, detail="Agent tracker not available")
@@ -147,9 +143,8 @@ async def list_agents(limit: int = 50):
 
 
 @router.get("/api/agents/online")
-async def list_online_agents():
+async def list_online_agents(engine=Depends(get_engine)):
     """List currently online agents."""
-    engine = await get_engine()
     tracker = engine.agent_tracker
     if not tracker:
         raise HTTPException(status_code=503, detail="Agent tracker not available")
@@ -157,9 +152,8 @@ async def list_online_agents():
 
 
 @router.get("/api/agents/stats")
-async def agent_stats():
+async def agent_stats(engine=Depends(get_engine)):
     """Get aggregate agent usage statistics."""
-    engine = await get_engine()
     tracker = engine.agent_tracker
     if not tracker:
         raise HTTPException(status_code=503, detail="Agent tracker not available")
@@ -169,9 +163,8 @@ async def agent_stats():
 # ── Agent Performance Metrics ────────────────────────────────────────
 
 @router.get("/api/agents/{agent_name}/metrics")
-async def agent_metrics(agent_name: str):
+async def agent_metrics(agent_name: str, engine=Depends(get_engine)):
     """Get performance metrics for a specific agent."""
-    engine = await get_engine()
     tracker = engine.agent_tracker
     if not tracker:
         raise HTTPException(status_code=503, detail="Agent tracker not available")
@@ -179,9 +172,8 @@ async def agent_metrics(agent_name: str):
 
 
 @router.get("/api/agents/metrics/usage")
-async def usage_billing():
+async def usage_billing(engine=Depends(get_engine)):
     """Get usage billing metrics for all agents."""
-    engine = await get_engine()
     tracker = engine.agent_tracker
     if not tracker:
         raise HTTPException(status_code=503, detail="Agent tracker not available")
@@ -191,9 +183,8 @@ async def usage_billing():
 # ── Agent Collaboration ──────────────────────────────────────────────
 
 @router.get("/api/agents/collaboration/{project}")
-async def agent_collaboration(project: str):
+async def agent_collaboration(project: str, engine=Depends(get_engine)):
     """Get collaboration info for agents working on the same project."""
-    engine = await get_engine()
     tracker = engine.agent_tracker
     if not tracker:
         raise HTTPException(status_code=503, detail="Agent tracker not available")
@@ -203,9 +194,8 @@ async def agent_collaboration(project: str):
 # ── Checkpoints ──────────────────────────────────────────────────────
 
 @router.post("/api/checkpoints")
-async def create_checkpoint(req: CheckpointRequest):
+async def create_checkpoint(req: CheckpointRequest, engine=Depends(get_engine)):
     """Create a checkpoint of current work state."""
-    engine = await get_engine()
     tracker = engine.agent_tracker
     if not tracker:
         raise HTTPException(status_code=503, detail="Agent tracker not available")
@@ -226,10 +216,8 @@ async def create_checkpoint(req: CheckpointRequest):
 async def list_checkpoints(
     agent_name: str = "",
     project: str = "",
-    limit: int = 50,
-):
+    limit: int = 50, engine=Depends(get_engine)):
     """List recent checkpoints."""
-    engine = await get_engine()
     tracker = engine.agent_tracker
     if not tracker:
         raise HTTPException(status_code=503, detail="Agent tracker not available")

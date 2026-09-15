@@ -18,7 +18,7 @@ import re
 import uuid
 from pathlib import Path, PurePosixPath
 
-from fastapi import APIRouter, HTTPException
+from fastapi import Depends, APIRouter, HTTPException
 
 from server.routes.deps import get_engine
 from server.routes.models import AttachFileRequest, AttachmentUploadRequest
@@ -92,11 +92,10 @@ async def upload_attachment(req: AttachmentUploadRequest):
 
 
 @router.post("/api/memories/{memory_id}/attachments")
-async def attach_file(memory_id: str, req: AttachFileRequest):
+async def attach_file(memory_id: str, req: AttachFileRequest, engine=Depends(get_engine)):
     """Attach a local file to a memory by reference (path + sha256), with
     optional derived text (OCR/transcript/caption) that recall actually
     searches over."""
-    engine = await get_engine()
     try:
         return await engine.attach_file(
             memory_id, req.path, derived_text=req.derived_text, derived_by=req.derived_by
@@ -106,17 +105,15 @@ async def attach_file(memory_id: str, req: AttachFileRequest):
 
 
 @router.get("/api/memories/{memory_id}/attachments")
-async def list_memory_attachments(memory_id: str):
-    engine = await get_engine()
+async def list_memory_attachments(memory_id: str, engine=Depends(get_engine)):
     return {"attachments": await engine.list_memory_attachments(memory_id)}
 
 
 @router.post("/api/attachments/{attachment_id}/verify")
-async def verify_attachment(attachment_id: str):
+async def verify_attachment(attachment_id: str, engine=Depends(get_engine)):
     """Re-check the file against what was recorded at attach time. A missing
     or changed file raises a conflict candidate rather than silently altering
     the memory — see /api/conflicts."""
-    engine = await get_engine()
     try:
         return await engine.verify_attachment(attachment_id)
     except ValueError as exc:
@@ -124,14 +121,12 @@ async def verify_attachment(attachment_id: str):
 
 
 @router.post("/api/attachments/verify-all")
-async def verify_all_attachments():
-    engine = await get_engine()
+async def verify_all_attachments(engine=Depends(get_engine)):
     return await engine.verify_all_attachments()
 
 
 @router.delete("/api/attachments/{attachment_id}")
-async def delete_attachment(attachment_id: str):
-    engine = await get_engine()
+async def delete_attachment(attachment_id: str, engine=Depends(get_engine)):
     deleted = await engine.delete_attachment(attachment_id)
     if not deleted:
         raise HTTPException(status_code=404, detail=f"attachment '{attachment_id}' not found")

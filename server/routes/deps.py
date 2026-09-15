@@ -1,18 +1,23 @@
 """Shared dependencies for the route modules.
 
-The engine lifecycle deliberately stays in ``server.api``: the module globals
-``_engine`` / ``_initialized`` are the documented test-injection point, and a
-structural split is the wrong moment to move ownership of them. ``get_engine``
-here delegates to it with a call-time import, which keeps a single source of
-truth and avoids the circular import that a module-level one would create
-(``api`` imports the routers, the routers import this).
+Engine access is dependency-injected (issue #93): routes declare
+``engine: MemoryEngine = Depends(get_engine)`` instead of reaching for a
+process-wide singleton, so who serves a request is decided by the app rather
+than by an import. WebSocket handlers use ``get_engine_for(ws)`` — FastAPI
+cannot inject ``Request`` into a websocket-scoped dependency, so the socket
+passes itself.
+
+One owner, one view: ``server.api._engine`` owns the engine (the app
+publishes it at startup; it is also the documented harness injection point)
+and ``app.state.engine`` is the app-visible view of it.
 """
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from typing import TYPE_CHECKING
+
+from fastapi import Request
 
 from server.auth import (
     AUTH_RATE_LIMIT,
@@ -25,16 +30,47 @@ from server.core.rate_limit import SlidingWindowRateLimiter
 from server.entrypoint import levh_version
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
-    from fastapi import WebSocket
+    from fastapi import Request, WebSocket
 
     from server.core.memory_engine import MemoryEngine
 
 
-async def get_engine() -> "MemoryEngine":
-    """Return the shared, initialized engine."""
-    from server import api
+async def get_engine(request: Request) -> "MemoryEngine":
+    """FastAPI dependency: the app's shared, initialized engine (HTTP routes)."""
+    return await get_engine_for(request)
 
-    return await api.get_engine()
+
+async def get_engine_for(conn: "Request | WebSocket") -> "MemoryEngine":
+    """Resolve the shared, initialized engine from an ASGI connection.
+
+    Works for both ``Request`` (HTTP) and ``WebSocket`` connections — both
+    expose ``.app``.
+
+    Resolution: the engine the app owns (``server.api._engine``, which the
+    lifespan publishes and tests may swap) wins; otherwise the process-wide
+    provider engine is used, creating it from env config if this is the first
+    caller. Either way the result is written back to the provider and to
+    ``app.state.engine``, so every transport — the ingest workers, the
+    librarian scans, the mounted MCP SSE app — operates on the same database
+    as the request that triggered it. ``app.state`` is deliberately *not* read
+    back: a view left behind by an earlier app instance must never outrank a
+    freshly installed engine.
+    """
+    from server import api
+    from server.core import engine_provider
+
+    engine = api._engine
+    if engine is not None:
+        # Keep the provider aligned when a harness injected the engine here.
+        engine_provider.set_engine(engine)
+    else:
+        engine = engine_provider.get_engine()
+    conn.app.state.engine = engine
+    await engine.initialize()  # idempotent
+    from server.routes.live_broadcast import subscribe_broadcaster
+
+    subscribe_broadcaster(engine)  # idempotent per engine instance
+    return engine
 
 
 # ── Public demo mode ────────────────────────────────────────────────
@@ -52,21 +88,10 @@ def public_demo() -> bool:
 
 
 # ── Live WebSocket registry ─────────────────────────────────────────
-# Owned by server.api, which subscribes the broadcaster to engine events.
+# Owned by server.routes.live_broadcast; server.api subscribes the
+# broadcaster to engine events at startup.
 
-
-def ws_clients() -> set["WebSocket"]:
-    from server import api
-
-    return api._ws_clients
-
-
-def set_event_loop_if_unset() -> None:
-    """Remember the loop the WebSocket route is running on, once."""
-    from server import api
-
-    if api._event_loop is None:
-        api._event_loop = asyncio.get_running_loop()
+from server.routes.live_broadcast import set_event_loop_if_unset, ws_clients  # noqa: E402, F401
 
 
 # ── Shared configuration ────────────────────────────────────────────

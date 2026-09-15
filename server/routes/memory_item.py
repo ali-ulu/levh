@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 
-from fastapi import APIRouter, HTTPException
+from fastapi import Depends, APIRouter, HTTPException
 
 from server.routes.deps import get_engine
 from server.routes.models import FeedbackRequest, PinRequest, ReviewRequest, UpdateRequest
@@ -12,9 +12,8 @@ router = APIRouter()
 
 
 @router.post("/api/memories/{memory_id}/review")
-async def review_memory(memory_id: str, req: ReviewRequest):
+async def review_memory(memory_id: str, req: ReviewRequest, engine=Depends(get_engine)):
     """Apply a spaced-repetition review decision to a memory."""
-    engine = await get_engine()
     try:
         result = await engine.apply_review(
             memory_id, req.action, snooze_days=req.snooze_days, reason=req.reason
@@ -27,8 +26,7 @@ async def review_memory(memory_id: str, req: ReviewRequest):
 
 
 @router.get("/api/memories/{memory_id}")
-async def get_memory(memory_id: str):
-    engine = await get_engine()
+async def get_memory(memory_id: str, engine=Depends(get_engine)):
     mem = await engine.get_memory(memory_id)
     if not mem:
         raise HTTPException(status_code=404, detail="memory not found")
@@ -36,8 +34,7 @@ async def get_memory(memory_id: str):
 
 
 @router.put("/api/memories/{memory_id}")
-async def update_memory(memory_id: str, req: UpdateRequest):
-    engine = await get_engine()
+async def update_memory(memory_id: str, req: UpdateRequest, engine=Depends(get_engine)):
     mem = await engine.update_memory(
         memory_id=memory_id,
         content=req.content,
@@ -52,8 +49,7 @@ async def update_memory(memory_id: str, req: UpdateRequest):
 
 
 @router.patch("/api/memories/{memory_id}/pin")
-async def pin_memory(memory_id: str, req: PinRequest):
-    engine = await get_engine()
+async def pin_memory(memory_id: str, req: PinRequest, engine=Depends(get_engine)):
     mem = await engine.set_pinned(memory_id, req.pinned)
     if not mem:
         raise HTTPException(status_code=404, detail="memory not found")
@@ -61,10 +57,9 @@ async def pin_memory(memory_id: str, req: PinRequest):
 
 
 @router.post("/api/memories/{memory_id}/reinforce")
-async def reinforce_memory(memory_id: str):
+async def reinforce_memory(memory_id: str, engine=Depends(get_engine)):
     """Manually strengthen a memory — resets its decay clock and grows its
     stability, the same reinforcement that happens automatically on recall."""
-    engine = await get_engine()
     mem = await engine.reinforce_memory(memory_id)
     if not mem:
         raise HTTPException(status_code=404, detail="memory not found")
@@ -72,10 +67,9 @@ async def reinforce_memory(memory_id: str):
 
 
 @router.post("/api/memories/{memory_id}/feedback")
-async def memory_feedback(memory_id: str, req: FeedbackRequest):
+async def memory_feedback(memory_id: str, req: FeedbackRequest, engine=Depends(get_engine)):
     """Learn from recall outcomes: helpful=true reinforces the memory,
     helpful=false weakens it so wrong/stale information fades out fast."""
-    engine = await get_engine()
     mem = await engine.memory_feedback(memory_id, req.helpful)
     if not mem:
         raise HTTPException(status_code=404, detail="memory not found")
@@ -83,10 +77,9 @@ async def memory_feedback(memory_id: str, req: FeedbackRequest):
 
 
 @router.post("/api/memories/{memory_id}/redact")
-async def redact_memory(memory_id: str):
+async def redact_memory(memory_id: str, engine=Depends(get_engine)):
     """Strip secrets from an already-stored memory in place, recorded
     auditably in its metadata's redaction_history."""
-    engine = await get_engine()
     result = await engine.redact_memory(memory_id)
     if not result.get("ok"):
         raise HTTPException(status_code=404, detail=result.get("error", "memory not found"))
@@ -94,18 +87,16 @@ async def redact_memory(memory_id: str):
 
 
 @router.post("/api/memories/{memory_id}/purge")
-async def purge_memory(memory_id: str):
+async def purge_memory(memory_id: str, engine=Depends(get_engine)):
     """Hard-delete a memory across every layer and verify nothing survives.
     Pinned memories are purged too — this is a deliberate human action."""
-    engine = await get_engine()
     return await engine.purge_memory(memory_id)
 
 
 @router.get("/api/memories/{memory_id}/forgetting-curve")
-async def get_forgetting_curve(memory_id: str, days: int = 30):
+async def get_forgetting_curve(memory_id: str, days: int = 30, engine=Depends(get_engine)):
     """Predicted retention curve for a memory — powers the 'memory strength'
     visualization in the dashboard's detail drawer."""
-    engine = await get_engine()
     curve = await engine.get_forgetting_curve(memory_id, days=min(max(days, 1), 365))
     if not curve:
         raise HTTPException(status_code=404, detail="memory not found")
@@ -113,10 +104,9 @@ async def get_forgetting_curve(memory_id: str, days: int = 30):
 
 
 @router.get("/api/memories/{memory_id}/trust")
-async def get_memory_trust(memory_id: str):
+async def get_memory_trust(memory_id: str, engine=Depends(get_engine)):
     """Provenance/trust breakdown for a memory — explainable, deterministic,
     NOT truth, and independent of H-score recall ranking."""
-    engine = await get_engine()
     result = await engine.get_trust(memory_id)
     if result is None:
         raise HTTPException(status_code=404, detail="memory not found")
@@ -124,10 +114,9 @@ async def get_memory_trust(memory_id: str):
 
 
 @router.get("/api/memories/{memory_id}/related")
-async def related_memories(memory_id: str, top_k: int = 5):
+async def related_memories(memory_id: str, top_k: int = 5, engine=Depends(get_engine)):
     """Memories most similar to this one — the 'related memories' graph edge,
     computed live from embeddings. Powers 'see also' in the detail drawer."""
-    engine = await get_engine()
     if not await engine.get_memory(memory_id):
         raise HTTPException(status_code=404, detail="memory not found")
     related = await engine.get_related(memory_id, top_k=min(max(top_k, 1), 20))
@@ -141,14 +130,13 @@ async def related_memories(memory_id: str, top_k: int = 5):
 
 
 @router.delete("/api/memories/{memory_id}")
-async def delete_memory(memory_id: str):
-    engine = await get_engine()
+async def delete_memory(memory_id: str, engine=Depends(get_engine)):
     success = await engine.forget(memory_id)
     return {"deleted": success}
 
 
 @router.get("/api/memories/{memory_id}/score-breakdown")
-async def get_score_breakdown(memory_id: str, query: str = ""):
+async def get_score_breakdown(memory_id: str, query: str = "", engine=Depends(get_engine)):
     """Return H(x,ψ) score breakdown for a specific memory + query pair.
 
     If query is empty, memory.content is used as the default query so the
@@ -159,7 +147,6 @@ async def get_score_breakdown(memory_id: str, query: str = ""):
     schema. Contract: 404 unknown memory, 400 memory without embedding or
     with a mismatched embedding dimension.
     """
-    engine = await get_engine()
     mem = await engine.get_memory(memory_id)
     if not mem:
         raise HTTPException(status_code=404, detail="memory not found")

@@ -2,8 +2,14 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 
-from fastapi import APIRouter, HTTPException
+if TYPE_CHECKING:  # pragma: no cover - typing only
+    from server.core.guard import GuardService
+    from server.core.memory_engine import MemoryEngine
+
+
+from fastapi import APIRouter, Depends, HTTPException
 
 from server.routes.deps import get_engine
 from server.routes.models import MistakeRequest
@@ -11,17 +17,19 @@ from server.routes.models import MistakeRequest
 router = APIRouter()
 
 
-async def _get_guard():
+def _get_guard(engine: "MemoryEngine") -> "GuardService":
     from server.core.guard import GuardService
 
-    engine = await get_engine()
     return GuardService(engine.db, engine)
 
 
 @router.get("/api/guard/violations")
-async def list_guard_violations(days: int = 0, severity: str = "", limit: int = 50):
+async def list_guard_violations(
+    days: int = 0, severity: str = "", limit: int = 50,
+    engine: "MemoryEngine" = Depends(get_engine),
+):
     """List recorded mistakes, newest first. ``days=0`` means all time."""
-    guard = await _get_guard()
+    guard = _get_guard(engine)
     return {
         "violations": await guard.list_violations(
             days=days or None, severity=severity or None, limit=limit
@@ -30,9 +38,12 @@ async def list_guard_violations(days: int = 0, severity: str = "", limit: int = 
 
 
 @router.get("/api/guard/rules")
-async def list_guard_rules(project: str = "", limit: int = 50):
+async def list_guard_rules(
+    project: str = "", limit: int = 50,
+    engine: "MemoryEngine" = Depends(get_engine),
+):
     """List the pinned rules mistakes have produced, most important first."""
-    guard = await _get_guard()
+    guard = _get_guard(engine)
     rules = await guard.list_rules(project=project or None, limit=limit)
     return {
         "rules": [
@@ -53,9 +64,12 @@ async def list_guard_rules(project: str = "", limit: int = 50):
 
 
 @router.post("/api/guard/mistakes")
-async def record_guard_mistake(req: MistakeRequest):
+async def record_guard_mistake(
+    req: MistakeRequest,
+    engine: "MemoryEngine" = Depends(get_engine),
+):
     """Record a mistake as a pinned rule plus a violation row."""
-    guard = await _get_guard()
+    guard = _get_guard(engine)
     try:
         return await guard.record_mistake(
             task=req.task,

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 
-from fastapi import APIRouter, HTTPException
+from fastapi import Depends, APIRouter, HTTPException
 
 from server.core import llm_policy
 from server.routes.deps import get_engine
@@ -13,16 +13,14 @@ router = APIRouter()
 
 
 @router.get("/api/stats")
-async def get_stats():
-    engine = await get_engine()
+async def get_stats(engine=Depends(get_engine)):
     stats = await engine.get_stats()
     return stats.model_dump()
 
 
 @router.get("/api/config")
-async def get_config():
+async def get_config(engine=Depends(get_engine)):
     """Current server configuration (for the Settings page)."""
-    engine = await get_engine()
     embedder_mode = engine._embedder.mode if engine._embedder else engine._embedder_mode
     return {
         "db_path": engine.db.db_path,
@@ -64,14 +62,13 @@ async def health():
 
 
 @router.post("/api/benchmark/recall")
-async def benchmark_recall(embedder_mode: str = "", top_k: int = 5):
+async def benchmark_recall(embedder_mode: str = "", top_k: int = 5, engine=Depends(get_engine)):
     """Run the recall-quality benchmark harness (hit@k / MRR on a labelled
     corpus) and return the metrics — powers the Settings 'Recall Quality'
     panel. Runs against an isolated temp DB/engine, never touches real data.
     """
     from server.core.benchmark import run_benchmark
 
-    engine = await get_engine()
     mode = embedder_mode.strip() or engine.embedder.mode
     try:
         metrics = await run_benchmark(embedder_mode=mode, top_k=min(max(top_k, 1), 10))

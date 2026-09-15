@@ -6,7 +6,7 @@ from __future__ import annotations
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from server.routes import deps
-from server.routes.deps import get_engine
+from server.routes.deps import get_engine_for
 from server.routes.deps import constant_time_token_matches, public_demo
 
 router = APIRouter()
@@ -38,7 +38,7 @@ async def memory_websocket(ws: WebSocket):
     # Public demo mode: only allow read-only WebSocket actions
     if public_demo():
         await ws.accept()
-        engine = await get_engine()
+        engine = await get_engine_for(ws)  # DI for sockets: no Request to inject
         deps.set_event_loop_if_unset()
         deps.ws_clients().add(ws)
         try:
@@ -72,7 +72,7 @@ async def memory_websocket(ws: WebSocket):
         return
 
     await ws.accept()
-    engine = await get_engine()
+    engine = await get_engine_for(ws)  # DI for sockets: no Request to inject
     deps.set_event_loop_if_unset()
     deps.ws_clients().add(ws)
     try:

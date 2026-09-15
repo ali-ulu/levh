@@ -9,7 +9,7 @@ import uuid
 import re
 from pathlib import Path, PurePosixPath
 
-from fastapi import APIRouter, HTTPException
+from fastapi import Depends, APIRouter, HTTPException
 
 from server.routes.deps import get_engine
 from server.routes.models import ConnectorRequest, ConnectorUploadRequest
@@ -73,7 +73,7 @@ MAX_UPLOAD_BYTES = 64 * 1024 * 1024
 
 
 @router.post("/api/connectors/import")
-async def connector_import(req: ConnectorRequest):
+async def connector_import(req: ConnectorRequest, engine=Depends(get_engine)):
     """Import data from an external app via connector."""
     from server.connectors import get_connector
 
@@ -103,7 +103,6 @@ async def connector_import(req: ConnectorRequest):
 
     # Legacy import surface is still admission-gated. Connector v2 adds
     # incremental cursors, but both paths share dedupe/redaction guarantees.
-    engine = await get_engine()
     try:
         result = await engine.ingest_items(
             items,
@@ -117,7 +116,7 @@ async def connector_import(req: ConnectorRequest):
 
 
 @router.post("/api/connectors/sync")
-async def connector_sync(req: ConnectorRequest):
+async def connector_sync(req: ConnectorRequest, engine=Depends(get_engine)):
     """Connector v2 ingest: fetch, then route items through the admission
     gate (dedupe + secret redaction), with incremental sync bookkeeping."""
     from server.connectors import get_connector
@@ -142,7 +141,6 @@ async def connector_sync(req: ConnectorRequest):
             detail=f"Fetch from connector '{req.connector}' failed. See server logs.",
         )
 
-    engine = await get_engine()
     result = await engine.ingest_items(
         items, connector=req.connector, project=req.project, use_gate=req.use_gate
     )
@@ -176,8 +174,7 @@ async def connector_upload(req: ConnectorUploadRequest):
 
 
 @router.get("/api/connectors/sync-state")
-async def connector_sync_state():
-    engine = await get_engine()
+async def connector_sync_state(engine=Depends(get_engine)):
     return {"sync_state": await engine.list_sync_state()}
 
 

@@ -6,7 +6,7 @@ import base64
 import binascii
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, HTTPException
+from fastapi import Depends, APIRouter, HTTPException
 from fastapi.responses import Response
 
 from server.routes.deps import get_engine
@@ -23,12 +23,11 @@ def _export_filename(ext: str) -> str:
 
 
 @router.get("/api/export/full.json")
-async def export_full_json():
+async def export_full_json(engine=Depends(get_engine)):
     """One-shot audit bundle: memories, entity graph, trust scores, and
     conflict candidates — the raw machine-readable record."""
     from server.core.full_export import build_full_export
 
-    engine = await get_engine()
     export = await build_full_export(engine)
     import json as _json
 
@@ -40,11 +39,10 @@ async def export_full_json():
 
 
 @router.get("/api/export/full.sqlite")
-async def export_full_sqlite():
+async def export_full_sqlite(engine=Depends(get_engine)):
     """Raw SQLite copy of the live database, taken via the online backup API."""
     from server.core.full_export import export_full_sqlite as export_sqlite
 
-    engine = await get_engine()
     try:
         blob = await export_sqlite(engine)
     except ValueError as exc:
@@ -57,12 +55,11 @@ async def export_full_sqlite():
 
 
 @router.get("/api/export/full.pdf")
-async def export_full_pdf():
+async def export_full_pdf(engine=Depends(get_engine)):
     """Human-readable audit report (summary counts, entity/trust/conflict
     overview) rendered from the same data as the JSON export."""
     from server.core.full_export import PdfUnavailableError, build_full_export, render_full_export_pdf
 
-    engine = await get_engine()
     export = await build_full_export(engine)
     try:
         blob = render_full_export_pdf(export)
@@ -76,7 +73,7 @@ async def export_full_pdf():
 
 
 @router.post("/api/backup")
-async def create_backup(req: BackupRequest):
+async def create_backup(req: BackupRequest, engine=Depends(get_engine)):
     """Full portable snapshot (all memories + sessions) as a downloadable
     file. When ``passphrase`` is set the file is encrypted at rest
     (AES-128 via Fernet, PBKDF2-derived key); otherwise it's plain JSON.
@@ -85,7 +82,6 @@ async def create_backup(req: BackupRequest):
     from server.core import backup as backup_mod
     from server.core.crypto import CryptoUnavailableError
 
-    engine = await get_engine()
     snapshot = await engine.backup(app_version=APP_VERSION)
     try:
         blob = backup_mod.make_backup_blob(snapshot, passphrase=req.passphrase or None)
@@ -109,7 +105,7 @@ async def create_backup(req: BackupRequest):
 
 
 @router.post("/api/restore")
-async def restore_backup(req: RestoreRequest):
+async def restore_backup(req: RestoreRequest, engine=Depends(get_engine)):
     """Restore from a backup file. ``content_b64`` is the base64-encoded
     backup bytes (encrypted or plain — auto-detected). ``passphrase`` is
     required only for encrypted files. ``replace=true`` first creates a local
@@ -118,7 +114,6 @@ async def restore_backup(req: RestoreRequest):
     from server.core import backup as backup_mod
     from server.core.crypto import DecryptionError
 
-    engine = await get_engine()
     try:
         blob = base64.b64decode(req.content_b64, validate=True)
     except (binascii.Error, ValueError):
@@ -136,7 +131,7 @@ async def restore_backup(req: RestoreRequest):
 
 
 @router.post("/api/import/file")
-async def import_file(req: FileImportRequest):
+async def import_file(req: FileImportRequest, engine=Depends(get_engine)):
     """Turn an arbitrary uploaded file into memories.
 
     Plain text, PDF, Word, Excel and zip archives are extracted to text and
@@ -158,7 +153,6 @@ async def import_file(req: FileImportRequest):
 
     filename = req.filename.strip() or "upload"
     parts, warnings = extract_parts(filename, blob)
-    engine = await get_engine()
     tags = [*req.tags, "import:file"]
 
     stored = 0

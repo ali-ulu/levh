@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 
-from fastapi import APIRouter, HTTPException
+from fastapi import Depends, APIRouter, HTTPException
 
 from server.routes.deps import get_engine
 from server.routes.models import DemoCleanupRequest, OnboardingMCPConfigRequest
@@ -12,22 +12,20 @@ router = APIRouter()
 
 
 @router.post("/api/seed-demo")
-async def seed_demo(force: bool = False):
+async def seed_demo(force: bool = False, engine=Depends(get_engine)):
     """Populate an empty store with a deterministic demo corpus (onboarding).
     Refuses to run on a non-empty store unless ``force=true``."""
-    engine = await get_engine()
     return await engine.seed_demo(force=force)
 
 
 @router.get("/api/onboarding/status")
-async def get_onboarding_status():
+async def get_onboarding_status(engine=Depends(get_engine)):
     """Real first-run readiness derived from local storage/configuration."""
-    engine = await get_engine()
     return await engine.onboarding_status()
 
 
 @router.post("/api/onboarding/mcp-config")
-async def generate_onboarding_mcp_config(req: OnboardingMCPConfigRequest):
+async def generate_onboarding_mcp_config(req: OnboardingMCPConfigRequest, engine=Depends(get_engine)):
     """Generate a focused MCP client config without persisting secrets."""
     from server.configs import PLATFORMS, generate_config, normalize_platform, render_config
     from server.tools.profiles import UnknownProfileError, profile_counts, resolve_profile
@@ -54,7 +52,6 @@ async def generate_onboarding_mcp_config(req: OnboardingMCPConfigRequest):
     from server.core.onboarding import write_receipt
     from server.core.dogfood import dogfood_enabled
 
-    engine = await get_engine()
     status = await engine.onboarding_status()
     receipt = write_receipt(
         database_ready=True,
@@ -86,9 +83,8 @@ async def generate_onboarding_mcp_config(req: OnboardingMCPConfigRequest):
 
 
 @router.post("/api/onboarding/remove-demo")
-async def remove_onboarding_demo(req: DemoCleanupRequest):
+async def remove_onboarding_demo(req: DemoCleanupRequest, engine=Depends(get_engine)):
     """Remove only metadata.demo=true memories using the audited purge path."""
     if not req.confirm:
         raise HTTPException(status_code=422, detail="confirmation required")
-    engine = await get_engine()
     return await engine.remove_demo_data()

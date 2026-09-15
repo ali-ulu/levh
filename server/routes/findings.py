@@ -7,7 +7,7 @@ the only way a finding changes state, and a person is the only caller of it.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
+from fastapi import Depends, APIRouter, HTTPException
 
 from server.core import findings as findings_core
 from server.routes.deps import get_engine
@@ -17,10 +17,9 @@ router = APIRouter()
 
 
 @router.get("/api/findings")
-async def list_findings(status: str = "open", category: str = "", limit: int = 100):
+async def list_findings(status: str = "open", category: str = "", limit: int = 100, engine=Depends(get_engine)):
     """List findings, newest sighting first. Pass an empty status for all
     states — that is the "what did we decide about these" view."""
-    engine = await get_engine()
     return {
         "findings": await engine.db.list_findings(
             status=status, category=category or None, limit=limit
@@ -30,10 +29,9 @@ async def list_findings(status: str = "open", category: str = "", limit: int = 1
 
 
 @router.post("/api/findings")
-async def report_finding(req: FindingReportRequest):
+async def report_finding(req: FindingReportRequest, engine=Depends(get_engine)):
     """Record a finding. Scrubbed and fingerprinted before it is stored, so a
     repeat folds into the existing row instead of creating a new one."""
-    engine = await get_engine()
     row = findings_core.build_row(
         title=req.title,
         detail=req.detail,
@@ -47,9 +45,8 @@ async def report_finding(req: FindingReportRequest):
 
 
 @router.post("/api/findings/{finding_id}/decide")
-async def decide_finding(finding_id: str, req: FindingDecisionRequest):
+async def decide_finding(finding_id: str, req: FindingDecisionRequest, engine=Depends(get_engine)):
     """Apply a human decision: ack, resolved or ignored (open reopens it)."""
-    engine = await get_engine()
     try:
         result = await engine.db.decide_finding(finding_id, req.status, req.note or None)
     except ValueError as exc:
@@ -60,8 +57,7 @@ async def decide_finding(finding_id: str, req: FindingDecisionRequest):
 
 
 @router.delete("/api/findings/{finding_id}")
-async def delete_finding(finding_id: str):
-    engine = await get_engine()
+async def delete_finding(finding_id: str, engine=Depends(get_engine)):
     if not await engine.db.delete_finding(finding_id):
         raise HTTPException(status_code=404, detail="finding not found")
     return {"ok": True, "deleted": finding_id}

@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-import json
 import logging
 import os
 import sys
@@ -19,7 +18,7 @@ from contextlib import asynccontextmanager
 
 logger = logging.getLogger("levh.api")
 
-from fastapi import FastAPI, WebSocket
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import PlainTextResponse
@@ -28,6 +27,7 @@ from fastapi.responses import PlainTextResponse
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from server.routes import deps  # noqa: E402
+from server.routes.live_broadcast import subscribe_broadcaster as _subscribe_broadcaster  # noqa: E402
 from server.auth import (
     AUTH_RATE_LIMIT,
     AUTH_RATE_LIMIT_WINDOW_SECONDS,
@@ -39,53 +39,33 @@ from server.core.env import get_env
 from server.core.memory_engine import MemoryEngine
 from server.core.rate_limit import SlidingWindowRateLimiter
 
-# ── Global engine ───────────────────────────────────────────────────
-# _engine/_initialized are kept as module globals for test injection;
-# they proxy the shared engine in server.core.engine_provider so the
-# REST API and the mounted MCP SSE server always use the SAME engine.
+# ── Engine wiring ──────────────────────────────────────────────────
+# The engine is dependency-injected (issue #93): ``deps.get_engine``
+# resolves it from ``app.state.engine``, which ``_publish_engine`` keeps
+# in sync with whichever engine the REST API and the mounted MCP SSE
+# server share. Tests inject by setting ``api._engine`` as before — the
+# attribute is the documented injection point and now feeds app.state.
 
 _engine: MemoryEngine | None = None
-_initialized = False
 
 
-async def get_engine() -> MemoryEngine:
-    global _engine, _initialized
+async def _publish_engine() -> MemoryEngine:
+    """Resolve, initialize, and publish the shared engine on app.state."""
+    global _engine
     if _engine is None:
         _engine = engine_provider.get_engine()
     else:
         # Keep provider in sync when tests inject a custom engine here.
         engine_provider.set_engine(_engine)
     await _engine.initialize()  # idempotent
-    if not _initialized:
-        _subscribe_broadcaster(_engine)
-        _initialized = True
+    _subscribe_broadcaster(_engine)
+    app.state.engine = _engine
     return _engine
 
 
-# ── Live event broadcast (WebSocket) ─────────────────────────────────
-
-_ws_clients: set[WebSocket] = set()
-_event_loop: asyncio.AbstractEventLoop | None = None
-_subscribed_engines: set[int] = set()
-
-
-def _subscribe_broadcaster(engine: MemoryEngine) -> None:
-    if id(engine) in _subscribed_engines:
-        return
-    engine.subscribe(_on_engine_event)
-    _subscribed_engines.add(id(engine))
-
-
-def _on_engine_event(event: str, payload: dict) -> None:
-    """Engine event listener → fan out to connected WebSocket clients."""
-    if not _ws_clients or _event_loop is None:
-        return
-    message = json.dumps({"type": "event", "event": event, "payload": payload}, default=str)
-    for ws in list(_ws_clients):
-        try:
-            asyncio.run_coroutine_threadsafe(ws.send_text(message), _event_loop)
-        except RuntimeError:
-            _ws_clients.discard(ws)
+async def get_engine() -> MemoryEngine:
+    """Resolve and publish the shared engine (test- and scaffold-facing shim)."""
+    return await _publish_engine()
 
 
 # ── App lifespan ─────────────────────────────────────────────────────
@@ -93,8 +73,6 @@ def _on_engine_event(event: str, payload: dict) -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global _event_loop
-    _event_loop = asyncio.get_running_loop()
     engine = await get_engine()
     # Librarian bekçi ajanı — sunucu açılınca başlar, kapanırken durur.
     # Public demo'da çalışmaz: orada her yazma zaten reddedilir ve bekçinin
