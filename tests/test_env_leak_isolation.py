@@ -93,6 +93,65 @@ def test_a_subprocess_inheriting_the_suite_environment_stays_isolated():
     assert REPO_ROOT not in resolved.parents
 
 
+def test_an_engine_built_without_a_path_uses_the_pinned_store():
+    """The leak's real entry point: an engine that nobody gave a path.
+
+    This is what routes, the CLI and every helper fall back to. Before the
+    pin, it resolved to ``<cwd>/stackmemory.db`` and wrote there.
+    """
+    from server.core.memory_engine import MemoryEngine
+
+    engine = MemoryEngine()
+    resolved = Path(engine.db.db_path).resolve()
+
+    assert resolved == Path(os.environ[PINNED_NAME]).resolve(), (
+        "an engine built without a path did not land in the store the suite "
+        "pinned; it may be writing to the workspace's real memory"
+    )
+    assert REPO_ROOT not in resolved.parents
+
+
+def test_a_test_may_still_name_its_own_store(monkeypatch, tmp_path):
+    """The pin is a default, not a hijack: an explicit path still wins."""
+    from server.core.memory_engine import MemoryEngine
+
+    own = tmp_path / "own.db"
+    monkeypatch.setenv("SQLITE_DB_PATH", str(own))
+
+    assert Path(MemoryEngine().db.db_path).resolve() == own.resolve()
+
+
+def test_a_first_test_caches_an_engine(monkeypatch, tmp_path):
+    """First half of a pair: cache an engine the way a route does.
+
+    Deliberately leaves it behind — ``tests/conftest.py`` owns the cleanup.
+    """
+    from server import api
+    from server.core import engine_provider
+    from server.core.memory_engine import MemoryEngine
+
+    engine = MemoryEngine()
+    api._engine = engine
+    engine_provider.set_engine(engine)
+    api.app.state.engine = engine
+
+
+def test_the_next_test_starts_free_of_the_previous_engine():
+    """Second half: a cached engine must not survive a test boundary.
+
+    A surviving engine keeps the previous test's database *and* its in-memory
+    vector store, so the admission gate reads that test's rows as this test's
+    duplicates. Under a randomized order this can run before the test that
+    caches the engine; the invariant is unconditional, so it still holds.
+    """
+    from server import api
+    from server.core import engine_provider
+
+    assert api._engine is None
+    assert engine_provider._engine is None
+    assert getattr(api.app.state, "engine", None) is None
+
+
 def test_a_subprocess_resolves_the_store_the_suite_points_at(tmp_path):
     db = tmp_path / "isolated.db"
     env = {k: v for k, v in os.environ.items() if k not in STEERING_NAMES}
