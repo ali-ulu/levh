@@ -5,7 +5,7 @@ from __future__ import annotations
 import ipaddress
 import logging
 import secrets
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from typing import Any
 from urllib.parse import parse_qs
 
@@ -49,6 +49,19 @@ def _token_bytes(value: str | bytes | None) -> bytes:
     if isinstance(value, bytes):
         return value
     return value.encode("utf-8")
+
+
+def _resolved_token_bytes(token: object) -> bytes:
+    """Resolve a token that may be a live-value callable, like ``deps.api_token``.
+
+    Freezing a token at middleware construction binds the boundary to the value
+    the environment happened to hold at import time; the sibling middleware in
+    ``server/middleware.py`` deliberately re-reads it per request for the same
+    reason.
+    """
+    if callable(token) and not isinstance(token, (str, bytes)):
+        token = token()
+    return _token_bytes(token)
 
 
 def constant_time_token_matches(
@@ -120,13 +133,18 @@ class RemoteAccessBoundaryMiddleware:
     def __init__(
         self,
         app: Any,
-        token: str | bytes | None,
+        token: str | bytes | None | Callable[[], str | bytes | None],
         warning_limiter: SlidingWindowRateLimiter = remote_rejection_log_limiter,
     ) -> None:
         self.app = app
-        self.token = _token_bytes(token)
+        self._token = token
         self.warning_limiter = warning_limiter
         self._override_warning_logged = False
+
+    @property
+    def token(self) -> bytes:
+        """The live token, resolved per access (callables re-read each time)."""
+        return _resolved_token_bytes(self._token)
 
     def _warn_if_override_enabled(self) -> None:
         if (
@@ -191,12 +209,17 @@ class ConfiguredTokenAuthMiddleware:
     def __init__(
         self,
         app: Any,
-        token: str | bytes | None,
+        token: str | bytes | None | Callable[[], str | bytes | None],
         limiter: SlidingWindowRateLimiter = shared_auth_limiter,
     ) -> None:
         self.app = RemoteAccessBoundaryMiddleware(app, token)
-        self.token = _token_bytes(token)
+        self._token = token
         self.limiter = limiter
+
+    @property
+    def token(self) -> bytes:
+        """The live token, resolved per access (callables re-read each time)."""
+        return _resolved_token_bytes(self._token)
 
     async def __call__(self, scope: dict, receive: Any, send: Any) -> None:
         scope_type = scope.get("type")

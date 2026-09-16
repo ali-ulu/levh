@@ -14,6 +14,19 @@ import shutil
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
+import itertools
+
+
+# datetime.now can repeat across rapid calls on some platforms (coarse clock
+# granularity on Windows), which would silently overwrite the first backup.
+# time.time_ns has the same hazard, so ties are broken with a process-local
+# counter: stamps remain unique within a process no matter how fast calls come.
+_stamp_tiebreak = itertools.count()
+
+
+def _timestamp_stamp() -> str:
+    wall = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%f")
+    return f"{wall}-{next(_stamp_tiebreak)}"
 
 
 def _backup(path: Path) -> Path | None:
@@ -24,9 +37,7 @@ def _backup(path: Path) -> Path | None:
     — yedek almanın tek sebebi buyken.
     """
     try:
-        # Mikrosaniye dahil: aynı saniye içinde iki yedek alınabiliyor ve
-        # saniye çözünürlüğünde ikincisi birinciyi ezerdi.
-        stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%f")
+        stamp = _timestamp_stamp()
         bak = path.with_suffix(f"{path.suffix}.{stamp}.librarian-bak")
         shutil.copy2(path, bak)
         return bak

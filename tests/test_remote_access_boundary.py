@@ -218,4 +218,46 @@ def test_main_api_registers_remote_access_boundary() -> None:
     assert len(registrations) == 1
     from server.routes import deps
 
-    assert registrations[0].kwargs["token"] == deps.api_token()
+    # The registration passes the live resolver, not a frozen value (issue
+    # #132): a frozen token would pin the boundary to the import-time env.
+    registered_token = registrations[0].kwargs["token"]
+    assert callable(registered_token)
+    assert registered_token is deps.api_token
+
+
+@pytest.mark.asyncio
+async def test_boundary_resolves_token_lively(monkeypatch: pytest.MonkeyPatch) -> None:
+    """LEVH_TOKEN set after construction must be honored (issue #132)."""
+    monkeypatch.setenv(ALLOW_REMOTE_WITHOUT_TOKEN_ENV, "false")
+    monkeypatch.delenv("LEVH_TOKEN", raising=False)
+
+    def live_token() -> str:
+        import os
+
+        return os.environ.get("LEVH_TOKEN", "")
+
+    boundary = RemoteAccessBoundaryMiddleware(_downstream, token=live_token)
+
+    # No token configured yet: remote requests are rejected.
+    assert await _http_status(boundary) == 401
+    close = await _websocket_message(boundary, client=REMOTE_CLIENT)
+    assert close["type"] == "websocket.close"
+
+    # Token appears after construction (e.g. .env loaded late, uvicorn env): now accepted.
+    monkeypatch.setenv("LEVH_TOKEN", "late-secret")
+    assert await _http_status(boundary) == 204
+    assert await _websocket_message(boundary, client=REMOTE_CLIENT) == {
+        "type": "websocket.accept",
+    }
+
+
+@pytest.mark.asyncio
+async def test_boundary_accepts_static_token_unchanged(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Plain string/bytes tokens keep working exactly as before."""
+    monkeypatch.setenv(ALLOW_REMOTE_WITHOUT_TOKEN_ENV, "false")
+    boundary = RemoteAccessBoundaryMiddleware(_downstream, token="configured")
+
+    assert await _http_status(boundary) == 204
+    assert boundary.token == b"configured"

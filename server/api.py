@@ -131,7 +131,10 @@ app.add_middleware(
 # X-LEVH-Token header. The legacy X-StackMemory-Token header remains accepted
 # for compatibility. Unset (default) keeps the tool zero-config for
 # purely local use.
-app.add_middleware(RemoteAccessBoundaryMiddleware, token=deps.api_token())
+# Live token callable: binding the value at import time would freeze the
+# boundary to whatever LEVH_TOKEN held when this module was first imported
+# (issue #132) — the same reason server/middleware.py re-reads per request.
+app.add_middleware(RemoteAccessBoundaryMiddleware, token=deps.api_token)
 _AUTH_RATE_LIMIT = AUTH_RATE_LIMIT
 try:
     _API_RATE_LIMIT = int(get_env("LEVH_API_RATE_LIMIT", "120"))
