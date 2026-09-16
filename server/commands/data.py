@@ -7,8 +7,9 @@ server/cli.py; this module holds the implementations.
 from __future__ import annotations
 
 import argparse
-import os
 import sys
+
+from server.core.env import get_env
 
 
 
@@ -129,7 +130,7 @@ def cmd_dogfood_status(args: argparse.Namespace) -> int:
 
     path = resolve_journal_path(
         explicit_path=args.journal or None,
-        db_path=os.getenv("SQLITE_DB_PATH"),
+        db_path=get_env("SQLITE_DB_PATH"),
     )
     status = DogfoodJournal(path).status()
     print(json.dumps(status, indent=2, ensure_ascii=False))
@@ -145,7 +146,7 @@ def cmd_dogfood_export(args: argparse.Namespace) -> int:
 
     path = resolve_journal_path(
         explicit_path=args.journal or None,
-        db_path=os.getenv("SQLITE_DB_PATH"),
+        db_path=get_env("SQLITE_DB_PATH"),
     )
     report = DogfoodJournal(path).export(args.output)
     print(f"Aggregate dogfood report ({report['total_events']} events) → {args.output}")

@@ -75,8 +75,8 @@ def cmd_setup(args: argparse.Namespace) -> int:
     mcp_dir.mkdir(parents=True, exist_ok=True)
     if not config_file.exists():
         cfg = dict(DEFAULT_CONFIG)
-        if os.getenv("SQLITE_DB_PATH"):
-            cfg["database_path"] = os.environ["SQLITE_DB_PATH"]
+        if get_env("SQLITE_DB_PATH"):
+            cfg["database_path"] = get_env("SQLITE_DB_PATH")
         if os.getenv("EMBEDDER_MODE"):
             cfg["embedder_mode"] = os.environ["EMBEDDER_MODE"]
         config_file.write_text(json.dumps(cfg, indent=2) + "\n", encoding="utf-8")

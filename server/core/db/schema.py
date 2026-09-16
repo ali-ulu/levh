@@ -6,11 +6,12 @@ reader looking for "what columns exist" actually wants.
 
 from __future__ import annotations
 
-import os
+from ..env import get_env
 
 
-
-_DEFAULT_DB_PATH = os.getenv("SQLITE_DB_PATH", "./stackmemory.db")
+# Resolved through get_env so every accepted spelling of the database path
+# (LEVH_SQLITE_DB_PATH, plain, legacy STACKMEMORY_) is honoured — issue #135.
+_DEFAULT_DB_PATH = get_env("SQLITE_DB_PATH", "./stackmemory.db")
 
 
 CURRENT_SCHEMA_VERSION = 2

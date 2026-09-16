@@ -14,6 +14,8 @@ import os
 import sys
 from pathlib import Path
 
+from server.core.env import get_env
+
 
 
 def _hooks_dir() -> Path | None:
@@ -68,12 +70,16 @@ def _write_settings(settings: dict) -> None:
 def _resolved_db_path() -> str:
     """The database this machine actually uses, as an absolute path.
 
-    Mirrors ``server.core.db.schema``'s default. Resolving it here — at install
-    time, in the shell the user ran the command from — is the point: the hook
-    itself runs with an unpredictable working directory, so a relative default
-    would silently point at an empty per-directory database.
+    Resolved through ``get_env`` so every accepted spelling of the database
+    path (``LEVH_SQLITE_DB_PATH``, plain ``SQLITE_DB_PATH``, legacy
+    ``STACKMEMORY_SQLITE_DB_PATH``) is honoured — a bare ``os.getenv``
+    silently ignored the canonical spelling and pointed the hook at an empty
+    default store (issue #135). Resolving it here — at install time, in the
+    shell the user ran the command from — is the point: the hook itself runs
+    with an unpredictable working directory, so a relative default would
+    silently point at an empty per-directory database.
     """
-    return os.path.abspath(os.getenv("SQLITE_DB_PATH", "./stackmemory.db"))
+    return os.path.abspath(get_env("SQLITE_DB_PATH", "./stackmemory.db"))
 
 
 def _install_session_hook(limit: int) -> int:

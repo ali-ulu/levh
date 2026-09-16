@@ -9,12 +9,13 @@ adding a new action type means writing down what it may not do, too.
 from __future__ import annotations
 
 import json
-import os
 import shutil
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
 import itertools
+
+from ..env import get_env
 
 
 # datetime.now can repeat across rapid calls on some platforms (coarse clock
@@ -73,7 +74,9 @@ def add_levh_mcp(agent: str) -> dict:
     # gömmek, o config'i başka her makinede bozuk üretir.
     levh_exe = shutil.which("levh") or _levh_executable_fallback()
     env_block = {
-        "SQLITE_DB_PATH": os.getenv("SQLITE_DB_PATH", str(home / "AppData/Local/stackmemory.db")),
+        # get_env: the canonical LEVH_SQLITE_DB_PATH spelling must reach the
+        # generated MCP config too, not just the bare spelling (issue #135).
+        "SQLITE_DB_PATH": get_env("SQLITE_DB_PATH", str(home / "AppData/Local/stackmemory.db")),
         "EMBEDDER_MODE": "auto",
         "SHORT_TERM_MAX": "50",
         "LEVH_MCP_PROFILE": "work",

@@ -83,7 +83,7 @@ def resolve_journal_path(
     env_journal = os.getenv("DOGFOOD_JOURNAL_PATH")
     if env_journal:
         return env_journal
-    resolved_db = db_path or os.getenv("SQLITE_DB_PATH")
+    resolved_db = db_path or get_env("SQLITE_DB_PATH")
     if resolved_db:
         return str(Path(resolved_db).resolve().parent / "dogfood_events.jsonl")
     return DEFAULT_JOURNAL_PATH

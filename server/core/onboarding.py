@@ -193,7 +193,7 @@ def _journal_location_summary(db_path: str | os.PathLike | None) -> dict[str, st
     explicit = os.getenv("DOGFOOD_JOURNAL_PATH")
     if explicit:
         scope = "configured local path"
-    elif db_path or os.getenv("SQLITE_DB_PATH"):
+    elif db_path or get_env("SQLITE_DB_PATH"):
         scope = "next to the SQLite database"
     else:
         scope = "current working directory"

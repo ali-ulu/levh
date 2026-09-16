@@ -25,6 +25,8 @@ import json
 import os
 from pathlib import Path
 
+from server.core.env import get_env
+
 
 # ── Agent hook configurations ────────────────────────────────────────
 
@@ -155,8 +157,13 @@ exit 0
 
 
 def _resolved_db_path() -> str:
-    """Absolute path to the database."""
-    return os.path.abspath(os.getenv("SQLITE_DB_PATH", "./stackmemory.db"))
+    """Absolute path to the database.
+
+    Resolved through ``get_env`` so the canonical ``LEVH_SQLITE_DB_PATH``
+    spelling is honoured too — a bare ``os.getenv`` silently ignored it and
+    installed MCP clients pointing at an empty default store (issue #135).
+    """
+    return os.path.abspath(get_env("SQLITE_DB_PATH", "./stackmemory.db"))
 
 
 # ── Installers ───────────────────────────────────────────────────────
