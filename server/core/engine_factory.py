@@ -74,6 +74,7 @@ def wire_engine(engine) -> None:
     engine._derived_dirty = False
     engine._refreshing_derived = False
     engine._derived_task = None
+    engine._derived_retry_count = 0
     engine.entity_index = EntityIndexService(engine.db, engine.episodic, engine._emit)
     engine.trust_service = TrustService(
         engine.db,

@@ -10,12 +10,30 @@ from __future__ import annotations
 
 import asyncio
 
-from .helpers import EventListener
+from .helpers import EventListener, logger
 from ..types import (
     Memory,
     MemoryStats,
     MemoryType,
 )
+
+# A persistently failing rebuild step used to loop hot: the swallowed error
+# left ``_derived_dirty`` set, the unconditional self-reschedule in the
+# ``finally`` fired immediately, and ~100k retries/second burned CPU with no
+# signal (issue #136). Rebuild failures now retry with capped backoff and
+# surface via logging; a fresh write (``_mark_derived_dirty``) restarts the
+# cycle at once because it may have removed the cause.
+_DERIVED_RETRY_BACKOFF_SECONDS = 0.5
+_DERIVED_RETRY_BACKOFF_CAP_SECONDS = 30.0
+_DERIVED_RETRY_LOG_EVERY = 5
+
+
+def _has_running_loop() -> bool:
+    try:
+        asyncio.get_running_loop()
+        return True
+    except RuntimeError:
+        return False
 
 
 class MemoryLifecycleMixin:
@@ -149,15 +167,33 @@ class MemoryLifecycleMixin:
             await self.detect_conflict_candidates()
             await self.recompute_trust_scores()
             self._derived_dirty = False
+            self._derived_retry_count = 0
         except asyncio.CancelledError:
             raise
         except Exception:  # noqa: BLE001 — a failed rebuild must not kill the task
-            pass
+            self._derived_retry_count += 1
+            count = self._derived_retry_count
+            if count == 1 or count % _DERIVED_RETRY_LOG_EVERY == 0:
+                logger.warning(
+                    "derived-state rebuild failed (attempt %d, retrying with "
+                    "backoff)",
+                    count,
+                    exc_info=True,
+                )
+            delay = min(
+                _DERIVED_RETRY_BACKOFF_SECONDS * (2 ** (count - 1)),
+                _DERIVED_RETRY_BACKOFF_CAP_SECONDS,
+            )
+            await asyncio.sleep(delay)
         finally:
             self._refreshing_derived = False
             # Writes that landed mid-rebuild re-dirtied the flag; schedule the
-            # successor so the views still converge.
-            if self._derived_dirty:
+            # successor so the views still converge. The flag is still set
+            # after a failure too, so the backoff'd retry above is what keeps
+            # this from spinning hot. Re-entry only when a loop is running:
+            # without one, _ensure_derived_state would fall back to an inline
+            # rebuild whose finally re-enters here — unbounded recursion.
+            if self._derived_dirty and _has_running_loop():
                 await self._ensure_derived_state()
 
     async def recompute_derived_state(self) -> None:
