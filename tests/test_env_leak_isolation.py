@@ -42,9 +42,89 @@ STEERING_NAMES = (
     "LEVH_CONFIG_PATH",
 )
 
-# The one name the suite sets itself; the other three must be scrubbed, since
-# each of them outranks it.
+# The one name the suite sets itself; the others must be scrubbed, since each
+# of them outranks it. SCRUB_NAMES is derived from the same source the suite
+# derives its scrub list from; the hand copy here is what the drift guard
+# tests against.
 PINNED_NAME = "SQLITE_DB_PATH"
+SCRUB_NAMES = (
+    "LEVH_SQLITE_DB_PATH",
+    "STACKMEMORY_SQLITE_DB_PATH",
+    "LEVH_CONFIG_PATH",
+)
+
+
+def test_conftest_derives_its_scrub_list_from_the_source_of_truth():
+    """The scrub list must come from the resolver, not from a hand copy.
+
+    The failure this prevents: the resolver learns a new way to relocate the
+    database (a new ``*_path`` setting, or a new spelling ``get_env``
+    accepts for an existing one) and a hostile machine sets it — the
+    hand-copied scrub list in conftest.py no longer covers it, the pin is
+    bypassed, and the suite writes to the developer's real store again.
+
+    Two independent anchors, so neither can drift silently:
+
+    * Bases come from ``runtime_config`` — every setting whose value is a
+      path, plus the config redirect — so a new relocatable setting is
+      caught even though conftest has never heard of it.
+    * What ``get_env`` reads is probed *behaviorally* (sentinel
+      environments), not read back from ``accepted_env_var_names`` — so an
+      edit that changes what ``get_env`` does fails here whether or not the
+      derivation was updated.
+
+    The probe space is bounded to the documented naming system: zero, one
+    or two ``LEVH_``/``STACKMEMORY_`` prefixes over each base. A spelling
+    outside that system would have to be added to both ``get_env`` and the
+    derivation to take effect, and the PR that does so owns updating the
+    probe space too.
+    """
+    from server.core import env as env_module
+    from server.core import runtime_config
+    from tests.conftest import _STEERING_ENV
+
+    _PREFIXES = ("", "LEVH_", "STACKMEMORY_")
+
+    def observed_read_set(base: str) -> set[str]:
+        """Names that actually change ``get_env(base, ...)'s result.
+
+        The stem is the base name with any known prefix stripped, so the
+        space covers every prefixed spelling of it (``STACKMEMORY_CONFIG_PATH``
+        for the base ``LEVH_CONFIG_PATH`` included) up to two prefixes.
+        """
+        stem = base
+        for prefix in ("LEVH_", "STACKMEMORY_"):
+            stem = stem.removeprefix(prefix)
+        baseline = env_module.get_env(base, None, environ={})
+        space = {p1 + p2 + stem for p1 in _PREFIXES for p2 in _PREFIXES}
+        return {
+            candidate
+            for candidate in space
+            if env_module.get_env(base, None, environ={candidate: "X"}) != baseline
+        }
+
+    bases = {
+        key
+        for key, setting in runtime_config._ENV_TO_KEY.items()
+        if "path" in setting
+    } | {runtime_config.CONFIG_PATH_ENV, PINNED_NAME}
+
+    for base in sorted(bases):
+        claimed = set(env_module.accepted_env_var_names(base))
+        observed = observed_read_set(base)
+
+        unscrubbed = observed - set(_STEERING_ENV)
+        assert not unscrubbed, (
+            f"get_env({base!r}) reads {sorted(unscrubbed)} but tests/conftest.py "
+            "does not scrub them; a machine setting one bypasses the suite's "
+            "store pin and reads or writes the developer's real memory"
+        )
+        overclaimed = claimed - observed
+        assert not overclaimed, (
+            f"accepted_env_var_names({base!r}) claims {sorted(overclaimed)} but "
+            "get_env does not read them; the derivation has drifted from the "
+            "behavior conftest.py pins against"
+        )
 
 
 def test_the_suite_pins_the_store_outside_the_workspace():

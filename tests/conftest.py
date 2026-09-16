@@ -43,6 +43,9 @@ from pathlib import Path
 
 import pytest
 
+from server.core.env import accepted_env_var_names
+from server.core.runtime_config import CONFIG_PATH_ENV
+
 os.environ["LEVH_LIBRARIAN"] = "0"
 
 # Read by server.core.llm_endpoint, llm_policy and summarizer. Anything here
@@ -55,20 +58,24 @@ _LLM_ENV = (
     "SUMMARY_MODEL",
 )
 
+# The plain database-path name the suite pins.
+_PINNED_ENV = "SQLITE_DB_PATH"
+_PINNED_BASE_NAMES = (_PINNED_ENV,)
+
 # Every name through which a developer's environment could redirect the suite
 # (or the CLI/server/MCP subprocesses it spawns) at the real memory store.
-# get_env() accepts plain, LEVH_-prefixed and legacy STACKMEMORY_ spellings,
-# and each of them outranks the plain name the suite pins below — so all three
-# go, along with LEVH_CONFIG_PATH, which redirects config resolution entirely.
-_STEERING_ENV = (
-    "LEVH_SQLITE_DB_PATH",
-    "STACKMEMORY_SQLITE_DB_PATH",
-    "LEVH_CONFIG_PATH",
+# Derived from accepted_env_var_names — the same acceptance rules get_env
+# implements — so adding a new accepted spelling to get_env extends this list
+# automatically instead of silently bypassing the pin. Each spelling of the
+# database path outranks the plain one the suite pins, so all of them go,
+# along with every spelling of the config-path redirect.
+_STEERING_ENV = tuple(
+    spelling
+    for base in (*_PINNED_BASE_NAMES, CONFIG_PATH_ENV)
+    for spelling in accepted_env_var_names(base)
 )
 
-# The name the suite pins, and the file it pins it to inside each test's
-# tmp_path.
-_PINNED_ENV = "SQLITE_DB_PATH"
+# The file each test's pin points at, inside the test's tmp_path.
 _ISOLATED_STORE_NAME = "isolated.db"
 
 
