@@ -10,8 +10,7 @@ import argparse
 import sys
 
 
-
-def cmd_audit_secrets(args: argparse.Namespace) -> int:
+def cmd_audit_secrets(_args: argparse.Namespace) -> int:
     """Scan stored memories for secrets (credentials, tokens)."""
     import asyncio
 

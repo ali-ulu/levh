@@ -207,7 +207,7 @@ class LocalFilesConnector(BaseConnector):
                 "metadata": metadata,
             }]
 
-        return self._chunk_text(raw, tags, metadata, fpath.name)
+        return self._chunk_text(raw, tags, metadata)
 
     def _process_json_file(
         self, raw: str, tags: list[str], metadata: dict[str, Any]
@@ -248,19 +248,13 @@ class LocalFilesConnector(BaseConnector):
                 "metadata": json_metadata,
             }]
 
-        return self._chunk_text(
-            content,
-            json_tags,
-            json_metadata,
-            str(metadata.get("file_name", "")),
-        )
+        return self._chunk_text(content, json_tags, json_metadata)
 
     def _chunk_text(
         self,
         text: str,
         tags: list[str],
         metadata: dict[str, Any],
-        file_name: str,
     ) -> list[dict]:
         """Split large text into overlapping chunks."""
         chunks: list[dict] = []

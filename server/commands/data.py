@@ -99,7 +99,7 @@ def cmd_export_full(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_remove_demo(args: argparse.Namespace) -> int:
+def cmd_remove_demo(_args: argparse.Namespace) -> int:
     """Remove all demo-tagged memories, leaving real data untouched."""
     import asyncio
 
