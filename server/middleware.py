@@ -38,9 +38,29 @@ def _client_key(request: Request) -> str:
     return request.client.host if request.client else "unknown"
 
 
+# FastAPI's generated docs surface. ``/docs`` and ``/redoc`` load without
+# ``X-LEVH-Token`` (a browser cannot attach it to the document request), so
+# once a token gate is in force these paths would expose the full route map to
+# an anonymous caller. ``deps.api_docs_enabled()`` decides whether they are
+# served at all; this set is what the gate below refuses when they are not.
+_DOCS_PATHS = {"/docs", "/redoc", "/openapi.json"}
+
+
 def _guarded(request: Request) -> bool:
     """Whether this request is subject to the /api gates."""
     return request.url.path.startswith("/api/") and request.url.path != "/api/health"
+
+
+def _docs_exposed(request: Request) -> bool:
+    """A docs path that must not be served while the token gate is active.
+
+    Checked against the *token*, not merely against ``_guarded``: a docs
+    request never carries the header, so letting it through the token gate
+    would always fail 401 and leave the operator without the documented
+    ``/docs`` URL. Withholding it is the honest answer, and
+    ``LEVH_ENABLE_API_DOCS=true`` is the documented way back.
+    """
+    return request.url.path in _DOCS_PATHS and not deps.api_docs_enabled()
 
 
 def install(app: FastAPI) -> None:
@@ -94,4 +114,18 @@ def install(app: FastAPI) -> None:
                 {"detail": "forbidden in public demo mode: mutating endpoint"},
                 status_code=403,
             )
+        return await call_next(request)
+
+    @app.middleware("http")
+    async def api_docs_guard(request: Request, call_next):
+        """Withhold /docs, /redoc and /openapi.json while a token gate is on.
+
+        Registered last so it is the outermost layer and refunds before the
+        token gate's 401: a docs request cannot carry ``X-LEVH-Token``, so the
+        choice is between a 404 (the surface is not served) and a 401 the
+        operator cannot satisfy. 404 states the truth and keeps the refusal
+        from advertising which paths exist.
+        """
+        if _docs_exposed(request):
+            return JSONResponse({"detail": "not found"}, status_code=404)
         return await call_next(request)

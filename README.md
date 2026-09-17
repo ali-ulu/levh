@@ -132,7 +132,7 @@ levh context -o CLAUDE.md       # compile memory into a context file
 levh mcp init my-server --with-memory   # scaffold an MCP server on this database
 ```
 
-→ [Getting Started](docs/getting-started.md) · [5-minute demo](docs/demo/5-minute-demo.md) · [Installing from source](docs/installation.md)
+→ [Getting Started](docs/getting-started.md) · [Installing from source](docs/installation.md) · [Architecture](docs/ARCHITECTURE.md)
 
 ---
 

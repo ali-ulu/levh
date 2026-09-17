@@ -115,6 +115,28 @@ def api_token() -> str:
     """
     return get_env("LEVH_TOKEN", "").strip()
 
+
+def api_docs_enabled() -> bool:
+    """Whether the interactive API docs surface is served.
+
+    ``/docs``, ``/openapi.json`` and ``/redoc`` are a development convenience
+    and, at the same time, an itemised map of every route. A browser cannot
+    attach ``X-LEVH-Token`` while loading ``/docs`` itself, so serving it next
+    to a token gate would hand an anonymous caller the whole API surface.
+
+    The docs therefore follow the token: served while the server is open (the
+    zero-config local case), withheld once ``LEVH_TOKEN`` is set, and restored
+    deliberately with ``LEVH_ENABLE_API_DOCS=true`` when the operator accepts
+    the exposure on a trusted network.
+
+    A function, not a constant, for the same reason as :func:`api_token` — the
+    boundary must track the environment, not the import.
+    """
+    if get_env("LEVH_ENABLE_API_DOCS", "").strip().lower() in ("1", "true", "yes", "on"):
+        return True
+    return not api_token()
+
+
 try:
     API_RATE_LIMIT = int(get_env("LEVH_API_RATE_LIMIT", "120"))
 except ValueError:
@@ -126,6 +148,7 @@ api_limiter = SlidingWindowRateLimiter(API_RATE_LIMIT, RATE_LIMIT_WINDOW)
 
 __all__ = [
     "API_RATE_LIMIT",
+    "api_docs_enabled",
     "api_token",
     "APP_VERSION",
     "AUTH_RATE_LIMIT",

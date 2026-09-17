@@ -5,7 +5,7 @@ pip install -e ".[dev]"
 EMBEDDER_MODE=hash python -m pytest -q
 ```
 
-**125 tests** covering memory lifecycle, H(x,ψ) scoring, adaptive decay/reinforcement,
+The suite covers memory lifecycle, H(x,ψ) scoring, adaptive decay/reinforcement,
 outcome feedback, retroactive interference, fading review queue, forgetting curves,
 sessions, consolidation, export/import, concurrent operations, edge cases, session
 isolation, project namespacing, source tracking, pinning,

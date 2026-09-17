@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### The generated API docs follow the token gate (#144)
+
+- `/docs`, `/redoc` and `/openapi.json` were served without a token even when
+  `LEVH_TOKEN` was set, because the gate only covered the `/api/` prefix — an
+  authenticated deployment handed any anonymous caller a complete map of all
+  108 routes. A browser cannot attach `X-LEVH-Token` to the `/docs` document
+  request, so the surface is now withheld (404) while a token is in force, and
+  restored deliberately with `LEVH_ENABLE_API_DOCS=true` on a trusted network.
+
 ## 2.31.0
 
 ### Now installable, offline-first (PWA) (#86)
