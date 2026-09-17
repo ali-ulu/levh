@@ -139,3 +139,58 @@ def test_every_supported_client_is_documented():
     doc = (DOCS / "mcp-client-config.md").read_text(encoding="utf-8").lower()
     missing = [name for name in PLATFORMS if name.replace("_", " ") not in doc and name not in doc]
     assert not missing, f"undocumented clients: {sorted(missing)}"
+
+
+# ── Links and branding ───────────────────────────────────────────────
+
+
+def _markdown_files() -> list[Path]:
+    root = DOCS.parent
+    return sorted(root.glob("*.md")) + sorted(DOCS.glob("*.md"))
+
+
+def test_no_relative_documentation_link_is_broken():
+    """A link to a file that does not exist is a promise the repo cannot keep.
+
+    README pointed at `docs/demo/5-minute-demo.md` and ARCHITECTURE at
+    `docs/product-hardening.md`; both were absent, and nothing noticed.
+    """
+    pattern = re.compile(r"\[[^\]]*\]\(([^)#\s]+)(?:#[^)]*)?\)")
+    broken: list[str] = []
+    for doc in _markdown_files():
+        text = doc.read_text(encoding="utf-8", errors="replace")
+        for match in pattern.finditer(text):
+            link = match.group(1)
+            if link.startswith(("http://", "https://", "mailto:")):
+                continue
+            if not (doc.parent / link).resolve().exists():
+                broken.append(f"{doc.name}: {link}")
+    assert not broken, f"broken relative links: {broken}"
+
+
+# The 2.x rename left the security docs telling operators to set a variable
+# the code no longer reads. The failure mode is silent: setting
+# STACKMEMORY_TOKEN leaves the server open because it only ever reads
+# LEVH_TOKEN. Legacy names may still be *documented* as deprecated — the check
+# is that every mention sits in a deprecation context, not in setup guidance.
+_STALE_NAME_RE = re.compile(r"\bStackMemory\b|STACKMEMORY_[A-Z_]+")
+_DEPRECATION_MARKERS = ("deprecat", "legacy", "backward compat")
+_PUBLIC_DOCS = ["SECURITY.md", "CONTRIBUTING.md", "README.md"]
+
+
+@pytest.mark.parametrize("doc_name", _PUBLIC_DOCS)
+def test_public_docs_use_the_current_product_name_and_env_prefix(doc_name):
+    text = (DOCS.parent / doc_name).read_text(encoding="utf-8")
+    offenders: list[str] = []
+    for paragraph in text.split("\n\n"):
+        if not _STALE_NAME_RE.search(paragraph):
+            continue
+        lowered = paragraph.lower()
+        if any(marker in lowered for marker in _DEPRECATION_MARKERS):
+            continue
+        offenders.extend(_STALE_NAME_RE.findall(paragraph))
+    assert not offenders, (
+        f"{doc_name} uses legacy names {sorted(set(offenders))} outside a "
+        "deprecation note; the code reads LEVH_* only, so a reader following "
+        "this doc would configure the wrong variable"
+    )

@@ -1,6 +1,6 @@
 # Contributing
 
-StackMemory is currently focused on release hardening and reliable local-first installation.
+LEVH is currently focused on release hardening and reliable local-first installation.
 
 ## Ground rules
 

@@ -40,6 +40,7 @@ the process that launches it when environment overrides are required.
 | `LEVH_LIBRARIAN_INTERVAL` | `600` | Seconds between watcher scans |
 | `LEVH_AUTO_CHECKPOINT_INTERVAL` | `600` | Seconds between automatic checkpoints on the MCP server side |
 | `LEVH_TOKEN` | — | Shared-secret gate required for non-loopback access unless an external boundary is explicitly declared |
+| `LEVH_ENABLE_API_DOCS` | `false` when a token is set | Serve `/docs`, `/redoc` and `/openapi.json`. These are withheld while `LEVH_TOKEN` is set — a browser cannot attach the token header to the docs page itself, so the whole route map would otherwise be anonymous. Set to `true` only on a trusted network |
 | `LEVH_ALLOW_REMOTE_WITHOUT_TOKEN` | `false` | Advanced operator assertion that an external network boundary protects tokenless non-loopback traffic; never use with a public port. `levh doctor` fails when it is combined with a non-loopback bind, and `/api/health` reports `unauthenticated_remote_access: true` for as long as it is in effect |
 | `LEVH_CORS_ORIGINS` | localhost only | Comma-separated allowed browser origins (`*` for wildcard) |
 | `LEVH_AUTH_RATE_LIMIT` | `10` | Failed token attempts allowed per rate-limit window, per client/process |

@@ -1,8 +1,7 @@
 # LEVH — Developer / Architecture Guide
 
 A technical reference for anyone extending, embedding, or operating LEVH.
-For the product pitch see `README.md`; for the maturity checklist see
-`docs/product-hardening.md`.
+For the product pitch see `README.md`.
 
 ---
 
