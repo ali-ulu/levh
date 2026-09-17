@@ -28,16 +28,10 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from server.routes import deps  # noqa: E402
 from server.routes.live_broadcast import subscribe_broadcaster as _subscribe_broadcaster  # noqa: E402
-from server.auth import (
-    AUTH_RATE_LIMIT,
-    AUTH_RATE_LIMIT_WINDOW_SECONDS,
-    RemoteAccessBoundaryMiddleware,
-    shared_auth_limiter,
-)
+from server.auth import RemoteAccessBoundaryMiddleware
 from server.core import engine_provider
 from server.core.env import get_env
 from server.core.memory_engine import MemoryEngine
-from server.core.rate_limit import SlidingWindowRateLimiter
 
 # ── Engine wiring ──────────────────────────────────────────────────
 # The engine is dependency-injected (issue #93): ``deps.get_engine``
@@ -135,15 +129,6 @@ app.add_middleware(
 # boundary to whatever LEVH_TOKEN held when this module was first imported
 # (issue #132) — the same reason server/middleware.py re-reads per request.
 app.add_middleware(RemoteAccessBoundaryMiddleware, token=deps.api_token)
-_AUTH_RATE_LIMIT = AUTH_RATE_LIMIT
-try:
-    _API_RATE_LIMIT = int(get_env("LEVH_API_RATE_LIMIT", "120"))
-except ValueError:
-    _API_RATE_LIMIT = 120
-_RATE_LIMIT_WINDOW = AUTH_RATE_LIMIT_WINDOW_SECONDS
-
-_auth_limiter = shared_auth_limiter
-_api_limiter = SlidingWindowRateLimiter(_API_RATE_LIMIT, _RATE_LIMIT_WINDOW)
 
 
 # ── Middleware ──────────────────────────────────────────────────────

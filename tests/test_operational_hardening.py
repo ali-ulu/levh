@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-from server.auth import constant_time_token_matches
+from server.auth import constant_time_token_matches, shared_auth_limiter
 from server.core.database import CURRENT_SCHEMA_VERSION, Database
 from server.core.embedder import Embedder
 from server.core.memory_engine import MemoryEngine
@@ -403,3 +403,25 @@ def test_doctor_fails_on_tokenless_override_with_non_loopback_bind(tmp_path, mon
     monkeypatch.setenv("LEVH_TOKEN", "configured")
     assert cmd_doctor(argparse.Namespace()) == 0
     assert "FAIL" not in capsys.readouterr().out
+
+
+def test_api_module_builds_no_second_rate_limiter():
+    """server.api used to keep its own limiter/settings block, a leftover from
+    before they moved to server.routes.deps. Nothing read it, and a stray use
+    of it would have enforced limits that disagreed with the ones the
+    middleware actually consults (issue #129)."""
+    import server.api as api_mod
+    from server.routes import deps
+
+    for symbol in (
+        "_AUTH_RATE_LIMIT",
+        "_API_RATE_LIMIT",
+        "_RATE_LIMIT_WINDOW",
+        "_auth_limiter",
+        "_api_limiter",
+    ):
+        assert not hasattr(api_mod, symbol), f"server.api still defines {symbol}"
+
+    # One source of truth, and it is the one the middleware reads.
+    assert deps.auth_limiter is shared_auth_limiter
+    assert isinstance(deps.api_limiter, SlidingWindowRateLimiter)
