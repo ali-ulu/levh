@@ -1,8 +1,9 @@
 """HTTP middleware: the token gate and the public-demo boundary.
 
-Both decide who may reach ``/api/*`` at all, so they live together and apart
-from the routes they protect. ``install(app)`` attaches them; ``server.api``
-calls it once while building the app.
+Both decide who may reach the guarded API surface at all — the ``/api/*``
+routes plus the generated docs the app serves at the root — so they live
+together and apart from the routes they protect. ``install(app)`` attaches
+them; ``server.api`` calls it once while building the app.
 """
 
 from __future__ import annotations
@@ -38,9 +39,28 @@ def _client_key(request: Request) -> str:
     return request.client.host if request.client else "unknown"
 
 
+# The generated documentation surface is part of the API surface the token
+# protects, but it does not live under /api/ — FastAPI serves it at the app
+# root. A prefix test alone therefore left it anonymously reachable in exactly
+# the deployment where the boundary is switched on: with LEVH_TOKEN set, an
+# unauthenticated caller could still read /openapi.json and enumerate every
+# route (issue #144).
+DOCS_SURFACE_PATHS = {
+    "/docs",
+    "/docs/oauth2-redirect",
+    "/redoc",
+    "/openapi.json",
+}
+
+
 def _guarded(request: Request) -> bool:
-    """Whether this request is subject to the /api gates."""
-    return request.url.path.startswith("/api/") and request.url.path != "/api/health"
+    """Whether this request is subject to the token and demo gates."""
+    path = request.url.path
+    if path.startswith("/api/"):
+        return path != "/api/health"
+    # Trailing-slash tolerant: the docs routes redirect /docs/ to /docs, and a
+    # redirect answered outside the gate would still confirm the surface exists.
+    return path.rstrip("/") in DOCS_SURFACE_PATHS
 
 
 def install(app: FastAPI) -> None:

@@ -259,6 +259,35 @@ async def test_replace_restore_fails_closed_when_safety_backup_fails(tmp_path, m
         await source.shutdown()
 
 
+@pytest.mark.asyncio
+async def test_docs_surface_requires_the_token_when_it_is_set(monkeypatch):
+    """The root-level docs routes are part of the gate, not a way around it (#144)."""
+    from server.api import app
+
+    monkeypatch.setenv("LEVH_TOKEN", "correct-token")
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        for path in ("/docs", "/redoc", "/openapi.json", "/docs/oauth2-redirect"):
+            anonymous = await client.get(path)
+            assert anonymous.status_code == 401, f"{path} leaked without a token"
+            wrong = await client.get(path, headers={"X-LEVH-Token": "wrong"})
+            assert wrong.status_code == 401
+            authorized = await client.get(path, headers={"X-LEVH-Token": "correct-token"})
+            assert authorized.status_code != 401, f"{path} rejected the right token"
+
+
+@pytest.mark.asyncio
+async def test_docs_surface_stays_open_when_no_token_is_configured(monkeypatch):
+    """Zero-config local use keeps its docs; the gate only exists with a token."""
+    from server.api import app
+
+    monkeypatch.delenv("LEVH_TOKEN", raising=False)
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        assert (await client.get("/docs")).status_code == 200
+        assert (await client.get("/openapi.json")).status_code == 200
+
+
 def test_docker_runs_non_root_with_healthcheck_and_loopback_compose():
     dockerfile = Path("Dockerfile").read_text(encoding="utf-8")
     compose = Path("docker-compose.yml").read_text(encoding="utf-8")

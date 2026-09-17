@@ -4,7 +4,10 @@ Every endpoint the server exposes. Generated from the running app and locked
 by `tests/test_docs_match_code.py`, so a new route cannot land here undocumented.
 
 All `/api/*` endpoints except `/api/health` require `X-LEVH-Token` when
-`LEVH_TOKEN` is set. Under `LEVH_PUBLIC_DEMO=true` every mutating method is
+`LEVH_TOKEN` is set. The generated docs surface the app serves at the root
+(`/docs`, `/redoc`, `/openapi.json`, `/docs/oauth2-redirect`) is part of the
+same gate, so an authenticated deployment does not expose its route schema
+anonymously. Under `LEVH_PUBLIC_DEMO=true` every mutating method is
 refused, as are the bulk exports; `POST /api/memories/recall` stays open
 because it is a read that has to POST to carry its query.
 
