@@ -322,10 +322,21 @@ class AgentUsageService:
         self._emit = emit
         self._presence = presence
 
-    def _is_agent_session(self, session_id: str, agent_name: str) -> bool:
-        """Check if a session belongs to an agent (in-memory check)."""
-        # This is a simplified check - in production we'd query the DB
-        return True  # Placeholder - actual implementation would check DB
+    async def _session_agent_names(self, session_ids: list[str]) -> dict[str, str]:
+        """Map agent session ids to their canonical agent name.
+
+        One query resolves every id, so callers can decide ownership without
+        a per-session round trip.
+        """
+        ids = [sid for sid in session_ids if sid]
+        if not ids:
+            return {}
+        placeholders = ",".join("?" for _ in ids)
+        cursor = await self.db.conn.execute(
+            f"SELECT id, agent_name FROM agent_sessions WHERE id IN ({placeholders})",
+            ids,
+        )
+        return {row["id"]: row["agent_name"] for row in await cursor.fetchall()}
 
     async def get_agent_metrics(self, agent_name: str) -> dict:
         """Get performance metrics for a specific agent."""
@@ -355,12 +366,15 @@ class AgentUsageService:
         cp_rows = await cursor.fetchall()
         cp_stats = {r["checkpoint_type"]: dict(r) for r in cp_rows} if cp_rows else {}
 
-        # Online status
-        online_count = sum(
-            1 for aid, ts in self._presence._presence.items()
-            if (time.time() - ts) < self._presence.heartbeat_timeout
-            and self._is_agent_session(aid, key)
-        )
+        # Online status — count only sessions that both have a fresh heartbeat
+        # and actually belong to this agent (the session id alone is opaque).
+        now = time.time()
+        online_ids = [
+            aid for aid, ts in self._presence._presence.items()
+            if (now - ts) < self._presence.heartbeat_timeout
+        ]
+        online_names = await self._session_agent_names(online_ids)
+        online_count = sum(1 for aid in online_ids if online_names.get(aid) == key)
 
         return {
             "agent_name": key,
@@ -428,13 +442,15 @@ class AgentUsageService:
         )
         agents = [dict(r) for r in await cursor.fetchall()]
 
-        # Add online status
+        # Add online status — a project agent is online if any of its live
+        # presence entries belongs to it (presence keys are session ids).
+        online_ids = [
+            aid for aid in self._presence._presence if self._presence.is_online(aid)
+        ]
+        online_names = await self._session_agent_names(online_ids)
+        active_names = set(online_names.values())
         for agent in agents:
-            agent["online"] = any(
-                self._presence.is_online(aid)
-                for aid in self._presence._presence
-                if self._is_agent_session(aid, agent["agent_name"])
-            )
+            agent["online"] = normalize_agent(agent["agent_name"]) in active_names
 
         # Shared checkpoints
         cursor = await self.db.conn.execute(
