@@ -127,6 +127,24 @@ def remote_without_token_allowed() -> bool:
     }
 
 
+def unauthenticated_remote_access_enabled(
+    token: str | bytes | None = None,
+) -> bool:
+    """Return whether tokenless non-loopback peers are currently accepted.
+
+    The override is legitimate — inside Docker the host's traffic arrives from
+    the bridge gateway, which is not a loopback peer — but it is only safe
+    while the bind stays private, and the single startup warning that carried
+    that fact scrolls away. Surfaces that can hold a standing signal
+    (``/api/health``, ``levh doctor``) ask here, so the open state stays
+    visible for as long as it lasts instead of being asserted once and
+    forgotten.
+    """
+    if _token_bytes(token):
+        return False
+    return remote_without_token_allowed()
+
+
 class RemoteAccessBoundaryMiddleware:
     """Keep tokenless HTTP transports loopback-only unless explicitly overridden."""
 

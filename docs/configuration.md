@@ -40,7 +40,7 @@ the process that launches it when environment overrides are required.
 | `LEVH_LIBRARIAN_INTERVAL` | `600` | Seconds between watcher scans |
 | `LEVH_AUTO_CHECKPOINT_INTERVAL` | `600` | Seconds between automatic checkpoints on the MCP server side |
 | `LEVH_TOKEN` | — | Shared-secret gate required for non-loopback access unless an external boundary is explicitly declared |
-| `LEVH_ALLOW_REMOTE_WITHOUT_TOKEN` | `false` | Advanced operator assertion that an external network boundary protects tokenless non-loopback traffic; never use with a public port |
+| `LEVH_ALLOW_REMOTE_WITHOUT_TOKEN` | `false` | Advanced operator assertion that an external network boundary protects tokenless non-loopback traffic; never use with a public port. `levh doctor` fails when it is combined with a non-loopback bind, and `/api/health` reports `unauthenticated_remote_access: true` for as long as it is in effect |
 | `LEVH_CORS_ORIGINS` | localhost only | Comma-separated allowed browser origins (`*` for wildcard) |
 | `LEVH_AUTH_RATE_LIMIT` | `10` | Failed token attempts allowed per rate-limit window, per client/process |
 | `LEVH_API_RATE_LIMIT` | `120` | Authenticated API requests allowed per window, per client/process |
@@ -65,3 +65,9 @@ host port is restricted to `127.0.0.1` — inside the container the host's traff
 arrives from the bridge gateway, which is not a loopback peer. If that port
 mapping is widened, remove `LEVH_ALLOW_REMOTE_WITHOUT_TOKEN` and set a strong
 `LEVH_TOKEN` instead.
+
+That boundary no longer rests on the comment alone. `levh doctor` fails when the
+override is set while the server binds a non-loopback address, and the running
+server reports `unauthenticated_remote_access: true` from `/api/health` for as
+long as the override is in effect — so widening the publish without adding a
+token is caught rather than silently exposed.

@@ -6,6 +6,7 @@ from __future__ import annotations
 from fastapi import Depends, APIRouter, HTTPException
 
 from server.core import llm_policy
+from server.auth import unauthenticated_remote_access_enabled
 from server.routes.deps import get_engine
 from server.routes.deps import APP_VERSION, api_token, logger
 
@@ -54,10 +55,17 @@ async def get_config(engine=Depends(get_engine)):
 async def health():
     # Unauthenticated (exempt from the token gate) so the dashboard can learn
     # up-front whether it must ask the user for a token before any /api/* call.
+    #
+    # The override warning fires once per process and scrolls away, so the
+    # tokenless state it describes would vanish from every later observation.
+    # Reporting it here keeps the fact observable for as long as it holds
+    # (#151): `levh doctor` and any operator can ask the running server what
+    # boundary it actually enforces instead of trusting a startup log line.
     return {
         "status": "ok",
         "service": "levh",
         "auth_required": bool(api_token()),
+        "unauthenticated_remote_access": unauthenticated_remote_access_enabled(api_token()),
     }
 
 

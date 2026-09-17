@@ -300,3 +300,58 @@ def test_doctor_reports_local_route_and_sqlite_runtime(tmp_path, monkeypatch, ca
     assert "SQLite runtime" in output
     assert "journal=wal" in output
     assert f"schema={CURRENT_SCHEMA_VERSION}/{CURRENT_SCHEMA_VERSION}" in output
+
+
+@pytest.mark.asyncio
+async def test_health_reports_standing_remote_access_state(monkeypatch):
+    """The open state survives the startup warning (issue #151)."""
+    from server.api import app
+    from server.auth import ALLOW_REMOTE_WITHOUT_TOKEN_ENV
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        monkeypatch.delenv(ALLOW_REMOTE_WITHOUT_TOKEN_ENV, raising=False)
+        monkeypatch.delenv("STACKMEMORY_ALLOW_REMOTE_WITHOUT_TOKEN", raising=False)
+        monkeypatch.delenv("LEVH_TOKEN", raising=False)
+        closed = (await client.get("/api/health")).json()
+        assert closed["auth_required"] is False
+        assert closed["unauthenticated_remote_access"] is False
+
+        monkeypatch.setenv(ALLOW_REMOTE_WITHOUT_TOKEN_ENV, "true")
+        opened = (await client.get("/api/health")).json()
+        assert opened["unauthenticated_remote_access"] is True
+
+        # Adding a token closes the boundary even with the override still set.
+        monkeypatch.setenv("LEVH_TOKEN", "configured")
+        gated = (await client.get("/api/health")).json()
+        assert gated["auth_required"] is True
+        assert gated["unauthenticated_remote_access"] is False
+
+
+def test_doctor_fails_on_tokenless_override_with_non_loopback_bind(tmp_path, monkeypatch, capsys):
+    """The compose override plus a widened bind must not pass silently."""
+    from server.auth import ALLOW_REMOTE_WITHOUT_TOKEN_ENV
+    from server.cli import cmd_doctor
+
+    monkeypatch.setenv("SQLITE_DB_PATH", str(tmp_path / "doctor-remote.db"))
+    monkeypatch.setenv("EMBEDDER_MODE", "hash")
+    monkeypatch.delenv("LEVH_TOKEN", raising=False)
+    monkeypatch.setenv(ALLOW_REMOTE_WITHOUT_TOKEN_ENV, "true")
+
+    # The override alone, on the default loopback bind, stays a warning.
+    assert cmd_doctor(argparse.Namespace()) == 0
+    warning = capsys.readouterr().out
+    assert "Remote access" in warning
+    assert "WARN" in warning
+
+    monkeypatch.setenv("API_HOST", "0.0.0.0")
+    assert cmd_doctor(argparse.Namespace()) == 1
+    failure = capsys.readouterr().out
+    assert "Remote access" in failure
+    assert "FAIL" in failure
+    assert "Verdict: FAIL" in failure
+
+    # A token satisfies the gate without touching the bind.
+    monkeypatch.setenv("LEVH_TOKEN", "configured")
+    assert cmd_doctor(argparse.Namespace()) == 0
+    assert "FAIL" not in capsys.readouterr().out

@@ -9,6 +9,7 @@ from server.auth import (
     ALLOW_REMOTE_WITHOUT_TOKEN_ENV,
     RemoteAccessBoundaryMiddleware,
     remote_without_token_allowed,
+    unauthenticated_remote_access_enabled,
 )
 from server.core.rate_limit import SlidingWindowRateLimiter
 
@@ -192,6 +193,22 @@ def test_remote_override_is_fail_closed_for_non_truthy_values(
 ) -> None:
     monkeypatch.setenv(ALLOW_REMOTE_WITHOUT_TOKEN_ENV, value)
     assert remote_without_token_allowed() is False
+    assert unauthenticated_remote_access_enabled("") is False
+
+
+@pytest.mark.parametrize("token", ["", None, b""])
+def test_remote_open_state_requires_override_and_absent_token(
+    token: str | bytes | None,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv(ALLOW_REMOTE_WITHOUT_TOKEN_ENV, "true")
+    assert unauthenticated_remote_access_enabled(token) is True
+
+    # A configured token gates every non-loopback peer, so the override — even
+    # when still set — no longer describes an open boundary. Callers pass the
+    # live resolver's value (server.routes.deps.api_token), not the raw env.
+    assert unauthenticated_remote_access_enabled("configured") is False
+    assert unauthenticated_remote_access_enabled(b"configured") is False
 
 
 @pytest.mark.asyncio

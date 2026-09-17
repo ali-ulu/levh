@@ -8,6 +8,7 @@ from pathlib import Path
 
 from server.commands.paths import _REPO_ROOT
 from server.core.db.aggregates import AggregateQueries
+from server.core.env import get_env
 from server.core.runtime_config import resolve_runtime_config
 
 
@@ -257,6 +258,52 @@ def cmd_doctor(_args: argparse.Namespace) -> int:
             )
     except Exception as e:
         checks.append(("SQLite runtime", "WARN", f"could not inspect: {e}"))
+
+    # 16. Remote access boundary. The tokenless override exists for Docker,
+    # where the host's traffic arrives from the bridge gateway rather than a
+    # loopback peer; it is safe only while the bind itself stays private. The
+    # issue this addresses (#151): the override's sole defence was a YAML
+    # comment, so a one-line publish change turned it into anonymous remote
+    # access. Doctor now refuses the combination outright instead of leaving
+    # it to a comment nobody re-reads.
+    try:
+        from server.auth import (
+            ALLOW_REMOTE_WITHOUT_TOKEN_ENV,
+            _is_loopback,
+            unauthenticated_remote_access_enabled,
+        )
+
+        token = get_env("LEVH_TOKEN", "").strip()
+        if not unauthenticated_remote_access_enabled(token):
+            detail = (
+                "LEVH_TOKEN set; tokenless peers refused"
+                if token
+                else "loopback-only without LEVH_TOKEN"
+            )
+            checks.append(("Remote access", "PASS", detail))
+        elif not _is_loopback(runtime.api_host):
+            checks.append(
+                (
+                    "Remote access",
+                    "FAIL",
+                    f"{ALLOW_REMOTE_WITHOUT_TOKEN_ENV}=true with non-loopback bind "
+                    f"{runtime.api_host}: unauthenticated remote access. Set LEVH_TOKEN, "
+                    f"or remove the override and bind to 127.0.0.1.",
+                )
+            )
+            ok = False
+        else:
+            checks.append(
+                (
+                    "Remote access",
+                    "WARN",
+                    f"{ALLOW_REMOTE_WITHOUT_TOKEN_ENV}=true: unauthenticated non-loopback "
+                    f"peers accepted; safe only while {runtime.api_host} stays private",
+                )
+            )
+    except Exception as e:
+        checks.append(("Remote access", "FAIL", str(e)))
+        ok = False
 
     recommendation = (
         "run `levh setup --demo --client claude --profile work`"
