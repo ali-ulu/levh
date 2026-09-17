@@ -1,0 +1,59 @@
+name: Feature request
+description: Propose a capability LEVH does not have yet.
+title: "feat: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        LEVH is deliberately local-first and narrow: see the ground rules in
+        `CONTRIBUTING.md`. Cloud, auth, billing, and workspace features need a
+        design issue before any code, so describe the problem first.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What are you trying to do that LEVH makes hard or impossible today?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What you would like to see. A sketch is enough — an API shape, a CLI flag, a UI change.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Workarounds you tried, or other designs you rejected.
+    validations:
+      required: false
+
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Which surface does this touch?
+      options:
+        - REST API
+        - MCP tools
+        - CLI
+        - Dashboard / frontend
+        - Storage / engine internals
+        - Docs or tooling
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Scope checks
+      options:
+        - label: This can work fully offline without a remote model call
+          required: false
+        - label: I am willing to open a pull request for this
+          required: false

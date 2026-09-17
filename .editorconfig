@@ -1,0 +1,24 @@
+# Editor defaults so indentation and line endings stay consistent across
+# editors instead of depending on each contributor's local settings. This is
+# not a formatter: ruff (Python) and prettier/eslint (frontend) still own code
+# style. `.editorconfig` only settles the whitespace they do not.
+
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+[*.{js,jsx,ts,tsx,json,json5,css,scss,html,yml,yaml}]
+indent_size = 2
+
+[*.md]
+# Trailing spaces are meaningful in Markdown: two of them force a line break.
+trim_trailing_whitespace = false
+
+[Makefile]
+indent_style = tab

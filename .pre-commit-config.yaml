@@ -1,0 +1,29 @@
+# Local mirror of the CI lint gate. The value is catching a syntax error,
+# undefined name, or bugbear bug class on `git commit` instead of on a CI run
+# after the push. The ruff hook is pinned to the same version CI installs
+# (.github/workflows/ci.yml) so local and CI cannot disagree.
+#
+#   python -m pip install pre-commit
+#   pre-commit install
+#
+# `files:` points at Python only — the frontend has its own toolchain and must
+# not be linted by ruff (it is in ruff's extend-exclude for the same reason).
+
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.7
+    hooks:
+      - id: ruff
+        args: [--fix]
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: [--maxkb=2048]
+      - id: check-yaml
+      - id: check-toml

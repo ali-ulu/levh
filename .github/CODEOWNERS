@@ -1,0 +1,22 @@
+# Ownership for the paths where an unreviewed change can silently break the
+# product or the release pipeline. GitHub requests a review from the matching
+# owner automatically; it does not block a merge on its own.
+#
+# Keep this narrow: ownership on every file trains reviewers to ignore the
+# request. Runtime engine, API wiring, CI and release are the high-blast-radius
+# paths; docs and frontend are not listed on purpose.
+
+# Runtime engine: memory scoring, lifecycle, decay, admission.
+/server/core/engine/    @ali-ulu
+
+# Server entrypoint and API wiring: routing, auth boundary, middleware.
+/server/api.py          @ali-ulu
+/server/auth.py         @ali-ulu
+/server/routes/         @ali-ulu
+
+# Release pipeline: workflows and the version bump tooling.
+/.github/workflows/     @ali-ulu
+/scripts/release.py     @ali-ulu
+
+# Packaging: dependencies and build metadata shipped to users.
+/pyproject.toml         @ali-ulu

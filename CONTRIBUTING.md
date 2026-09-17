@@ -1,6 +1,18 @@
 # Contributing
 
-LEVH is currently focused on release hardening and reliable local-first installation.
+LEVH is currently focused on release hardening and reliable local-first
+installation. That focus shapes what a good contribution looks like: it has to
+work offline, without a remote model call, and without asking the user to trust
+a service they did not choose.
+
+## Before you start
+
+- **Bugs and small fixes** — open a pull request directly. The issue and pull
+  request templates explain what a reviewer needs to see.
+- **Features** — open a feature request first so the design is agreed before
+  code exists. Cloud, auth, billing, and workspace features need a design issue
+  by policy; a pull request that adds them without one will be closed.
+- **Security issues** — do not open a public issue. Follow `SECURITY.md`.
 
 ## Ground rules
 
@@ -9,19 +21,45 @@ LEVH is currently focused on release hardening and reliable local-first installa
 - Do not commit runtime artifacts such as `.env`, `stackmemory.db`, `.pytest_cache`, `.next`, `node_modules`, logs, or generated exports.
 - Keep tests runnable without an OpenAI key and without `sentence-transformers`.
 - Use `EMBEDDER_MODE=hash` for deterministic CI and smoke tests.
+- Do not reformat code you did not otherwise change. This repository predates
+  ruff and keeps its historical style: `.ruff.toml` selects correctness rules
+  only, deliberately.
+
+## Development setup
+
+```bash
+python -m pip install -e ".[dev]"
+```
+
+That installs pytest and ruff, the two gates CI runs. The optional extras —
+`.[local]` for the real embedder, `.[files]` for PDF/Word/Excel import,
+`.[pdf]` for the audit report — are not needed for development.
+
+### Pre-commit (recommended)
+
+```bash
+python -m pip install pre-commit
+pre-commit install
+```
+
+This runs the same ruff version CI installs, on every commit, so a lint failure
+does not wait for CI to surface. See `.pre-commit-config.yaml`.
 
 ## Local validation
+
+Run these before opening a pull request. They are the gates CI enforces.
 
 ```bash
 python -m pip install -e ".[dev]"
 python -m compileall -q server tests
 EMBEDDER_MODE=hash python -m pytest -q
 EMBEDDER_MODE=hash python -m pytest -q tests/test_api_smoke.py
+python -m ruff check .
 python -m build
 twine check dist/*
 ```
 
-Frontend validation:
+Frontend validation (required if you touched `frontend/`):
 
 ```bash
 cd frontend
@@ -29,3 +67,20 @@ npm ci
 NEXT_TELEMETRY_DISABLED=1 npm run build
 npm audit --omit=dev
 ```
+
+## What happens after you open a pull request
+
+CI runs four gates — `lint`, `backend` (Python 3.11/3.12/3.13), `hostile-env`
+(the suite against a decoy database, to catch tests that would write to a real
+store), and `frontend`. A pull request is merged only when every one of them is
+green; a pending or missing check is not a green check.
+
+A change to `.github/workflows/`, `server/core/engine/`, `server/api.py`,
+`server/routes/`, or `pyproject.toml` also requests review from `CODEOWNERS`.
+
+## Commit messages
+
+Follow the existing history: a type prefix, a lowercase summary, and the issue
+number in parentheses — for example `fix: debounce write-triggered rebuild
+retries (#166)`. The `feat` / `fix` / `docs` / `refactor` / `test` / `chore`
+prefixes are what the changelog is generated from.

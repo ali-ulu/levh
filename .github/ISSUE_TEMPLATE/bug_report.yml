@@ -1,0 +1,79 @@
+name: Bug report
+description: Something behaves incorrectly — a crash, wrong result, or data loss.
+title: "bug: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. A bug that can be reproduced is a bug that can
+        be fixed — the fields below exist to make the reproduction quick.
+
+        Do not paste secrets, tokens, or memory content you would not want
+        public. Redact before submitting.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: The observed behaviour, in plain language.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+      description: What should have happened instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: The smallest sequence that shows the problem.
+      placeholder: |
+        1. Run `levh serve`
+        2. POST /api/memories with ...
+        3. Observe ...
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: LEVH version
+      description: "Output of `levh --version`."
+      placeholder: "2.31.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: install
+    attributes:
+      label: How are you running LEVH?
+      options:
+        - pip install (levh / stackmemory)
+        - From source (git clone)
+        - Docker / docker-compose
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: platform
+    attributes:
+      label: OS and Python
+      placeholder: "Ubuntu 24.04, Python 3.12"
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs or traceback
+      description: Server output around the failure. Redact paths and secrets.
+      render: shell
+    validations:
+      required: false
