@@ -43,7 +43,18 @@
   `package-lock.json` in a user's home can no longer break local `@/*`
   alias resolution.
 - Docs/README hygiene: removed roadmap, demo assets, and stale references.
+
 ## Unreleased
+
+### Hook installers no longer promise a checkpoint they cannot install (#124)
+
+- `install_claude_code_hook` and `install_universal_hook` accepted a
+  `with_checkpoint` argument and silently dropped it: nothing read the
+  value, the CLI never defined `--with-checkpoint` so the path was
+  unreachable, and `_CHECKPOINT_TEMPLATE` had no callers. The dead
+  parameter and the unused template are gone, and the module docstring no
+  longer advertises a periodic-checkpoint capability these hooks do not
+  provide. Recurring checkpoints remain available via `levh checkpoint auto`.
 
 ### The embedder tells you when it degrades
 

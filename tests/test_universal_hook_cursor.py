@@ -16,8 +16,10 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from server.commands.universal_hooks import (
+    install_claude_code_hook,
     install_claude_desktop_hook,
     install_cursor_hook,
+    install_universal_hook,
     install_vscode_hook,
     install_windsurf_hook,
 )
@@ -107,3 +109,69 @@ def test_install_is_idempotent(fake_cwd):
     install_cursor_hook()
     second = (fake_cwd / ".cursor/mcp.json").read_text(encoding="utf-8")
     assert second == first
+
+
+# ── The checkpoint half-feature that never ran (#124) ────────────────
+
+
+def test_no_installer_advertises_a_checkpoint_it_never_installs(fake_cwd, monkeypatch):
+    """``--with-checkpoint`` was accepted, forwarded, and then dropped.
+
+    Every entry point took the flag and none of them read it: the Claude Code
+    installer swallowed it, the CLI never defined the argument so the command
+    was unreachable, and the template it was meant to write had no callers.
+    A parameter nothing reads is a promise the code cannot keep, so the
+    installers dropped it rather than keeping the third of the three possible
+    states (flag present, behaviour absent) the issue called the worst.
+    """
+    import inspect
+
+    from server.commands import hooks as hook_commands
+
+    for fn in (
+        install_claude_code_hook,
+        install_universal_hook,
+    ):
+        assert "with_checkpoint" not in inspect.signature(fn).parameters
+
+    # The CLI has to keep rejecting the flag, rather than accepting it and
+    # silently doing nothing.
+    from server.cli_parsers import build_parser
+
+    parser, _ = build_parser("levh")
+    with pytest.raises(SystemExit):
+        parser.parse_args(["hook", "install", "--client", "claude-code", "--with-checkpoint"])
+
+    # And nothing may call the install path with a checkpoint keyword either.
+    calls = []
+    real = hook_commands._install_session_hook
+
+    def spy(limit):
+        calls.append(limit)
+        return real(limit)
+
+    monkeypatch.setattr(hook_commands, "_install_session_hook", spy)
+    result = install_universal_hook("claude-code", limit=3)
+    assert result["claude-code"]["ok"] is True
+    assert calls == [3]
+
+
+def test_the_unused_checkpoint_template_is_gone():
+    """The template had no callers anywhere in the repo; leaving it behind is
+    what made the feature look half-built and the comment on it untrue."""
+    import server.commands.universal_hooks as universal_hooks
+
+    assert not hasattr(universal_hooks, "_CHECKPOINT_TEMPLATE")
+
+    source = Path(universal_hooks.__file__).read_text(encoding="utf-8")
+    assert "--with-checkpoint" not in source
+
+    repo_root = Path(__file__).resolve().parent.parent
+    hits = [
+        path
+        for path in list((repo_root / "docs").rglob("*.md"))
+        + list((repo_root / "server").rglob("*.py"))
+        + [repo_root / "README.md"]
+        if path.is_file() and "--with-checkpoint" in path.read_text(encoding="utf-8", errors="ignore")
+    ]
+    assert not hits, f"the flag is still advertised in: {sorted(str(p) for p in hits)}"

@@ -16,7 +16,10 @@ Each agent gets:
   1. Auto-connection to LEVH MCP server
   2. Auto-session creation on first tool use
   3. Continuity brief injection at session start
-  4. Periodic checkpoint capability
+
+Recurring checkpoints are a separate feature (`levh checkpoint auto`), not
+something these hooks install — the module used to advertise a checkpoint
+capability no installer here could produce (#124).
 """
 
 from __future__ import annotations
@@ -136,25 +139,6 @@ _MCP_CONFIG_INJECTION = '''
 # The MCP server provides 62 tools for memory management.
 '''
 
-# Checkpoint template — runs periodically to save state
-_CHECKPOINT_TEMPLATE = '''#!/bin/sh
-{marker}
-# LEVH Checkpoint — saves current work state periodically.
-# Installed by `levh hook install --client {client} --with-checkpoint`
-
-SQLITE_DB_PATH="${{SQLITE_DB_PATH:-{db_path}}}"
-export SQLITE_DB_PATH
-
-# Create a checkpoint with the recent activity
-"{python}" -P -m server.cli checkpoint \\
-    --agent "{client}" \\
-    --title "Auto checkpoint" \\
-    --type auto \\
-    2>/dev/null || true
-
-exit 0
-'''
-
 
 def _resolved_db_path() -> str:
     """Absolute path to the database.
@@ -168,7 +152,7 @@ def _resolved_db_path() -> str:
 
 # ── Installers ───────────────────────────────────────────────────────
 
-def install_claude_code_hook(limit: int = 5, with_checkpoint: bool = False) -> dict:
+def install_claude_code_hook(limit: int = 5) -> dict:
     """Install the SessionStart hook for Claude Code."""
     from .hooks import _install_session_hook
     result = _install_session_hook(limit)
@@ -286,14 +270,12 @@ You can also:
 def install_universal_hook(
     client: str = "all",
     limit: int = 5,
-    with_checkpoint: bool = False,
 ) -> dict:
     """Install hooks for one or all supported agents.
 
     Args:
         client: Agent name or "all" for every supported agent.
         limit: Number of sessions to include in the continuity brief.
-        with_checkpoint: Also install checkpoint hook (where supported).
 
     Returns:
         Dict mapping agent name to installation result.
@@ -308,7 +290,7 @@ def install_universal_hook(
     for agent in agents:
         try:
             if agent == "claude-code":
-                results[agent] = install_claude_code_hook(limit, with_checkpoint)
+                results[agent] = install_claude_code_hook(limit)
             elif agent == "cursor":
                 results[agent] = install_cursor_hook(limit)
             elif agent == "vscode":
