@@ -32,9 +32,10 @@ _SYSTEM_PROMPT = (
 )
 
 
-def _extractive_fallback(question: str, sources: list[dict]) -> str:
+def _extractive_sources(sources: list[dict]) -> str:
     """Offline answer: no LLM, so present the top evidence the user can read.
-    Deterministic and honest — it never pretends to synthesize."""
+    Deterministic and honest — it never pretends to synthesize. The question
+    is not reflected: the evidence list is the whole answer."""
     if not sources:
         return (
             "I don't have any memories matching that question yet. "
@@ -71,10 +72,10 @@ async def answer_question(
         client: Optional shared httpx client.
     """
     if not sources:
-        return _extractive_fallback(question, sources)
+        return _extractive_sources(sources)
 
     if not policy.use_llm(mode, policy.ANSWER_FEATURE):
-        return _extractive_fallback(question, sources)
+        return _extractive_sources(sources)
 
     numbered = "\n".join(
         f"[{s['n']}] ({(s.get('created_at') or '')[:10]}) {s['content'].strip()}"
@@ -105,11 +106,11 @@ async def answer_question(
         )
         resp.raise_for_status()
         content = resp.json()["choices"][0]["message"]["content"].strip()
-        return content or _extractive_fallback(question, sources)
+        return content or _extractive_sources(sources)
     except Exception:
         # Any LLM failure degrades to the offline evidence list — asking your
         # memory must never hard-fail just because the LLM was unavailable.
-        return _extractive_fallback(question, sources)
+        return _extractive_sources(sources)
     finally:
         if owns_client:
             await client.aclose()
