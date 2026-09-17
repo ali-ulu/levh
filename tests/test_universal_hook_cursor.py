@@ -175,3 +175,18 @@ def test_the_unused_checkpoint_template_is_gone():
         if path.is_file() and "--with-checkpoint" in path.read_text(encoding="utf-8", errors="ignore")
     ]
     assert not hits, f"the flag is still advertised in: {sorted(str(p) for p in hits)}"
+
+
+def test_the_unused_hook_content_templates_are_gone():
+    """The shell auto-connect script and MCP config injection templates had no
+    callers anywhere in the repo — every installer writes its own config. Kept
+    around, they made the module look like it wired up auto-connect at install
+    time, which it never did (issue #128)."""
+    import server.commands.universal_hooks as universal_hooks
+
+    assert not hasattr(universal_hooks, "_AUTO_CONNECT_TEMPLATE")
+    assert not hasattr(universal_hooks, "_MCP_CONFIG_INJECTION")
+
+    source = Path(universal_hooks.__file__).read_text(encoding="utf-8")
+    assert "_AUTO_CONNECT_TEMPLATE" not in source
+    assert "_MCP_CONFIG_INJECTION" not in source
