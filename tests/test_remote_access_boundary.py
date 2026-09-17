@@ -278,3 +278,181 @@ async def test_boundary_accepts_static_token_unchanged(
 
     assert await _http_status(boundary) == 204
     assert boundary.token == b"configured"
+
+
+# ── The bind host a surface reports must be the one in force (#156) ──
+
+
+def test_bind_host_prefers_argv_over_the_config_default(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """`levh serve --host 0.0.0.0` binds argv, but config said 127.0.0.1.
+
+    Config alone is not evidence of the bind: this is the gap that let doctor
+    print WARN for a server listening on every interface.
+    """
+    from server.core.runtime_config import configured_bind_host
+
+    monkeypatch.delenv("LEVH_API_HOST", raising=False)
+    monkeypatch.delenv("API_HOST", raising=False)
+
+    assert configured_bind_host(argv=["levh", "serve"]) == "127.0.0.1"
+    assert configured_bind_host(argv=["levh", "serve", "--host", "0.0.0.0"]) == "0.0.0.0"
+    assert configured_bind_host(argv=["uvicorn", "--host=0.0.0.0"]) == "0.0.0.0"
+    # An empty value is not a decision, so config keeps deciding.
+    assert configured_bind_host(argv=["levh", "serve", "--host", ""]) == "127.0.0.1"
+
+
+def test_bind_host_falls_back_to_env_then_config(
+    monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    """Without argv, the existing precedence still applies."""
+    import json
+
+    from server.core.runtime_config import configured_bind_host
+
+    cfg_dir = tmp_path / ".stackmemory"
+    cfg_dir.mkdir()
+    (cfg_dir / "config.json").write_text(json.dumps({"api_host": "10.0.0.7"}))
+
+    monkeypatch.delenv("LEVH_API_HOST", raising=False)
+    monkeypatch.delenv("API_HOST", raising=False)
+    assert configured_bind_host(argv=["levh"], cwd=tmp_path) == "10.0.0.7"
+
+    monkeypatch.setenv("API_HOST", "10.0.0.9")
+    assert configured_bind_host(argv=["levh"], cwd=tmp_path) == "10.0.0.9"
+
+
+def test_bind_host_survives_a_malformed_config(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+    """A broken config must not turn `/api/health` into a 500."""
+    from server.core.runtime_config import configured_bind_host
+
+    cfg_dir = tmp_path / ".stackmemory"
+    cfg_dir.mkdir()
+    (cfg_dir / "config.json").write_text("{not json")
+    monkeypatch.delenv("LEVH_API_HOST", raising=False)
+    monkeypatch.delenv("API_HOST", raising=False)
+
+    assert configured_bind_host(argv=[], cwd=tmp_path) == "127.0.0.1"
+
+
+def test_health_reports_the_bind_host_in_force(monkeypatch: pytest.MonkeyPatch) -> None:
+    """`/api/health` answers what this process was actually told to bind."""
+    import asyncio
+
+    from httpx import ASGITransport, AsyncClient
+
+    from server.api import app
+
+    monkeypatch.setattr(
+        "sys.argv", ["uvicorn", "server.api:app", "--host", "0.0.0.0", "--port", "8000"]
+    )
+
+    async def _get() -> dict:
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            return (await client.get("/api/health")).json()
+
+    assert asyncio.run(_get())["api_host"] == "0.0.0.0"
+
+
+def test_doctor_fails_when_argv_binds_non_loopback(
+    tmp_path, monkeypatch: pytest.MonkeyPatch, capsys
+) -> None:
+    """The #156 case: override set, the process launched with `--host 0.0.0.0`.
+
+    Reading config printed WARN while the socket was open to every interface.
+    The bind now comes from argv, so the check reaches FAIL. No server answers
+    on the ephemeral port, so the live probe returns None and argv decides.
+    """
+    import argparse
+
+    from server.cli import cmd_doctor
+
+    monkeypatch.setenv("SQLITE_DB_PATH", str(tmp_path / "doctor-156.db"))
+    monkeypatch.setenv("EMBEDDER_MODE", "hash")
+    monkeypatch.delenv("LEVH_TOKEN", raising=False)
+    monkeypatch.setenv(ALLOW_REMOTE_WITHOUT_TOKEN_ENV, "true")
+    monkeypatch.delenv("LEVH_API_HOST", raising=False)
+    monkeypatch.delenv("API_HOST", raising=False)
+    monkeypatch.setenv("API_PORT", "1")  # nothing listens on port 1
+    monkeypatch.setattr("sys.argv", ["levh", "serve", "--host", "0.0.0.0"])
+
+    assert cmd_doctor(argparse.Namespace()) == 1
+    failure = capsys.readouterr().out
+    assert "Remote access" in failure
+    assert "FAIL" in failure
+    assert "0.0.0.0" in failure
+    assert "Verdict: FAIL" in failure
+
+
+def test_doctor_still_warns_on_the_loopback_default(
+    tmp_path, monkeypatch: pytest.MonkeyPatch, capsys
+) -> None:
+    """The override on a private bind stays a warning, not a failure."""
+    import argparse
+
+    from server.cli import cmd_doctor
+
+    monkeypatch.setenv("SQLITE_DB_PATH", str(tmp_path / "doctor-156b.db"))
+    monkeypatch.setenv("EMBEDDER_MODE", "hash")
+    monkeypatch.delenv("LEVH_TOKEN", raising=False)
+    monkeypatch.setenv(ALLOW_REMOTE_WITHOUT_TOKEN_ENV, "true")
+    monkeypatch.delenv("LEVH_API_HOST", raising=False)
+    monkeypatch.delenv("API_HOST", raising=False)
+    monkeypatch.setenv("API_PORT", "1")
+    monkeypatch.setattr("sys.argv", ["levh", "serve"])
+
+    assert cmd_doctor(argparse.Namespace()) == 0
+    output = capsys.readouterr().out
+    assert "Remote access" in output
+    assert "WARN" in output
+    assert "Verdict: OK" in output
+
+
+def test_doctor_prefers_what_a_live_server_reports(
+    tmp_path, monkeypatch: pytest.MonkeyPatch, capsys
+) -> None:
+    """When a server answers, its own bind beats argv and config alike."""
+    import argparse
+    import http.server
+    import threading
+
+    from server.cli import cmd_doctor
+
+    class _Health(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):  # noqa: N802 - BaseHTTPRequestHandler API
+            body = b'{"status": "ok", "api_host": "0.0.0.0"}'
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, *args):  # silence the test output
+            return None
+
+    server = http.server.HTTPServer(("127.0.0.1", 0), _Health)
+    port = server.server_address[1]
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        monkeypatch.setenv("SQLITE_DB_PATH", str(tmp_path / "doctor-156c.db"))
+        monkeypatch.setenv("EMBEDDER_MODE", "hash")
+        monkeypatch.delenv("LEVH_TOKEN", raising=False)
+        monkeypatch.setenv(ALLOW_REMOTE_WITHOUT_TOKEN_ENV, "true")
+        monkeypatch.delenv("LEVH_API_HOST", raising=False)
+        monkeypatch.delenv("API_HOST", raising=False)
+        monkeypatch.setenv("API_PORT", str(port))
+        # argv claims loopback; only the running server knows better.
+        monkeypatch.setattr("sys.argv", ["levh", "serve"])
+
+        assert cmd_doctor(argparse.Namespace()) == 1
+        failure = capsys.readouterr().out
+        assert "Remote access" in failure
+        assert "FAIL" in failure
+        assert "0.0.0.0" in failure
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
