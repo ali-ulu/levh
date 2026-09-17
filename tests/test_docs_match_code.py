@@ -194,3 +194,33 @@ def test_public_docs_use_the_current_product_name_and_env_prefix(doc_name):
         "deprecation note; the code reads LEVH_* only, so a reader following "
         "this doc would configure the wrong variable"
     )
+
+
+# ── Internal vs published surface ────────────────────────────────────
+
+# An internal inventory reads as a product claim when it reaches the published
+# docs: it dates itself, counts the test suite, and lists open debt. The
+# markers are the Turkish debt-inventory vocabulary the one existing file uses.
+_INTERNAL_MARKERS = ("Karnesi", "Teknik Borç", "borç envanteri")
+
+
+def test_internal_inventories_stay_out_of_the_published_docs():
+    """`docs/*.md` is the published surface; maintainer scorecards belong under
+    `docs/internal/`, where a reader does not mistake a dated gap list for
+    documentation of how the product behaves (issue #150)."""
+    leaked: list[str] = []
+    for doc in sorted(DOCS.glob("*.md")):
+        text = doc.read_text(encoding="utf-8", errors="replace")
+        if any(marker in text for marker in _INTERNAL_MARKERS):
+            leaked.append(doc.name)
+    assert not leaked, (
+        f"internal inventories in the published docs surface: {leaked}; "
+        "move them under docs/internal/"
+    )
+
+
+def test_internal_docs_directory_is_described():
+    """A reader who lands in docs/internal/ is told what it is and why."""
+    readme = DOCS / "internal" / "README.md"
+    assert readme.is_file(), "docs/internal/README.md is missing"
+    assert readme.read_text(encoding="utf-8").strip()
