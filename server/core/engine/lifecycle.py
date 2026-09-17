@@ -151,12 +151,20 @@ class MemoryLifecycleMixin:
         """
         self._derived_dirty = True
         self._derived_retry_wake.set()
-        if self._derived_retry_count:
-            self._derived_retry_count = 0
-        # A previous background pass failed and its task is done; the failed
-        # pass no longer self-schedules (issues #136/#139), so this write is
-        # the trigger that puts a fresh rebuild on the loop.
-        if not self._refreshing_derived and _has_running_loop():
+        # Debt is read before the reset: only a pass that actually failed
+        # needs this write to restart it (the failed pass no longer
+        # self-schedules, issues #136/#139). Spawning on an ordinary first
+        # write would put a rebuild on the loop that overlaps the caller's
+        # own transaction — every write path shares one SQLite connection, so
+        # a background pass issuing statements mid-`BEGIN IMMEDIATE` turned
+        # into "cannot start a transaction within a transaction".
+        retry_debt = self._derived_retry_count
+        self._derived_retry_count = 0
+        if (
+            retry_debt
+            and not self._refreshing_derived
+            and _has_running_loop()
+        ):
             self._refreshing_derived = True
             self._derived_task = asyncio.get_running_loop().create_task(
                 self._rebuild_derived()
