@@ -21,12 +21,17 @@ from ..types import (
 # left ``_derived_dirty`` set, the unconditional self-reschedule in the
 # ``finally`` fired immediately, and ~100k retries/second burned CPU with no
 # signal (issue #136). Rebuild failures now retry with capped backoff and
-# surface via logging; a fresh write (``_mark_derived_dirty``) resets the
-# retry counter and interrupts the pending backoff sleep, because it may
-# have removed the cause.
+# surface via logging; a fresh write (``_mark_derived_dirty``) clears the
+# retry debt and interrupts the pending backoff sleep, because it may have
+# removed the cause. The interrupted sleep still owes a debounce before the
+# retry: an instant, unbounded retry per write reproduces the same hot loop
+# on the write path (issue #166).
 _DERIVED_RETRY_BACKOFF_SECONDS = 0.5
 _DERIVED_RETRY_BACKOFF_CAP_SECONDS = 30.0
 _DERIVED_RETRY_LOG_EVERY = 5
+# Long enough that a burst of writes coalesces into a single retry, short
+# enough that a write removing the cause is still followed by a fast rebuild.
+_DERIVED_RETRY_DEBOUNCE_SECONDS = 0.1
 
 
 def _has_running_loop() -> bool:
@@ -143,11 +148,17 @@ class MemoryLifecycleMixin:
         """Flag derived views stale and restart the retry schedule.
 
         The write may have removed whatever was breaking the rebuild (a
-        corrupt row deleted, a fix deployed), so the backoff counter resets
-        and any pending backoff sleep is interrupted — the next retry starts
+        corrupt row deleted, a fix deployed), so the retry debt is cleared
+        and any pending backoff sleep is interrupted — the next attempt runs
         immediately (issue #139: the counter previously only reset on
         success, so recovery latency grew to the cap even after the cause
         was gone).
+
+        The reset also keeps a write storm from driving the retry rate.
+        This path spawns at most one pass per failed attempt (the flag is
+        raised for the whole pass), that pass owes its debounce before
+        retrying, and its failure does not re-arm this path — writes and
+        rebuild attempts stay decoupled (issue #166).
         """
         self._derived_dirty = True
         self._derived_retry_wake.set()
@@ -211,6 +222,10 @@ class MemoryLifecycleMixin:
         the capped backoff, interruptible by a fresh write, before raising;
         inline callers pass ``retry=False`` so a failing freshness read
         fails fast instead of blocking on someone else's retry schedule.
+
+        An interrupted sleep still owes a debounce before the retry: without
+        it a write storm — every write waking the sleep — buys one full
+        rebuild per write and no backoff at all (issue #166).
         """
         try:
             await self.reindex_entities()
@@ -235,14 +250,24 @@ class MemoryLifecycleMixin:
                 _DERIVED_RETRY_BACKOFF_CAP_SECONDS,
             )
             if retry:
+                wake = self._derived_retry_wake
+                # Cleared before the sleep, then set again by any write
+                # arriving during it: the write is what interrupts the
+                # backoff. Left set from the write that caused this attempt,
+                # the sleep below returns instantly and every write buys a
+                # full rebuild (issue #166).
+                wake.clear()
                 try:
-                    await asyncio.wait_for(
-                        self._derived_retry_wake.wait(), timeout=delay
-                    )
-                    # A fresh write landed during the backoff: retry now.
-                    self._derived_retry_wake.clear()
+                    await asyncio.wait_for(wake.wait(), timeout=delay)
                 except asyncio.TimeoutError:
                     pass
+                else:
+                    # A fresh write landed during the backoff. Honour #139's
+                    # fast recovery without letting writes set the retry
+                    # rate: retry after one debounce, not once per write.
+                    await asyncio.sleep(
+                        min(_DERIVED_RETRY_DEBOUNCE_SECONDS, delay)
+                    )
             raise
         finally:
             self._refreshing_derived = False

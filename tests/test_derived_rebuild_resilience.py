@@ -139,6 +139,47 @@ async def test_success_still_converges(engine):
     assert engine._derived_retry_count == 0
 
 
+# ── Issue #166: the write path must not skip backoff ────────────────
+
+
+@pytest.mark.asyncio
+async def test_write_storm_does_not_retry_per_write(engine, caplog):
+    """A sustained write load must not buy one full rebuild per write
+    (issue #166): the backoff interrupt is what made the sleep return
+    instantly, so every write while the debt stood opened another failing
+    pass and logged another warning — the hot loop of #136 back on the
+    write path. The debounce bounds attempts by time instead."""
+    calls = 0
+
+    async def broken():
+        nonlocal calls
+        calls += 1
+        raise RuntimeError("corrupt row")
+
+    engine.reindex_entities = broken  # type: ignore[method-assign]
+    engine._mark_derived_dirty()
+    await engine._ensure_derived_state()
+    await asyncio.sleep(0.15)  # one failed pass; debt recorded
+    assert engine._derived_retry_count >= 1
+    baseline = calls
+
+    with caplog.at_level(logging.WARNING, logger="levh.memory_engine"):
+        for i in range(50):
+            await engine.store(f"write storm {i}")
+            # Yield to the loop so the spawned rebuild interleaves with the
+            # writes, exactly as it does under production write traffic.
+            await asyncio.sleep(0.01)
+
+    attempts = calls - baseline
+    warnings = [
+        r for r in caplog.records if "derived-state rebuild failed" in r.message
+    ]
+    # 50 writes with interleaving. Pre-fix: 50 attempts + 50 warnings in
+    # ~0.1s. Post-fix the debounce admits a handful in the 0.5s window.
+    assert attempts <= 10, f"{attempts} rebuilds for 50 writes — backoff skipped"
+    assert len(warnings) <= 10, f"{len(warnings)} warnings — log flooding"
+
+
 @pytest.mark.asyncio
 async def test_freshness_read_converges_through_inline_path(engine):
     """A freshness-required read (the recompute path) still returns fresh
