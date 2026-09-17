@@ -21,8 +21,9 @@ from ..types import (
 # left ``_derived_dirty`` set, the unconditional self-reschedule in the
 # ``finally`` fired immediately, and ~100k retries/second burned CPU with no
 # signal (issue #136). Rebuild failures now retry with capped backoff and
-# surface via logging; a fresh write (``_mark_derived_dirty``) restarts the
-# cycle at once because it may have removed the cause.
+# surface via logging; a fresh write (``_mark_derived_dirty``) resets the
+# retry counter and interrupts the pending backoff sleep, because it may
+# have removed the cause.
 _DERIVED_RETRY_BACKOFF_SECONDS = 0.5
 _DERIVED_RETRY_BACKOFF_CAP_SECONDS = 30.0
 _DERIVED_RETRY_LOG_EVERY = 5
@@ -108,6 +109,19 @@ class MemoryLifecycleMixin:
             self._known_data_version = version
 
     async def shutdown(self) -> None:
+        # Stop a pending background rebuild first: it holds the DB open and
+        # a Windows teardown cannot unlink the file while it runs (seen as
+        # PermissionError on tmp store cleanup after a failed rebuild).
+        task = self._derived_task
+        if task is not None and not task.done():
+            task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
+            except Exception:  # noqa: BLE001 — shutdown must complete
+                pass
+            self._derived_task = None
         await self.db.close()
         if self._embedder is not None:
             await self._embedder.aclose()
@@ -126,7 +140,27 @@ class MemoryLifecycleMixin:
                 continue
 
     def _mark_derived_dirty(self) -> None:
+        """Flag derived views stale and restart the retry schedule.
+
+        The write may have removed whatever was breaking the rebuild (a
+        corrupt row deleted, a fix deployed), so the backoff counter resets
+        and any pending backoff sleep is interrupted — the next retry starts
+        immediately (issue #139: the counter previously only reset on
+        success, so recovery latency grew to the cap even after the cause
+        was gone).
+        """
         self._derived_dirty = True
+        self._derived_retry_wake.set()
+        if self._derived_retry_count:
+            self._derived_retry_count = 0
+        # A previous background pass failed and its task is done; the failed
+        # pass no longer self-schedules (issues #136/#139), so this write is
+        # the trigger that puts a fresh rebuild on the loop.
+        if not self._refreshing_derived and _has_running_loop():
+            self._refreshing_derived = True
+            self._derived_task = asyncio.get_running_loop().create_task(
+                self._rebuild_derived()
+            )
 
     async def _ensure_derived_state(self) -> None:
         """Schedule a derived-state rebuild without blocking the caller (issue #102).
@@ -159,9 +193,17 @@ class MemoryLifecycleMixin:
             self._refreshing_derived = False
             await self._rebuild_derived()
 
-    async def _rebuild_derived(self) -> None:
+    async def _rebuild_derived(self, *, retry: bool = True) -> None:
         """Run one deterministic derived-state rebuild; the sole writer of
-        ``_derived_dirty = False`` for its own pass."""
+        ``_derived_dirty = False`` for its own pass.
+
+        Raises on failure — as a background task the exception is stored on
+        the task; awaited inline it propagates to the freshness caller
+        (issue #139). With ``retry=True`` (background path) a failure sleeps
+        the capped backoff, interruptible by a fresh write, before raising;
+        inline callers pass ``retry=False`` so a failing freshness read
+        fails fast instead of blocking on someone else's retry schedule.
+        """
         try:
             await self.reindex_entities()
             await self.detect_conflict_candidates()
@@ -170,7 +212,7 @@ class MemoryLifecycleMixin:
             self._derived_retry_count = 0
         except asyncio.CancelledError:
             raise
-        except Exception:  # noqa: BLE001 — a failed rebuild must not kill the task
+        except Exception:
             self._derived_retry_count += 1
             count = self._derived_retry_count
             if count == 1 or count % _DERIVED_RETRY_LOG_EVERY == 0:
@@ -184,16 +226,31 @@ class MemoryLifecycleMixin:
                 _DERIVED_RETRY_BACKOFF_SECONDS * (2 ** (count - 1)),
                 _DERIVED_RETRY_BACKOFF_CAP_SECONDS,
             )
-            await asyncio.sleep(delay)
+            if retry:
+                try:
+                    await asyncio.wait_for(
+                        self._derived_retry_wake.wait(), timeout=delay
+                    )
+                    # A fresh write landed during the backoff: retry now.
+                    self._derived_retry_wake.clear()
+                except asyncio.TimeoutError:
+                    pass
+            raise
         finally:
             self._refreshing_derived = False
             # Writes that landed mid-rebuild re-dirtied the flag; schedule the
-            # successor so the views still converge. The flag is still set
-            # after a failure too, so the backoff'd retry above is what keeps
-            # this from spinning hot. Re-entry only when a loop is running:
-            # without one, _ensure_derived_state would fall back to an inline
-            # rebuild whose finally re-enters here — unbounded recursion.
-            if self._derived_dirty and _has_running_loop():
+            # successor so the views still converge. The successor path is
+            # only taken when the rebuild SUCCEEDED — a failed background
+            # pass must not self-reschedule (issue #136: that was the hot
+            # loop; issue #139: the backoff sleep belongs to the background
+            # retry cycle, not to inline freshness callers). The next retry
+            # is scheduled by the next write (via _mark_derived_dirty) or by
+            # the next stale-ok read.
+            if (
+                self._derived_dirty
+                and not self._derived_retry_count
+                and _has_running_loop()
+            ):
                 await self._ensure_derived_state()
 
     async def recompute_derived_state(self) -> None:
@@ -203,9 +260,18 @@ class MemoryLifecycleMixin:
         whose next line acts on the verdict — restore, review decisions —
         await this; ordinary reads go stale-ok through
         :meth:`_ensure_derived_state`.
+
+        Raises when the rebuild fails (issue #139): "return when it is
+        fresh" must not silently hand back stale rows. Callers here act on
+        the verdict — a loud failure beats a quiet wrong answer.
         """
         self._derived_dirty = True
         await self._rebuild_derived_inline()
+        if self._derived_dirty:
+            raise RuntimeError(
+                "derived-state rebuild failed; derived views are stale "
+                "(see levh.memory_engine warnings)"
+            )
 
     async def _rebuild_derived_inline(self) -> None:
         """Inline rebuild for freshness-required callers. Serialized against a
@@ -216,9 +282,12 @@ class MemoryLifecycleMixin:
                 await task
             except asyncio.CancelledError:
                 pass
-            except Exception:  # noqa: BLE001 — the inline pass below decides freshness
+            # A failed background pass re-raised through the task; the inline
+            # pass below retries once synchronously and its failure surfaces
+            # through recompute_derived_state's staleness check (issue #139).
+            except Exception:
                 pass
-        await self._rebuild_derived()
+        await self._rebuild_derived(retry=False)
 
     @staticmethod
     def _memory_event_payload(memory: Memory) -> dict:

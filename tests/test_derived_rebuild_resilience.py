@@ -95,8 +95,9 @@ async def test_failure_logged_with_traceback(engine, caplog):
 
 @pytest.mark.asyncio
 async def test_recovery_resets_retry_backoff(engine):
-    """Once the cause goes away, a background retry succeeds and the backoff
-    counter resets, so a later failure starts the schedule from scratch."""
+    """Once the cause goes away, the fresh write resets the backoff counter
+    and triggers an immediate rebuild that succeeds — recovery is fast, not
+    gated on the old backoff sleep (issue #139)."""
     fail = True
     calls = 0
 
@@ -114,7 +115,8 @@ async def test_recovery_resets_retry_backoff(engine):
     assert engine._derived_retry_count >= 1
 
     fail = False
-    for _ in range(200):  # pending background retries converge on success
+    engine._mark_derived_dirty()  # the fresh write: reset + trigger
+    for _ in range(200):
         if not engine._derived_dirty and engine._derived_retry_count == 0:
             break
         await asyncio.sleep(0.05)
@@ -145,3 +147,75 @@ async def test_freshness_read_converges_through_inline_path(engine):
     await engine.list_entities_graph(limit=5)
     assert engine._derived_dirty is False
     assert engine._derived_retry_count == 0
+
+
+# ── Issue #139: the freshness contract ──────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_freshness_read_raises_when_rebuild_fails(engine):
+    """'Return when it is fresh' must not silently hand back stale rows
+    (issue #139): a failing step surfaces as an exception to the caller that
+    acts on the verdict."""
+    async def broken():
+        raise RuntimeError("corrupt row")
+
+    engine.reindex_entities = broken  # type: ignore[method-assign]
+    engine._mark_derived_dirty()
+    # The inline pass re-raises the root cause directly; the wrapper's
+    # staleness guard is the backstop when the root cause hides.
+    with pytest.raises((RuntimeError, Exception), match="corrupt row|stale"):
+        await engine.recompute_derived_state()
+    assert engine._derived_dirty is True
+
+
+@pytest.mark.asyncio
+async def test_freshness_read_fails_fast_no_backoff_block(engine):
+    """A freshness read must not block on the background retry backoff
+    (issue #139: 8s hangs). Inline failure is immediate."""
+    async def broken():
+        raise RuntimeError("corrupt row")
+
+    engine.reindex_entities = broken  # type: ignore[method-assign]
+    engine._mark_derived_dirty()
+    await engine._ensure_derived_state()
+    await asyncio.sleep(0.1)  # background pass fails, enters backoff sleep
+
+    loop = asyncio.get_running_loop()
+    start = loop.time()
+    with pytest.raises(RuntimeError):
+        engine._derived_dirty = True
+        await engine.recompute_derived_state()
+    elapsed = loop.time() - start
+    assert elapsed < 0.5, f"freshness read blocked {elapsed:.2f}s on backoff"
+
+
+@pytest.mark.asyncio
+async def test_fresh_write_interrupts_backoff_and_resets_counter(engine):
+    """A fresh write resets the retry counter (comment now truthful) and the
+    pending backoff sleep is interrupted — recovery within milliseconds."""
+    fail = True
+
+    async def flaky():
+        if fail:
+            raise RuntimeError("transient")
+        return {"entities": 0}
+
+    engine.reindex_entities = flaky  # type: ignore[method-assign]
+    engine._mark_derived_dirty()
+    await engine._ensure_derived_state()
+    await asyncio.sleep(0.3)
+    assert engine._derived_retry_count >= 1
+
+    fail = False
+    loop = asyncio.get_running_loop()
+    start = loop.time()
+    engine._mark_derived_dirty()  # the fresh write
+    assert engine._derived_retry_count == 0, "counter not reset by fresh write"
+    for _ in range(200):
+        if not engine._derived_dirty:
+            break
+        await asyncio.sleep(0.02)
+    elapsed = loop.time() - start
+    assert engine._derived_dirty is False
+    assert elapsed < 1.0, f"recovery took {elapsed:.2f}s — backoff not interrupted"
