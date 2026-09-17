@@ -10,6 +10,37 @@ from server.commands.paths import _REPO_ROOT
 from server.core.db.aggregates import AggregateQueries
 from server.core.env import get_env
 from server.core.runtime_config import resolve_runtime_config
+from server.core.runtime_config import configured_bind_host
+
+
+def _running_bind_host(runtime) -> str | None:
+    """Ask a live server what address it is bound to, or ``None`` if silent.
+
+    The serving process is the only authority on its own socket, and it may have
+    been started by a stub like the Dockerfile's uvicorn call that never passes
+    through ``cmd_serve`` — so argv here is not necessarily even its argv.
+    ``/api/health`` is unauthenticated by design, which is what lets this probe
+    work without the token whose presence it is trying to assess.
+
+    Probed over loopback whatever the configured bind: a wildcard bind still
+    answers there, and this host may have no route to the advertised address.
+    A short timeout keeps a silent port from stalling the check.
+    """
+    import json
+    import urllib.request
+
+    port = getattr(runtime, "api_port", None)
+    if not port:
+        return None
+    try:
+        with urllib.request.urlopen(
+            f"http://127.0.0.1:{port}/api/health", timeout=2
+        ) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+    except Exception:
+        return None
+    host = str(payload.get("api_host") or "").strip()
+    return host or None
 
 
 
@@ -281,26 +312,36 @@ def cmd_doctor(_args: argparse.Namespace) -> int:
                 else "loopback-only without LEVH_TOKEN"
             )
             checks.append(("Remote access", "PASS", detail))
-        elif not _is_loopback(runtime.api_host):
-            checks.append(
-                (
-                    "Remote access",
-                    "FAIL",
-                    f"{ALLOW_REMOTE_WITHOUT_TOKEN_ENV}=true with non-loopback bind "
-                    f"{runtime.api_host}: unauthenticated remote access. Set LEVH_TOKEN, "
-                    f"or remove the override and bind to 127.0.0.1.",
-                )
-            )
-            ok = False
         else:
-            checks.append(
-                (
-                    "Remote access",
-                    "WARN",
-                    f"{ALLOW_REMOTE_WITHOUT_TOKEN_ENV}=true: unauthenticated non-loopback "
-                    f"peers accepted; safe only while {runtime.api_host} stays private",
+            # The override is in effect, so the bind decides whether this is a
+            # warning or a hole — and that is the one case where the answer must
+            # be right. Config alone cannot give it: `levh serve --host 0.0.0.0`
+            # and the Dockerfile's uvicorn bind every interface while config
+            # still holds the 127.0.0.1 default, so the check used to pass on
+            # exactly the topology it exists to catch (issue #156). Ask the
+            # running server first; when nothing answers, fall back to argv then
+            # config.
+            bind_host = _running_bind_host(runtime) or configured_bind_host()
+            if not _is_loopback(bind_host):
+                checks.append(
+                    (
+                        "Remote access",
+                        "FAIL",
+                        f"{ALLOW_REMOTE_WITHOUT_TOKEN_ENV}=true with non-loopback bind "
+                        f"{bind_host}: unauthenticated remote access. Set LEVH_TOKEN, "
+                        f"or remove the override and bind to 127.0.0.1.",
+                    )
                 )
-            )
+                ok = False
+            else:
+                checks.append(
+                    (
+                        "Remote access",
+                        "WARN",
+                        f"{ALLOW_REMOTE_WITHOUT_TOKEN_ENV}=true: unauthenticated non-loopback "
+                        f"peers accepted; safe only while {bind_host} stays private",
+                    )
+                )
     except Exception as e:
         checks.append(("Remote access", "FAIL", str(e)))
         ok = False

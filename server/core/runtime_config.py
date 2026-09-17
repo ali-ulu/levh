@@ -14,8 +14,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 import json
 import os
+import sys
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any, Mapping, Sequence
 
 from server.core.env import get_env
 
@@ -169,3 +170,43 @@ def runtime_env(config: RuntimeConfig) -> dict[str, str]:
         "EMBEDDER_MODE": config.embedder_mode,
         "SHORT_TERM_MAX": str(config.short_term_max),
     }
+
+
+def configured_bind_host(
+    *,
+    argv: Sequence[str] | None = None,
+    cwd: str | os.PathLike[str] | None = None,
+    environ: Mapping[str, str] | None = None,
+) -> str:
+    """Resolve the address this process is bound to.
+
+    ``--host`` in argv wins because it is the only source that is *actually*
+    obeyed by the serving process: ``levh serve --host 0.0.0.0`` and the
+    Dockerfile's ``uvicorn --host 0.0.0.0`` both bind what argv says while the
+    config still holds the ``127.0.0.1`` default. Reading config first made
+    surfaces that describe the boundary — ``/api/health``, ``levh doctor`` —
+    describe a server that was not running (issue #156).
+
+    Falls back to env then config then the default, and tolerates a malformed
+    config so a health check never fails over an unrelated setting.
+    """
+    host = _bind_host_from_argv(sys.argv if argv is None else argv)
+    if host:
+        return host
+    try:
+        return resolve_runtime_config(cwd=cwd, environ=environ).api_host
+    except RuntimeConfigError:
+        return DEFAULTS["api_host"]
+
+
+def _bind_host_from_argv(argv: Sequence[str]) -> str | None:
+    """The ``--host`` value in argv, for ``--host X`` and ``--host=X``."""
+    for index, token in enumerate(argv):
+        if token == "--host":
+            if index + 1 < len(argv) and argv[index + 1].strip():
+                return argv[index + 1].strip()
+        elif token.startswith("--host="):
+            value = token.partition("=")[2].strip()
+            if value:
+                return value
+    return None

@@ -7,6 +7,7 @@ from fastapi import Depends, APIRouter, HTTPException
 
 from server.core import llm_policy
 from server.auth import unauthenticated_remote_access_enabled
+from server.core.runtime_config import configured_bind_host
 from server.routes.deps import get_engine
 from server.routes.deps import APP_VERSION, api_token, logger
 
@@ -66,6 +67,11 @@ async def health():
         "service": "levh",
         "auth_required": bool(api_token()),
         "unauthenticated_remote_access": unauthenticated_remote_access_enabled(api_token()),
+        # The bind address the process is configured to serve on, so an operator
+        # (or `levh doctor`) can check the boundary the running server actually
+        # has instead of inferring it. `cmd_serve` publishes its resolved
+        # `--host` here, so argv and this field agree (issue #156).
+        "api_host": configured_bind_host(),
     }
 
 
