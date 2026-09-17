@@ -6,12 +6,33 @@ reader looking for "what columns exist" actually wants.
 
 from __future__ import annotations
 
+import os
+
 from ..env import get_env
 
 
-# Resolved through get_env so every accepted spelling of the database path
-# (LEVH_SQLITE_DB_PATH, plain, legacy STACKMEMORY_) is honoured — issue #135.
-_DEFAULT_DB_PATH = get_env("SQLITE_DB_PATH", "./stackmemory.db")
+# The raw fallback filename, relative by design: it is what the hook/MCP
+# installers use too (``_resolved_db_path``), and resolving it at call time is
+# what keeps ``Database()`` and those installers pointing at one store.
+DEFAULT_DB_FILENAME = "./stackmemory.db"
+
+
+def default_db_path() -> str:
+    """The database ``Database()`` falls back to, resolved at call time.
+
+    Two properties this must keep, both of them the point of issue #143:
+
+    - Call-time, not import-time. ``get_env`` reads ``os.environ``; freezing
+      its answer in a module constant meant a reload, or an env var set after
+      import, still produced the first-import path — the setting an operator
+      changed was silently ignored.
+    - Absolute. ``./stackmemory.db`` is relative to the working directory the
+      process happens to have, and the hook/MCP installers already resolve
+      their paths absolutely (``_resolved_db_path``). Two resolutions of the
+      same setting that disagree send different callers to different stores,
+      and nothing errors — the memory just goes missing.
+    """
+    return os.path.abspath(get_env("SQLITE_DB_PATH", DEFAULT_DB_FILENAME))
 
 
 CURRENT_SCHEMA_VERSION = 2

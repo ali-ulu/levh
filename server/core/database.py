@@ -21,7 +21,7 @@ from typing import Optional
 import aiosqlite
 
 from server.core.env import get_env
-from .db.schema import CURRENT_SCHEMA_VERSION, _DEFAULT_DB_PATH, _FTS_SCHEMA, _INDEXES, _MIGRATIONS, _SCHEMA
+from .db.schema import CURRENT_SCHEMA_VERSION, _FTS_SCHEMA, _INDEXES, _MIGRATIONS, _SCHEMA, default_db_path
 from .db.aggregates import AggregateQueries
 from .db.attachments import AttachmentQueries
 from .db.entities import EntityQueries
@@ -44,8 +44,13 @@ class Database:
     each constructed with this facade so its SQL reaches ``self._db.conn``.
     """
 
-    def __init__(self, db_path: str = _DEFAULT_DB_PATH):
-        self.db_path = db_path
+    def __init__(self, db_path: str | None = None):
+        # Resolved here, not in the signature (issue #143): a default baked
+        # into the signature froze ``get_env``'s answer at import time, so a
+        # reload or a later-set env var was ignored and a relative default
+        # followed the working directory. ``default_db_path()`` reads the
+        # environment now and returns an absolute path.
+        self.db_path = db_path if db_path is not None else default_db_path()
         self._connection: Optional[aiosqlite.Connection] = None
         try:
             configured_timeout = int(

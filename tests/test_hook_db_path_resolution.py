@@ -73,16 +73,52 @@ def test_no_variable_at_all_yields_absolute_default(monkeypatch):
 
 
 def test_schema_default_resolves_canonical_spelling(monkeypatch):
-    """``Database()``'s fallback default honours the canonical spelling too —
-    the schema module read ``os.getenv`` directly and had the same gap."""
-    import importlib
+    """``default_db_path()`` honours the canonical spelling — the schema module
+    read ``os.getenv`` directly and had the same gap.
 
+    Resolution is at call time (issue #143), so no reload is needed: setting the
+    variable after import must be enough.
+    """
     monkeypatch.setenv("LEVH_SQLITE_DB_PATH", "/tmp/schema_store.db")
-    reloaded = importlib.reload(db_schema)
-    try:
-        assert reloaded._DEFAULT_DB_PATH == "/tmp/schema_store.db"
-    finally:
-        importlib.reload(db_schema)  # restore module state for other tests
+    assert db_schema.default_db_path() == os.path.abspath("/tmp/schema_store.db")
+
+
+def test_default_db_path_is_absolute(monkeypatch):
+    """With nothing set the fallback is absolute, not CWD-relative.
+
+    The hook/MCP installers already resolve their path with ``abspath``; a
+    relative default here sent a bare ``Database()`` to a different store than
+    the one the installed hooks report reading, silently (issue #143).
+    """
+    for name in (
+        "LEVH_SQLITE_DB_PATH",
+        "SQLITE_DB_PATH",
+        "STACKMEMORY_SQLITE_DB_PATH",
+    ):
+        monkeypatch.delenv(name, raising=False)
+    resolved = db_schema.default_db_path()
+    assert resolved.endswith("stackmemory.db")
+    assert os.path.isabs(resolved)
+
+
+def test_no_arg_database_uses_current_env(monkeypatch, tmp_path):
+    """The no-arg ``Database()`` default is resolved at call time, not baked into
+    the constructor signature at import time.
+
+    Regression for issue #143: the signature default was the import-time
+    constant, so a variable set (or changed) later still produced the old path.
+    """
+    from server.core.database import Database
+
+    monkeypatch.setenv("LEVH_SQLITE_DB_PATH", str(tmp_path / "late.db"))
+    assert Database().db_path == os.path.abspath(str(tmp_path / "late.db"))
+
+
+def test_database_explicit_path_is_untouched():
+    """An explicitly passed path is used verbatim — no abspath rewriting."""
+    from server.core.database import Database
+
+    assert Database(":memory:").db_path == ":memory:"
 
 
 def test_librarian_mcp_config_honours_canonical_spelling(
