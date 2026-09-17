@@ -199,6 +199,33 @@ def configured_bind_host(
         return DEFAULTS["api_host"]
 
 
+def configured_api_port(
+    *,
+    argv: Sequence[str] | None = None,
+    cwd: str | os.PathLike[str] | None = None,
+    environ: Mapping[str, str] | None = None,
+) -> int:
+    """Resolve the port this process serves on.
+
+    ``--port`` in argv wins for the same reason ``--host`` does in
+    :func:`configured_bind_host`: only the serving process obeys it, while
+    config may still hold the ``8000`` default. Reading config first made the
+    ``levh doctor`` live probe miss a server started as
+    ``levh serve --host 0.0.0.0 --port 9000`` and report a boundary that was
+    not the one in force (issue #170).
+
+    Falls back to env then config then the default, and tolerates a malformed
+    argv port or config so a health check never fails over either.
+    """
+    port = _port_from_argv(sys.argv if argv is None else argv)
+    if port is not None:
+        return port
+    try:
+        return resolve_runtime_config(cwd=cwd, environ=environ).api_port
+    except (RuntimeConfigError, ValueError):
+        return DEFAULTS["api_port"]
+
+
 def _bind_host_from_argv(argv: Sequence[str]) -> str | None:
     """The ``--host`` value in argv, for ``--host X`` and ``--host=X``."""
     for index, token in enumerate(argv):
@@ -210,3 +237,28 @@ def _bind_host_from_argv(argv: Sequence[str]) -> str | None:
             if value:
                 return value
     return None
+
+
+def _port_from_argv(argv: Sequence[str]) -> int | None:
+    """The ``--port`` value in argv, for ``--port X`` and ``--port=X``.
+
+    Returns ``None`` when absent or unusable (non-numeric, out of range) so the
+    caller can fall back to env and config instead of failing the probe.
+    """
+    for index, token in enumerate(argv):
+        if token == "--port":
+            candidate = argv[index + 1] if index + 1 < len(argv) else ""
+        elif token.startswith("--port="):
+            candidate = token.partition("=")[2]
+        else:
+            continue
+        return _parsed_port(candidate)
+    return None
+
+
+def _parsed_port(value: str) -> int | None:
+    candidate = value.strip()
+    if not candidate.isdigit():
+        return None
+    parsed = int(candidate)
+    return parsed if 1 <= parsed <= 65535 else None

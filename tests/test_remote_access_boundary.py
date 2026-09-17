@@ -456,3 +456,115 @@ def test_doctor_prefers_what_a_live_server_reports(
         server.shutdown()
         server.server_close()
         thread.join(timeout=5)
+
+
+# ─ The probed port must be the one in force, not just the default (#170) ──
+
+
+def _health_server(source_api_host: str = "0.0.0.0"):
+    """A throwaway server answering ``/api/health`` with the given bind."""
+    import http.server
+
+    class _Health(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):  # noqa: N802 - BaseHTTPRequestHandler API
+            body = (
+                '{"status": "ok", "api_host": "%s"}' % source_api_host
+            ).encode("utf-8")
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, *args):  # silence the test output
+            return None
+
+    return http.server.HTTPServer(("127.0.0.1", 0), _Health)
+
+
+def test_configured_api_port_prefers_argv_then_env(
+    monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    """`--port` is the port the serving process actually obeys."""
+    import json
+
+    from server.core.runtime_config import configured_api_port
+
+    cfg_dir = tmp_path / ".stackmemory"
+    cfg_dir.mkdir()
+    (cfg_dir / "config.json").write_text(json.dumps({"api_port": 9100}))
+    # The config file alone is outranked by the env, which the argv outranks.
+    assert configured_api_port(argv=["levh", "serve"], cwd=tmp_path) == 9100
+    monkeypatch.setenv("API_PORT", "9101")
+    assert configured_api_port(argv=["levh", "serve"], cwd=tmp_path) == 9101
+    assert configured_api_port(argv=["levh", "serve", "--port", "9102"], cwd=tmp_path) == 9102
+    assert configured_api_port(argv=["levh", "serve", "--port=9103"], cwd=tmp_path) == 9103
+
+
+def test_configured_api_port_ignores_unusable_argv_values(
+    monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    """A malformed `--port` falls back rather than failing the check."""
+    from server.core.runtime_config import configured_api_port
+
+    monkeypatch.setenv("API_PORT", "9104")
+    assert configured_api_port(argv=["levh", "serve", "--port", "abc"], cwd=tmp_path) == 9104
+    assert configured_api_port(argv=["levh", "serve", "--port"], cwd=tmp_path) == 9104
+    assert configured_api_port(argv=["levh", "serve", "--port", "70000"], cwd=tmp_path) == 9104
+
+
+def test_doctor_probes_the_port_from_argv(
+    tmp_path, monkeypatch: pytest.MonkeyPatch, capsys
+) -> None:
+    """The #170 case: the server serves on `--port`, config still says 8000.
+
+    The probe used to ask config's port only, find nothing, and fall back to a
+    loopback bind — reporting OK while the socket was open to every interface.
+    """
+    import argparse
+    import threading
+
+    from server.cli import cmd_doctor
+
+    server = _health_server()
+    port = server.server_address[1]
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        monkeypatch.setenv("SQLITE_DB_PATH", str(tmp_path / "doctor-170.db"))
+        monkeypatch.setenv("EMBEDDER_MODE", "hash")
+        monkeypatch.delenv("LEVH_TOKEN", raising=False)
+        monkeypatch.setenv(ALLOW_REMOTE_WITHOUT_TOKEN_ENV, "true")
+        monkeypatch.delenv("LEVH_API_HOST", raising=False)
+        monkeypatch.delenv("API_HOST", raising=False)
+        monkeypatch.setenv("API_PORT", "1")  # config's answer, nothing listens
+        monkeypatch.setattr("sys.argv", ["levh", "serve", "--port", str(port)])
+
+        assert cmd_doctor(argparse.Namespace()) == 1
+        failure = capsys.readouterr().out
+        assert "Remote access" in failure
+        assert "FAIL" in failure
+        assert "0.0.0.0" in failure
+        assert "Verdict: FAIL" in failure
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+
+def test_doctor_probes_the_common_ports_last(
+    monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    """Cross-process `levh doctor` has no server argv, so common ports are tried."""
+    from server.commands.doctor import _candidate_ports
+
+    monkeypatch.setenv("API_PORT", "9105")
+    monkeypatch.delenv("LEVH_API_HOST", raising=False)
+    monkeypatch.setattr("sys.argv", ["levh", "doctor"])
+
+    class _Runtime:
+        api_port = 8000
+
+    ports = _candidate_ports(_Runtime())
+    assert ports[0] == 9105  # the configured answer is probed first
+    assert ports == [9105, 8000, 9000]  # then the conventional ports, once each

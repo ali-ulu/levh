@@ -9,6 +9,7 @@ from pathlib import Path
 from server.commands.paths import _REPO_ROOT
 from server.core.db.aggregates import AggregateQueries
 from server.core.env import get_env
+from server.core.runtime_config import configured_api_port
 from server.core.runtime_config import resolve_runtime_config
 from server.core.runtime_config import configured_bind_host
 
@@ -25,22 +26,43 @@ def _running_bind_host(runtime) -> str | None:
     Probed over loopback whatever the configured bind: a wildcard bind still
     answers there, and this host may have no route to the advertised address.
     A short timeout keeps a silent port from stalling the check.
+
+    The port is resolved like the bind host is — ``--port`` in argv first — and
+    each fallback is tried in turn. A server started with
+    ``levh serve --port 9000`` while ``API_PORT``/config still say ``8000``
+    would otherwise never be found, and the check would report a boundary that
+    is not the one in force (issue #170).
     """
     import json
     import urllib.request
 
-    port = getattr(runtime, "api_port", None)
-    if not port:
-        return None
-    try:
-        with urllib.request.urlopen(
-            f"http://127.0.0.1:{port}/api/health", timeout=2
-        ) as response:
-            payload = json.loads(response.read().decode("utf-8"))
-    except Exception:
-        return None
-    host = str(payload.get("api_host") or "").strip()
-    return host or None
+    for port in _candidate_ports(runtime):
+        try:
+            with urllib.request.urlopen(
+                f"http://127.0.0.1:{port}/api/health", timeout=2
+            ) as response:
+                payload = json.loads(response.read().decode("utf-8"))
+        except Exception:
+            continue
+        host = str(payload.get("api_host") or "").strip()
+        if host:
+            return host
+    return None
+
+
+def _candidate_ports(runtime) -> list[int]:
+    """Ports worth probing, most specific first, each at most once."""
+    candidates: list[int] = [configured_api_port()]
+    configured = getattr(runtime, "api_port", None)
+    if isinstance(configured, int):
+        candidates.append(configured)
+    for port in (8000, 9000):
+        candidates.append(port)
+    unique: list[int] = []
+    for port in candidates:
+        if isinstance(port, int) and 1 <= port <= 65535 and port not in unique:
+            unique.append(port)
+    return unique
 
 
 
