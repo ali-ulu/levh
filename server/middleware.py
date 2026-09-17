@@ -44,7 +44,11 @@ def _client_key(request: Request) -> str:
 # once a token gate is in force these paths would expose the full route map to
 # an anonymous caller. ``deps.api_docs_enabled()`` decides whether they are
 # served at all; this set is what the gate below refuses when they are not.
-_DOCS_PATHS = {"/docs", "/redoc", "/openapi.json"}
+# ``/docs/oauth2-redirect`` is in the set even though Swagger UI only reaches
+# it after a successful interactive login: it is part of the generated surface
+# #144 closed, and leaving it outside would keep the route map's existence
+# anonymously confirmable while every sibling path 404s.
+_DOCS_PATHS = {"/docs", "/docs/oauth2-redirect", "/redoc", "/openapi.json"}
 
 
 def _guarded(request: Request) -> bool:
@@ -60,8 +64,12 @@ def _docs_exposed(request: Request) -> bool:
     would always fail 401 and leave the operator without the documented
     ``/docs`` URL. Withholding it is the honest answer, and
     ``LEVH_ENABLE_API_DOCS=true`` is the documented way back.
+
+    Trailing-slash tolerant, like ``_guarded``: the docs routes redirect
+    ``/docs/`` to ``/docs``, and a redirect answered outside the gate would
+    still confirm the surface exists.
     """
-    return request.url.path in _DOCS_PATHS and not deps.api_docs_enabled()
+    return request.url.path.rstrip("/") in _DOCS_PATHS and not deps.api_docs_enabled()
 
 
 def install(app: FastAPI) -> None:

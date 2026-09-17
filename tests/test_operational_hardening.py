@@ -261,19 +261,38 @@ async def test_replace_restore_fails_closed_when_safety_backup_fails(tmp_path, m
 
 @pytest.mark.asyncio
 async def test_docs_surface_requires_the_token_when_it_is_set(monkeypatch):
-    """The root-level docs routes are part of the gate, not a way around it (#144)."""
+    """The root-level docs routes are part of the gate, not a way around it (#144).
+
+    Withheld, not 401: a browser cannot attach ``X-LEVH-Token`` while loading
+    ``/docs``, so a 401 would leave the operator with a docs URL that can never
+    be opened. The surface is withheld entirely and ``LEVH_ENABLE_API_DOCS`` is
+    the way back (#159); the browser-driven flow is covered by
+    ``tests/test_api_docs_gate.py``.
+    """
     from server.api import app
 
     monkeypatch.setenv("LEVH_TOKEN", "correct-token")
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         for path in ("/docs", "/redoc", "/openapi.json", "/docs/oauth2-redirect"):
-            anonymous = await client.get(path)
-            assert anonymous.status_code == 401, f"{path} leaked without a token"
-            wrong = await client.get(path, headers={"X-LEVH-Token": "wrong"})
-            assert wrong.status_code == 401
-            authorized = await client.get(path, headers={"X-LEVH-Token": "correct-token"})
-            assert authorized.status_code != 401, f"{path} rejected the right token"
+            for headers in ({}, {"X-LEVH-Token": "wrong"}):
+                response = await client.get(path, headers=headers)
+                assert response.status_code == 404, f"{path} leaked without a token"
+
+
+@pytest.mark.asyncio
+async def test_docs_surface_opt_in_restores_it_behind_the_token(monkeypatch):
+    """``LEVH_ENABLE_API_DOCS=true`` restores the surface the operator asked for."""
+    from server.api import app
+
+    monkeypatch.setenv("LEVH_TOKEN", "correct-token")
+    monkeypatch.setenv("LEVH_ENABLE_API_DOCS", "true")
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        for path in ("/docs", "/redoc", "/openapi.json"):
+            assert (await client.get(path)).status_code == 200, path
+        # The opt-in widens the docs surface only; /api keeps its gate.
+        assert (await client.get("/api/stats")).status_code == 401
 
 
 @pytest.mark.asyncio

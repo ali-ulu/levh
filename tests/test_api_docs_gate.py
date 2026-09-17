@@ -18,6 +18,9 @@ import pytest
 from fastapi.testclient import TestClient
 
 DOCS_PATHS = ("/docs", "/redoc", "/openapi.json")
+# Refused alongside the rest: leaving it reachable would keep the generated
+# surface anonymously confirmable after #144 closed every sibling path.
+DOCS_OAUTH_PATH = "/docs/oauth2-redirect"
 
 
 def _client(monkeypatch: pytest.MonkeyPatch, tmp_path, **env: str) -> TestClient:
@@ -61,7 +64,7 @@ def test_docs_served_when_no_token(open_server):
 
 def test_docs_withheld_when_token_set(token_server):
     """Setting LEVH_TOKEN removes the anonymous route map (issue #144)."""
-    for path in DOCS_PATHS:
+    for path in (*DOCS_PATHS, DOCS_OAUTH_PATH, "/docs/"):
         response = token_server.get(path)
         assert response.status_code == 404, f"{path} leaked: {response.status_code}"
 
