@@ -62,8 +62,9 @@ server/
 │   ├── admission.py         The gate: dedupe + secret redaction before storage
 │   ├── guard.py             Mistakes → pinned rules + the violations log
 │   ├── summarizer.py        Session auto-capture (LLM or extractive fallback)
-│   └── librarian.py         Watchdog: which agents on this machine are wired to
-│                            levh, who has gone quiet, and a chat that can act on it
+│   └── librarian/           Watchdog package: which agents on this machine are
+│                            wired to levh, who has gone quiet, and a chat that
+│                            can act on it (loop.py, actions.py, chat.py, …)
 │
 ├── tools/               One file per MCP tool; register.py wires them up and
 │                        profiles.py decides which ones a client is shown
@@ -262,12 +263,17 @@ the hash embedder, revisit `tests/test_v2_features.py::test_interference_*`.
   per-memory locking.
 - **WebSocket fan-out is in-process** — fine for one server, not for a
   horizontally-scaled cluster (would need Redis pub/sub).
-- **Librarian:** the watchdog scans in a worker thread but the engine's SQLite
-  connection belongs to the server's event loop, so its writes are handed back
-  with `run_coroutine_threadsafe` (`librarian.set_owner_loop`). Its chat can run
-  a shell command the model proposes; the destructive-command filter is a
-  blocklist — known patterns only — so treat `LEVH_LIBRARIAN_SHELL=0` as the
-  real off switch on any machine where that is not acceptable.
+- **Librarian:** the watchdog runs the scan in a worker thread
+  (`asyncio.to_thread(scan)`) but records findings back on the server's own
+  event loop via `record_findings`, so the engine's SQLite connection is never
+  driven from a second loop. This bridge lives in the `server/core/librarian/`
+  package (`loop.py::run_loop`); the lifespan starts it through
+  `librarian.start_background()` and honors `LEVH_LIBRARIAN=0` /
+  `LEVH_LIBRARIAN_INTERVAL`. Its chat is action-whitelisted: `execute_action`
+  accepts only `_ALLOWED_ACTIONS` (`add_levh_mcp`, `report_finding`, `none`,
+  `analyze_memory`, `suggest_cleanup`, `memory_report`, `check_connections`) —
+  `shell`/`run`/`exec` are refused and the refusal is recorded as a finding.
+  The librarian has no shell capability and no `LEVH_LIBRARIAN_SHELL` switch.
 - **Auth:** the optional token is a single shared secret, not per-user auth /
   multi-tenancy. Cloud sync / team sharing is intentionally **not** built —
   local-first is the product's whole thesis; a sync layer would be an optional
