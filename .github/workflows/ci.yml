@@ -36,7 +36,13 @@ jobs:
         run: python -m pip install -e ".[dev]"
       - name: Compile Python sources
         run: python -m compileall -q server tests
-      - name: Test
+      - name: Test (with coverage gate, 3.12 only)
+        if: matrix.python-version == '3.12'
+        env:
+          EMBEDDER_MODE: hash
+        run: python -m pytest -q --cov=server --cov-report=term --cov-fail-under=72
+      - name: Test (other interpreters)
+        if: matrix.python-version != '3.12'
         env:
           EMBEDDER_MODE: hash
         run: python -m pytest -q
