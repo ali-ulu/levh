@@ -6,8 +6,11 @@
 #   python -m pip install pre-commit
 #   pre-commit install
 #
-# `files:` points at Python only — the frontend has its own toolchain and must
-# not be linted by ruff (it is in ruff's extend-exclude for the same reason).
+# ruff is scoped to Python with `types: [python]` — the frontend has its own
+# toolchain and must not be linted by ruff (it is in .ruff.toml's extend-exclude
+# for the same reason). The generic whitespace hooks have no such scope, so they
+# skip the checked-in build outputs below; otherwise every commit rewrites the
+# minified chunks and HTML that the next build regenerates anyway (issue #175).
 
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
@@ -15,13 +18,16 @@ repos:
     hooks:
       - id: ruff
         args: [--fix]
+        types: [python]
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
     hooks:
       - id: end-of-file-fixer
+        exclude: ^(frontend/out|server/dashboard)/
       - id: trailing-whitespace
         args: [--markdown-linebreak-ext=md]
+        exclude: ^(frontend/out|server/dashboard)/
       - id: check-merge-conflict
       - id: check-added-large-files
         args: [--maxkb=2048]

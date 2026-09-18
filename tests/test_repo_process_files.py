@@ -81,6 +81,63 @@ def test_codeowners_grammar_is_valid_and_covers_the_high_risk_paths():
         assert required in owned, f"{required} has no owner in CODEOWNERS"
 
 
+def _pre_commit_hooks() -> dict[str, dict]:
+    config = yaml.safe_load((ROOT / ".pre-commit-config.yaml").read_text(encoding="utf-8"))
+    return {hook["id"]: hook for repo in config["repos"] for hook in repo["hooks"]}
+
+
+# Tracked build output. `frontend/out/` is a Next.js static export and
+# `server/dashboard/` its packaged copy; both are rewritten wholesale by the
+# next build, so normalizing their whitespace produces churn nobody asked for.
+BUILD_OUTPUT_PATHS = [
+    "frontend/out/404.html",
+    "frontend/out/_next/static/chunks/100-d7253503f946971e.js",
+    "server/dashboard/index.html",
+    "server/dashboard/_next/static/chunks/100-d7253503f946971e.js",
+]
+SOURCE_PATHS = [
+    "server/api.py",
+    "frontend/src/app/agents/page.tsx",
+    "tests/test_repo_process_files.py",
+    ".pre-commit-config.yaml",
+]
+
+
+@pytest.mark.parametrize("hook_id", ["end-of-file-fixer", "trailing-whitespace"])
+def test_generic_hooks_skip_checked_in_build_output(hook_id: str):
+    """`end-of-file-fixer` and `trailing-whitespace` have no language scope, so
+    without an `exclude` they rewrite every tracked file — minified bundles and
+    generated HTML included. That turns a developer's first commit after
+    `pre-commit install` into a hundreds-of-lines diff of build output that the
+    next build regenerates anyway (issue #175). This asserts the hooks keep
+    skipping those directories while still covering real sources, so a lost or
+    broadened `exclude` fails loudly instead of silently churning the tree.
+    """
+    hook = _pre_commit_hooks().get(hook_id)
+    assert hook is not None, f"pre-commit no longer runs {hook_id}"
+    pattern = hook.get("exclude")
+    assert pattern, f"{hook_id} has no `exclude`; it will rewrite build output"
+
+    compiled = re.compile(pattern)
+    for path in BUILD_OUTPUT_PATHS:
+        assert compiled.search(path), f"{hook_id} would rewrite build output: {path}"
+    for path in SOURCE_PATHS:
+        assert not compiled.search(path), f"{hook_id} unexpectedly skips source: {path}"
+
+
+def test_ruff_hook_is_scoped_to_python():
+    """The config's comment promises ruff never touches the frontend. Ruff's
+    `extend-exclude` only covers `ruff check .`; the hook needs its own scope so
+    a stray non-Python file cannot be linted (and the comment cannot drift from
+    the config again — issue #175).
+    """
+    hook = _pre_commit_hooks().get("ruff")
+    assert hook is not None, "pre-commit no longer runs ruff"
+    scope = hook.get("types") or hook.get("files")
+    assert scope, "the ruff hook has no language/`files` scope"
+    assert hook.get("types") == ["python"], f"ruff hook scope is not Python-only: {scope!r}"
+
+
 def test_pre_commit_pins_the_same_ruff_as_ci():
     """Local and CI lint must agree. When the pin drifts, a rule added by a
     newer ruff turns green locally (older ruff) and red in CI, or the reverse —
