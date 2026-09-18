@@ -192,7 +192,7 @@ app.include_router(librarian_router)
 
 from server.api_versioning import install_versioned_surface  # noqa: E402
 
-VERSIONED_ROUTE_COUNT = install_versioned_surface(app)
+install_versioned_surface(app)
 
 
 # ── Librarian chat widget enjeksiyonu ──────────────────────────────
