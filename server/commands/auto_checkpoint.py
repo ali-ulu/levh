@@ -10,10 +10,13 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import logging
 import signal
 import sys
 from datetime import datetime, timezone
 
+
+logger = logging.getLogger("levh.auto_checkpoint")
 
 _auto_checkpoint_running = False
 
@@ -198,8 +201,7 @@ async def _background_loop(
         except asyncio.CancelledError:
             raise
         except Exception:  # noqa: BLE001 - a summarization failure must never kill the scheduler
-            # A summarization failure must never kill the background scheduler.
-            pass
+            logger.exception("auto-checkpoint pass failed; scheduler continues")
         await asyncio.sleep(interval)
 
 

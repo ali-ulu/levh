@@ -22,6 +22,7 @@ Claude Desktop config (claude_desktop_config.json):
 from __future__ import annotations
 
 import asyncio
+import logging
 import os
 import sys
 from collections.abc import AsyncIterator
@@ -44,6 +45,8 @@ from server.core.agent_heartbeat import (
 from server.core.env import get_env
 from server.core.onboarding import levh_version
 from server.tools.register import register_all_tools
+
+logger = logging.getLogger("levh.mcp_stdio")
 
 # ── Lifecycle: open/close the DB around the server's run ────────────
 
@@ -75,7 +78,7 @@ async def _lifespan(_server: FastMCP) -> AsyncIterator[None]:
             try:
                 await smart_auto_connect(engine)
             except Exception:  # noqa: BLE001 - presence tracking must never block server startup
-                pass  # Presence tracking must never block server startup.
+                logger.exception("presence auto-connect failed; continuing startup")
 
         # Background auto-checkpoint: every LEVH_AUTO_CHECKPOINT_INTERVAL
         # seconds fold everything new since the last checkpoint into a
@@ -109,7 +112,7 @@ async def _lifespan(_server: FastMCP) -> AsyncIterator[None]:
                 if _brief and _brief.strip():
                     print(f"[levh] Continuity brief for this session:\n{_brief}", file=sys.stderr)
             except Exception:  # noqa: BLE001 - a missing or empty brief must not fail startup
-                pass  # A missing or empty brief must not fail startup.
+                logger.exception("continuity brief could not be fetched; continuing startup")
 
         yield
     finally:

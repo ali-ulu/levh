@@ -8,6 +8,7 @@ the split verifiable.
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timezone
 
 from ..types import (
@@ -16,6 +17,8 @@ from ..types import (
     Session,
     SessionStatus,
 )
+
+logger = logging.getLogger("levh.sessions")
 
 
 class MemorySessionsMixin:
@@ -90,8 +93,7 @@ class MemorySessionsMixin:
             try:
                 await self.summarize_session(session_id)
             except Exception:  # noqa: BLE001 - summarization is best-effort; never block session end
-                # Summarization is best-effort — never block session end on it.
-                pass
+                logger.exception("session summarization failed for %s; ending anyway", session_id)
 
         session = Session(**row)
         session.status = SessionStatus.ENDED

@@ -124,8 +124,8 @@ class MemoryLifecycleMixin:
                 await task
             except asyncio.CancelledError:
                 pass
-            except Exception:  # noqa: BLE001 — shutdown must complete
-                pass
+            except Exception:  # noqa: BLE001 - shutdown must complete, but log the failure
+                logger.exception("background derived rebuild failed during shutdown")
             self._derived_task = None
         await self.db.close()
         if self._embedder is not None:
@@ -318,8 +318,8 @@ class MemoryLifecycleMixin:
             # A failed background pass re-raised through the task; the inline
             # pass below retries once synchronously and its failure surfaces
             # through recompute_derived_state's staleness check (issue #139).
-            except Exception:  # noqa: BLE001 - best-effort refresh; staleness is caught on the next read
-                pass
+            except Exception:  # noqa: BLE001 - best-effort refresh; staleness caught on next read
+                logger.exception("background derived refresh failed; inline retry follows")
         await self._rebuild_derived(retry=False)
 
     @staticmethod
