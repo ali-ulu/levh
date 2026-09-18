@@ -41,7 +41,7 @@ secure = ["cryptography>=42"]
 pdf = ["fpdf2>=2.7"]
 # Text extraction for the file-import feature (PDF/Word/Excel uploads).
 files = ["pypdf>=4.0", "python-docx>=1.1", "openpyxl>=3.1"]
-dev = ["pytest", "pytest-asyncio", "build", "twine", "fpdf2>=2.7", "ruff==0.16.7", "mypy==2.3.1", "pytest-cov>=5.0"]
+dev = ["pytest", "pytest-asyncio", "build", "twine", "fpdf2>=2.7", "ruff==0.16.7", "mypy==2.3.1", "pytest-cov>=5.0", "diff-cover>=9.0"]
 
 [project.urls]
 Homepage = "https://levh.ai-ulu.com/"
@@ -72,6 +72,13 @@ source = ["server"]
 fail_under = 72
 show_missing = false
 precision = 1
+
+# Diff-coverage gate (issue #206, follow-up to #147 item 2): the total
+# fail_under above is a floor, so a PR can add a whole untested module and
+# still clear it. The CI step runs diff-cover over only the lines this PR
+# touches, with the threshold passed on the command line in ci.yml (diff-cover
+# reads no config unless given -c, so keeping the value there avoids a second
+# copy that nothing would read).
 
 [tool.mypy]
 python_version = "3.12"

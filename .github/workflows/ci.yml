@@ -44,7 +44,11 @@ jobs:
       matrix:
         python-version: ["3.11", "3.12", "3.13"]
     steps:
+      # diff-cover needs a merge-base with the base branch, which a shallow
+      # checkout cannot provide (default fetch-depth is 1).
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
@@ -57,7 +61,19 @@ jobs:
         if: matrix.python-version == '3.12'
         env:
           EMBEDDER_MODE: hash
-        run: python -m pytest -q --cov=server --cov-report=term --cov-fail-under=72
+        run: |
+          python -m pytest -q --cov=server --cov-report=term \
+            --cov-report=xml:coverage.xml --cov-fail-under=72
+      - name: Diff coverage (changed lines in this PR, 3.12 only)
+        # Total coverage is a floor, so a PR could add a whole untested module
+        # and still clear it. diff-cover re-checks only the lines this diff
+        # touches (issue #206). Skipped on pushes to main: after the squash
+        # there is no PR diff left to compare against.
+        if: matrix.python-version == '3.12' && github.event_name == 'pull_request'
+        run: |
+          diff-cover coverage.xml \
+            --compare-branch "origin/${{ github.base_ref }}" \
+            --fail-under 70
       - name: Test (other interpreters)
         if: matrix.python-version != '3.12'
         env:
