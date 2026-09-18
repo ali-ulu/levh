@@ -186,6 +186,15 @@ from server.routes.librarian import router as librarian_router  # noqa: E402
 app.include_router(librarian_router)
 
 
+# ── Sürümlemeli API yüzeyi (/api/v1) ───────────────────────────────
+# Ayrıntı ve gerekçe: server/api_versioning.py. Eski (/api/*) yollar geriye
+# dönük uyumluluk için çalışmaya devam eder; yayımlanan sözleşme /api/v1'dir.
+
+from server.api_versioning import install_versioned_surface  # noqa: E402
+
+VERSIONED_ROUTE_COUNT = install_versioned_surface(app)
+
+
 # ── Librarian chat widget enjeksiyonu ──────────────────────────────
 # Dashboard'un her HTML sayfasına, </body>'den önce widget script'i eklenir.
 #

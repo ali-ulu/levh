@@ -58,7 +58,23 @@ _BODY_LIMIT_METHODS = {"POST", "PUT", "PATCH"}
 
 def _body_limit_exempt(request: Request) -> bool:
     # Trailing-slash tolerant, like the other path checks here.
-    return request.url.path.rstrip("/") in _BODY_LIMIT_EXEMPT_PATHS
+    return _canonical_api_path(request.url.path).rstrip("/") in _BODY_LIMIT_EXEMPT_PATHS
+
+
+def _canonical_api_path(path: str) -> str:
+    """Collapse the versioned spelling onto the gate's unversioned vocabulary.
+
+    ``/api/v1/...`` serves the same handlers as ``/api/...`` (issue #193), and
+    a boundary that matched only the legacy spelling would silently reopen for
+    the versioned alias: the demo's bulk-export refusal, its recall exemption
+    and the upload's larger body cap are all keyed by path. Normalizing here
+    keeps one decision table for both spellings instead of two that drift.
+    """
+    if path.startswith("/api/v1/"):
+        return "/api/" + path[len("/api/v1/"):]
+    if path == "/api/v1":
+        return "/api"
+    return path
 
 
 def _body_too_large_response(limit: int) -> JSONResponse:
@@ -154,7 +170,8 @@ _DOCS_PATHS = {"/docs", "/docs/oauth2-redirect", "/redoc", "/openapi.json"}
 
 def _guarded(request: Request) -> bool:
     """Whether this request is subject to the /api gates."""
-    return request.url.path.startswith("/api/") and request.url.path != "/api/health"
+    path = _canonical_api_path(request.url.path)
+    return path.startswith("/api/") and path != "/api/health"
 
 
 def _docs_exposed(request: Request) -> bool:
@@ -221,14 +238,15 @@ def install(app: FastAPI) -> None:
     @app.middleware("http")
     async def public_demo_guard(request: Request, call_next):
         if public_demo() and _guarded(request):
+            path = _canonical_api_path(request.url.path)
             if request.method in ("GET", "HEAD", "OPTIONS"):
-                if request.url.path in PUBLIC_DEMO_BLOCKED_PATHS:
+                if path in PUBLIC_DEMO_BLOCKED_PATHS:
                     return JSONResponse(
                         {"detail": "forbidden in public demo mode"},
                         status_code=403,
                     )
                 return await call_next(request)
-            if request.method == "POST" and request.url.path in PUBLIC_DEMO_ALLOWED_POSTS:
+            if request.method == "POST" and path in PUBLIC_DEMO_ALLOWED_POSTS:
                 return await call_next(request)
             return JSONResponse(
                 {"detail": "forbidden in public demo mode: mutating endpoint"},
