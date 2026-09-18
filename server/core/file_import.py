@@ -51,7 +51,7 @@ def _extract_pdf(blob: bytes) -> tuple[str | None, str | None]:
         reader = PdfReader(io.BytesIO(blob))
         pages = [page.extract_text() or "" for page in reader.pages]
         return "\n\n".join(pages).strip(), None
-    except Exception as exc:  # pragma: no cover - depends on malformed PDFs
+    except Exception as exc:  # pragma: no cover - depends on malformed PDFs  # noqa: BLE001 - a bad upload is reported, never raised
         return None, f"could not parse PDF: {exc}"
 
 
@@ -63,7 +63,7 @@ def _extract_docx(blob: bytes) -> tuple[str | None, str | None]:
     try:
         doc = docx.Document(io.BytesIO(blob))
         return "\n".join(p.text for p in doc.paragraphs).strip(), None
-    except Exception as exc:  # pragma: no cover - depends on malformed docx
+    except Exception as exc:  # pragma: no cover - depends on malformed docx  # noqa: BLE001 - a bad upload is reported, never raised
         return None, f"could not parse Word document: {exc}"
 
 
@@ -82,7 +82,7 @@ def _extract_xlsx(blob: bytes) -> tuple[str | None, str | None]:
             ]
             sheets.append(f"# {ws.title}\n" + "\n".join(rows))
         return "\n\n".join(sheets).strip(), None
-    except Exception as exc:  # pragma: no cover - depends on malformed xlsx
+    except Exception as exc:  # pragma: no cover - depends on malformed xlsx  # noqa: BLE001 - a bad upload is reported, never raised
         return None, f"could not parse Excel workbook: {exc}"
 
 

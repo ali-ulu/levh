@@ -50,7 +50,7 @@ async def _heartbeat_loop() -> None:
                     _last_heartbeat = time.time()
         except asyncio.CancelledError:
             break
-        except Exception:
+        except Exception:  # noqa: BLE001 - heartbeat failures must never crash the server
             # Heartbeat failures must never crash the server
             continue
 

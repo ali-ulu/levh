@@ -89,7 +89,7 @@ class MemorySessionsMixin:
         if self.auto_summarize:
             try:
                 await self.summarize_session(session_id)
-            except Exception:
+            except Exception:  # noqa: BLE001 - summarization is best-effort; never block session end
                 # Summarization is best-effort — never block session end on it.
                 pass
 

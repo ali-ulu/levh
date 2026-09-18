@@ -74,7 +74,7 @@ async def _lifespan(_server: FastMCP) -> AsyncIterator[None]:
         if _env_bool("LEVH_AUTO_CONNECT", True):
             try:
                 await smart_auto_connect(engine)
-            except Exception:
+            except Exception:  # noqa: BLE001 - presence tracking must never block server startup
                 pass  # Presence tracking must never block server startup.
 
         # Background auto-checkpoint: every LEVH_AUTO_CHECKPOINT_INTERVAL
@@ -84,7 +84,7 @@ async def _lifespan(_server: FastMCP) -> AsyncIterator[None]:
         if _env_bool("LEVH_AUTO_CHECKPOINT", False):
             try:
                 _project = detect_project_from_git()
-            except Exception:
+            except Exception:  # noqa: BLE001 - no git repo means no project context
                 _project = None
             _interval = _env_int("LEVH_AUTO_CHECKPOINT_INTERVAL", 600)
             _checkpoint_task = start_background_auto_checkpoint(
@@ -108,7 +108,7 @@ async def _lifespan(_server: FastMCP) -> AsyncIterator[None]:
                 )
                 if _brief and _brief.strip():
                     print(f"[levh] Continuity brief for this session:\n{_brief}", file=sys.stderr)
-            except Exception:
+            except Exception:  # noqa: BLE001 - a missing or empty brief must not fail startup
                 pass  # A missing or empty brief must not fail startup.
 
         yield

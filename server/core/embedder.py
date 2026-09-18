@@ -72,7 +72,7 @@ class Embedder:
             self._model = SentenceTransformer(model_name)
             test = self._model.encode("test")
             self.dimension = len(test)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - no model is a supported mode; record why and degrade
             self.fallback_reason = (
                 "Local embedder unavailable; install with: "
                 'pip install "levh[local]"'

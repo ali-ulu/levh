@@ -51,7 +51,7 @@ def _decode(value: Optional[str]) -> str:
         return ""
     try:
         return str(make_header(decode_header(value)))
-    except Exception:
+    except Exception:  # noqa: BLE001 - a malformed header decodes back to its raw value
         return value
 
 

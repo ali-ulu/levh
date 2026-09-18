@@ -59,7 +59,7 @@ def register(mcp: FastMCP, engine: MemoryEngine) -> None:
         # Fetch
         try:
             items = await conn.fetch()
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - the tool reports a fetch failure as text
             await conn.disconnect()
             return f"Fetch failed: {e}"
 

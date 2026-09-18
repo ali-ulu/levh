@@ -54,7 +54,7 @@ def register(mcp: FastMCP, engine: MemoryEngine) -> None:
 
         try:
             items = await conn.fetch()
-        except Exception:
+        except Exception:  # noqa: BLE001 - the tool reports a fetch failure as text
             await conn.disconnect()
             return f"Fetch from connector '{connector}' failed. See server logs."
 

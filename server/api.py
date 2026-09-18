@@ -66,7 +66,7 @@ async def get_engine() -> MemoryEngine:
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(_app: FastAPI):
     engine = await get_engine()
     # Librarian bekçi ajanı — sunucu açılınca başlar, kapanırken durur.
     # Public demo'da çalışmaz: orada her yazma zaten reddedilir ve bekçinin

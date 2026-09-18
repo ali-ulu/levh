@@ -102,6 +102,6 @@ def cmd_continue(args: argparse.Namespace) -> int:
             return 0
         print(context)
         return 0
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - report any failure to the CLI user instead of crashing
         print(f"  Error: {e}", file=sys.stderr)
         return 1

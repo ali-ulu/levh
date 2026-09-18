@@ -265,7 +265,7 @@ def cmd_sync(args: argparse.Namespace) -> int:
     except (FileNotFoundError, ValueError, ConnectionError) as e:
         print(f"  Connection failed: {_scrub(str(e), supplied_secrets)}", file=sys.stderr)
         return 1
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - surface a sync failure as an exit code, not a traceback
         print(f"  Sync failed: {_scrub(str(e), supplied_secrets)}", file=sys.stderr)
         return 1
 

@@ -86,7 +86,7 @@ async def benchmark_recall(embedder_mode: str = "", top_k: int = 5, engine=Depen
     mode = embedder_mode.strip() or engine.embedder.mode
     try:
         metrics = await run_benchmark(embedder_mode=mode, top_k=min(max(top_k, 1), 10))
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - a failed benchmark is a 500, not a crash
         logger.exception("recall benchmark failed")
         raise HTTPException(status_code=500, detail=f"Benchmark failed: {e}")
     return metrics

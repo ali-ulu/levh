@@ -209,7 +209,7 @@ class TrustService:
         for row in rows:
             try:
                 output.append(json.loads(row["breakdown_json"]))
-            except Exception:
+            except Exception:  # noqa: BLE001 - a corrupt breakdown row degrades to a review signal
                 output.append(
                     {
                         "memory_id": row["memory_id"],
@@ -226,7 +226,7 @@ class TrustService:
         for row in rows:
             try:
                 output.append(json.loads(row["breakdown_json"]))
-            except Exception:
+            except Exception:  # noqa: BLE001 - a corrupt breakdown row degrades to a review signal
                 output.append(
                     {
                         "memory_id": row["memory_id"],

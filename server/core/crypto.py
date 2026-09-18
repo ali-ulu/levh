@@ -43,7 +43,7 @@ def is_available() -> bool:
         import cryptography  # noqa: F401
 
         return True
-    except Exception:
+    except Exception:  # noqa: BLE001 - import discovery: any failure means unavailable
         return False
 
 

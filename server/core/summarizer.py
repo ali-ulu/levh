@@ -111,7 +111,7 @@ async def summarize_texts(
         resp.raise_for_status()
         content = resp.json()["choices"][0]["message"]["content"].strip()
         return content or _extractive_fallback(texts)
-    except Exception:
+    except Exception:  # noqa: BLE001 - any LLM failure degrades to the offline summary
         # Any LLM failure degrades to the offline summary — session end must
         # never break because summarization was unavailable.
         return _extractive_fallback(texts)

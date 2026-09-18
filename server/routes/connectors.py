@@ -91,7 +91,7 @@ async def connector_import(req: ConnectorRequest, engine=Depends(get_engine)):
     # Fetch
     try:
         items = await conn.fetch(**req.params)
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - logged server-side; the client gets a generic 502
         await conn.disconnect()
         # Log the full error server-side, but don't echo it back — connector
         # exceptions can embed tokens/URLs from the upstream request.
@@ -133,7 +133,7 @@ async def connector_sync(req: ConnectorRequest, engine=Depends(get_engine)):
 
     try:
         items = await conn.fetch(**req.params)
-    except Exception:
+    except Exception:  # noqa: BLE001 - logged server-side; the client gets a generic 502
         await conn.disconnect()
         logger.exception("connector '%s' fetch failed", req.connector)
         raise HTTPException(

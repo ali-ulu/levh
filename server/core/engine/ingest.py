@@ -316,7 +316,7 @@ class MemoryIngestMixin:
                         metadata=metadata,
                     )
                     stored += 1
-            except Exception:
+            except Exception:  # noqa: BLE001 - a single malformed item never fails the run
                 # Error isolation — a single malformed item never fails the run.
                 errors += 1
                 continue

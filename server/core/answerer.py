@@ -107,7 +107,7 @@ async def answer_question(
         resp.raise_for_status()
         content = resp.json()["choices"][0]["message"]["content"].strip()
         return content or _extractive_sources(sources)
-    except Exception:
+    except Exception:  # noqa: BLE001 - any LLM failure degrades to the offline evidence list
         # Any LLM failure degrades to the offline evidence list — asking your
         # memory must never hard-fail just because the LLM was unavailable.
         return _extractive_sources(sources)

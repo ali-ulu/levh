@@ -32,7 +32,7 @@ async def broadcast_agent_event(event: str, data: dict) -> None:
     for ws in _agent_ws_clients:
         try:
             await ws.send_text(message)
-        except Exception:
+        except Exception:  # noqa: BLE001 - a dead socket is pruned; fan-out continues
             stale.add(ws)
     # difference_update, not `-=`: an augmented assignment would make this
     # name function-local, so the early read above would raise

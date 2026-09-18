@@ -140,7 +140,7 @@ class MemoryLifecycleMixin:
         for listener in list(self._listeners):
             try:
                 listener(event, payload)
-            except Exception:
+            except Exception:  # noqa: BLE001 - a broken listener must never break memory operations
                 # A broken listener must never break memory operations.
                 continue
 
@@ -318,7 +318,7 @@ class MemoryLifecycleMixin:
             # A failed background pass re-raised through the task; the inline
             # pass below retries once synchronously and its failure surfaces
             # through recompute_derived_state's staleness check (issue #139).
-            except Exception:
+            except Exception:  # noqa: BLE001 - best-effort refresh; staleness is caught on the next read
                 pass
         await self._rebuild_derived(retry=False)
 

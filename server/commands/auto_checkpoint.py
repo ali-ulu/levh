@@ -38,7 +38,7 @@ def cmd_auto_checkpoint(args: argparse.Namespace) -> int:
 
     _auto_checkpoint_running = True
 
-    def _signal_handler(sig, frame):
+    def _signal_handler(_sig, _frame):
         global _auto_checkpoint_running
         _auto_checkpoint_running = False
         print("\nStopping auto-checkpoint...")
@@ -197,7 +197,7 @@ async def _background_loop(
             )
         except asyncio.CancelledError:
             raise
-        except Exception:
+        except Exception:  # noqa: BLE001 - a summarization failure must never kill the scheduler
             # A summarization failure must never kill the background scheduler.
             pass
         await asyncio.sleep(interval)

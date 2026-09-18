@@ -42,7 +42,7 @@ def _running_bind_host(runtime) -> str | None:
                 f"http://127.0.0.1:{port}/api/health", timeout=2
             ) as response:
                 payload = json.loads(response.read().decode("utf-8"))
-        except Exception:
+        except Exception:  # noqa: BLE001 - an unreachable candidate port is simply the next candidate
             continue
         host = str(payload.get("api_host") or "").strip()
         if host:
@@ -91,7 +91,7 @@ def cmd_doctor(_args: argparse.Namespace) -> int:
     try:
         runtime = resolve_runtime_config()
         db_path = runtime.database_path
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 - a failed check is reported as FAIL, never fatal
         checks.append(("Runtime config", "FAIL", str(exc)))
         print("\n  LEVH Doctor")
         print("  " + "=" * 50)
@@ -130,7 +130,7 @@ def cmd_doctor(_args: argparse.Namespace) -> int:
             checks.append(("Embedder mode", "WARN", f"{detail}; {embedder.fallback_reason}"))
         else:
             checks.append(("Embedder mode", "PASS", detail))
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - a failed check is reported as FAIL, never fatal
         checks.append(("Embedder mode", "FAIL", str(e)))
         ok = False
 
@@ -195,7 +195,7 @@ def cmd_doctor(_args: argparse.Namespace) -> int:
                 f"default={DEFAULT_PROFILE}; " + ", ".join(f"{k}={v}" for k, v in counts.items()),
             )
         )
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - a failed check is reported as FAIL, never fatal
         checks.append(("MCP profiles", "FAIL", str(e)))
         ok = False
 
@@ -212,7 +212,7 @@ def cmd_doctor(_args: argparse.Namespace) -> int:
                 f"{'ON' if dogfood else 'OFF (default)'}; journal={resolved.name}",
             )
         )
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - a failed check is reported as FAIL, never fatal
         checks.append(("Dogfood metrics", "FAIL", str(e)))
         ok = False
 
@@ -234,7 +234,7 @@ def cmd_doctor(_args: argparse.Namespace) -> int:
                 checks.append(("Memory store", "WARN", "database ready; no memories yet"))
     except sqlite3.OperationalError:
         checks.append(("Memory store", "WARN", "database exists but schema is not initialized"))
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - a failed check is reported as FAIL, never fatal
         checks.append(("Memory store", "FAIL", str(e)))
         ok = False
 
@@ -264,7 +264,7 @@ def cmd_doctor(_args: argparse.Namespace) -> int:
         else:
             detail = "empty store" if not dimension_counts else f"{expected_dim}d={dimension_counts.get(expected_dim, 0)}"
             checks.append(("Embedding dimensions", "PASS", detail))
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - a failed check is reported as FAIL, never fatal
         checks.append(("Embedding dimensions", "WARN", f"could not inspect: {e}"))
 
     # 15. SQLite operational contract. Connect only when a store already
@@ -309,7 +309,7 @@ def cmd_doctor(_args: argparse.Namespace) -> int:
                     "new stores use WAL, busy_timeout=5000ms, numbered migrations and FTS5 when available",
                 )
             )
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - a failed check is reported as FAIL, never fatal
         checks.append(("SQLite runtime", "WARN", f"could not inspect: {e}"))
 
     # 16. Remote access boundary. The tokenless override exists for Docker,
@@ -364,7 +364,7 @@ def cmd_doctor(_args: argparse.Namespace) -> int:
                         f"peers accepted; safe only while {bind_host} stays private",
                     )
                 )
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - a failed check is reported as FAIL, never fatal
         checks.append(("Remote access", "FAIL", str(e)))
         ok = False
 

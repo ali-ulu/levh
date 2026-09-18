@@ -255,7 +255,7 @@ def install_universal_hook(
                 results[agent] = install_shell_hook(limit)
             else:
                 results[agent] = {"ok": False, "error": f"Unknown agent: {agent}"}
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - one agent's hook failure must not abort the rest
             results[agent] = {"ok": False, "error": str(exc)}
 
     return results
@@ -371,7 +371,7 @@ def uninstall_universal_hook(client: str = "all") -> dict:
                 results[agent] = uninstall_shell_hook()
             else:
                 results[agent] = {"ok": False, "error": f"Unknown agent: {agent}"}
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - one agent's hook failure must not abort the rest
             results[agent] = {"ok": False, "error": str(exc)}
 
     return results

@@ -114,7 +114,7 @@ class MemoryTransferMixin:
                 imported += 1
                 if decision["redacted"]:
                     redacted += 1
-            except Exception:
+            except Exception:  # noqa: BLE001 - one bad row counts as an error and the export continues
                 errors += 1
                 continue
 

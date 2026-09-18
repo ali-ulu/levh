@@ -44,7 +44,7 @@ def _package_version() -> str:
         from importlib.metadata import version
 
         return version("levh")
-    except Exception:
+    except Exception:  # noqa: BLE001 - absent package metadata is not a report failure
         return "unknown"
 
 

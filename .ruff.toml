@@ -1,8 +1,10 @@
 # Ruff: catch real errors and likely bugs. This is not a style gate — the
 # existing codebase predates it, so stylistic families (import sorting,
-# PEP-604 unions, blind-except...) are deliberately out of scope. What must
-# never reach main: syntax errors, undefined names, unused names that hide
-# typos, and the bugbear bug classes.
+# PEP-604 unions, ...) are deliberately out of scope. What must never reach
+# main: syntax errors, undefined names, unused names that hide typos, the
+# bugbear bug classes, blind `except Exception:` blocks (BLE001), and
+# arguments that are silently dropped (ARG) — the last two landed as the
+# final items of issue #147 (see docs/error-handling.md).
 target-version = "py311"
 line-length = 120
 extend-exclude = ["frontend", "server/dashboard", "build", "dist"]
@@ -12,6 +14,8 @@ select = [
     "E9",    # syntax errors / runtime errors
     "F",     # pyflakes: undefined & unused names, format errors
     "B",     # bugbear: likely bugs (mutable defaults, loop binding, ...)
+    "BLE",   # blind-except: `except Exception:` must be deliberate (#147)
+    "ARG",   # unused arguments: dead plumbing or a broken override (#147)
 ]
 ignore = [
     "B008",  # FastAPI Depends() in defaults is the framework's idiom
@@ -31,3 +35,19 @@ builtins-ignorelist = ["id", "type", "input", "format"]
 # Never auto-format; this repo keeps its historical style. Only `check`
 # (lint) runs in CI.
 quote-style = "preserve"
+
+# `**kwargs` on the connector `fetch()` overrides is part of the call
+# contract every caller relies on (`conn.fetch(**params)`), even though no
+# implementation reads it. Flagging it would only push eight connectors into
+# renaming a parameter the interface owns, so the variadic itself is exempt;
+# a *named* unused argument is still an error.
+[lint.flake8-unused-arguments]
+ignore-variadic-names = true
+
+# Test doubles implement interfaces — fake connectors, stub callbacks, stand-ins
+# installed with monkeypatch — whose parameters exist only to match the
+# signature they replace. The test body has no reason to read them; that is
+# what makes it a double. ARG is therefore noise in `tests/` and stays enforced
+# everywhere else.
+[lint.per-file-ignores]
+"tests/**" = ["ARG"]

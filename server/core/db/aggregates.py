@@ -32,7 +32,7 @@ class AggregateQueries:
         for (raw_embedding,) in rows:
             try:
                 dimension = len(json.loads(raw_embedding))
-            except Exception:
+            except Exception:  # noqa: BLE001 - an unparsable embedding counts as unknown dimension
                 dimension = -1
             counts[dimension] = counts.get(dimension, 0) + 1
         return counts
