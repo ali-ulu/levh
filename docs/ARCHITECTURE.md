@@ -25,6 +25,8 @@ server/
 ├── api.py               FastAPI app: builds it, installs middleware, includes routers,
 │                        mounts the MCP SSE app and the static dashboard
 ├── middleware.py        The token gate and the public-demo boundary
+├── api_versioning.py    Clones every /api/* route under /api/v1 and freezes that
+│                        as the published contract; /api/health stays unversioned
 ├── routes/              One module per URL prefix; deps.py holds what they share
 │   ├── memories.py      /api/memories collection routes (literal paths)
 │   ├── memory_item.py   /api/memories/{id} routes — included after the collection,
@@ -194,7 +196,9 @@ the smallest examples.)
 
 **Add a REST route:** add to `api.py`. Sub-paths (`/api/memories/{id}/related`)
 must be declared **before** the bare `/api/memories/{id}` catch-all — see the
-existing ordering around `/api/memories/fading`.
+existing ordering around `/api/memories/fading`. `api_versioning.py` clones the
+route under `/api/v1` automatically; only `UNVERSIONED_PATHS` (currently
+`/api/health`) stay outside the frozen contract.
 
 **Add a connector:** subclass `connectors/base.py:BaseConnector`
 (`connect` / `fetch` / `disconnect` + config metadata) and register it in
