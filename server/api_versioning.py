@@ -70,11 +70,12 @@ def versioned_clone(route: APIRoute) -> APIRoute:
     return clone
 
 
-def install_versioned_surface(app: FastAPI) -> int:
+def install_versioned_surface(app: FastAPI) -> None:
     """Serve every ``/api/*`` route under ``/api/v1`` as the contract.
 
-    Returns the number of routes versioned. Building the surface must not
-    mutate the routes it reads from: the router modules are module-level
+    Pure side effect: it installs the aliases and publishes the versioned
+    schema, returning nothing. Building the surface must not mutate the routes
+    it reads from: the router modules are module-level
     objects that outlive any one app, and ``importlib.reload(server.api)``
     rebuilds the app without reloading them. Marking the originals hidden would
     therefore leak into the next build, whose clones would inherit the flag and
@@ -101,7 +102,6 @@ def install_versioned_surface(app: FastAPI) -> int:
         len(app.router.routes),
     )
     app.router.routes.insert(insert_at, included)
-    return len(api_routes)
 
 
 def _publish_only_versioned(app: FastAPI) -> None:
