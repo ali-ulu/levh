@@ -11,6 +11,7 @@ references between `docs/` pages.
 from __future__ import annotations
 
 import re
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -167,3 +168,25 @@ def test_editorconfig_declares_root_and_line_endings():
     section = re.search(r"^\[\*\]\n(.*?)(?=^\[|\Z)", text, re.MULTILINE | re.DOTALL)
     assert section, ".editorconfig has no `[*]` section"
     assert "end_of_line = lf" in section.group(1), ".editorconfig does not normalize line endings"
+
+
+def test_coverage_artifacts_are_gitignored_when_ci_measures_coverage():
+    """CI runs pytest with `--cov=server` (issue #176), and coverage.py writes
+    `.coverage` into the working directory. An unignored data file shows up as
+    untracked noise in every developer's `git status` and is one `git add -A`
+    away from being committed, so the ignore rules must follow the CI flag
+    (issue #197). The same check covers the `--cov-report=html` output.
+    """
+    ci = (GITHUB / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    if "--cov" not in ci:
+        pytest.skip("ci.yml no longer measures coverage")
+
+    for artifact in (".coverage", ".coverage.hostname.12345", "htmlcov/index.html"):
+        result = subprocess.run(
+            ["git", "check-ignore", "-q", artifact],
+            cwd=ROOT,
+            capture_output=True,
+        )
+        assert result.returncode == 0, (
+            f"{artifact} is not ignored although CI measures coverage"
+        )

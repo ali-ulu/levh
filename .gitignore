@@ -8,6 +8,9 @@ venv/
 dist/
 build/
 .pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
 
 # SQLite
 *.db
