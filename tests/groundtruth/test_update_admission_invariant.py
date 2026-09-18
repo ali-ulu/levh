@@ -1,8 +1,8 @@
 """Desired invariant for content mutation admission and secret handling.
 
-The engine/REST/MCP persistence characterization is retained under
-evidence/groundtruth/task-00A3/harness/. The canary below is synthetic and
-cannot authenticate to any service.
+The engine/REST/MCP persistence characterization was an audit-only harness from
+the untracked Gate 0A evidence workspace (task 00A3) and is not in this repo.
+The canary below is synthetic and cannot authenticate to any service.
 """
 
 from pathlib import Path

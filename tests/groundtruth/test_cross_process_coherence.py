@@ -1,8 +1,9 @@
 """Desired invariants for live readers sharing one SQLite database.
 
-The process-heavy transport reproduction is retained under
-evidence/groundtruth/task-00A1/harness/. These tests use two in-process engine
-instances so normal CI records the desired contract without spawning services.
+The process-heavy transport reproduction was an audit-only harness from the
+untracked Gate 0A evidence workspace (task 00A1) and is not in this repo. These
+tests use two in-process engine instances so normal CI records the desired
+contract without spawning services.
 """
 
 from pathlib import Path

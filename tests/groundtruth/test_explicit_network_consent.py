@@ -1,8 +1,8 @@
 """Desired invariant for explicit outbound answer/summary consent.
 
-The full payload-capture characterization is retained under
-evidence/groundtruth/task-00A2/harness/. No request in this test can reach a
-real transport.
+The full payload-capture characterization was an audit-only harness from the
+untracked Gate 0A evidence workspace (task 00A2) and is not in this repo. No
+request in this test can reach a real transport.
 """
 
 from pathlib import Path

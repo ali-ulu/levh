@@ -17,15 +17,13 @@ marker and promote the test to an ordinary regression test.
 | `test_update_admission_invariant.py` | Updated content passes admission before embedding or persistence. | Regression (marker removed) |
 | `test_standalone_sse_auth_boundary.py` | Standalone SSE enforces configured `LEVH_TOKEN`. | Regression (marker removed) |
 
-The process-heavy characterization harnesses are audit-only and live beside
-their immutable evidence:
+The process-heavy characterization harnesses that produced these invariants are
+audit-only and are **not** part of this repository. They ran in the untracked
+`evidence/` workspace used for Gate 0A (tasks 00A1-00A4) and were never tracked
+here: `evidence/` is absent from the working tree and from `git ls-files`. There
+is no in-repo path to run them from; the tests above are the durable contract.
 
-- `evidence/groundtruth/task-00A1/harness/reproduce_cross_process_coherence.py`
-- `evidence/groundtruth/task-00A2/harness/reproduce_explicit_network_consent.py`
-- `evidence/groundtruth/task-00A3/harness/reproduce_update_admission_invariant.py`
-- `evidence/groundtruth/task-00A4/harness/reproduce_standalone_sse_auth_boundary.py`
-
-They are excluded from normal pytest discovery by location and filename.
-Run one explicitly only in an isolated audit workspace, with its documented
-network/process restrictions and evidence directory. Heavy harnesses may
-rewrite task evidence and are not release-gate CI tests.
+If a characterization run is needed again, recreate it in an isolated audit
+workspace outside this repo, with its documented network/process restrictions
+and evidence directory. Heavy harnesses may rewrite task evidence and are not
+release-gate CI tests.

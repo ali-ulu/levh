@@ -1,8 +1,8 @@
 """Desired invariant for standalone MCP SSE authentication.
 
-The loopback multi-process reproduction is retained under
-evidence/groundtruth/task-00A4/harness/. This test invokes the ASGI app
-in-process and never opens a listening socket.
+The loopback multi-process reproduction was an audit-only harness from the
+untracked Gate 0A evidence workspace (task 00A4) and is not in this repo. This
+test invokes the ASGI app in-process and never opens a listening socket.
 """
 
 import asyncio

@@ -182,6 +182,12 @@ def _markdown_files() -> list[Path]:
     return sorted(root.glob("*.md")) + sorted(DOCS.glob("*.md"))
 
 
+def _documentation_files() -> list[Path]:
+    """Every Markdown file the published docs and the test docs ship."""
+    root = DOCS.parent
+    return _markdown_files() + sorted((root / "tests").rglob("*.md"))
+
+
 def test_no_relative_documentation_link_is_broken():
     """A link to a file that does not exist is a promise the repo cannot keep.
 
@@ -190,7 +196,7 @@ def test_no_relative_documentation_link_is_broken():
     """
     pattern = re.compile(r"\[[^\]]*\]\(([^)#\s]+)(?:#[^)]*)?\)")
     broken: list[str] = []
-    for doc in _markdown_files():
+    for doc in _documentation_files():
         text = doc.read_text(encoding="utf-8", errors="replace")
         for match in pattern.finditer(text):
             link = match.group(1)
@@ -199,6 +205,26 @@ def test_no_relative_documentation_link_is_broken():
             if not (doc.parent / link).resolve().exists():
                 broken.append(f"{doc.name}: {link}")
     assert not broken, f"broken relative links: {broken}"
+
+
+# `tests/groundtruth/README.md` and the four Gate 0A test docstrings pointed at
+# `evidence/groundtruth/task-00A{1..4}/harness/...`. Nothing tracked that
+# directory, and the link check above only looked at `docs/*.md`, so the paths
+# stayed broken while promising an in-repo audit harness that never existed.
+_EVIDENCE_PATH_RE = re.compile(r"evidence/groundtruth/[A-Za-z0-9_./-]+")
+
+
+def test_no_doc_points_at_the_untracked_evidence_workspace():
+    offenders: list[str] = []
+    for doc in _documentation_files():
+        text = doc.read_text(encoding="utf-8", errors="replace")
+        for path in _EVIDENCE_PATH_RE.findall(text):
+            if not (DOCS.parent / path).exists():
+                offenders.append(f"{doc.relative_to(DOCS.parent)}: {path}")
+    assert not offenders, (
+        "documentation references an untracked evidence/ harness path: "
+        f"{offenders}"
+    )
 
 
 # The 2.x rename left the security docs telling operators to set a variable
