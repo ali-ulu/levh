@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+### The API surface is versioned and frozen as a contract (#193)
+
+- The same handlers are now served under `/api/v1/...`, and the *versioned*
+  paths are the published contract: they are what `openapi.json` freezes and
+  what CI checks for drift. The bare `/api/...` paths keep working as a
+  compatibility alias but are hidden from the schema, so a client can at last
+  tell a compatible edit from a breaking one. `/api/health` stays unversioned
+  by design.
+
 ### The backend has a type gate again (#195)
 
 - `mypy` now runs as a CI job over the tier of modules that is annotation-clean
