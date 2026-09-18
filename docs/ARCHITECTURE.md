@@ -234,7 +234,7 @@ degrade-to-hash contract.
 ## 9. Testing & benchmarking
 
 ```bash
-EMBEDDER_MODE=hash python -m pytest -q      # 122 tests, no torch/network needed
+EMBEDDER_MODE=hash python -m pytest -q      # no torch/network needed
 python scripts/benchmark_recall.py          # recall hit@k / MRR harness
 EMBEDDER_MODE=local python scripts/benchmark_recall.py   # real quality signal
 ```

@@ -120,6 +120,24 @@ def test_the_profile_bands_in_the_docs_are_current():
     assert band in doc, f"stale profile bands; expected {band}"
 
 
+# A test count is true only until the next test is added, and nothing makes a
+# human update the sentence. `docs/testing.md` dropped its count (issue #150);
+# the same sentence survived in `docs/ARCHITECTURE.md` and drifted from 122 to
+# less than a ninth of the real suite (issue #194). Quote no number at all.
+_TEST_COUNT_RE = re.compile(r"\b\d[\d,_]*\s+(?:passing\s+)?tests?\b", re.IGNORECASE)
+
+
+def test_no_document_quotes_a_hand_maintained_test_count():
+    offenders: list[str] = []
+    for doc in sorted(DOCS.glob("*.md")):
+        text = doc.read_text(encoding="utf-8", errors="replace")
+        offenders += [f"{doc.name}: {m.group(0)!r}" for m in _TEST_COUNT_RE.finditer(text)]
+    assert not offenders, (
+        f"hand-maintained test counts in the published docs: {offenders}; "
+        "quote no number, or derive it in CI"
+    )
+
+
 @pytest.mark.parametrize("doc_name", ["getting-started.md"])
 def test_no_document_quotes_a_stale_tool_count(doc_name):
     from server.tools.profiles import profile_counts
