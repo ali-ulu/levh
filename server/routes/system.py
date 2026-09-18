@@ -75,6 +75,40 @@ async def health():
     }
 
 
+@router.get("/api/readyz")
+async def readyz(engine=Depends(get_engine)):
+    """Readiness probe: can this process actually serve memory traffic?
+
+    Unlike ``/api/health`` (liveness — the process is up and nothing more),
+    this endpoint exercises the two dependencies a request needs end-to-end:
+    the SQLite connection and the embedder. It is intentionally
+    unauthenticated so Docker/orchestrator HEALTHCHECKs can call it without
+    holding the token (issue #145) — it reports state, never memory content.
+    """
+    checks: dict[str, str] = {}
+    # DB: a real round-trip, not a "connection object exists" guess — a
+    # locked or half-closed database only shows up when you touch it.
+    try:
+        await engine.db.data_version()
+        checks["db"] = "ok"
+    except Exception as exc:
+        checks["db"] = f"error: {type(exc).__name__}"
+    # Embedder: the lazy property constructs on first touch, so "not loaded
+    # yet" and "cannot load" both surface here; hash mode counts as healthy
+    # (it is the deterministic offline backend by design).
+    try:
+        embedder = engine.embedder
+        checks["embedder"] = f"ok (mode={embedder.mode}, dim={embedder.dimension})"
+    except Exception as exc:
+        checks["embedder"] = f"error: {type(exc).__name__}: {exc}"
+
+    ready = all(not v.startswith("error") for v in checks.values())
+    return {
+        "status": "ready" if ready else "not_ready",
+        "checks": checks,
+    }
+
+
 @router.post("/api/benchmark/recall")
 async def benchmark_recall(embedder_mode: str = "", top_k: int = 5, engine=Depends(get_engine)):
     """Run the recall-quality benchmark harness (hit@k / MRR on a labelled
