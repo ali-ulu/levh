@@ -43,6 +43,7 @@ the process that launches it when environment overrides are required.
 | `LEVH_ENABLE_API_DOCS` | `false` when a token is set | Serve `/docs`, `/redoc` and `/openapi.json`. These are withheld while `LEVH_TOKEN` is set — a browser cannot attach the token header to the docs page itself, so the whole route map would otherwise be anonymous. Set to `true` only on a trusted network |
 | `LEVH_ALLOW_REMOTE_WITHOUT_TOKEN` | `false` | Advanced operator assertion that an external network boundary protects tokenless non-loopback traffic; never use with a public port. `levh doctor` fails when it is combined with a non-loopback bind, and `/api/health` reports both `unauthenticated_remote_access` and the `api_host` the process is actually bound to, for as long as the override is in effect |
 | `LEVH_CORS_ORIGINS` | localhost only | Comma-separated allowed browser origins (`*` for wildcard) |
+| `LEVH_MAX_REQUEST_BODY_BYTES` | `16777216` (16 MB) | Cap on a mutating request body (`POST`/`PUT`/`PATCH`). Enforced against both the declared `Content-Length` and the streamed body, so a chunked or lying request is still refused with `413`. `/api/connectors/upload` is exempt and keeps its own 64 MB decoded file limit |
 | `LEVH_AUTH_RATE_LIMIT` | `10` | Failed token attempts allowed per rate-limit window, per client/process |
 | `LEVH_API_RATE_LIMIT` | `120` | Authenticated API requests allowed per window, per client/process |
 | `LEVH_RATE_LIMIT_WINDOW_SECONDS` | `60` | In-process rate-limit window; not a distributed quota system |

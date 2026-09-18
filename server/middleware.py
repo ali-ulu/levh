@@ -10,7 +10,9 @@ from __future__ import annotations
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+from starlette.requests import ClientDisconnect
 
+from server.core.env import get_env
 from server.routes import deps
 from server.routes.deps import constant_time_token_matches, public_demo
 
@@ -31,6 +33,105 @@ PUBLIC_DEMO_BLOCKED_PATHS = {
 # deliberately allows the same action. It is let through here and its one side
 # effect (reinforcement) is neutralized in the endpoint itself.
 PUBLIC_DEMO_ALLOWED_POSTS = {"/api/memories/recall"}
+
+# ── Global request-body size guard ─────────────────────────────────
+# Every JSON endpoint used to accept a body of any size: the only limit in the
+# codebase was the 64 MB one inside the connector upload. A single large POST
+# could therefore pin memory (the whole body is parsed before a route sees it)
+# on an endpoint like /api/memories, /api/ask or /api/import. This is a global
+# cap in front of the router; the connector upload keeps its own, larger
+# allowance because its base64 payload is a file by design.
+#
+# The default is generous for JSON yet far below a memory-exhaustion POST.
+DEFAULT_MAX_REQUEST_BODY_BYTES = 16 * 1024 * 1024
+# Resolved per request, not frozen at import: the token gate in this module
+# re-reads its value the same way (issue #132), so a deployment can raise or
+# lower the cap through the environment, and the tests can drive a small one.
+MAX_REQUEST_BODY_BYTES_ENV = "LEVH_MAX_REQUEST_BODY_BYTES"
+
+# /api/connectors/upload carries a base64 file and enforces its own 64 MB
+# decoded cap (connectors.MAX_UPLOAD_BYTES), which is ~85 MB once encoded. It
+# is exempt so the global guard cannot reject what the endpoint accepts.
+_BODY_LIMIT_EXEMPT_PATHS = {"/api/connectors/upload"}
+_BODY_LIMIT_METHODS = {"POST", "PUT", "PATCH"}
+
+
+def _body_limit_exempt(request: Request) -> bool:
+    # Trailing-slash tolerant, like the other path checks here.
+    return request.url.path.rstrip("/") in _BODY_LIMIT_EXEMPT_PATHS
+
+
+def _body_too_large_response(limit: int) -> JSONResponse:
+    return JSONResponse(
+        {"detail": f"request body exceeds the {limit // (1024 * 1024)} MB limit"},
+        status_code=413,
+    )
+
+
+def max_request_body_bytes() -> int:
+    """The live cap; a malformed or non-positive override falls back to default."""
+    try:
+        value = int(get_env(MAX_REQUEST_BODY_BYTES_ENV, str(DEFAULT_MAX_REQUEST_BODY_BYTES)))
+    except ValueError:
+        return DEFAULT_MAX_REQUEST_BODY_BYTES
+    return value if value > 0 else DEFAULT_MAX_REQUEST_BODY_BYTES
+
+
+async def _declared_length_guard(request: Request, call_next):
+    """Reject a body that declares an over-limit Content-Length before reading.
+
+    Returning a response instead of calling ``call_next`` is how this layer
+    refuses without touching the body; Starlette sends whatever is returned.
+    """
+    if request.method in _BODY_LIMIT_METHODS and not _body_limit_exempt(request):
+        raw = request.headers.get("content-length")
+        if raw is not None:
+            limit = max_request_body_bytes()
+            try:
+                length = int(raw)
+            except ValueError:
+                return JSONResponse({"detail": "invalid Content-Length"}, status_code=400)
+            if length > limit:
+                return _body_too_large_response(limit)
+    return await call_next(request)
+
+
+async def _read_body_within_limit(request: Request, limit: int) -> bytes | None:
+    """Read and cache the body, or return None once *limit* is exceeded.
+
+    Content-Length is advisory: a chunked request has none, and a client may
+    simply lie, so the declared-length guard alone would leave the guard
+    bypassable. Streaming the body and stopping as soon as the running total
+    crosses the limit is what makes the cap real — at most one chunk beyond
+    the limit is ever held.
+    """
+    chunks: list[bytes] = []
+    total = 0
+    async for chunk in request.stream():
+        total += len(chunk)
+        if total > limit:
+            return None
+        chunks.append(chunk)
+    body = b"".join(chunks)
+    # Cache it: the route's own body read must not re-read the (now consumed)
+    # stream and see an empty body.
+    request._body = body  # type: ignore[attr-defined]
+    return body
+
+
+async def _body_size_guard(request: Request, call_next):
+    """Cap every mutating request body, however its length is declared."""
+    if request.method not in _BODY_LIMIT_METHODS or _body_limit_exempt(request):
+        return await call_next(request)
+    limit = max_request_body_bytes()
+    try:
+        body = await _read_body_within_limit(request, limit)
+    except ClientDisconnect:
+        # The client hung up while the body was being read; nothing to answer.
+        return JSONResponse({"detail": "client disconnected"}, status_code=400)
+    if body is None:
+        return _body_too_large_response(limit)
+    return await call_next(request)
 
 
 def _client_key(request: Request) -> str:
@@ -77,8 +178,18 @@ def install(app: FastAPI) -> None:
 
     Registration order is reversed at request time, so the demo guard is added
     last to keep it running in the same position it had when both lived in
-    server.api: token first, then the demo boundary.
+    server.api: token first, then the demo boundary. The body-size guard is
+    registered first and therefore runs innermost, after the auth and demo
+    gates have already passed: a refused request must not first be buffered,
+    and an unauthenticated caller must not be able to make the server read a
+    large body at all.
     """
+
+    # ``_declared_length_guard`` rejects an over-limit Content-Length before a
+    # byte is read; ``_body_size_guard`` streams the body for requests that
+    # declare no length (chunked) or lie about it.
+    app.middleware("http")(_declared_length_guard)
+    app.middleware("http")(_body_size_guard)
 
     @app.middleware("http")
     async def require_token(request: Request, call_next):
