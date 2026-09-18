@@ -101,9 +101,9 @@ jobs:
         run: |
           python -m pip install pip-audit
           python -m pip freeze > resolved-requirements.txt
-          # Strict mode flags ignore-lists without aliases; fall back to a
-          # normal run so a tooling quirk never masks a real CVE.
-          python -m pip audit --strict -r resolved-requirements.txt
+          # pip-audit is an entry point, not a `pip` subcommand on 3.12 —
+          # `python -m pip audit` resolves to the vendored pip CLI first.
+          python -m pip_audit --strict -r resolved-requirements.txt
 
 
 
