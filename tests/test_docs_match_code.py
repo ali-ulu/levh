@@ -9,6 +9,7 @@ the only thing that keeps a hand-written table honest is a test.
 from __future__ import annotations
 
 import re
+from collections import Counter
 from pathlib import Path
 
 import pytest
@@ -48,6 +49,20 @@ def test_every_route_is_documented(api_paths, api_doc):
     documented = {_normalize(m) for m in _DOC_ROW_RE.findall(api_doc)}
     missing = sorted(api_paths - documented)
     assert not missing, f"undocumented routes: {missing}"
+
+
+def test_the_api_doc_lists_no_route_twice(api_doc):
+    """A route documented twice escapes both checks above: each copy names a
+    served path, so nothing is missing and nothing is invented.
+
+    The five librarian rows were duplicated for long enough that the two
+    copies' descriptions drifted apart ("watcher" vs "librarian"), leaving a
+    reader with two accounts of one endpoint and no way to tell which holds.
+    """
+    rows = re.findall(r"^\| ([A-Z]+) \| `(/[^`]+)`", api_doc, re.M)
+    seen = Counter((method, _normalize(path)) for method, path in rows)
+    duplicates = sorted(f"{method} {path}" for (method, path), n in seen.items() if n > 1)
+    assert not duplicates, f"routes listed more than once: {duplicates}"
 
 
 def test_the_api_doc_invents_no_routes(api_paths, api_doc):
