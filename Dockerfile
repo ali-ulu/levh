@@ -27,6 +27,8 @@ ENV SQLITE_DB_PATH=/data/stackmemory.db \
 
 USER stackmemory
 EXPOSE 8000
+# readyz (not /api/health) so "healthy" means the DB and embedder actually
+# answer, not merely that the process is up (issue #145).
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=3)" || exit 1
+  CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/readyz', timeout=3)" || exit 1
 CMD ["uvicorn", "server.api:app", "--host", "0.0.0.0", "--port", "8000"]

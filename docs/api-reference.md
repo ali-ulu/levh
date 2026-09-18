@@ -3,7 +3,7 @@
 Every endpoint the server exposes. Generated from the running app and locked
 by `tests/test_docs_match_code.py`, so a new route cannot land here undocumented.
 
-All `/api/*` endpoints except `/api/health` require `X-LEVH-Token` when
+All `/api/*` endpoints except `/api/health` and `/api/readyz` (both health probes) require `X-LEVH-Token` when
 `LEVH_TOKEN` is set. The generated docs surface the app serves at the root
 (`/docs`, `/redoc`, `/openapi.json`, `/docs/oauth2-redirect`) is part of the
 same gate, so an authenticated deployment does not expose its route schema
@@ -107,7 +107,8 @@ because it is a read that has to POST to carry its query.
 | POST | `/api/seed-demo` | Populate an empty store with a deterministic demo corpus (onboarding). Refuses to run on a non-empty store unless… |
 | GET | `/api/stats` | System statistics and metrics |
 | GET | `/api/config` | Current server configuration (for the Settings page) |
-| GET | `/api/health` | Health |
+| GET | `/api/health` | Liveness — the process is up |
+| GET | `/api/readyz` | Readiness — DB round-trip and embedder status, unauthenticated for HEALTHCHECK |
 | POST | `/api/benchmark/recall` | Run the recall-quality benchmark harness (hit@k / MRR on a labelled corpus) and return the metrics — powers the… |
 | POST | `/api/context-file` | Generate a CLAUDE.md / .cursorrules style context file from memories |
 | POST | `/api/agents/connect` | Record an agent connecting to LEVH. Returns agent session ID and presence info |

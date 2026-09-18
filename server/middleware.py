@@ -152,9 +152,16 @@ def _client_key(request: Request) -> str:
 _DOCS_PATHS = {"/docs", "/docs/oauth2-redirect", "/redoc", "/openapi.json"}
 
 
+# Health probes stay outside the token gate: a Docker/orchestrator
+# HEALTHCHECK holds no secret, and demanding one would mark a healthy
+# container unhealthy (issue #145). readyz reports dependency state only —
+# it never returns memory content.
+_HEALTH_PATHS = {"/api/health", "/api/readyz"}
+
+
 def _guarded(request: Request) -> bool:
     """Whether this request is subject to the /api gates."""
-    return request.url.path.startswith("/api/") and request.url.path != "/api/health"
+    return request.url.path.startswith("/api/") and request.url.path.rstrip("/") not in _HEALTH_PATHS
 
 
 def _docs_exposed(request: Request) -> bool:
