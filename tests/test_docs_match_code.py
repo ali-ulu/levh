@@ -4,12 +4,16 @@ Three tables drifted quietly until a release forced a look at them: the REST
 reference was missing 40 endpoints, the CLI reference most of its commands,
 and the tool list two. Documentation nobody can trust is worse than none, and
 the only thing that keeps a hand-written table honest is a test.
+
+The same rule applies inward: an internal inventory that dates itself has to
+either stay fresh or admit it is an archive (issue #217).
 """
 
 from __future__ import annotations
 
 import re
 from collections import Counter
+from datetime import date, timedelta
 from pathlib import Path
 
 import pytest
@@ -283,3 +287,48 @@ def test_internal_docs_directory_is_described():
     readme = DOCS / "internal" / "README.md"
     assert readme.is_file(), "docs/internal/README.md is missing"
     assert readme.read_text(encoding="utf-8").strip()
+
+
+# ── Freshness of dated internal inventories ──────────────────────────
+
+# An inventory that dates itself goes stale silently: SOLID_KARNESI.md kept
+# claiming "943 passed / 1 skipped" and "26.155 satır" while main moved on, and
+# six of its findings had been closed (issue #217). Nothing kept it honest, so
+# a dated file must either have been re-verified recently or say it is archived.
+_ARCHIVE_BANNER = "ARŞİV"
+_DATED_INVENTORY_MAX_AGE = timedelta(days=90)
+_DATE_RE = re.compile(r"Tarih:\s*(\d{4}-\d{2}-\d{2})")
+
+
+def _internal_inventories() -> list[Path]:
+    return sorted((DOCS / "internal").glob("*.md"))
+
+
+@pytest.mark.parametrize("doc", _internal_inventories(), ids=lambda p: p.name)
+def test_dated_internal_inventory_is_fresh_or_archived(doc: Path):
+    """A `Tarih:`-stamped inventory is a claim about the code today. Either its
+    date is recent, or the file declares itself an archive the reader should not
+    treat as the current debt state."""
+    text = doc.read_text(encoding="utf-8")
+    stamped = _DATE_RE.search(text)
+    if not stamped or _ARCHIVE_BANNER in text:
+        return
+    age = date.today() - date.fromisoformat(stamped.group(1))
+    assert age <= _DATED_INVENTORY_MAX_AGE, (
+        f"{doc.name} is dated {stamped.group(1)} ({age.days} days old) and does not "
+        f"declare itself an archive; re-verify its numbers or add an "
+        f"'{_ARCHIVE_BANNER}' banner at the top"
+    )
+
+
+def test_archived_inventory_is_flagged_in_the_readme():
+    """docs/internal/README.md is the entry point; a reader must learn there
+    that an inventory is archived, not only inside the file itself."""
+    readme = (DOCS / "internal" / "README.md").read_text(encoding="utf-8")
+    for doc in _internal_inventories():
+        if doc.name == "README.md":
+            continue
+        if _ARCHIVE_BANNER in doc.read_text(encoding="utf-8"):
+            assert doc.name in readme and "Archived" in readme, (
+                f"{doc.name} is archived but docs/internal/README.md does not say so"
+            )
