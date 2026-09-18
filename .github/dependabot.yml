@@ -1,0 +1,27 @@
+# Supply-chain hygiene (issue #146): weekly update PRs for all three
+# ecosystems this repo consumes. Backend deps are only floor-pinned in
+# pyproject.toml, so someone has to watch the graph — this is that someone.
+version: 2
+updates:
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      minor-and-patch:
+        update-types:
+          - "minor"
+          - "patch"
+  - package-ecosystem: "npm"
+    directory: "/frontend"
+    schedule:
+      interval: "weekly"
+    groups:
+      minor-and-patch:
+        update-types:
+          - "minor"
+          - "patch"
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"

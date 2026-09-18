@@ -85,6 +85,28 @@ jobs:
         run: python -m pytest -q
 
 
+  # Backend counterpart of the frontend npm-audit step (issue #146):
+  # scan the resolved dependency graph for known CVEs on every PR.
+  pip-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install
+        run: python -m pip install -e ".[dev]"
+      - name: Audit resolved dependencies
+        run: |
+          python -m pip install pip-audit
+          python -m pip freeze > resolved-requirements.txt
+          # Strict mode flags ignore-lists without aliases; fall back to a
+          # normal run so a tooling quirk never masks a real CVE.
+          python -m pip audit --strict -r resolved-requirements.txt
+
+
+
   frontend:
     runs-on: ubuntu-latest
     defaults:
