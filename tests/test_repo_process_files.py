@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import re
 import subprocess
+import tomllib
 from pathlib import Path
 
 import pytest
@@ -190,3 +191,39 @@ def test_coverage_artifacts_are_gitignored_when_ci_measures_coverage():
         assert result.returncode == 0, (
             f"{artifact} is not ignored although CI measures coverage"
         )
+
+
+def _mypy_config() -> dict:
+    return tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["tool"]["mypy"]
+
+
+def test_mypy_is_a_ci_gate_and_is_pinned_like_ruff():
+    """Issue #195: `#147`'s type-check item was deferred and nearly lost. The
+    gate is only real if CI actually runs it, so assert the step exists and that
+    the mypy version installed in CI is the version pinned in the dev extra — a
+    drift there is the same trap `test_pre_commit_pins_the_same_ruff_as_ci`
+    guards against.
+    """
+    ci = (GITHUB / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    assert "python -m mypy" in ci, "ci.yml no longer runs mypy"
+
+    project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    dev_extra = project["project"]["optional-dependencies"]["dev"]
+    pinned = next((re.search(r'mypy==(\d+\.\d+\.\d+)', req) for req in dev_extra if "mypy" in req), None)
+    assert pinned, "the dev extra no longer pins an exact mypy version"
+
+    # The step installs from the dev extra, so CI and the extra cannot drift;
+    # this asserts the install actually comes from `.[dev]`.
+    assert 'pip install -e ".[dev]"' in ci, "ci.yml no longer installs the dev extra"
+
+
+def test_mypy_file_list_is_nonempty_and_only_lists_existing_modules():
+    """The tier is a ratchet (issue #195): it starts at the modules that are
+    clean today and grows. An entry that no longer exists would make mypy skip
+    the check silently, and an empty list would turn the gate into a no-op.
+    """
+    files = _mypy_config().get("files")
+    assert files, "mypy `files` is empty; the type gate checks nothing"
+    for entry in files:
+        assert (ROOT / entry).is_file(), f"mypy `files` names a missing module: {entry}"
+

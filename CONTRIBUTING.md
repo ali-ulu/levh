@@ -31,7 +31,7 @@ a service they did not choose.
 python -m pip install -e ".[dev]"
 ```
 
-That installs pytest and ruff, the two gates CI runs. The optional extras —
+That installs pytest, ruff, and mypy, the gates CI runs. The optional extras —
 `.[local]` for the real embedder, `.[files]` for PDF/Word/Excel import,
 `.[pdf]` for the audit report — are not needed for development.
 
@@ -55,6 +55,7 @@ python -m compileall -q server tests
 EMBEDDER_MODE=hash python -m pytest -q
 EMBEDDER_MODE=hash python -m pytest -q tests/test_api_smoke.py
 python -m ruff check .
+python -m mypy
 python -m build
 twine check dist/*
 ```
@@ -70,10 +71,12 @@ npm audit --omit=dev
 
 ## What happens after you open a pull request
 
-CI runs four gates — `lint`, `backend` (Python 3.11/3.12/3.13), `hostile-env`
-(the suite against a decoy database, to catch tests that would write to a real
-store), and `frontend`. A pull request is merged only when every one of them is
-green; a pending or missing check is not a green check.
+CI runs six gates — `lint`, `types` (mypy over the annotated tier listed in
+`[tool.mypy].files`; grow that list when you fix a module), `backend` (Python
+3.11/3.12/3.13), `hostile-env` (the suite against a decoy database, to catch
+tests that would write to a real store), `pip-audit`, and `frontend`. A pull
+request is merged only when every one of them is green; a pending or missing
+check is not a green check.
 
 A change to `.github/workflows/`, `server/core/engine/`, `server/api.py`,
 `server/routes/`, or `pyproject.toml` also requests review from `CODEOWNERS`.

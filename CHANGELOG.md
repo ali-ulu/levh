@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### The backend has a type gate again (#195)
+
+- `mypy` now runs as a CI job over the tier of modules that is annotation-clean
+  today (`[tool.mypy].files` in `pyproject.toml`). The list is a ratchet: widen
+  it as modules are fixed. This restores `#147`'s deferred type-check item,
+  which `#176` left without a follow-up.
+
 ### The generated API docs follow the token gate (#144)
 
 - `/docs`, `/redoc` and `/openapi.json` were served without a token even when
