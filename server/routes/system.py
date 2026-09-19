@@ -4,8 +4,9 @@ from __future__ import annotations
 
 
 from fastapi import Depends, APIRouter, HTTPException
+from fastapi.responses import PlainTextResponse
 
-from server.core import llm_policy
+from server.core import llm_policy, metrics
 from server.auth import unauthenticated_remote_access_enabled
 from server.core.runtime_config import configured_bind_host
 from server.routes.deps import get_engine
@@ -73,6 +74,20 @@ async def health():
         # `--host` here, so argv and this field agree (issue #156).
         "api_host": configured_bind_host(),
     }
+
+
+@router.get("/api/metrics", response_class=PlainTextResponse)
+async def get_metrics():
+    """Prometheus text exposition of this process's counters (issue #145).
+
+    Scrapeable at ``/api/metrics`` and its versioned alias ``/api/v1/metrics``.
+    The engine, the routes and the counters share one process, so the registry
+    is process-wide and this handler is a read with no engine dependency —
+    answering must not itself touch the database it reports on.
+    """
+    return PlainTextResponse(
+        metrics.render(), media_type="text/plain; version=0.0.4; charset=utf-8"
+    )
 
 
 @router.post("/api/benchmark/recall")

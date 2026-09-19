@@ -4291,6 +4291,25 @@
         "summary": "Get Memory Trust"
       }
     },
+    "/api/v1/metrics": {
+      "get": {
+        "description": "Prometheus text exposition of this process's counters (issue #145).\n\nScrapeable at ``/api/metrics`` and its versioned alias ``/api/v1/metrics``.\nThe engine, the routes and the counters share one process, so the registry\nis process-wide and this handler is a read with no engine dependency \u2014\nanswering must not itself touch the database it reports on.",
+        "operationId": "get_metrics_api_metrics_get_v1",
+        "responses": {
+          "200": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Metrics"
+      }
+    },
     "/api/v1/onboarding/mcp-config": {
       "post": {
         "description": "Generate a focused MCP client config without persisting secrets.",
