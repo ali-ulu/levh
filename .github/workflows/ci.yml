@@ -155,6 +155,77 @@ jobs:
         run: uvx pip-audit --strict --no-deps -r resolved-requirements.txt
 
 
+  # Static application security testing (issue #236). pip-audit (above) only
+  # sees known CVEs in dependencies; this reads our own source for insecure
+  # patterns. The gate is Medium and above: bandit's Low tier is noise here
+  # (B404/B603/B607 flag every `subprocess` call in the lifecycle hooks, which
+  # deliberately shell out). The Medium findings today are reviewed false
+  # positives — SQL built from `?` placeholders with the values bound, and the
+  # loopback health probe — and carry `# nosec <id>` at the site; the gate in
+  # tests/test_repo_process_files.py re-runs bandit, so a new Medium fails CI
+  # until it is either fixed or reviewed and annotated. Bandit is pinned in the
+  # dev extra and installed from the lockfile, the same ratchet ruff and mypy
+  # use.
+  sast:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v10.1.0
+        with:
+          python-version: "3.12"
+          enable-cache: true
+      - name: Install locked dev environment
+        run: uv sync --frozen --extra dev
+      - name: Bandit (medium and above)
+        run: uv run --frozen bandit -r server -ll
+
+  # Software bill of materials (issue #236). Supply-chain visibility: a
+  # machine-readable, per-release inventory of what is shipped, in CycloneDX
+  # JSON, covering both the locked Python graph and the frontend's installed
+  # packages. It is published as a CI artifact on every run and attached to the
+  # GitHub Release by publish.yml; tests/test_repo_process_files.py asserts the
+  # steps stay wired so a dropped BOM fails the build.
+  sbom:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v10.1.0
+        with:
+          python-version: "3.12"
+          enable-cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install locked dev environment
+        run: uv sync --frozen --extra dev
+      - name: Export the locked Python graph
+        # Same export the pip-audit job audits, so the BOM lists exactly the
+        # pins a release ships rather than whatever pip resolves that day.
+        run: |
+          uv export --frozen --no-emit-project --no-dev --no-hashes \
+            --output-file resolved-requirements.txt
+      - name: Python SBOM (CycloneDX)
+        run: |
+          mkdir -p dist
+          uv run --frozen cyclonedx-py requirements \
+            --output-reproducible --of JSON \
+            --output-file dist/sbom-python.json resolved-requirements.txt
+      - name: Frontend install (for a complete npm inventory)
+        working-directory: frontend
+        run: npm ci
+      - name: Frontend SBOM (CycloneDX)
+        working-directory: frontend
+        # npm's built-in CycloneDX generator reads the package-lock graph; no
+        # extra tool to pin. `npm ci` above supplies the installed tree.
+        run: npm sbom --sbom-format cyclonedx > sbom-frontend.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: |
+            dist/sbom-python.json
+            frontend/sbom-frontend.json
 
   frontend:
     runs-on: ubuntu-latest

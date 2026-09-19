@@ -96,7 +96,7 @@ class FindingQueries:
         where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
         params.append(max(1, min(int(limit), 1000)))
         cursor = await self._db.conn.execute(
-            f"SELECT * FROM findings {where} ORDER BY last_seen_at DESC LIMIT ?",
+            f"SELECT * FROM findings {where} ORDER BY last_seen_at DESC LIMIT ?",  # nosec B608 - `where` is built from literal clauses, values bound
             params,
         )
         rows = await cursor.fetchall()

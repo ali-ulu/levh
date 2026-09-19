@@ -54,7 +54,7 @@ class AttachmentQueries:
             return {}
         placeholders = ",".join("?" for _ in ids)
         cursor = await self._db.conn.execute(
-            f"SELECT * FROM attachments WHERE memory_id IN ({placeholders}) ORDER BY created_at",
+            f"SELECT * FROM attachments WHERE memory_id IN ({placeholders}) ORDER BY created_at",  # nosec B608 - placeholders are `?`, values bound
             ids,
         )
         rows = await cursor.fetchall()

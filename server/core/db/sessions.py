@@ -103,7 +103,7 @@ class SessionQueries:
             return False
         params.append(session_id)
         cursor = await self._db.conn.execute(
-            f"UPDATE sessions SET {', '.join(sets)} WHERE id = ?", params
+            f"UPDATE sessions SET {', '.join(sets)} WHERE id = ?", params  # nosec B608 - column names come from fixed callers, values bound
         )
         await self._db.conn.commit()
         return cursor.rowcount > 0

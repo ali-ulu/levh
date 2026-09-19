@@ -10,8 +10,10 @@ references between `docs/` pages.
 
 from __future__ import annotations
 
+import json
 import re
 import subprocess
+import sys
 import tomllib
 from pathlib import Path
 
@@ -316,3 +318,81 @@ def test_pip_audit_scans_the_locked_graph_not_the_installed_environment():
     )
     assert "pip-audit" in ci and "--strict" in ci, "the strict CVE gate is gone"
 
+
+# --- SAST and SBOM gates (issue #236) --------------------------------------
+#
+# #146's security items were deferred like #147's type check, and a gate that is
+# only described in a workflow comment is one edit away from disappearing. These
+# assert the steps exist, that the tools are pinned in the dev extra the same way
+# ruff and mypy are, and — for SAST — that no unreviewed Medium finding can ride
+# along unnoticed.
+
+
+def _dev_extra() -> list[str]:
+    project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    return project["project"]["optional-dependencies"]["dev"]
+
+
+def test_bandit_sast_is_a_ci_gate_and_is_pinned_like_ruff():
+    """The SAST item from #146 is real only if CI runs it. Bandit installs from
+    the locked dev extra rather than a fresh `uvx` resolve, so a new bandit
+    release cannot add checks under the gate without a reviewed version bump.
+    """
+    ci = (GITHUB / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    assert "uv run --frozen bandit" in ci, "ci.yml no longer runs bandit"
+
+    pinned = next((re.search(r"bandit==(\d+\.\d+\.\d+)", req) for req in _dev_extra() if "bandit" in req), None)
+    assert pinned, "the dev extra no longer pins an exact bandit version"
+
+
+def test_sast_gate_is_medium_and_no_unreviewed_finding_survives():
+    """Bandit's gate is Medium and above: the Low tier is dominated by
+    B404/B603/B607 on the lifecycle hooks, which deliberately shell out, so
+    gating there would force `# nosec` on code nobody is worried about and
+    train reviewers to ignore the annotations. The Medium findings are all
+    reviewed false positives (SQL assembled from `?` placeholders with the
+    values bound, and the loopback health probe) and carry `# nosec <id>` at
+    the site — so the run below must be empty. A new Medium fails here until it
+    is either fixed or reviewed and annotated, which is the ratchet.
+    """
+    ci = (GITHUB / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    assert "bandit -r server -ll" in ci, (
+        "the SAST step no longer gates at Medium (`-ll`); gating at Low would "
+        "mostly flag the hooks' deliberate subprocess calls"
+    )
+
+    result = subprocess.run(
+        [sys.executable, "-m", "bandit", "-r", "server", "-ll", "-q", "-f", "json"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+    )
+    assert result.stdout, f"bandit produced no JSON (exit {result.returncode}): {result.stderr[-500:]}"
+    findings = json.loads(result.stdout)["results"]
+    assert findings == [], (
+        "bandit reports Medium+ findings that were never reviewed; fix them or, "
+        "if they are false positives, annotate the site with `# nosec <id>` and "
+        "a reason:\n"
+        + "\n".join(f"  {f['test_id']} {f['filename']}:{f['line_number']}" for f in findings)
+    )
+
+
+def test_sbom_is_built_in_ci_attached_to_the_release_and_pinned():
+    """The SBOM item from #146: a BOM that is generated only locally, or only
+    into a transient CI artifact, cannot be matched to a shipped tag. CI must
+    build both halves (the locked Python graph and the frontend's installed
+    packages) and publish.yml must attach them to the release.
+    """
+    ci = (GITHUB / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    assert "cyclonedx-py" in ci, "ci.yml no longer generates a Python SBOM"
+    assert "npm sbom --sbom-format cyclonedx" in ci, "ci.yml no longer generates a frontend SBOM"
+    assert "uv export --frozen" in ci, "the SBOM no longer reads the lockfile"
+
+    pinned = next((re.search(r"cyclonedx-bom==(\d+\.\d+\.\d+)", req) for req in _dev_extra() if "cyclonedx" in req), None)
+    assert pinned, "the dev extra no longer pins an exact cyclonedx-bom version"
+
+    publish = (GITHUB / "workflows" / "publish.yml").read_text(encoding="utf-8")
+    for artifact in ("sbom-python.json", "sbom-frontend.json"):
+        assert artifact in publish, (
+            f"publish.yml no longer attaches {artifact} to the release"
+        )

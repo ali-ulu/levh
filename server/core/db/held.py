@@ -59,7 +59,7 @@ class HeldMemoryQueries:
         where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
         params.append(max(1, min(int(limit), 200)))
         cursor = await self._db.conn.execute(
-            f"SELECT * FROM held_memories {where} ORDER BY created_at DESC LIMIT ?",
+            f"SELECT * FROM held_memories {where} ORDER BY created_at DESC LIMIT ?",  # nosec B608 - `where` is built from literal clauses, values bound
             params,
         )
         rows = await cursor.fetchall()

@@ -154,7 +154,7 @@ class AgentPresenceService:
 
         placeholders = ",".join("?" for _ in online_ids)
         cursor = await self.db.conn.execute(
-            f"SELECT * FROM agent_sessions WHERE id IN ({placeholders}) AND status = 'connected'",
+            f"SELECT * FROM agent_sessions WHERE id IN ({placeholders}) AND status = 'connected'",  # nosec B608 - placeholders are `?`, values bound
             online_ids,
         )
         rows = await cursor.fetchall()
@@ -299,7 +299,7 @@ class AgentCheckpointService:
         params.append(limit)
 
         cursor = await self.db.conn.execute(
-            f"SELECT * FROM agent_checkpoints{where} ORDER BY created_at DESC LIMIT ?",
+            f"SELECT * FROM agent_checkpoints{where} ORDER BY created_at DESC LIMIT ?",  # nosec B608 - `where` is built from literal clauses, values bound
             params,
         )
         return [dict(r) for r in await cursor.fetchall()]
@@ -333,7 +333,7 @@ class AgentUsageService:
             return {}
         placeholders = ",".join("?" for _ in ids)
         cursor = await self.db.conn.execute(
-            f"SELECT id, agent_name FROM agent_sessions WHERE id IN ({placeholders})",
+            f"SELECT id, agent_name FROM agent_sessions WHERE id IN ({placeholders})",  # nosec B608 - placeholders are `?`, values bound
             ids,
         )
         return {row["id"]: row["agent_name"] for row in await cursor.fetchall()}

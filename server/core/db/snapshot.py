@@ -86,15 +86,15 @@ class SnapshotQueries:
                 placeholders = ",".join("?" for _ in memory_ids)
                 await self._db.conn.execute(
                     f"DELETE FROM memory_conflict_candidates "
-                    f"WHERE memory_id_a IN ({placeholders}) OR memory_id_b IN ({placeholders})",
+                    f"WHERE memory_id_a IN ({placeholders}) OR memory_id_b IN ({placeholders})",  # nosec B608 - placeholders are `?`, values bound
                     [*memory_ids, *memory_ids],
                 )
                 await self._db.conn.execute(
-                    f"DELETE FROM memory_trust_scores WHERE memory_id IN ({placeholders})",
+                    f"DELETE FROM memory_trust_scores WHERE memory_id IN ({placeholders})",  # nosec B608 - placeholders are `?`, values bound
                     memory_ids,
                 )
                 await self._db.conn.execute(
-                    f"DELETE FROM memory_entities WHERE memory_id IN ({placeholders})",
+                    f"DELETE FROM memory_entities WHERE memory_id IN ({placeholders})",  # nosec B608 - placeholders are `?`, values bound
                     memory_ids,
                 )
 

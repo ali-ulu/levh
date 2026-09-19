@@ -212,7 +212,7 @@ class TrustQueries:
             return 0
         placeholders = ",".join("?" for _ in ids)
         cursor = await self._db.conn.execute(
-            f"DELETE FROM memory_conflict_candidates "
+            f"DELETE FROM memory_conflict_candidates "  # nosec B608 - placeholders are `?`, values bound
             f"WHERE memory_id_a IN ({placeholders}) OR memory_id_b IN ({placeholders})",
             [*ids, *ids],
         )
