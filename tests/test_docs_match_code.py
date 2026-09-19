@@ -5,12 +5,16 @@ reference was missing 40 endpoints, the CLI reference most of its commands,
 and the tool list two. Documentation nobody can trust is worse than none, and
 the only thing that keeps a hand-written table honest is a test.
 
-The same rule applies inward: an internal inventory that dates itself has to
-either stay fresh or admit it is an archive (issue #217).
+A fourth drift lives in prose rather than a table: `docs/error-handling.md`
+quoted a hand-maintained count of `except Exception` sites in `server/` and
+kept it after the code moved on (issue #221). The same rule applies inward: an
+internal inventory that dates itself has to either stay fresh or admit it is an
+archive (issue #217).
 """
 
 from __future__ import annotations
 
+import ast
 import re
 from collections import Counter
 from datetime import date, timedelta
@@ -19,6 +23,7 @@ from pathlib import Path
 import pytest
 
 DOCS = Path(__file__).resolve().parent.parent / "docs"
+SERVER = Path(__file__).resolve().parent.parent / "server"
 
 
 def _normalize(path: str) -> str:
@@ -165,6 +170,64 @@ def test_no_document_quotes_a_stale_tool_count(doc_name):
     text = (DOCS / doc_name).read_text(encoding="utf-8")
     stale = [m for m in re.findall(r"(\d+) (?:MCP )?tools", text) if int(m) != total]
     assert not stale, f"{doc_name} quotes {stale} tools; there are {total}"
+
+
+# `docs/error-handling.md` announced the count of `except Exception` sites in
+# `server/` as part of the BLE001 story; the number was written by hand, then
+# the code grew and the sentence did not (issue #221). Derive it instead: the
+# prose says "the N `except Exception` sites in `server/`", and N has to equal
+# what an AST walk finds. Also assert the five re-raise sites the prose calls
+# out, so the sentence is checked for the claim and not only the tally.
+_EXCEPT_EXCEPTION_SITE_RE = re.compile(r"the (\d+) `except Exception` sites in `server/`")
+
+
+def _except_exception_handlers() -> list[tuple[ast.ExceptHandler, str]]:
+    """Every bare `except Exception:` clause in `server/`, with its source line."""
+    handlers: list[tuple[ast.ExceptHandler, str]] = []
+    for path in sorted(SERVER.rglob("*.py")):
+        source = path.read_text(encoding="utf-8")
+        try:
+            tree = ast.parse(source)
+        except SyntaxError as exc:  # a file we cannot parse is not a count
+            raise AssertionError(f"could not parse {path}: {exc}") from exc
+        lines = source.splitlines()
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.ExceptHandler) or node.type is None:
+                continue
+            # `except (A, B):` names several types; only the bare `Exception`
+            # alone counts, which is also the only shape BLE001 fires on.
+            if getattr(node.type, "id", None) == "Exception":
+                handlers.append((node, lines[node.lineno - 1]))
+    return handlers
+
+
+def _reraises(handler: ast.ExceptHandler) -> bool:
+    """Any `raise` inside the clause: bare `raise` or a re-wrapped error."""
+    return any(isinstance(node, ast.Raise) for node in ast.walk(handler))
+
+
+def test_the_except_exception_count_in_the_error_handling_doc_is_current():
+    doc = (DOCS / "error-handling.md").read_text(encoding="utf-8")
+    quoted = [int(n) for n in _EXCEPT_EXCEPTION_SITE_RE.findall(doc)]
+    assert quoted, "error-handling.md no longer states the except Exception count"
+    actual = len(_except_exception_handlers())
+    assert quoted == [actual], (
+        f"error-handling.md quotes {quoted} except Exception sites; server/ has {actual}"
+    )
+
+
+def test_the_error_handling_doc_counts_the_reraising_sites():
+    """The prose explains why some sites carry no `# noqa` by counting the
+    ones that re-raise; derive that number so the claim stays true."""
+    rethrows = sum(
+        1
+        for handler, line in _except_exception_handlers()
+        if _reraises(handler) and "noqa: BLE001" not in line
+    )
+    doc = (DOCS / "error-handling.md").read_text(encoding="utf-8")
+    assert f"{rethrows} of those" in doc, (
+        f"error-handling.md does not mention the {rethrows} re-raising sites"
+    )
 
 
 # ── Clients ──────────────────────────────────────────────────────────
