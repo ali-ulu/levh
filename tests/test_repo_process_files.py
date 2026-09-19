@@ -519,3 +519,24 @@ def test_changelog_unreleased_section_is_not_empty():
     assert re.search(r"^\s*[-*]\s+\S", section, flags=re.MULTILINE), (
         "the `## Unreleased` section heading(s) carry no explanatory bullet"
     )
+
+
+def test_changelog_has_exactly_one_unreleased_heading():
+    """A released section must be given its version heading.
+
+    `_unreleased_section` above reads only the *first* `## Unreleased` heading,
+    so a second one is invisible to the suite and to `publish.yml`'s
+    `awk -v v="## $VERSION"`, which takes the text between two `##` headings.
+    That is how 2.30.0's release notes sat under a stale second `## Unreleased`
+    while the tree showed no `## 2.30.0` section at all (issue #250): the
+    release notes rendered, but the changelog claimed the changes were still
+    unreleased and `release.py` risked folding them into the *next* bump.
+    Exactly one `## Unreleased` heading keeps "what is unreleased" unambiguous.
+    """
+    changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
+    headings = re.findall(r"^## Unreleased\s*$", changelog, flags=re.MULTILINE)
+    assert len(headings) == 1, (
+        f"CHANGELOG.md has {len(headings)} `## Unreleased` headings; exactly one "
+        "section may be unreleased, so a second one is either a released "
+        "section missing its `## <version>` heading or a duplicate"
+    )

@@ -56,6 +56,16 @@
   a `sast` job runs Bandit at Medium+ so a new finding cannot land under the
   gate unnoticed.
 
+### Hook installers no longer promise a checkpoint they cannot install (#124)
+
+- `install_claude_code_hook` and `install_universal_hook` accepted a
+  `with_checkpoint` argument and silently dropped it: nothing read the
+  value, the CLI never defined `--with-checkpoint` so the path was
+  unreachable, and `_CHECKPOINT_TEMPLATE` had no callers. The dead
+  parameter and the unused template are gone, and the module docstring no
+  longer advertises a periodic-checkpoint capability these hooks do not
+  provide. Recurring checkpoints remain available via `levh checkpoint auto`.
+
 ## 2.31.0
 
 ### Now installable, offline-first (PWA) (#86)
@@ -100,31 +110,7 @@
   alias resolution.
 - Docs/README hygiene: removed roadmap, demo assets, and stale references.
 
-## Unreleased
-
-### Hook installers no longer promise a checkpoint they cannot install (#124)
-
-- `install_claude_code_hook` and `install_universal_hook` accepted a
-  `with_checkpoint` argument and silently dropped it: nothing read the
-  value, the CLI never defined `--with-checkpoint` so the path was
-  unreachable, and `_CHECKPOINT_TEMPLATE` had no callers. The dead
-  parameter and the unused template are gone, and the module docstring no
-  longer advertises a periodic-checkpoint capability these hooks do not
-  provide. Recurring checkpoints remain available via `levh checkpoint auto`.
-
-### The embedder tells you when it degrades
-
-- **`auto` falling back to hash embeddings was silent.** A missing or
-  broken `sentence-transformers` install (stale `huggingface-hub`, in one
-  observed case) made `mode=auto` resolve to the non-semantic hash
-  embedder with no signal anywhere — not a log line, not `/api/config`,
-  nothing. Hash's non-semantic scoring then produced false "possible
-  duplicate" admission-gate holds on genuinely distinct content, and
-  there was no way to tell that was why short of reading source. `GET
-  /api/config` now reports `requested_embedder_mode` alongside the
-  effective `embedder_mode`, plus `embedder_fallback_reason` when they
-  differ; the same reason is logged as a warning at the point the
-  embedder is constructed. (#78)
+## 2.30.0
 
 ### Universal Agent Tracking System
 
