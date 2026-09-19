@@ -50,10 +50,13 @@ async def test_auto_checkpoint_loop_logs_failure_and_keeps_scheduling(monkeypatc
     from server.commands import auto_checkpoint as ac
 
     calls = 0
+    retried = asyncio.Event()
 
     async def broken(*_args, **_kwargs):
         nonlocal calls
         calls += 1
+        if calls >= 2:
+            retried.set()
         raise RuntimeError("summarizer exploded")
 
     monkeypatch.setattr(ac, "create_delta_checkpoint", broken)
@@ -64,10 +67,14 @@ async def test_auto_checkpoint_loop_logs_failure_and_keeps_scheduling(monkeypatc
                 object(), agent="t", session_id=None, project=None, interval=0.01
             )
         )
-        await asyncio.sleep(0.08)
-        task.cancel()
-        with pytest.raises(asyncio.CancelledError):
-            await task
+        try:
+            # Wait for the loop to retry rather than sleeping a fixed slice:
+            # wall-clock waits flake on loaded CI runners.
+            await asyncio.wait_for(retried.wait(), timeout=5)
+        finally:
+            task.cancel()
+            with pytest.raises(asyncio.CancelledError):
+                await task
 
     assert calls >= 2, "the loop stopped after one failure instead of retrying"
     assert any(
