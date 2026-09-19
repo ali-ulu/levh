@@ -193,6 +193,27 @@ def test_coverage_artifacts_are_gitignored_when_ci_measures_coverage():
         )
 
 
+def test_pip_audit_resolved_requirements_is_gitignored_when_ci_writes_it():
+    """CI's `pip-audit` job freezes the environment into
+    `resolved-requirements.txt` in the workspace (#223). Left unignored, that
+    file shows up as untracked noise in every developer's `git status` and is
+    one `git add -A` away from being committed. The ignore rule must follow the
+    CI step, the same way the coverage rule follows `--cov` (#197).
+    """
+    ci = (GITHUB / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    if "resolved-requirements.txt" not in ci:
+        pytest.skip("ci.yml no longer writes the pip-audit resolved graph")
+
+    result = subprocess.run(
+        ["git", "check-ignore", "-q", "resolved-requirements.txt"],
+        cwd=ROOT,
+        capture_output=True,
+    )
+    assert result.returncode == 0, (
+        "resolved-requirements.txt is not ignored although CI writes it"
+    )
+
+
 def _mypy_config() -> dict:
     return tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["tool"]["mypy"]
 

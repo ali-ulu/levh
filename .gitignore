@@ -13,6 +13,9 @@ build/
 coverage.xml
 htmlcov/
 
+# Resolved dependency graph written by the CI pip-audit job
+resolved-requirements*.txt
+
 # SQLite
 *.db
 *.db-journal
