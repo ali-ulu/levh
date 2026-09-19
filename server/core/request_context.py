@@ -8,7 +8,7 @@ unjoinable, which is the point of emitting them at all.
 The id travels in a :class:`~contextvars.ContextVar` rather than in function
 arguments: every module can read it without threading a parameter through
 calls whose signatures have nothing to do with logging. The middleware sets it
-once per request, event-loop tasks inherit it, and ``log_event`` picks it up.
+once per request, event-loop tasks inherit it, and :class:`~server.core.logging.JsonFormatter` picks it up.
 """
 
 from __future__ import annotations

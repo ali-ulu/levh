@@ -6,14 +6,13 @@ gives you a wall of text with no stable fields, so "how many retries did the
 retry layer do today" is a ``grep -c`` over prose that happens to still match.
 
 This module keeps the prose (a JSON line still carries ``event`` and
-``message``) but adds a machine-readable payload beside it. Two entry points:
-
-* :func:`log_event` emits one JSON object per line on the standard library
-  logging pipeline, so ``LEVH_LOG_JSON=1`` makes the whole server emit
-  structured records with no formatter registry to maintain.
-* :func:`emit` writes that same object straight to ``stdout`` — used by
-  ``levh serve`` for its startup line and by anything that runs before logging
-  is configured.
+``message``) but adds a machine-readable payload beside it. The entry point is
+:func:`emit`, which writes one JSON object straight to ``stdout`` — used by
+``levh serve`` for its startup line and by anything that runs before logging is
+configured. Once logging is configured, :class:`JsonFormatter` renders every
+record on the standard library logging pipeline as that same object, so
+``LEVH_LOG_JSON=1`` makes the whole server emit structured records with no
+formatter registry to maintain.
 
 The knob is the environment, not a new config file: ``LEVH_LOG_JSON=1``.
 Unset means the previous human formatter, so existing operators see no change.
@@ -61,40 +60,6 @@ def _record(
     return record
 
 
-def _text_fields(fields: dict[str, object]) -> str:
-    from server.core.request_context import current_request_id
-
-    request_id = current_request_id()
-    pairs = dict(fields)
-    if request_id:
-        pairs["request_id"] = request_id
-    return " ".join(f"{key}={value}" for key, value in pairs.items())
-
-
-def log_event(
-    logger: logging.Logger,
-    event: str,
-    *,
-    level: int = logging.INFO,
-    message: str | None = None,
-    **fields: object,
-) -> None:
-    """Log *event* with *fields*, structurally when JSON logging is on.
-
-    With JSON on, the record is a single object under ``extra={"structured":
-    ...}`` and :class:`JsonFormatter` renders exactly it. Otherwise it degrades
-    to a normal ``message`` line with the fields appended as ``key=value`` so
-    no information is lost on a text-only console. Either way the current
-    request id is attached when one is bound.
-    """
-    if json_enabled():
-        logger.log(level, event, extra={"structured": _record(event, logging.getLevelName(level), fields, message)})
-        return
-    suffix = _text_fields(fields)
-    text = message or event
-    logger.log(level, "%s %s" % (text, suffix) if suffix else text)
-
-
 def emit(
     _logger: logging.Logger,
     event: str,
@@ -107,9 +72,9 @@ def emit(
     """Emit *event*, bypassing the configured handlers entirely.
 
     ``levh serve`` prints its startup banner before ``logging`` has handlers
-    attached to the root logger, so a ``log_event`` call there would vanish when
-    JSON mode is on. This writes the JSON line to *stream* (``sys.stdout`` by
-    default) and does nothing else: the banner is a one-off, not a log stream.
+    attached to the root logger, so a record there would vanish when JSON mode
+    is on. This writes the JSON line to *stream* (``sys.stdout`` by default) and
+    does nothing else: the banner is a one-off, not a log stream.
     """
     if not json_enabled():
         if message:
@@ -120,9 +85,10 @@ def emit(
 
 
 class JsonFormatter(logging.Formatter):
-    """Render the object set by :func:`log_event` as one JSON line.
+    """Render a log record as one JSON line.
 
-    A record from anywhere else still gets a JSON line: ``message`` is the
+    A record that carries a ``structured`` object (set via ``extra=``) is
+    rendered exactly. A record from anywhere else still gets a JSON line: ``message`` is the
     formatted text and ``event`` falls back to the caller's function name, so
     third-party loggers (uvicorn, httpx) are structured too rather than mixed
     in as bare text.
