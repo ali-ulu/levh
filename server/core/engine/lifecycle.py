@@ -11,6 +11,7 @@ from __future__ import annotations
 import asyncio
 
 from .helpers import EventListener, logger
+from .. import metrics
 from ..types import (
     Memory,
     MemoryStats,
@@ -233,9 +234,11 @@ class MemoryLifecycleMixin:
             await self.recompute_trust_scores()
             self._derived_dirty = False
             self._derived_retry_count = 0
+            metrics.inc("levh_derived_rebuild_total", outcome="success")
         except asyncio.CancelledError:
             raise
         except Exception:
+            metrics.inc("levh_derived_rebuild_total", outcome="failure")
             self._derived_retry_count += 1
             count = self._derived_retry_count
             if count == 1 or count % _DERIVED_RETRY_LOG_EVERY == 0:

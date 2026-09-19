@@ -18,6 +18,7 @@ import os
 import httpx
 import numpy as np
 
+from server.core import metrics
 from server.core.env import get_env
 
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
@@ -82,6 +83,11 @@ class Embedder:
             self.mode = "hash"
             self._model = None
             self.dimension = 384
+            # The operator-visible signal that semantic search silently became
+            # non-semantic. The reason string is only logged when
+            # LEVH_EMBEDDER_DEBUG is set, so without a counter a hash fallback
+            # in production is invisible (issue #145).
+            metrics.inc("levh_embedder_fallback_total")
 
     # ── Public API ────────────────────────────────────────────────
 
@@ -167,6 +173,7 @@ class Embedder:
             # memory system keeps working instead of erroring every store.
             self.mode = "hash"
             self.dimension = 384
+            metrics.inc("levh_embedder_fallback_total")
             return self.hash_embed(text, self.dimension)
 
     # ── Local ────────────────────────────────────────────────────

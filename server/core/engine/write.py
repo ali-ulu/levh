@@ -9,8 +9,10 @@ the split verifiable.
 from __future__ import annotations
 
 import sqlite3
+import time
 
 from .helpers import logger
+from .. import metrics
 from ..types import (
     Memory,
     MemoryType,
@@ -21,6 +23,43 @@ class MemoryWriteMixin:
     """Storing, updating and removing memories."""
 
     async def store(
+        self,
+        content: str,
+        importance: float = 0.5,
+        tags: list[str] | None = None,
+        session_id: str | None = None,
+        memory_type: str = "short_term",
+        metadata: dict | None = None,
+        project: str | None = None,
+        source: str | None = None,
+        pinned: bool = False,
+    ) -> Memory:
+        """Time every store and record its latency (issue #145).
+
+        Wrapping the body — rather than observing inside it — is what makes
+        the histogram cover the rejection paths too: a store that raises on a
+        bad ``memory_type`` is still work the server did, and a latency alert
+        that only sees successful writes hides the failures.
+        """
+        started = time.perf_counter()
+        try:
+            return await self._store(
+                content,
+                importance=importance,
+                tags=tags,
+                session_id=session_id,
+                memory_type=memory_type,
+                metadata=metadata,
+                project=project,
+                source=source,
+                pinned=pinned,
+            )
+        finally:
+            metrics.observe(
+                "levh_store_latency_seconds", time.perf_counter() - started
+            )
+
+    async def _store(
         self,
         content: str,
         importance: float = 0.5,

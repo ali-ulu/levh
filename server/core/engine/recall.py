@@ -8,7 +8,9 @@ the split verifiable.
 
 from __future__ import annotations
 
+import time
 
+from .. import metrics
 from ..types import (
     Memory,
     RecallResult,
@@ -19,6 +21,36 @@ class MemoryRecallMixin:
     """Reading memory back: recall, search, related items and the context window."""
 
     async def recall(
+        self,
+        query: str,
+        top_k: int = 10,
+        session_id: str | None = None,
+        project: str | None = None,
+        min_importance: float = 0.0,
+        reinforce: bool = True,
+    ) -> RecallResult:
+        """Time the ranked recall and record its latency (issue #145).
+
+        A thin wrapper so the metric covers every failure path too — the
+        histogram is what a latency alert watches, and it must not go quiet
+        exactly when recalls start raising.
+        """
+        started = time.perf_counter()
+        try:
+            return await self._recall(
+                query,
+                top_k=top_k,
+                session_id=session_id,
+                project=project,
+                min_importance=min_importance,
+                reinforce=reinforce,
+            )
+        finally:
+            metrics.observe(
+                "levh_recall_latency_seconds", time.perf_counter() - started
+            )
+
+    async def _recall(
         self,
         query: str,
         top_k: int = 10,
