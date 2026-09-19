@@ -27,13 +27,31 @@ a service they did not choose.
 
 ## Development setup
 
+The Python dependency graph is locked in `uv.lock` (issue #146). Install from
+the lock so your environment matches CI and every release:
+
 ```bash
-python -m pip install -e ".[dev]"
+uv sync --frozen --extra dev
 ```
 
-That installs pytest, ruff, and mypy, the gates CI runs. The optional extras —
-`.[local]` for the real embedder, `.[files]` for PDF/Word/Excel import,
-`.[pdf]` for the audit report — are not needed for development.
+This is what CI runs in every job. `--frozen` refuses to re-resolve, so a
+`pyproject.toml` change that is not committed as a regenerated lock fails
+loudly instead of silently building a different graph. After editing a
+dependency in `pyproject.toml`:
+
+```bash
+uv lock          # update uv.lock
+uv sync --frozen --extra dev
+```
+
+`uv` also provides the dev tools (pytest, ruff, mypy); prefix local commands
+with `uv run --frozen` or activate the environment. If you prefer plain pip,
+`python -m pip install -e ".[dev]"` still works, but it installs from
+pyproject's floor pins and may differ from the locked graph CI uses.
+
+The optional extras — `.[local]` for the real embedder, `.[files]` for
+PDF/Word/Excel import, `.[pdf]` for the audit report — are not needed for
+development.
 
 ### Pre-commit (recommended)
 

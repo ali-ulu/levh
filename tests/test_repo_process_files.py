@@ -154,12 +154,15 @@ def test_pre_commit_pins_the_same_ruff_as_ci():
     assert "ruff" in pinned, "pre-commit no longer runs ruff"
 
     local = pinned["ruff"]
-    ci = (GITHUB / "workflows" / "ci.yml").read_text(encoding="utf-8")
-    installed = re.search(r'ruff==(\d+\.\d+\.\d+)', ci)
-    assert installed, "ci.yml no longer pins an exact ruff version"
+    # CI installs ruff through the lockfile (issue #146), so the pin lives in
+    # the dev extra rather than as a `pip install ruff==x.y.z` line in ci.yml.
+    project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    dev_extra = project["project"]["optional-dependencies"]["dev"]
+    installed = next((re.search(r'ruff==(\d+\.\d+\.\d+)', req) for req in dev_extra if "ruff" in req), None)
+    assert installed, "the dev extra no longer pins an exact ruff version"
     # pre-commit's ruff hook tags carry a leading `v`; the tool version does not.
     assert local.lstrip("v") == installed.group(1), (
-        f"pre-commit pins ruff {local} but CI installs {installed.group(1)}"
+        f"pre-commit pins ruff {local} but the dev extra installs {installed.group(1)}"
     )
 
 
@@ -226,16 +229,18 @@ def test_mypy_is_a_ci_gate_and_is_pinned_like_ruff():
     guards against.
     """
     ci = (GITHUB / "workflows" / "ci.yml").read_text(encoding="utf-8")
-    assert "python -m mypy" in ci, "ci.yml no longer runs mypy"
+    assert "uv run --frozen mypy" in ci, "ci.yml no longer runs mypy"
 
     project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
     dev_extra = project["project"]["optional-dependencies"]["dev"]
     pinned = next((re.search(r'mypy==(\d+\.\d+\.\d+)', req) for req in dev_extra if "mypy" in req), None)
     assert pinned, "the dev extra no longer pins an exact mypy version"
 
-    # The step installs from the dev extra, so CI and the extra cannot drift;
-    # this asserts the install actually comes from `.[dev]`.
-    assert 'pip install -e ".[dev]"' in ci, "ci.yml no longer installs the dev extra"
+    # The step installs from the locked dev extra, so CI and the extra cannot
+    # drift; this asserts the install actually comes from `.[dev]`. Since
+    # issue #146 the install goes through the lockfile (`uv sync --frozen
+    # --extra dev`) instead of a bare `pip install -e ".[dev]"`.
+    assert "uv sync --frozen --extra dev" in ci, "ci.yml no longer installs the dev extra"
 
 
 def test_mypy_file_list_is_nonempty_and_only_lists_existing_modules():
@@ -262,4 +267,52 @@ def test_lint_gate_keeps_the_error_handling_policy_rules_selected():
     selected = config["lint"]["select"]
     for rule in ("BLE", "ARG", "RUF100"):
         assert rule in selected, f".ruff.toml no longer selects {rule}"
+
+
+def test_python_dependency_graph_is_locked_and_ci_installs_from_it():
+    """Issue #146: the backend had no lockfile, so CI and a release built
+    "the same commit" against whatever pip happened to resolve that week. The
+    lock only helps if CI actually consumes it, so assert both halves: the
+    file exists with real pins, and every job installs through `uv sync
+    --frozen` rather than a bare `pip install -e` (a fresh resolve).
+    """
+    lock = ROOT / "uv.lock"
+    assert lock.is_file(), "uv.lock is missing; the Python graph is unlocked again"
+    text = lock.read_text(encoding="utf-8")
+    assert 'name = "levh"' in text, "uv.lock does not lock the project itself"
+    assert text.count("[[package]]") > 50, "uv.lock resolved implausibly few packages"
+    # `uv.lock` is TOML and is the machine-readable contract; a parse failure
+    # would make `uv sync --frozen` fail for every contributor.
+    toml = tomllib.loads(text)
+    assert toml.get("version"), "uv.lock has no lockfile format version"
+    assert [p["name"] for p in toml["package"]].count("levh") == 1
+
+    ci = (GITHUB / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    assert "uv sync --frozen" in ci, "ci.yml no longer installs from the lockfile"
+    assert "uv lock --check" in ci, (
+        "ci.yml dropped the lockfile-freshness gate; a pyproject pin could "
+        "change without anyone regenerating uv.lock"
+    )
+    assert 'pip install -e ".[dev]"' not in ci, (
+        "ci.yml installs from pyproject's floor pins again, bypassing the lock"
+    )
+
+
+def test_pip_audit_scans_the_locked_graph_not_the_installed_environment():
+    """Issue #146: the audit must measure the shipped graph. Freezing the
+    installed environment audits whatever CI resolved from floor pins that day;
+    `uv export --frozen` audits the exact pins in `uv.lock`. Assert the step
+    exports rather than freezes, and that the exported file stays gitignored
+    (#223 covers the ignore rule; this ties it to the new source).
+    """
+    ci = (GITHUB / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    if "resolved-requirements.txt" not in ci:
+        pytest.skip("ci.yml no longer exports a resolved graph for auditing")
+
+    assert "uv export --frozen" in ci, "the audit no longer reads the lockfile"
+    assert "pip freeze" not in ci, (
+        "the audit froze the installed environment again; that graph is not "
+        "the one the lockfile pins"
+    )
+    assert "pip-audit" in ci and "--strict" in ci, "the strict CVE gate is gone"
 

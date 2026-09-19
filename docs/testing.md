@@ -1,9 +1,14 @@
 # Testing
 
 ```bash
-pip install -e ".[dev]"
-EMBEDDER_MODE=hash python -m pytest -q
+uv sync --frozen --extra dev
+EMBEDDER_MODE=hash uv run --frozen python -m pytest -q
 ```
+
+The Python graph is locked in `uv.lock` (issue #146); CI installs from it in
+every job with `uv sync --frozen --extra dev`. Plain
+`pip install -e ".[dev]"` still runs the suite but installs from pyproject's
+floor pins instead of the locked graph.
 
 The suite covers memory lifecycle, H(x,ψ) scoring, adaptive decay/reinforcement,
 outcome feedback, retroactive interference, fading review queue, forgetting curves,

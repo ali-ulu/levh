@@ -1,6 +1,7 @@
 # Supply-chain hygiene (issue #146): weekly update PRs for all three
-# ecosystems this repo consumes. Backend deps are only floor-pinned in
-# pyproject.toml, so someone has to watch the graph — this is that someone.
+# ecosystems this repo consumes. The backend graph is now locked in uv.lock,
+# so Dependabot's pip updater reads that lockfile and bumps the pin there
+# rather than only widening the floor in pyproject.toml.
 version: 2
 updates:
   - package-ecosystem: "pip"
