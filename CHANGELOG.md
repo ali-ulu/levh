@@ -27,6 +27,35 @@
   request, so the surface is now withheld (404) while a token is in force, and
   restored deliberately with `LEVH_ENABLE_API_DOCS=true` on a trusted network.
 
+### The process exposes Prometheus metrics (#145)
+
+- `GET /api/metrics` (and `/api/v1/metrics`) publishes the in-process registry
+  in text exposition format: recall/store latency histograms, the embedder
+  fallback and derived-rebuild counters, and the admission-verdict
+  distribution. The Docker `HEALTHCHECK` scrapes it as well, so a process whose
+  metrics surface is down no longer reads as healthy.
+- Every request gets a `request_id` — reused from `X-Request-ID` when it is a
+  sane `alnum`/`-_.:` string under 128 chars, generated otherwise, echoed in the
+  response header — and it is injected into each log record, which is what lets
+  the recall → admission → store lines be stitched back together. With
+  `LEVH_LOG_JSON=1` the logs are emitted one JSON object per line instead of the
+  human-readable format.
+- `GET /api/readyz` separates readiness from liveness: it pings SQLite, reports
+  the live embedder mode and whether derived state is behind, and answers 503
+  with the reasons when it is not ready.
+
+### The supply chain is pinned and audited (#146)
+
+- `uv.lock` pins the full backend graph and CI installs from it with
+  `uv sync --frozen`, so one commit no longer resolves to a different set of
+  packages weeks later; `uv lock --check` fails the build on a stale lock. The
+  audit follows the lock too: `pip-audit` runs against `uv export` output rather
+  than whatever pip happened to resolve that day, and Dependabot keeps both the
+  lock and the npm graph current.
+- Releases now carry CycloneDX SBOMs for the Python and frontend artifacts, and
+  a `sast` job runs Bandit at Medium+ so a new finding cannot land under the
+  gate unnoticed.
+
 ## 2.31.0
 
 ### Now installable, offline-first (PWA) (#86)

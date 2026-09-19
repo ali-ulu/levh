@@ -396,3 +396,30 @@ def test_sbom_is_built_in_ci_attached_to_the_release_and_pinned():
         assert artifact in publish, (
             f"publish.yml no longer attaches {artifact} to the release"
         )
+
+
+def _unreleased_section() -> str:
+    changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
+    match = re.search(r"^## Unreleased\s*$", changelog, flags=re.MULTILINE)
+    assert match, "CHANGELOG.md has no `## Unreleased` heading"
+    rest = changelog[match.end():]
+    next_version = re.search(r"^## ", rest, flags=re.MULTILINE)
+    return rest[: next_version.start()] if next_version else rest
+
+
+def test_changelog_unreleased_section_is_not_empty():
+    """The release notes are read straight from the `## Unreleased` section
+    (`publish.yml` `awk -v v="## $VERSION"`), so a change that merges without an
+    entry there is invisible in the release. That happened for #237 and #234
+    (issue #239): the heading list still held only #193/#195/#144 while two
+    user-visible merges had landed. Ruff catches a stale `noqa`; this is the
+    cheapest equivalent for the changelog — the section must not be empty.
+    """
+    section = _unreleased_section()
+    assert re.search(r"^###\s+\S", section, flags=re.MULTILINE), (
+        "the `## Unreleased` section has no `### <sentence> (#issue)` heading; "
+        "release notes are taken from this section verbatim"
+    )
+    assert re.search(r"^\s*[-*]\s+\S", section, flags=re.MULTILINE), (
+        "the `## Unreleased` section heading(s) carry no explanatory bullet"
+    )
