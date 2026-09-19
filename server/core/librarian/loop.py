@@ -26,7 +26,7 @@ async def run_loop(interval: int = DEFAULT_INTERVAL) -> None:
             await record_findings(report)
         except asyncio.CancelledError:
             raise
-        except Exception:  # noqa: BLE001
+        except Exception:
             logger.exception("librarian scan failed")
         await asyncio.sleep(interval)
 

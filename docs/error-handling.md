@@ -7,7 +7,10 @@ an exception instead of propagating it. This page says which ones, and how to
 mark them so the next reader does not have to guess.
 
 The rules below are enforced by ruff (`BLE001`, `ARG` in `.ruff.toml`); the
-prose exists to explain the intent behind the `# noqa` comments.
+prose exists to explain the intent behind the `# noqa` comments. `RUF100`
+(also selected) keeps the annotations honest: a `# noqa` that no longer
+suppresses anything is a stale claim about the code, so it is a lint failure
+rather than a comment nobody re-reads.
 
 ## `except Exception` is opt-in
 

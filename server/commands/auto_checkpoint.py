@@ -200,7 +200,7 @@ async def _background_loop(
             )
         except asyncio.CancelledError:
             raise
-        except Exception:  # noqa: BLE001 - a summarization failure must never kill the scheduler
+        except Exception:
             logger.exception("auto-checkpoint pass failed; scheduler continues")
         await asyncio.sleep(interval)
 

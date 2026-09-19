@@ -18,7 +18,7 @@ from httpx import ASGITransport, AsyncClient
 
 os.environ["EMBEDDER_MODE"] = "hash"
 
-from server.core.memory_engine import MemoryEngine  # noqa: E402
+from server.core.memory_engine import MemoryEngine
 
 
 @pytest_asyncio.fixture

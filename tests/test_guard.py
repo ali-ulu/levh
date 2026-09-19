@@ -14,9 +14,9 @@ import pytest_asyncio
 
 os.environ.setdefault("EMBEDDER_MODE", "hash")
 
-from server.core.guard import GuardService  # noqa: E402
-from server.core.memory_engine import MemoryEngine  # noqa: E402
-from server.core.types import RULE_TAG  # noqa: E402
+from server.core.guard import GuardService
+from server.core.memory_engine import MemoryEngine
+from server.core.types import RULE_TAG
 
 
 @pytest_asyncio.fixture

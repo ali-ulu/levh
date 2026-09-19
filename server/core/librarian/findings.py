@@ -45,7 +45,7 @@ async def _record_one(
     )
     try:
         stored = await (await _connected_engine()).db.record_finding(row)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.exception("librarian could not record finding")
         return {"ok": False, "msg": f"bulgu yazilamadi: {exc}"}
     return {"ok": True, "msg": f"bulgu gelen kutusuna yazildi: {stored['id']}",
@@ -143,6 +143,6 @@ async def record_findings(report: dict) -> int:
         try:
             await engine.db.record_finding(row)
             written += 1
-        except Exception:  # noqa: BLE001 — tek bir bulgu döngüyü düşürmesin
+        except Exception:
             logger.exception("librarian could not record finding %s", row["id"])
     return written

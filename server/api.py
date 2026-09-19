@@ -26,8 +26,8 @@ from fastapi.responses import PlainTextResponse
 # Ensure project root is on the path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from server.routes import deps  # noqa: E402
-from server.routes.live_broadcast import subscribe_broadcaster as _subscribe_broadcaster  # noqa: E402
+from server.routes import deps
+from server.routes.live_broadcast import subscribe_broadcaster as _subscribe_broadcaster
 from server.auth import RemoteAccessBoundaryMiddleware
 from server.core import engine_provider
 from server.core.env import get_env
@@ -134,7 +134,7 @@ app.add_middleware(RemoteAccessBoundaryMiddleware, token=deps.api_token)
 # ── Middleware ──────────────────────────────────────────────────────
 # The token gate and the public-demo boundary live in server.middleware.
 
-from server import middleware  # noqa: E402
+from server import middleware
 
 middleware.install(app)
 
@@ -144,7 +144,7 @@ middleware.install(app)
 # owns "/api/memories/{memory_id}", or the path parameter swallows them
 # (GET /api/memories/fading would resolve as memory_id="fading").
 
-from server.routes import (  # noqa: E402
+from server.routes import (
     agents,
     attachments,
     conflicts,
@@ -181,7 +181,7 @@ app.include_router(findings.router)
 app.include_router(live.router)
 
 # ── Librarian bekçi ajanı ──────────────────────────────────────────
-from server.routes.librarian import router as librarian_router  # noqa: E402
+from server.routes.librarian import router as librarian_router
 
 app.include_router(librarian_router)
 
@@ -190,7 +190,7 @@ app.include_router(librarian_router)
 # Ayrıntı ve gerekçe: server/api_versioning.py. Eski (/api/*) yollar geriye
 # dönük uyumluluk için çalışmaya devam eder; yayımlanan sözleşme /api/v1'dir.
 
-from server.api_versioning import install_versioned_surface  # noqa: E402
+from server.api_versioning import install_versioned_surface
 
 install_versioned_surface(app)
 
@@ -204,7 +204,7 @@ install_versioned_surface(app)
 # tarifler. Üçünü de bırakmak, tarayıcının çözemediği bozuk bir yanıt üretir —
 # ve hata görünür bir hata değil, sessiz bir bozulma olarak çıkar.
 
-from starlette.responses import Response as _StarletteResponse  # noqa: E402
+from starlette.responses import Response as _StarletteResponse
 
 # Yeniden yazılan gövdeyi artık tarif etmeyen header'lar.
 _STALE_AFTER_REWRITE = ("content-length", "content-encoding", "etag", "content-digest")

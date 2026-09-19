@@ -9,11 +9,11 @@ import pytest_asyncio
 
 os.environ.setdefault("EMBEDDER_MODE", "hash")
 
-from mcp.server.fastmcp import FastMCP  # noqa: E402
+from mcp.server.fastmcp import FastMCP
 
-from server.core.memory_engine import MemoryEngine  # noqa: E402
-from server.tools.profiles import TOOL_TIERS, tools_for_profile  # noqa: E402
-from server.tools.register import register_all_tools  # noqa: E402
+from server.core.memory_engine import MemoryEngine
+from server.tools.profiles import TOOL_TIERS, tools_for_profile
+from server.tools.register import register_all_tools
 
 
 @pytest_asyncio.fixture

@@ -81,7 +81,7 @@ def cmd_doctor(_args: argparse.Namespace) -> int:
 
     # 2. Package import
     try:
-        import server  # noqa: F401
+        import server
         checks.append(("Package import", "PASS", ""))
     except ImportError as e:
         checks.append(("Package import", "FAIL", str(e)))
@@ -136,7 +136,7 @@ def cmd_doctor(_args: argparse.Namespace) -> int:
 
     # 5. API module import
     try:
-        import server.api  # noqa: F401
+        import server.api
         checks.append(("API import", "PASS", ""))
     except ImportError as e:
         checks.append(("API import", "FAIL", str(e)))
@@ -144,7 +144,7 @@ def cmd_doctor(_args: argparse.Namespace) -> int:
 
     # 6. MCP server module import
     try:
-        import server.mcp_stdio  # noqa: F401
+        import server.mcp_stdio
         checks.append(("MCP import", "PASS", ""))
     except ImportError as e:
         checks.append(("MCP import", "FAIL", str(e)))
@@ -152,7 +152,7 @@ def cmd_doctor(_args: argparse.Namespace) -> int:
 
     # 7. MCP SSE module import
     try:
-        import server.mcp_sse  # noqa: F401
+        import server.mcp_sse
         checks.append(("MCP SSE import", "PASS", ""))
     except ImportError as e:
         checks.append(("MCP SSE import", "FAIL", str(e)))

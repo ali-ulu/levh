@@ -22,9 +22,9 @@ import pytest
 
 os.environ.setdefault("EMBEDDER_MODE", "hash")
 
-from server.commands import hooks  # noqa: E402
-from server.core.guard import GuardService  # noqa: E402
-from server.core.memory_engine import MemoryEngine  # noqa: E402
+from server.commands import hooks
+from server.core.guard import GuardService
+from server.core.memory_engine import MemoryEngine
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 

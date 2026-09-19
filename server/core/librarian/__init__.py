@@ -37,7 +37,7 @@ from __future__ import annotations
 # ve ``librarian.shutil`` üzerinden monkeypatch yapıyor; paket ``__init__``
 # bu iki adı da taşımaya devam eder ki monkeypatch gerçek kullanım noktasına
 # (chat'teki httpx, config'teki shutil) etki etsin.
-from . import chat as _chat_mod, config as _config_mod  # noqa: F401
+from . import chat as _chat_mod, config as _config_mod
 # Monkeypatch uyumluluğu: ``librarian.httpx.AsyncClient`` yaması chat.py'nin
 # gördüğü httpx ile aynı modül objesi olmalı (chat.py bu paketin httpx'ini
 # kullanır); ``librarian.shutil.which`` yaması da config.py'ninki ile aynı olmalı.

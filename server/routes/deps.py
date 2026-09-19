@@ -91,7 +91,7 @@ def public_demo() -> bool:
 # Owned by server.routes.live_broadcast; server.api subscribes the
 # broadcaster to engine events at startup.
 
-from server.routes.live_broadcast import set_event_loop_if_unset, ws_clients  # noqa: E402, F401
+from server.routes.live_broadcast import set_event_loop_if_unset, ws_clients
 
 
 # ── Shared configuration ────────────────────────────────────────────

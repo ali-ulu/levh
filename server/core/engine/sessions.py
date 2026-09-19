@@ -92,7 +92,7 @@ class MemorySessionsMixin:
         if self.auto_summarize:
             try:
                 await self.summarize_session(session_id)
-            except Exception:  # noqa: BLE001 - summarization is best-effort; never block session end
+            except Exception:
                 logger.exception("session summarization failed for %s; ending anyway", session_id)
 
         session = Session(**row)

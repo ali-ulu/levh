@@ -16,6 +16,7 @@ select = [
     "B",     # bugbear: likely bugs (mutable defaults, loop binding, ...)
     "BLE",   # blind-except: `except Exception:` must be deliberate (#147)
     "ARG",   # unused arguments: dead plumbing or a broken override (#147)
+    "RUF100",  # unused `noqa`: a stale directive hides a rule that stopped firing (#219)
 ]
 ignore = [
     "B008",  # FastAPI Depends() in defaults is the framework's idiom

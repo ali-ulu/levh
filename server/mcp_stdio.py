@@ -77,7 +77,7 @@ async def _lifespan(_server: FastMCP) -> AsyncIterator[None]:
         if _env_bool("LEVH_AUTO_CONNECT", True):
             try:
                 await smart_auto_connect(engine)
-            except Exception:  # noqa: BLE001 - presence tracking must never block server startup
+            except Exception:
                 logger.exception("presence auto-connect failed; continuing startup")
 
         # Background auto-checkpoint: every LEVH_AUTO_CHECKPOINT_INTERVAL
@@ -111,7 +111,7 @@ async def _lifespan(_server: FastMCP) -> AsyncIterator[None]:
                 )
                 if _brief and _brief.strip():
                     print(f"[levh] Continuity brief for this session:\n{_brief}", file=sys.stderr)
-            except Exception:  # noqa: BLE001 - a missing or empty brief must not fail startup
+            except Exception:
                 logger.exception("continuity brief could not be fetched; continuing startup")
 
         yield

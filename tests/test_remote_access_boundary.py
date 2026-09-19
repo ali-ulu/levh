@@ -421,7 +421,7 @@ def test_doctor_prefers_what_a_live_server_reports(
     from server.cli import cmd_doctor
 
     class _Health(http.server.BaseHTTPRequestHandler):
-        def do_GET(self):  # noqa: N802 - BaseHTTPRequestHandler API
+        def do_GET(self):
             body = b'{"status": "ok", "api_host": "0.0.0.0"}'
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
@@ -466,7 +466,7 @@ def _health_server(source_api_host: str = "0.0.0.0"):
     import http.server
 
     class _Health(http.server.BaseHTTPRequestHandler):
-        def do_GET(self):  # noqa: N802 - BaseHTTPRequestHandler API
+        def do_GET(self):
             body = (
                 '{"status": "ok", "api_host": "%s"}' % source_api_host
             ).encode("utf-8")

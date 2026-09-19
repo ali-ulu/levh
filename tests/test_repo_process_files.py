@@ -227,3 +227,18 @@ def test_mypy_file_list_is_nonempty_and_only_lists_existing_modules():
     for entry in files:
         assert (ROOT / entry).is_file(), f"mypy `files` names a missing module: {entry}"
 
+
+def test_lint_gate_keeps_the_error_handling_policy_rules_selected():
+    """The rules `docs/error-handling.md` promises must stay selected.
+
+    `BLE001`/`ARG` are the enforcement that page describes; `RUF100` (issue
+    #219) is what stops the `# noqa` annotations it depends on from going
+    stale — a directive that no longer suppresses anything is an unread claim
+    about the code, not a global exemption. Dropping any of them turns the
+    policy back into prose nobody checks.
+    """
+    config = tomllib.loads((ROOT / ".ruff.toml").read_text(encoding="utf-8"))
+    selected = config["lint"]["select"]
+    for rule in ("BLE", "ARG", "RUF100"):
+        assert rule in selected, f".ruff.toml no longer selects {rule}"
+
