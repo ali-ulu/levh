@@ -14,7 +14,7 @@ the process that launches it when environment overrides are required.
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `SQLITE_DB_PATH` | `./stackmemory.db` | SQLite database path |
+| `SQLITE_DB_PATH` | `./stackmemory.db` | SQLite database path (canonical alias `LEVH_SQLITE_DB_PATH` also accepted) |
 | `EMBEDDER_MODE` | `auto` | `auto`, `local`, `openai`, `ollama`, `hash`; `auto` is local-first and never selects OpenAI just because a key exists |
 | `OPENAI_API_KEY` | — | Credential only. Its presence never enables any outbound call on its own — `EMBEDDER_MODE`, `ANSWER_MODE` and `SUMMARY_MODE` decide that |
 | `ANSWER_MODE` | `auto` (offline) | Set to `llm` to let Ask synthesize answers via OpenAI. Unset means Ask is fully offline |
@@ -49,6 +49,19 @@ the process that launches it when environment overrides are required.
 | `LEVH_RATE_LIMIT_WINDOW_SECONDS` | `60` | In-process rate-limit window; not a distributed quota system |
 | `LEVH_SQLITE_BUSY_TIMEOUT_MS` | `5000` | SQLite lock wait before failing; file databases use WAL mode |
 | `LEVH_SAFETY_BACKUP_DIR` | DB sibling `safety-backups/` | Location for automatic pre-replace SQLite safety backups |
+| `LEVH_CONFIG_PATH` | `<cwd>/.stackmemory/config.json` | Redirect where the JSON config file is read from |
+| `LEVH_PUBLIC_DEMO` | `false` | When `true`, mutating API calls are refused so the process can serve a read-only public instance |
+| `LEVH_MCP_PROFILE` | `full` | MCP tool surface: `minimal`, `work`, `admin` or `full`. Written into generated client configs by `levh mcp config --profile <name>` |
+| `LEVH_AGENT` | — | Agent identity recorded with presence/heartbeat rows. Falls back to `AGENT_NAME`, `CLAUDE_AGENT`, `CURSOR_AGENT`, then `auto-connect` |
+| `LEVH_AUTO_HEARTBEAT` | `1` | Auto-heartbeat while an MCP stdio session is open. `0`/`false`/`no` disables it |
+| `LEVH_AUTO_CONNECT` | `1` | MCP stdio startup: detect the agent/project and open a session. `0` disables it |
+| `LEVH_AUTO_BRIEF` | `1` | MCP stdio startup: print the continuity brief to stderr for every client. `0` disables it |
+| `LEVH_AUTO_CHECKPOINT` | `0` | MCP stdio startup: fold new memories into a checkpoint periodically. Off unless set |
+| `LEVH_DASHBOARD_DIR` | — | Override the built dashboard static export directory (source checkouts use `frontend/out`, wheels use `server/dashboard`) |
+| `LEVH_EMBEDDER_DEBUG` | — | Append the underlying embedder exception to the hash-fallback reason |
+| `LEVH_VERSION` | `unknown` | Version reported when package metadata is unavailable |
+| `LEVH_DOGFOOD_ENABLED` | `false` | Append whitelisted aggregate dogfood events to a local JSONL file; no content leaves the process |
+| `LEVH_ONBOARDING_RECEIPT_PATH` | `.stackmemory/onboarding-receipt.json` | Where the local, privacy-safe onboarding receipt is written |
 
 ---
 

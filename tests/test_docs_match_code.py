@@ -231,6 +231,57 @@ def test_the_error_handling_doc_counts_the_reraising_sites():
     )
 
 
+# ── Environment variables ────────────────────────────────────────────
+
+# `.env.example` is a hand-maintained inventory with no loader behind it, so
+# the only thing that keeps it equal to the code is a test. Sixteen variables
+# read by `server/` were absent from it — five of them (LEVH_AGENT,
+# LEVH_AUTO_HEARTBEAT, LEVH_DASHBOARD_DIR, LEVH_EMBEDDER_DEBUG, LEVH_VERSION)
+# from every document as well, so an operator could not learn they existed
+# (issue #230). Only the canonical LEVH_* names are compared: the bare and
+# legacy STACKMEMORY_* spellings are deliberately kept out of a template whose
+# job is to teach the current names.
+ENV_EXAMPLE = DOCS.parent / ".env.example"
+_ENV_NAME_RE = re.compile(r"^LEVH_[A-Z0-9_]+$")
+
+
+def _referenced_env_names() -> set[str]:
+    """Canonical LEVH_* names named as string literals anywhere in `server/`.
+
+    Reading string constants rather than `get_env(...)` call sites catches the
+    names held in module constants (``ENABLED_ENV = "LEVH_DOGFOOD_ENABLED"``,
+    ``CONFIG_PATH_ENV``), which is where several of the variables that were
+    missing from the template actually live.
+    """
+    names: set[str] = set()
+    for path in sorted(SERVER.rglob("*.py")):
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Constant) and isinstance(node.value, str) and _ENV_NAME_RE.match(node.value):
+                names.add(node.value)
+    return names
+
+
+def _template_env_names() -> set[str]:
+    return set(re.findall(r"\bLEVH_[A-Z0-9_]+\b", ENV_EXAMPLE.read_text(encoding="utf-8")))
+
+
+def test_every_referenced_env_var_is_in_the_template():
+    missing = sorted(_referenced_env_names() - _template_env_names())
+    assert not missing, (
+        f"variables read by server/ but absent from .env.example: {missing}; "
+        "an operator cannot discover a knob the template never lists"
+    )
+
+
+def test_the_env_template_lists_no_variable_the_code_never_reads():
+    stale = sorted(_template_env_names() - _referenced_env_names())
+    assert not stale, (
+        f".env.example lists variables the code never reads: {stale}; "
+        "the template would teach a setting that does nothing"
+    )
+
+
 # ── Coverage gates ───────────────────────────────────────────────────
 
 # CI runs two numeric coverage gates (the total `--cov-fail-under` floor and
