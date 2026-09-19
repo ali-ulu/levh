@@ -219,6 +219,29 @@ def test_pip_audit_resolved_requirements_is_gitignored_when_ci_writes_it():
     )
 
 
+def test_sbom_files_are_gitignored_when_ci_writes_them():
+    """CI's `sbom` job writes two CycloneDX BOMs: `dist/sbom-python.json` (the
+    `dist/` rule happens to cover it) and `frontend/sbom-frontend.json`, whose
+    path is not covered by any build-output rule (#242). Left unignored, the
+    frontend BOM shows up as untracked noise in every developer's `git status`
+    and is one `git add -A` away from committing a machine-generated JSON.
+    """
+    ci = (GITHUB / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    artifacts = ["dist/sbom-python.json", "frontend/sbom-frontend.json"]
+    if not all(artifact in ci for artifact in artifacts):
+        pytest.skip("ci.yml no longer writes the SBOM files")
+
+    for artifact in artifacts:
+        result = subprocess.run(
+            ["git", "check-ignore", "-q", artifact],
+            cwd=ROOT,
+            capture_output=True,
+        )
+        assert result.returncode == 0, (
+            f"{artifact} is not ignored although CI writes it"
+        )
+
+
 def _mypy_config() -> dict:
     return tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["tool"]["mypy"]
 
