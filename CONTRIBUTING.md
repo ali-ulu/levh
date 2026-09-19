@@ -71,12 +71,15 @@ npm audit --omit=dev
 
 ## What happens after you open a pull request
 
-CI runs six gates — `lint`, `types` (mypy over the annotated tier listed in
+CI runs seven gates — `lint`, `types` (mypy over the annotated tier listed in
 `[tool.mypy].files`; grow that list when you fix a module), `backend` (Python
 3.11/3.12/3.13), `hostile-env` (the suite against a decoy database, to catch
-tests that would write to a real store), `pip-audit`, and `frontend`. A pull
-request is merged only when every one of them is green; a pending or missing
-check is not a green check.
+tests that would write to a real store), `pip-audit`, `coverage`, and
+`frontend`. The `coverage` gate lives inside the `backend` job: it enforces a
+72% total floor and, on pull requests only, 70% on the changed lines; see
+[Testing → Coverage gates](docs/testing.md#coverage-gates). A pull request is
+merged only when every one of them is green; a pending or missing check is not
+a green check.
 
 A change to `.github/workflows/`, `server/core/engine/`, `server/api.py`,
 `server/routes/`, or `pyproject.toml` also requests review from `CODEOWNERS`.

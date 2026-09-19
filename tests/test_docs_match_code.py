@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import ast
 import re
+import tomllib
 from collections import Counter
 from datetime import date, timedelta
 from pathlib import Path
@@ -227,6 +228,65 @@ def test_the_error_handling_doc_counts_the_reraising_sites():
     doc = (DOCS / "error-handling.md").read_text(encoding="utf-8")
     assert f"{rethrows} of those" in doc, (
         f"error-handling.md does not mention the {rethrows} re-raising sites"
+    )
+
+
+# ── Coverage gates ───────────────────────────────────────────────────
+
+# CI runs two numeric coverage gates (the total `--cov-fail-under` floor and
+# the pull-request `diff-cover --fail-under` floor) that appeared with #206 and
+# were described in no document at all (issue #222). A contributor could not
+# learn the changed-lines rule or why the backend job needs `fetch-depth: 0`.
+# The numbers now live in `docs/testing.md`; this test keeps them equal to the
+# workflow so the prose cannot drift the way the gates themselves once did.
+CI_WORKFLOW = DOCS.parent / ".github" / "workflows" / "ci.yml"
+PYPROJECT = DOCS.parent / "pyproject.toml"
+CONTRIBUTING = DOCS.parent / "CONTRIBUTING.md"
+
+_TOTAL_FLOOR_RE = re.compile(r"--cov-fail-under=(\d+)")
+_DIFF_FLOOR_RE = re.compile(r"--fail-under (\d+)")
+
+
+def _configured_floors() -> tuple[int, int]:
+    """The total and changed-lines coverage floors as the CI workflow sets them."""
+    workflow = CI_WORKFLOW.read_text(encoding="utf-8")
+    total = _TOTAL_FLOOR_RE.findall(workflow)
+    changed = _DIFF_FLOOR_RE.findall(workflow)
+    assert total and changed, "ci.yml no longer runs both numeric coverage gates"
+    return int(total[0]), int(changed[0])
+
+
+def test_the_coverage_gates_are_documented():
+    total, changed = _configured_floors()
+    testing = (DOCS / "testing.md").read_text(encoding="utf-8")
+    contributing = CONTRIBUTING.read_text(encoding="utf-8")
+
+    assert "## Coverage gates" in testing, (
+        "docs/testing.md has no Coverage gates section; CONTRIBUTING.md links to "
+        "docs/testing.md#coverage-gates"
+    )
+    for name, text in (("docs/testing.md", testing), ("CONTRIBUTING.md", contributing)):
+        assert f"{total}%" in text, f"{name} does not state the {total}% total floor"
+        assert f"{changed}%" in text, f"{name} does not state the {changed}% changed-lines floor"
+    assert f"--cov-fail-under={total}" in testing, (
+        "docs/testing.md does not show the --cov-fail-under command"
+    )
+    assert f"--fail-under {changed}" in testing, (
+        "docs/testing.md does not show the diff-cover --fail-under command"
+    )
+    assert "diff-cover" in testing and "fetch-depth: 0" in testing, (
+        "docs/testing.md does not explain the diff-cover gate or its full checkout"
+    )
+
+
+def test_the_coverage_floors_match_the_coverage_config():
+    """`--cov-fail-under` overrides `[tool.coverage.report] fail_under`, so a
+    bare `pytest --cov` sees the config value; keeping it equal to CI avoids a
+    second number the docs would have to track."""
+    total, _ = _configured_floors()
+    config = tomllib.loads(PYPROJECT.read_text(encoding="utf-8"))
+    assert config["tool"]["coverage"]["report"]["fail_under"] == total, (
+        "[tool.coverage.report] fail_under disagrees with ci.yml's --cov-fail-under"
     )
 
 
