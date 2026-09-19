@@ -400,6 +400,79 @@ def test_sast_gate_is_medium_and_no_unreviewed_finding_survives():
     )
 
 
+# Bandit reports a finding at the *start* line of the offending node but looks
+# for `# nosec` on the node's *last* line. The SQL here is built as adjacent
+# f-string fragments, so an annotation on the first fragment is honoured while
+# bandit still prints `nosec encountered (...), but no failed test` — that
+# warning says nothing about whether the annotation is still needed. The real
+# staleness check is to re-run with `--ignore-nosec` (which reports the
+# suppressed set anyway) and match each annotation against a finding whose node
+# span covers it. `# nosec` is unconditional, so a stale one would silently
+# absorb a future finding at the same line — the ruff-side RUF100 ratchet (#219)
+# has no bandit counterpart without this.
+_NOSEC_RE = re.compile(r"#\s*nosec\b(?P<rest>[^\n]*)")
+
+
+def _nosec_sites() -> dict[tuple[str, int], set[str]]:
+    """Map each `# nosec` site to the bandit rules it names (empty set if none)."""
+    sites: dict[tuple[str, int], set[str]] = {}
+    for path in sorted((ROOT / "server").rglob("*.py")):
+        text = path.read_text(encoding="utf-8")
+        for lineno, line in enumerate(text.splitlines(), 1):
+            match = _NOSEC_RE.search(line)
+            if not match:
+                continue
+            # The reason text after the ids ("- placeholders are ...") must not
+            # be mistaken for rule ids.
+            listed = re.match(r"\s*(B\d+(?:\s*,\s*B\d+)*)", match.group("rest"))
+            relative = path.relative_to(ROOT).as_posix()
+            sites[(relative, lineno)] = set(re.findall(r"B\d+", listed.group(1))) if listed else set()
+    return sites
+
+
+def test_sast_nosec_annotations_all_still_suppress_a_live_finding():
+    """Every `# nosec <id>` in `server/` must sit on a node that bandit still
+    flags for that id without the annotation. A bare `# nosec` (no id) is
+    rejected too: it would absorb any future finding regardless of rule.
+    """
+    sites = _nosec_sites()
+    assert sites, "no `# nosec` annotations found; did the SAST sites move?"
+
+    bare = [f"{path}:{line}" for (path, line), ids in sites.items() if not ids]
+    assert bare == [], f"`# nosec` without a rule id absorbs any future finding: {bare}"
+
+    result = subprocess.run(
+        [sys.executable, "-m", "bandit", "-r", "server", "-ll", "-q", "-f", "json", "--ignore-nosec"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+    )
+    assert result.stdout, f"bandit produced no JSON (exit {result.returncode}): {result.stderr[-500:]}"
+    findings = json.loads(result.stdout)["results"]
+
+    def suppresses(rule: str, path: str, line: int) -> bool:
+        for finding in findings:
+            if finding["test_id"] != rule or finding["filename"] != path:
+                continue
+            span = finding.get("line_range") or [finding["line_number"]]
+            if span[0] <= line <= span[-1]:
+                return True
+        return False
+
+    stale = [
+        f"{path}:{line} ({rule})"
+        for (path, line), ids in sorted(sites.items())
+        for rule in sorted(ids)
+        if not suppresses(rule, path, line)
+    ]
+    assert stale == [], (
+        "these `# nosec` annotations no longer suppress a Medium+ finding that "
+        "the SAST gate would otherwise report, so they would silently hide a "
+        "future finding at the same line; remove them:\n"
+        + "\n".join(f"  {entry}" for entry in stale)
+    )
+
+
 def test_sbom_is_built_in_ci_attached_to_the_release_and_pinned():
     """The SBOM item from #146: a BOM that is generated only locally, or only
     into a transient CI artifact, cannot be matched to a shipped tag. CI must
