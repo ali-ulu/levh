@@ -123,9 +123,9 @@ def test_rebuild_failure_increments_the_counter(monkeypatch):
     assert 'levh_derived_rebuild_total{outcome="failure"} 1' in metrics.render()
 
 
-def test_docker_healthcheck_reads_metrics():
-    """The probe must be wired to the endpoint the code actually serves."""
+def test_docker_healthcheck_reads_the_probes():
+    """The probe must be wired to the endpoints the code actually serves."""
     dockerfile = Path("Dockerfile").read_text(encoding="utf-8")
 
     assert "/api/health" in dockerfile
-    assert "/api/metrics" in dockerfile
+    assert "/api/readyz" in dockerfile

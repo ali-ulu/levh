@@ -184,7 +184,7 @@ class SnapshotQueries:
                 "DELETE FROM entities WHERE id NOT IN "
                 "(SELECT DISTINCT entity_id FROM memory_entities)"
             )
-            await self._db.conn.commit()
+            await self._db.commit()
         except Exception:
             await self._db.conn.rollback()
             raise

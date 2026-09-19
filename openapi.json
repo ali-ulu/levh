@@ -4571,6 +4571,23 @@
         "summary": "List Projects"
       }
     },
+    "/api/v1/readyz": {
+      "get": {
+        "description": "Readiness probe: this process can actually serve reads and writes.\n\n``/api/health`` is liveness \u2014 it answers from the process's own state and\nstays up even when the database is locked or the embedder is broken. That\nmade the Docker ``HEALTHCHECK`` a lie: a wedged server still reported\nhealthy (issue #145). This endpoint does the work liveness must not: it\npings SQLite, reports the embedder mode actually running and whether a\nderived-state rebuild is behind.\n\nFailure is a 503 with the reasons, so an orchestrator that reads the status\ncode (not the body) still routes around a broken instance. The body is the\nsame shape either way.",
+        "operationId": "ready_api_readyz_get_v1",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Ready"
+      }
+    },
     "/api/v1/restore": {
       "post": {
         "description": "Restore from a backup file. ``content_b64`` is the base64-encoded\nbackup bytes (encrypted or plain \u2014 auto-detected). ``passphrase`` is\nrequired only for encrypted files. ``replace=true`` first creates a local\nSQLite safety backup, then replaces the current store; the default merges.",

@@ -28,7 +28,7 @@ class SessionQueries:
         )
         changed = cursor.rowcount
         await cursor.close()
-        await self._db.conn.commit()
+        await self._db.commit()
         return bool(changed)
 
     async def detach_session_memories(self, session_id: str) -> int:
@@ -46,7 +46,7 @@ class SessionQueries:
         )
         changed = cursor.rowcount
         await cursor.close()
-        await self._db.conn.commit()
+        await self._db.commit()
         return int(changed)
 
     async def list_session_memory_ids(self, session_id: str) -> list[str]:
@@ -67,7 +67,7 @@ class SessionQueries:
             """,
             {**session, "metadata": json.dumps(session.get("metadata", {}))},
         )
-        await self._db.conn.commit()
+        await self._db.commit()
 
     async def get_session(self, session_id: str) -> Optional[dict]:
         cursor = await self._db.conn.execute("SELECT * FROM sessions WHERE id = ?", (session_id,))
@@ -105,7 +105,7 @@ class SessionQueries:
         cursor = await self._db.conn.execute(
             f"UPDATE sessions SET {', '.join(sets)} WHERE id = ?", params  # nosec B608 - column names come from fixed callers, values bound
         )
-        await self._db.conn.commit()
+        await self._db.commit()
         return cursor.rowcount > 0
 
     @staticmethod
@@ -150,4 +150,4 @@ class SessionQueries:
             """,
             (source_key, connector, project, last_synced_at, fetched, stored, stored),
         )
-        await self._db.conn.commit()
+        await self._db.commit()

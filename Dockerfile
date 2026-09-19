@@ -27,6 +27,9 @@ ENV SQLITE_DB_PATH=/data/stackmemory.db \
 
 USER stackmemory
 EXPOSE 8000
+# /api/health is liveness (the process answers); /api/readyz is readiness — it
+# pings SQLite and reports the embedder actually running, so a wedged store or
+# a silently-degraded embedder now flips the container unhealthy (issue #145).
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD python -c "import urllib.request; [urllib.request.urlopen('http://127.0.0.1:8000' + p, timeout=3) for p in ('/api/health', '/api/metrics')]" || exit 1
+  CMD python -c "import urllib.request; [urllib.request.urlopen('http://127.0.0.1:8000' + p, timeout=3) for p in ('/api/health', '/api/readyz')]" || exit 1
 CMD ["uvicorn", "server.api:app", "--host", "0.0.0.0", "--port", "8000"]
