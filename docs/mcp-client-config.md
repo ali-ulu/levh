@@ -22,8 +22,8 @@ LEVH provides an MCP (Model Context Protocol) server that can be connected to va
 Not every client reads the same shape. opencode uses its own JSON schema,
 Codex expects TOML and Hermes YAML — config generated in Claude Desktop's
 format is silently ignored by those three, so the generator emits each
-client's own format. `tests/test_mcp_configs.py` parses the output with the
-parser the platform actually uses.
+client's own format. `tests/test_client_config_formats.py` parses the output
+with the parser the platform actually uses.
 
 ## Claude Desktop
 
