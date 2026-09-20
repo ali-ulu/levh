@@ -62,12 +62,17 @@ export function LiveFeed() {
       </CardHeader>
       <CardContent>
         {events.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-6 text-center">
+          <p role="status" aria-live="polite" className="text-sm text-muted-foreground py-6 text-center">
             Waiting for activity — memories stored or recalled by any connected AI
             client will appear here in real time.
           </p>
         ) : (
-          <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+          <div
+            role="log"
+            aria-live="polite"
+            aria-label="Live activity events"
+            className="space-y-2 max-h-80 overflow-y-auto pr-1"
+          >
             {events.map((e, i) => {
               const meta = EVENT_LABELS[e.event] ?? {
                 label: e.event,

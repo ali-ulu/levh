@@ -9,6 +9,7 @@ the split verifiable.
 from __future__ import annotations
 
 
+from .. import metrics
 from ..types import (
     Memory,
 )
@@ -91,6 +92,7 @@ class MemoryIngestMixin:
             content, project=project, min_length=min_length
         )
         action = decision["action"]
+        metrics.inc("levh_admission_verdict_total", decision=action)
 
         if action == "review" and not force:
             held_id = await self.hold_for_review(

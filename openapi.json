@@ -4291,6 +4291,25 @@
         "summary": "Get Memory Trust"
       }
     },
+    "/api/v1/metrics": {
+      "get": {
+        "description": "Prometheus text exposition of this process's counters (issue #145).\n\nScrapeable at ``/api/metrics`` and its versioned alias ``/api/v1/metrics``.\nThe engine, the routes and the counters share one process, so the registry\nis process-wide and this handler is a read with no engine dependency \u2014\nanswering must not itself touch the database it reports on.",
+        "operationId": "get_metrics_api_metrics_get_v1",
+        "responses": {
+          "200": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Metrics"
+      }
+    },
     "/api/v1/onboarding/mcp-config": {
       "post": {
         "description": "Generate a focused MCP client config without persisting secrets.",
@@ -4550,6 +4569,23 @@
           }
         },
         "summary": "List Projects"
+      }
+    },
+    "/api/v1/readyz": {
+      "get": {
+        "description": "Readiness probe: this process can actually serve reads and writes.\n\n``/api/health`` is liveness \u2014 it answers from the process's own state and\nstays up even when the database is locked or the embedder is broken. That\nmade the Docker ``HEALTHCHECK`` a lie: a wedged server still reported\nhealthy (issue #145). This endpoint does the work liveness must not: it\npings SQLite, reports the embedder mode actually running and whether a\nderived-state rebuild is behind.\n\nFailure is a 503 with the reasons, so an orchestrator that reads the status\ncode (not the body) still routes around a broken instance. The body is the\nsame shape either way.",
+        "operationId": "ready_api_readyz_get_v1",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Ready"
       }
     },
     "/api/v1/restore": {

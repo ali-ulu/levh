@@ -39,7 +39,7 @@ class MemoryQueries:
                 "pinned": 1 if memory.get("pinned") else 0,
             },
         )
-        await self._db.conn.commit()
+        await self._db.commit()
 
     async def get_memory(self, memory_id: str) -> Optional[dict]:
         cursor = await self._db.conn.execute("SELECT * FROM memories WHERE id = ?", (memory_id,))
@@ -137,14 +137,14 @@ class MemoryQueries:
             return False
         params.append(memory_id)
         cursor = await self._db.conn.execute(
-            f"UPDATE memories SET {', '.join(sets)} WHERE id = ?", params
+            f"UPDATE memories SET {', '.join(sets)} WHERE id = ?", params  # nosec B608 - column names come from fixed callers, values bound
         )
-        await self._db.conn.commit()
+        await self._db.commit()
         return cursor.rowcount > 0
 
     async def delete_memory(self, memory_id: str) -> bool:
         cursor = await self._db.conn.execute("DELETE FROM memories WHERE id = ?", (memory_id,))
-        await self._db.conn.commit()
+        await self._db.commit()
         return cursor.rowcount > 0
 
     async def delete_memory_cascade(self, memory_id: str) -> bool:
@@ -176,7 +176,7 @@ class MemoryQueries:
                 "DELETE FROM entities WHERE id NOT IN "
                 "(SELECT DISTINCT entity_id FROM memory_entities)"
             )
-            await self._db.conn.commit()
+            await self._db.commit()
             return cursor.rowcount > 0
         except Exception:
             await self._db.conn.rollback()

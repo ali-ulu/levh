@@ -33,7 +33,7 @@ class HeldMemoryQueries:
             """,
             row,
         )
-        await self._db.conn.commit()
+        await self._db.commit()
 
     async def get_held_memory(self, held_id: str) -> dict | None:
         cursor = await self._db.conn.execute(
@@ -59,7 +59,7 @@ class HeldMemoryQueries:
         where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
         params.append(max(1, min(int(limit), 200)))
         cursor = await self._db.conn.execute(
-            f"SELECT * FROM held_memories {where} ORDER BY created_at DESC LIMIT ?",
+            f"SELECT * FROM held_memories {where} ORDER BY created_at DESC LIMIT ?",  # nosec B608 - `where` is built from literal clauses, values bound
             params,
         )
         rows = await cursor.fetchall()
@@ -91,5 +91,5 @@ class HeldMemoryQueries:
         )
         changed = cursor.rowcount
         await cursor.close()
-        await self._db.conn.commit()
+        await self._db.commit()
         return bool(changed)

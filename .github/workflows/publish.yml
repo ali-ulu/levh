@@ -98,6 +98,29 @@ jobs:
           name: dist
           path: dist
 
+      # Attach a CycloneDX SBOM to every release (issue #236). CI publishes the
+      # same two BOMs as artifacts on each run; shipping them *with the tag* is
+      # what lets a consumer audit the exact release they installed rather than
+      # hunting for the CI run that built it.
+      - uses: astral-sh/setup-uv@v10.1.0
+        with:
+          python-version: "3.12"
+          enable-cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Generate the release SBOMs
+        run: |
+          uv sync --frozen --extra dev
+          uv export --frozen --no-emit-project --no-dev --no-hashes \
+            --output-file resolved-requirements.txt
+          uv run --frozen cyclonedx-py requirements \
+            --output-reproducible --of JSON \
+            --output-file dist/sbom-python.json resolved-requirements.txt
+          ( cd frontend && npm ci && npm sbom --sbom-format cyclonedx > ../dist/sbom-frontend.json )
+
       # The release notes are the CHANGELOG section for this version, so the
       # two can never tell different stories.
       - name: Extract the changelog section

@@ -13,6 +13,7 @@ from fastapi.responses import JSONResponse
 from starlette.requests import ClientDisconnect
 
 from server.core.env import get_env
+from server.core import request_context
 from server.routes import deps
 from server.routes.deps import constant_time_token_matches, public_demo
 
@@ -168,10 +169,32 @@ def _client_key(request: Request) -> str:
 _DOCS_PATHS = {"/docs", "/docs/oauth2-redirect", "/redoc", "/openapi.json"}
 
 
+def _plausible_request_id(value: str) -> bool:
+    """Whether a caller-supplied ``X-Request-ID`` may be reused.
+
+    Reused verbatim it would be echoed into a response header and every JSON
+    log line for the request, so it is held to the alphabet tracing ids
+    actually use: a header-injection payload (CR/LF) or an unbounded string is
+    replaced with a server-generated id instead. 128 chars is well past every
+    real trace id (W3C traceparent is 55).
+    """
+    return bool(value) and len(value) <= 128 and all(
+        char.isalnum() or char in "-_.:" for char in value
+    )
+
+
+#: Probes an orchestrator issues without credentials. ``/api/health`` is
+#: liveness and ``/api/readyz`` readiness (issue #145): a container healthcheck
+#: cannot attach ``X-LEVH-Token``, so gating them would mean every probe is a
+#: 401 and the platform reads a working instance as down. Both are reports on
+#: this process, never a path to memory content.
+_PROBE_PATHS = {"/api/health", "/api/readyz"}
+
+
 def _guarded(request: Request) -> bool:
     """Whether this request is subject to the /api gates."""
-    path = _canonical_api_path(request.url.path)
-    return path.startswith("/api/") and path != "/api/health"
+    path = _canonical_api_path(request.url.path).rstrip("/")
+    return path.startswith("/api/") and path not in _PROBE_PATHS
 
 
 def _docs_exposed(request: Request) -> bool:
@@ -201,6 +224,28 @@ def install(app: FastAPI) -> None:
     and an unauthenticated caller must not be able to make the server read a
     large body at all.
     """
+
+    @app.middleware("http")
+    async def request_id_middleware(request: Request, call_next):
+        """Bind a correlation id for everything logged while serving *request*.
+
+        Registered first and therefore outermost: even a gate refusal below is
+        logged under the same id, and the header is set on every response
+        (including the 401/403/429 ones) so a client can quote it in a bug
+        report. A caller-supplied ``X-Request-ID`` is reused when it is
+        plausible — it lets a proxy stitch its own tracing id to ours — but the
+        value ends up in log lines and a response header, so it is sanitized
+        rather than trusted verbatim.
+        """
+        supplied = (request.headers.get(request_context.REQUEST_ID_HEADER) or "").strip()
+        request_id = supplied if _plausible_request_id(supplied) else request_context.new_request_id()
+        token = request_context.set_request_id(request_id)
+        try:
+            response = await call_next(request)
+        finally:
+            request_context.reset_request_id(token)
+        response.headers[request_context.REQUEST_ID_HEADER] = request_id
+        return response
 
     # ``_declared_length_guard`` rejects an over-limit Content-Length before a
     # byte is read; ``_body_size_guard`` streams the body for requests that

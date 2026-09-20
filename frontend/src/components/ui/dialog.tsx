@@ -22,7 +22,13 @@ const DialogContent = React.forwardRef<HTMLDivElement, React.ComponentPropsWitho
       <DialogOverlay />
       <DialogPrimitive.Content ref={ref} className={cn("fixed left-1/2 top-1/2 z-50 grid w-full max-w-lg -translate-x-1/2 -translate-y-1/2 gap-4 border bg-background p-6 shadow-lg", className)} {...props}>
         {children}
-        <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus:ring-1">x</DialogPrimitive.Close>
+        <DialogPrimitive.Close
+          aria-label="Close dialog"
+          className="absolute right-4 top-4 rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus:ring-1"
+        >
+          <span aria-hidden="true">x</span>
+          <span className="sr-only">Close</span>
+        </DialogPrimitive.Close>
       </DialogPrimitive.Content>
     </DialogPortal>
   )

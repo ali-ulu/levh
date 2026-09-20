@@ -49,7 +49,7 @@ class FindingQueries:
                 """,
                 {**row, "now": now},
             )
-            await self._db.conn.commit()
+            await self._db.commit()
             stored = await self.get_finding(row["id"])
             return {**stored, "repeat": False, "reopened": False}
 
@@ -68,7 +68,7 @@ class FindingQueries:
             {"id": row["id"], "detail": row["detail"],
              "severity": row["severity"], "now": now},
         )
-        await self._db.conn.commit()
+        await self._db.commit()
         stored = await self.get_finding(row["id"])
         return {**stored, "repeat": True, "reopened": reopened}
 
@@ -96,7 +96,7 @@ class FindingQueries:
         where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
         params.append(max(1, min(int(limit), 1000)))
         cursor = await self._db.conn.execute(
-            f"SELECT * FROM findings {where} ORDER BY last_seen_at DESC LIMIT ?",
+            f"SELECT * FROM findings {where} ORDER BY last_seen_at DESC LIMIT ?",  # nosec B608 - `where` is built from literal clauses, values bound
             params,
         )
         rows = await cursor.fetchall()
@@ -132,12 +132,12 @@ class FindingQueries:
             """,
             {"id": finding_id, "status": status, "note": note, "now": _now()},
         )
-        await self._db.conn.commit()
+        await self._db.commit()
         return await self.get_finding(finding_id)
 
     async def delete_finding(self, finding_id: str) -> bool:
         cursor = await self._db.conn.execute(
             "DELETE FROM findings WHERE id = ?", (finding_id,)
         )
-        await self._db.conn.commit()
+        await self._db.commit()
         return cursor.rowcount > 0

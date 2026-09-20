@@ -27,7 +27,7 @@ class AttachmentQueries:
             """,
             row,
         )
-        await self._db.conn.commit()
+        await self._db.commit()
 
     async def get_attachment(self, attachment_id: str) -> dict | None:
         cursor = await self._db.conn.execute(
@@ -54,7 +54,7 @@ class AttachmentQueries:
             return {}
         placeholders = ",".join("?" for _ in ids)
         cursor = await self._db.conn.execute(
-            f"SELECT * FROM attachments WHERE memory_id IN ({placeholders}) ORDER BY created_at",
+            f"SELECT * FROM attachments WHERE memory_id IN ({placeholders}) ORDER BY created_at",  # nosec B608 - placeholders are `?`, values bound
             ids,
         )
         rows = await cursor.fetchall()
@@ -87,12 +87,12 @@ class AttachmentQueries:
                 "UPDATE attachments SET status = ?, verified_at = ? WHERE id = ?",
                 (status, verified_at, attachment_id),
             )
-        await self._db.conn.commit()
+        await self._db.commit()
         return cursor.rowcount > 0
 
     async def delete_attachment(self, attachment_id: str) -> bool:
         cursor = await self._db.conn.execute(
             "DELETE FROM attachments WHERE id = ?", (attachment_id,)
         )
-        await self._db.conn.commit()
+        await self._db.commit()
         return cursor.rowcount > 0

@@ -38,7 +38,7 @@ def _running_bind_host(runtime) -> str | None:
 
     for port in _candidate_ports(runtime):
         try:
-            with urllib.request.urlopen(
+            with urllib.request.urlopen(  # nosec B310 - fixed loopback http URL, no user input
                 f"http://127.0.0.1:{port}/api/health", timeout=2
             ) as response:
                 payload = json.loads(response.read().decode("utf-8"))
