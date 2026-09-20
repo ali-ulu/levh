@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import "./globals.css";
 import { Sidebar } from "@/components/layout/sidebar";
@@ -10,7 +10,6 @@ export const metadata: Metadata = {
   title: "LEVH",
   description: "LEVH — local-first context continuity for AI work.",
   manifest: "/manifest.webmanifest",
-  themeColor: "#4b56f7",
   applicationName: "LEVH",
   icons: [
     { rel: "icon", url: "/icon.png", type: "image/png" },
@@ -19,6 +18,10 @@ export const metadata: Metadata = {
     { rel: "apple-touch-icon", url: "/apple-touch-icon.png", sizes: "180x180" },
   ],
   other: { "apple-mobile-web-app-capable": "yes", "mobile-web-app-capable": "yes" },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#4b56f7",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

@@ -241,7 +241,9 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - name: Install
         run: npm ci
-      - name: Build (lint + typecheck + static export)
+      - name: Lint (ESLint)
+        run: npm run lint
+      - name: Build (typecheck + static export)
         env:
           NEXT_TELEMETRY_DISABLED: "1"
         run: npm run build
