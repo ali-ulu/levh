@@ -134,7 +134,7 @@ jobs:
           test -s release-notes.md || echo "See CHANGELOG.md." > release-notes.md
           head -5 release-notes.md
 
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.event.inputs.tag || github.ref_name }}
           body_path: release-notes.md
