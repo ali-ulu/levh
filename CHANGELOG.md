@@ -1,9 +1,5 @@
 # Changelog
 
-## Unreleased
-
-_(No unreleased changes yet.)_
-
 ## 2.32.0 - 2026-09-20
 
 ### Frontend toolchain: Tailwind v4, ESLint 9, Next 16 (#188, #186, #189)
