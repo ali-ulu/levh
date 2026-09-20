@@ -27,7 +27,7 @@ jobs:
     name: Build and verify
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.inputs.tag || github.ref }}
 
@@ -78,7 +78,7 @@ jobs:
           print("packaged dashboard:", len(os.listdir(dashboard)), "entries")
           PY
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: dist
           path: dist/
@@ -90,10 +90,10 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.inputs.tag || github.ref }}
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: dist
           path: dist
@@ -134,7 +134,7 @@ jobs:
           test -s release-notes.md || echo "See CHANGELOG.md." > release-notes.md
           head -5 release-notes.md
 
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.event.inputs.tag || github.ref_name }}
           body_path: release-notes.md
@@ -148,7 +148,7 @@ jobs:
     permissions:
       id-token: write # Trusted Publishing — no token is stored in the repo
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: dist
           path: dist
