@@ -27,6 +27,45 @@
   request, so the surface is now withheld (404) while a token is in force, and
   restored deliberately with `LEVH_ENABLE_API_DOCS=true` on a trusted network.
 
+### The process exposes Prometheus metrics (#145)
+
+- `GET /api/metrics` (and `/api/v1/metrics`) publishes the in-process registry
+  in text exposition format: recall/store latency histograms, the embedder
+  fallback and derived-rebuild counters, and the admission-verdict
+  distribution. The Docker `HEALTHCHECK` scrapes it as well, so a process whose
+  metrics surface is down no longer reads as healthy.
+- Every request gets a `request_id` — reused from `X-Request-ID` when it is a
+  sane `alnum`/`-_.:` string under 128 chars, generated otherwise, echoed in the
+  response header — and it is injected into each log record, which is what lets
+  the recall → admission → store lines be stitched back together. With
+  `LEVH_LOG_JSON=1` the logs are emitted one JSON object per line instead of the
+  human-readable format.
+- `GET /api/readyz` separates readiness from liveness: it pings SQLite, reports
+  the live embedder mode and whether derived state is behind, and answers 503
+  with the reasons when it is not ready.
+
+### The supply chain is pinned and audited (#146)
+
+- `uv.lock` pins the full backend graph and CI installs from it with
+  `uv sync --frozen`, so one commit no longer resolves to a different set of
+  packages weeks later; `uv lock --check` fails the build on a stale lock. The
+  audit follows the lock too: `pip-audit` runs against `uv export` output rather
+  than whatever pip happened to resolve that day, and Dependabot keeps both the
+  lock and the npm graph current.
+- Releases now carry CycloneDX SBOMs for the Python and frontend artifacts, and
+  a `sast` job runs Bandit at Medium+ so a new finding cannot land under the
+  gate unnoticed.
+
+### Hook installers no longer promise a checkpoint they cannot install (#124)
+
+- `install_claude_code_hook` and `install_universal_hook` accepted a
+  `with_checkpoint` argument and silently dropped it: nothing read the
+  value, the CLI never defined `--with-checkpoint` so the path was
+  unreachable, and `_CHECKPOINT_TEMPLATE` had no callers. The dead
+  parameter and the unused template are gone, and the module docstring no
+  longer advertises a periodic-checkpoint capability these hooks do not
+  provide. Recurring checkpoints remain available via `levh checkpoint auto`.
+
 ## 2.31.0
 
 ### Now installable, offline-first (PWA) (#86)
@@ -71,31 +110,7 @@
   alias resolution.
 - Docs/README hygiene: removed roadmap, demo assets, and stale references.
 
-## Unreleased
-
-### Hook installers no longer promise a checkpoint they cannot install (#124)
-
-- `install_claude_code_hook` and `install_universal_hook` accepted a
-  `with_checkpoint` argument and silently dropped it: nothing read the
-  value, the CLI never defined `--with-checkpoint` so the path was
-  unreachable, and `_CHECKPOINT_TEMPLATE` had no callers. The dead
-  parameter and the unused template are gone, and the module docstring no
-  longer advertises a periodic-checkpoint capability these hooks do not
-  provide. Recurring checkpoints remain available via `levh checkpoint auto`.
-
-### The embedder tells you when it degrades
-
-- **`auto` falling back to hash embeddings was silent.** A missing or
-  broken `sentence-transformers` install (stale `huggingface-hub`, in one
-  observed case) made `mode=auto` resolve to the non-semantic hash
-  embedder with no signal anywhere — not a log line, not `/api/config`,
-  nothing. Hash's non-semantic scoring then produced false "possible
-  duplicate" admission-gate holds on genuinely distinct content, and
-  there was no way to tell that was why short of reading source. `GET
-  /api/config` now reports `requested_embedder_mode` alongside the
-  effective `embedder_mode`, plus `embedder_fallback_reason` when they
-  differ; the same reason is logged as a warning at the point the
-  embedder is constructed. (#78)
+## 2.30.0
 
 ### Universal Agent Tracking System
 

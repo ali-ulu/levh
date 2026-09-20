@@ -4,7 +4,7 @@ from __future__ import annotations
 
 
 from fastapi import Depends, APIRouter, HTTPException
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import JSONResponse, PlainTextResponse
 
 from server.core import llm_policy, metrics
 from server.auth import unauthenticated_remote_access_enabled
@@ -88,6 +88,70 @@ async def get_metrics():
     return PlainTextResponse(
         metrics.render(), media_type="text/plain; version=0.0.4; charset=utf-8"
     )
+
+
+@router.get("/api/readyz")
+async def ready(engine=Depends(get_engine)):
+    """Readiness probe: this process can actually serve reads and writes.
+
+    ``/api/health`` is liveness — it answers from the process's own state and
+    stays up even when the database is locked or the embedder is broken. That
+    made the Docker ``HEALTHCHECK`` a lie: a wedged server still reported
+    healthy (issue #145). This endpoint does the work liveness must not: it
+    pings SQLite, reports the embedder mode actually running and whether a
+    derived-state rebuild is behind.
+
+    Failure is a 503 with the reasons, so an orchestrator that reads the status
+    code (not the body) still routes around a broken instance. The body is the
+    same shape either way.
+    """
+    reasons: list[str] = []
+
+    try:
+        cursor = await engine.db.conn.execute("SELECT 1")
+        row = await cursor.fetchone()
+        await cursor.close()
+        db_ok = bool(row and row[0] == 1)
+    except Exception as exc:  # noqa: BLE001 - a probe reports, it does not raise
+        db_ok = False
+        reasons.append(f"database: {type(exc).__name__}")
+
+    if not db_ok:
+        reasons.append("database ping failed")
+
+    embedder = engine._embedder
+    embedder_mode = embedder.mode if embedder else engine._embedder_mode
+    # A *requested* semantic embedder that fell back to hash is degraded, not
+    # ready: recall quality changed silently (#78), and a load balancer should
+    # not keep sending traffic to it as if nothing happened.
+    embedder_ready = True
+    if embedder is not None and embedder.fallback_reason:
+        embedder_ready = False
+        reasons.append(f"embedder: {embedder.fallback_reason}")
+
+    derived = None
+    derived_stale = False
+    try:
+        derived = await engine.db.runtime_status()
+        derived_stale = bool(derived.get("schema_version") != derived.get("schema_current"))
+    except Exception as exc:  # noqa: BLE001 - probe reports, it does not raise
+        reasons.append(f"runtime_status: {type(exc).__name__}")
+    if derived_stale:
+        reasons.append("derived-state schema is behind")
+
+    ready_state = db_ok and embedder_ready and not derived_stale
+    payload = {
+        "status": "ready" if ready_state else "not_ready",
+        "service": "levh",
+        "database": "ok" if db_ok else "unavailable",
+        "embedder_mode": embedder_mode,
+        "embedder_ready": embedder_ready,
+        "derived_state_current": not derived_stale,
+        "reasons": reasons,
+    }
+    if not ready_state:
+        return JSONResponse(status_code=503, content=payload)
+    return payload
 
 
 @router.post("/api/benchmark/recall")

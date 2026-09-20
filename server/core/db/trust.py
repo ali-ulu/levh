@@ -75,7 +75,7 @@ class TrustQueries:
 
     async def clear_trust(self) -> None:
         await self._db.conn.execute("DELETE FROM memory_trust_scores")
-        await self._db.conn.commit()
+        await self._db.commit()
 
     async def get_conflict(self, conflict_id: str) -> Optional[dict]:
         cursor = await self._db.conn.execute(
@@ -147,7 +147,7 @@ class TrustQueries:
                 """,
                 row,
             )
-            await self._db.conn.commit()
+            await self._db.commit()
             return "inserted"
 
         signal_changed = existing["signal_type"] != row["signal_type"]
@@ -168,7 +168,7 @@ class TrustQueries:
             """,
             row,
         )
-        await self._db.conn.commit()
+        await self._db.commit()
         return outcome
 
     async def list_conflicts(self, status: Optional[str] = None, limit: int = 100) -> list[dict]:
@@ -195,14 +195,14 @@ class TrustQueries:
             "UPDATE memory_conflict_candidates SET status = ?, reviewed_at = ? WHERE id = ?",
             (status, reviewed_at, conflict_id),
         )
-        await self._db.conn.commit()
+        await self._db.commit()
         return cursor.rowcount > 0
 
     async def delete_conflict(self, conflict_id: str) -> bool:
         cursor = await self._db.conn.execute(
             "DELETE FROM memory_conflict_candidates WHERE id = ?", (conflict_id,)
         )
-        await self._db.conn.commit()
+        await self._db.commit()
         return cursor.rowcount > 0
 
     async def delete_conflicts_for_memory_ids(self, memory_ids: list[str]) -> int:
@@ -216,5 +216,5 @@ class TrustQueries:
             f"WHERE memory_id_a IN ({placeholders}) OR memory_id_b IN ({placeholders})",
             [*ids, *ids],
         )
-        await self._db.conn.commit()
+        await self._db.commit()
         return cursor.rowcount

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { trustLabelColor, trustLabelText } from "@/lib/trust-ui";
 import { Badge } from "@/components/ui/badge";
@@ -82,6 +82,48 @@ export function MemoryDetailDrawer({
   const [trustLoading, setTrustLoading] = useState(false);
   const [trustError, setTrustError] = useState(false);
   const trustMemoryIdRef = useRef(memory.id);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+
+  // Move focus into the drawer on open and restore it to the trigger on close,
+  // so keyboard users are not left behind on the page underneath.
+  useEffect(() => {
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    panelRef.current?.focus();
+    return () => previouslyFocused?.focus?.();
+  }, []);
+
+  // Escape closes the drawer and Tab is trapped inside it.
+  useEffect(() => {
+    const panel = panelRef.current;
+    if (!panel) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        onClose();
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const focusable = panel.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])'
+      );
+      if (focusable.length === 0) {
+        event.preventDefault();
+        return;
+      }
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const active = document.activeElement;
+      if (event.shiftKey && active === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && active === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [onClose]);
 
   useEffect(() => {
     trustMemoryIdRef.current = memory.id;
@@ -198,9 +240,18 @@ export function MemoryDetailDrawer({
     <div className="fixed inset-0 z-50 flex justify-end">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
 
-      <div className="relative w-full max-w-lg bg-background border-l shadow-xl overflow-y-auto">
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+        className="relative w-full max-w-lg bg-background border-l shadow-xl overflow-y-auto focus:outline-none"
+      >
         <div className="sticky top-0 bg-background border-b p-4 flex items-center justify-between z-10">
-          <h2 className="text-lg font-semibold">Memory Details</h2>
+          <h2 id={titleId} className="text-lg font-semibold">
+            Memory Details
+          </h2>
           <div className="flex items-center gap-1">
             <Button variant="ghost" size="icon" onClick={togglePin} disabled={busy} aria-label={pinned ? "Unpin" : "Pin"}>
               {pinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}

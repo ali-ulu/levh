@@ -16,10 +16,12 @@ hidden from the OpenAPI schema and new clients should target `/api/v1`.
 `/api/health` has no version - it is the liveness probe and must stay reachable
 before the versioned surface is known to work.
 
-All `/api/v1/*` endpoints except `/api/health` require `X-LEVH-Token` when
-`LEVH_TOKEN` is set. The generated docs surface the app serves at the root
-(`/docs`, `/redoc`, `/openapi.json`, `/docs/oauth2-redirect`) is part of the
-same gate, so an authenticated deployment does not expose its route schema
+All `/api/v1/*` endpoints except the probes require `X-LEVH-Token` when
+`LEVH_TOKEN` is set. `/api/health` (liveness) and `/api/readyz` (readiness) are
+both exempt: an orchestrator's probe cannot attach a header, and gating them
+would make every check a 401. The generated docs surface the app serves at the
+root (`/docs`, `/redoc`, `/openapi.json`, `/docs/oauth2-redirect`) is part of
+the same gate, so an authenticated deployment does not expose its route schema
 anonymously. Under `LEVH_PUBLIC_DEMO=true` every mutating method is
 refused, as are the bulk exports; `POST /api/memories/recall` stays open
 because it is a read that has to POST to carry its query.
@@ -121,7 +123,8 @@ because it is a read that has to POST to carry its query.
 | GET | `/api/v1/stats` | System statistics and metrics |
 | GET | `/api/v1/config` | Current server configuration (for the Settings page) |
 | GET | `/api/health` | Health |
-| GET | `/api/v1/metrics` | In-process Prometheus metrics: recall/store latency histograms, embedder fallback, admission verdicts, derived-rebuild outcomes |
+| GET | `/api/v1/readyz` | Readiness probe: pings SQLite, reports the live embedder mode and whether derived state is behind. 503 with reasons when not ready |
+| GET | `/api/v1/metrics` | In-process Prometheus metrics: recall/store latency histograms, DB lock-wait, embedder fallback, admission verdicts, derived-rebuild outcomes |
 | POST | `/api/v1/benchmark/recall` | Run the recall-quality benchmark harness (hit@k / MRR on a labelled corpus) and return the metrics — powers the… |
 | POST | `/api/v1/context-file` | Generate a CLAUDE.md / .cursorrules style context file from memories |
 | POST | `/api/v1/agents/connect` | Record an agent connecting to LEVH. Returns agent session ID and presence info |

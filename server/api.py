@@ -67,6 +67,12 @@ async def get_engine() -> MemoryEngine:
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
+    # ``cmd_serve`` installs this too, but the Docker image invokes uvicorn
+    # directly, so the structured formatter is (re)applied here — after
+    # uvicorn has configured its own logging — to cover both entry points.
+    from server.core.logging import install_logging
+
+    install_logging()
     engine = await get_engine()
     # Librarian bekçi ajanı — sunucu açılınca başlar, kapanırken durur.
     # Public demo'da çalışmaz: orada her yazma zaten reddedilir ve bekçinin

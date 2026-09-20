@@ -15,12 +15,14 @@ addresses without this file re-listing them.
 from __future__ import annotations
 
 import re
+import time
 from pathlib import Path
 from typing import Optional
 
 import aiosqlite
 
 from server.core.env import get_env
+from . import metrics
 from .db.schema import CURRENT_SCHEMA_VERSION, _FTS_SCHEMA, _INDEXES, _MIGRATIONS, _SCHEMA, default_db_path
 from .db.aggregates import AggregateQueries
 from .db.attachments import AttachmentQueries
@@ -236,7 +238,19 @@ class Database:
             self._connection = None
 
     async def commit(self) -> None:
-        await self.conn.commit()
+        """Commit, timing how long the write lock took to acquire (issue #145).
+
+        The lock-wait histogram is the only metric that cannot be observed at
+        the route boundary: contention is a property of the SQLite write lock,
+        not of the request, and the wait is invisible in the request latency
+        when writes are rare. ``commit()`` is the single funnel every write
+        group uses, so timing it here counts each write exactly once.
+        """
+        started = time.perf_counter()
+        try:
+            await self.conn.commit()
+        finally:
+            metrics.observe("levh_db_lock_wait_seconds", time.perf_counter() - started)
 
     def __getattr__(self, name: str):
         """Resolve former mixin methods against the composed query groups.

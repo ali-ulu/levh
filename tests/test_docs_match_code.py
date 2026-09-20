@@ -405,6 +405,26 @@ def test_no_doc_points_at_the_untracked_evidence_workspace():
     )
 
 
+# A prose reference to a test file is a promise the reader can keep by opening
+# it: `docs/mcp-client-config.md` kept pointing at `tests/test_mcp_configs.py`
+# after the file was renamed to `tests/test_client_config_formats.py` (issue
+# #252), so the doc sent the reader looking for a file that is not there. The
+# link checker above does not see these because they are not Markdown links.
+_TEST_FILE_REF_RE = re.compile(r"(?<![\w/.-])(tests/[A-Za-z0-9_./-]+\.py)")
+
+
+def test_no_doc_points_at_a_test_file_that_does_not_exist():
+    offenders: list[str] = []
+    for doc in _documentation_files():
+        text = doc.read_text(encoding="utf-8", errors="replace")
+        for path in _TEST_FILE_REF_RE.findall(text):
+            if not (DOCS.parent / path).exists():
+                offenders.append(f"{doc.relative_to(DOCS.parent)}: {path}")
+    assert not offenders, (
+        f"documentation references a test file that does not exist: {offenders}"
+    )
+
+
 # The 2.x rename left the security docs telling operators to set a variable
 # the code no longer reads. The failure mode is silent: setting
 # STACKMEMORY_TOKEN leaves the server open because it only ever reads
