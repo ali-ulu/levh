@@ -2,6 +2,33 @@
 
 ## Unreleased
 
+_(No unreleased changes yet.)_
+
+## 2.32.0 - 2026-09-20
+
+### Frontend toolchain: Tailwind v4, ESLint 9, Next 16 (#188, #186, #189)
+
+- Tailwind CSS upgraded to v4: PostCSS plugin moved to `@tailwindcss/postcss`,
+  `@tailwind` directives replaced with `@import "tailwindcss"` + `@config` to
+  preserve the existing shadcn-style TS theme; `autoprefixer` dropped (built-in).
+- ESLint upgraded to v9 with `eslint-config-next` v16; legacy `.eslintrc.json`
+  replaced by flat `eslint.config.mjs`. The one genuine `react-hooks/immutability`
+  finding (agents page) was fixed; the 23 `set-state-in-effect` findings are
+  disabled pending a dedicated refactor of the prop-to-state sync idiom.
+- Next.js upgraded from 15.5 to 16.3.
+
+### mcp constraint widened to <3 (#184)
+
+- `mcp>=1.0,<2` broadened to `mcp>=1.0,<3` in `pyproject.toml`; `uv.lock`
+  regenerated so `uv lock --check` passes. The locked mcp version is unchanged.
+
+### Next 16 regressions fixed: lint gate and themeColor (#256, #257)
+
+- `next lint` was removed in Next 16; `next build` no longer ran ESLint. Added
+  an explicit `npm run lint` CI step and a `lint` script to `package.json`.
+- `themeColor` moved from the `metadata` export to `viewport` as required by
+  Next 16; `<meta name="theme-color">` is now present in the static output again.
+
 ### The API surface is versioned and frozen as a contract (#193)
 
 - The same handlers are now served under `/api/v1/...`, and the *versioned*
