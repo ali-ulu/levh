@@ -2,7 +2,9 @@
 
 ## Unreleased
 
-_(No unreleased changes yet.)_
+### Placeholder for future changes (#103)
+
+- TBD
 
 ## 2.32.0 - 2026-09-20
 
