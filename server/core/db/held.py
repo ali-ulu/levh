@@ -33,7 +33,7 @@ class HeldMemoryQueries:
             """,
             row,
         )
-        await self._db.conn.commit()
+        await self._db.commit()
 
     async def get_held_memory(self, held_id: str) -> dict | None:
         cursor = await self._db.conn.execute(
@@ -91,5 +91,5 @@ class HeldMemoryQueries:
         )
         changed = cursor.rowcount
         await cursor.close()
-        await self._db.conn.commit()
+        await self._db.commit()
         return bool(changed)

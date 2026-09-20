@@ -29,7 +29,7 @@ class GuardQueries:
             """,
             violation,
         )
-        await self._db.conn.commit()
+        await self._db.commit()
 
     async def list_violations(
         self,

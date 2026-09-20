@@ -220,7 +220,7 @@ jobs:
         # npm's built-in CycloneDX generator reads the package-lock graph; no
         # extra tool to pin. `npm ci` above supplies the installed tree.
         run: npm sbom --sbom-format cyclonedx > sbom-frontend.json
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: sbom
           path: |

@@ -3,9 +3,9 @@
 The server had no way to say what it was doing: the only observability was a
 plain-text log line, so a hot loop or a degraded embedder was invisible until a
 user complained. This module is the smallest honest counter of the things the
-issue named — recall/store latency, embedder fallback, admission verdicts and
-derived-rebuild failures — exposed at ``/api/metrics`` in the Prometheus text
-era.
+issue named — recall/store latency, embedder fallback, admission verdicts,
+derived-rebuild failures and DB lock-wait — exposed at ``/api/metrics`` in the
+Prometheus text era.
 
 Deliberately dependency-free. ``prometheus_client`` would bring a second
 registry, its own exposition server and a multiprocess mode the single-process
@@ -42,6 +42,31 @@ _LATENCY_BUCKETS: tuple[float, ...] = (
     10.0,
 )
 
+#: Buckets for the DB lock-wait histogram. A writer holding ``BEGIN
+#: IMMEDIATE`` blocks a peer for as long as its own work takes; the useful
+#: questions are "did anyone wait" and "was it milliseconds or the busy
+#: timeout", not the sub-millisecond shape of an uncontended acquire.
+LOCK_WAIT_BUCKETS: tuple[float, ...] = (
+    0.001,
+    0.01,
+    0.05,
+    0.1,
+    0.5,
+    1.0,
+    2.5,
+    5.0,
+)
+
+#: Histogram name -> bucket bounds. The renderer needs the bounds to emit the
+#: ``_bucket`` lines, and the default latency buckets were the only set until
+#: the lock-wait histogram needed a much shorter scale (it is bounded by the
+#: SQLite busy timeout, not by embedder work).
+_BUCKETS: dict[str, tuple[float, ...]] = {
+    "levh_recall_latency_seconds": _LATENCY_BUCKETS,
+    "levh_store_latency_seconds": _LATENCY_BUCKETS,
+    "levh_db_lock_wait_seconds": LOCK_WAIT_BUCKETS,
+}
+
 _HELP: dict[str, str] = {
     "levh_recall_latency_seconds": "Recall request latency in seconds.",
     "levh_store_latency_seconds": "Memory store request latency in seconds.",
@@ -50,6 +75,9 @@ _HELP: dict[str, str] = {
     ),
     "levh_derived_rebuild_total": "Derived-state rebuild passes, by outcome.",
     "levh_admission_verdict_total": "Admission gate verdicts, by decision.",
+    "levh_db_lock_wait_seconds": (
+        "Time spent waiting for the SQLite write lock before the busy timeout."
+    ),
 }
 
 # name -> label pairs -> value
@@ -92,13 +120,14 @@ def inc(name: str, amount: float = 1.0, **labels: object) -> None:
 def observe(name: str, value: float, **labels: object) -> None:
     """Record *value* in histogram *name* (creating its series on first use)."""
     key = _label_key(labels)
+    buckets = _BUCKETS.get(name, _LATENCY_BUCKETS)
     with _LOCK:
         by_labels = _histograms.setdefault(name, {})
         state = by_labels.get(key)
         if state is None:
-            state = [0.0] * len(_LATENCY_BUCKETS) + [0.0, 0.0]
+            state = [0.0] * len(buckets) + [0.0, 0.0]
             by_labels[key] = state
-        for index, bound in enumerate(_LATENCY_BUCKETS):
+        for index, bound in enumerate(buckets):
             if value <= bound:
                 state[index] += 1.0
         state[-2] += value
@@ -129,12 +158,14 @@ def _render_histogram(
     name: str, series: dict[tuple[tuple[str, str], ...], list[float]]
 ) -> list[str]:
     out = _render_header(name, "histogram")
+    buckets = _BUCKETS.get(name, _LATENCY_BUCKETS)
     for key in sorted(series):
         state = series[key]
-        for index, bound in enumerate(_LATENCY_BUCKETS):
+        for index, bound in enumerate(buckets):
             labels = key + (("le", repr(bound)),)
             out.append(f"{name}_bucket{_render_labels(labels)} {_format(state[index])}")
-        out.append(f'{name}_bucket{_render_labels(key + (("le", "+Inf"),))} {_format(state[-1])}')
+        inf = key + (("le", "+Inf"),)
+        out.append(f"{name}_bucket{_render_labels(inf)} {_format(state[-1])}")
         out.append(f"{name}_sum{_render_labels(key)} {_format(state[-2])}")
         out.append(f"{name}_count{_render_labels(key)} {_format(state[-1])}")
     return out

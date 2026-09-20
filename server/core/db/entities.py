@@ -20,7 +20,7 @@ class EntityQueries:
     async def clear_entity_graph(self) -> None:
         await self._db.conn.execute("DELETE FROM memory_entities")
         await self._db.conn.execute("DELETE FROM entities")
-        await self._db.conn.commit()
+        await self._db.commit()
 
     async def upsert_entity(
         self, entity_id: str, etype: str, ekey: str, name: str, now: str
