@@ -77,7 +77,7 @@ Two narrow exemptions live in `.ruff.toml`:
 
 `BLE001` and `ARG` were not enabled all at once on an unreviewed codebase.
 Every existing hit was read first, and each one had to earn its exemption:
-the 57 `except Exception` sites in `server/` are boundaries, best-effort
+the 58 `except Exception` sites in `server/` are boundaries, best-effort
 paths, or documented degradations that log, return a visible error, or fall
 back to a weaker result, so each carries a one-line reason. 5 of those
 sites re-raise the error and so carry no directive at all, and neither does
