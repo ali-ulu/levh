@@ -66,6 +66,40 @@ def _candidate_ports(runtime) -> list[int]:
 
 
 
+def _count_quarantined_rows(db_path: str) -> int:
+    """Count stored rows the current model cannot accept.
+
+    Mirrors the read-time quarantine in ``server.core.episodic`` on a raw
+    sqlite3 connection so ``levh doctor`` reports the loss without starting
+    the engine or touching a live server. Deserialization mirrors
+    ``server.core.db.memories``: JSON columns are decoded before the model
+    check, so only genuinely invalid *rows* are counted, not the raw storage
+    shape every row has.
+    """
+    import json
+    import sqlite3
+
+    from server.core.types import Memory
+
+    count = 0
+    with sqlite3.connect(db_path) as conn:
+        conn.row_factory = sqlite3.Row
+        for row in conn.execute("SELECT * FROM memories"):
+            d = dict(row)
+            for field in ("embedding", "tags", "metadata"):
+                raw = d.get(field)
+                if raw:
+                    try:
+                        d[field] = json.loads(raw)
+                    except (TypeError, ValueError):
+                        pass
+            try:
+                Memory(**d)
+            except Exception:  # noqa: BLE001 - any rejected row is quarantined
+                count += 1
+    return count
+
+
 def cmd_doctor(_args: argparse.Namespace) -> int:
     """Run system health checks."""
     checks: list[tuple[str, str, str]] = []
@@ -228,10 +262,20 @@ def cmd_doctor(_args: argparse.Namespace) -> int:
             with sqlite3.connect(db_path) as conn:
                 row = conn.execute("SELECT COUNT(*) FROM memories").fetchone()
             memory_count = int(row[0] if row else 0)
+            # Quarantined rows (#267 follow-up): rows this build's model
+            # rejects are skipped at read time and named in a warning, so a
+            # corrupting writer no longer takes the API down — but the skip is
+            # otherwise invisible. Counting the rows the model cannot accept
+            # makes the loss observable where operators already look.
+            quarantined = _count_quarantined_rows(db_path)
+            quarantine_note = f"; {quarantined} quarantined row(s) skipped on read" if quarantined else ""
             if memory_count:
                 checks.append(("Memory store", "PASS", f"{memory_count} memories"))
+                if quarantined:
+                    checks.append(("Quarantined rows", "WARN", f"{quarantined} row(s) this build rejects; recall skips them"))
+                    ok = False
             else:
-                checks.append(("Memory store", "WARN", "database ready; no memories yet"))
+                checks.append(("Memory store", "WARN", "database ready; no memories yet" + quarantine_note))
     except sqlite3.OperationalError:
         checks.append(("Memory store", "WARN", "database exists but schema is not initialized"))
     except Exception as e:  # noqa: BLE001 - a failed check is reported as FAIL, never fatal

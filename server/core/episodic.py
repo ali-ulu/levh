@@ -7,6 +7,7 @@ from typing import Any, Mapping, Optional
 
 from pydantic import ValidationError
 
+from . import metrics
 from .database import Database
 from .types import Memory
 
@@ -41,6 +42,7 @@ def _row_to_memory(row: Mapping[str, Any]) -> Memory | None:
             row.get("id"),
             _why_invalid(exc),
         )
+        metrics.inc("levh_memory_rows_quarantined_total")
         return None
 
 
