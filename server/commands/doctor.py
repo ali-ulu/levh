@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import argparse
+import asyncio
+import concurrent.futures
 import os
 import sys
 from pathlib import Path
@@ -90,6 +92,22 @@ def _count_quarantined_rows(db_path: str) -> int:
             except Exception:  # noqa: BLE001 - any rejected row is quarantined
                 count += 1
     return count
+
+
+def _run_coroutine_blocking(coro):
+    """Run ``coro`` to completion from a synchronous caller.
+
+    ``asyncio.run`` raises ``RuntimeError`` when a loop is already running on
+    this thread — doctor is a sync function, but tests (and any async caller)
+    invoke it from within one. Rather than lose the check to that error, hand
+    the coroutine to a worker thread that owns a fresh loop (issue #271).
+    """
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        return asyncio.run(coro)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+        return executor.submit(asyncio.run, coro).result()
 
 
 def cmd_doctor(_args: argparse.Namespace) -> int:
@@ -307,8 +325,6 @@ def cmd_doctor(_args: argparse.Namespace) -> int:
     # exists so doctor does not create user data as a side effect.
     try:
         if os.path.exists(db_path):
-            import asyncio
-
             from server.core.database import CURRENT_SCHEMA_VERSION, Database
 
             async def _sqlite_status() -> dict:
@@ -319,7 +335,7 @@ def cmd_doctor(_args: argparse.Namespace) -> int:
                 finally:
                     await database.close()
 
-            sqlite_status = asyncio.run(_sqlite_status())
+            sqlite_status = _run_coroutine_blocking(_sqlite_status())
             journal = str(sqlite_status.get("journal_mode", "")).lower()
             timeout_ms = int(sqlite_status.get("busy_timeout_ms", 0))
             schema = int(sqlite_status.get("schema_version", 0))

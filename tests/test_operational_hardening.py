@@ -351,6 +351,34 @@ def test_doctor_reports_local_route_and_sqlite_runtime(tmp_path, monkeypatch, ca
 
 
 @pytest.mark.asyncio
+async def test_doctor_inspects_sqlite_from_a_running_event_loop(tmp_path, monkeypatch, capsys):
+    """The SQLite check survives being called from inside an event loop (#271).
+
+    ``cmd_doctor`` is synchronous, but pytest's async tests (and the quarantine
+    suite) call it while a loop is running. It used to use ``asyncio.run``
+    directly, which raises there; the broad ``except`` swallowed the error and
+    downgraded the check to a WARN, so the WAL/busy_timeout/schema contract was
+    never actually verified in that context.
+    """
+    path = tmp_path / "doctor-loop.db"
+    db = Database(str(path))
+    await db.connect()
+    await db.close()
+
+    monkeypatch.setenv("SQLITE_DB_PATH", str(path))
+    monkeypatch.setenv("EMBEDDER_MODE", "hash")
+
+    from server.cli import cmd_doctor
+
+    assert cmd_doctor(argparse.Namespace()) == 0
+    output = capsys.readouterr().out
+    assert "SQLite runtime" in output
+    assert "journal=wal" in output
+    assert "could not inspect" not in output
+    assert f"schema={CURRENT_SCHEMA_VERSION}/{CURRENT_SCHEMA_VERSION}" in output
+
+
+@pytest.mark.asyncio
 async def test_health_reports_standing_remote_access_state(monkeypatch):
     """The open state survives the startup warning (issue #151)."""
     from server.api import app
