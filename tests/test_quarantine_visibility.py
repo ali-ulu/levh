@@ -9,6 +9,7 @@ operators already look: the Prometheus registry (``/api/metrics``) and
 from __future__ import annotations
 
 import argparse
+import logging
 import sqlite3
 
 import pytest
@@ -52,6 +53,46 @@ def _count_quarantined(db_path):
     from server.commands.doctor import _count_quarantined_rows
 
     return _count_quarantined_rows(str(db_path))
+
+
+async def _read_path_quarantined_ids(db_path, caplog):
+    """The rows the real read path actually skips, by id."""
+    engine = MemoryEngine(db_path=str(db_path), embedder_mode="hash")
+    try:
+        with caplog.at_level(logging.WARNING, logger="server.core.episodic"):
+            await engine.initialize()
+            rows = await engine.episodic.get_all()
+    finally:
+        await engine.shutdown()
+    ids = set()
+    for record in caplog.records:
+        message = record.getMessage()
+        if message.startswith("quarantined invalid memory row"):
+            ids.add(message.split("id=", 1)[1].split(":", 1)[0])
+    return ids, rows
+
+
+def _insert_raw_row(db_path, row_id, **columns):
+    """Insert a row shaped the way a corrupting writer might leave it."""
+    values = {
+        "id": row_id,
+        "content": "written by an external tool",
+        "memory_type": "episodic",
+        "importance": 0.5,
+        "frequency": 1,
+        "tags": "[]",
+        "metadata": "{}",
+        "created_at": "2026-01-01T00:00:00+00:00",
+        "accessed_at": "2026-01-01T00:00:00+00:00",
+    }
+    values.update(columns)
+    columns_sql = ", ".join(values)
+    placeholders = ", ".join("?" for _ in values)
+    with sqlite3.connect(db_path) as conn:
+        conn.execute(
+            f"INSERT INTO memories ({columns_sql}) VALUES ({placeholders})",
+            tuple(values.values()),
+        )
 
 
 # -- /api/metrics surface -------------------------------------------------
@@ -142,3 +183,33 @@ async def test_doctor_stays_green_on_a_clean_store(tmp_path):
     assert "Quarantined rows" not in out
     assert "Memory store" in out
     assert code == 0
+
+
+@pytest.mark.asyncio
+async def test_doctor_count_matches_the_read_path(tmp_path, caplog):
+    """The count must equal the rows the read path really skips.
+
+    Checking raw columns instead of decoded ones counted every NULL
+    ``metadata``/``tags`` row as broken: on the author's store 2 unreachable
+    rows reported as 18. Shapes that mean "empty", not "invalid", must not be
+    counted.
+    """
+    db_path = tmp_path / "store.db"
+    await _store_with_one_good_memory(db_path)
+
+    # Stored as NULL: sparse but valid — the query path decodes these to
+    # ``{}`` / ``[]`` before the model sees them.
+    _insert_raw_row(db_path, "sparse-1", tags=None, metadata=None, embedding=None)
+    # Genuinely rejected: an enum no build accepts, and a missing id.
+    _insert_raw_row(db_path, "bad-enum", memory_type="long_term")
+    _insert_raw_row(db_path, None)
+
+    doctor_count = _count_quarantined(db_path)
+    read_ids, listed = await _read_path_quarantined_ids(db_path, caplog)
+
+    assert doctor_count == len(read_ids), (
+        f"doctor counts {doctor_count} rows; the read path skips {len(read_ids)}: {read_ids}"
+    )
+    assert doctor_count == 2
+    assert "sparse-1" not in read_ids
+    assert "sparse-1" in {memory.id for memory in listed}

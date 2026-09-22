@@ -71,30 +71,22 @@ def _count_quarantined_rows(db_path: str) -> int:
 
     Mirrors the read-time quarantine in ``server.core.episodic`` on a raw
     sqlite3 connection so ``levh doctor`` reports the loss without starting
-    the engine or touching a live server. Deserialization mirrors
-    ``server.core.db.memories``: JSON columns are decoded before the model
-    check, so only genuinely invalid *rows* are counted, not the raw storage
-    shape every row has.
+    the engine or touching a live server. The row is decoded with the same
+    ``row_to_memory_dict`` the query layer uses before the model sees it —
+    checking raw columns instead counted every NULL ``metadata`` as a broken
+    row, which is how 2 unreachable rows reported as 18.
     """
-    import json
     import sqlite3
 
+    from server.core.db.memories import row_to_memory_dict
     from server.core.types import Memory
 
     count = 0
     with sqlite3.connect(db_path) as conn:
         conn.row_factory = sqlite3.Row
         for row in conn.execute("SELECT * FROM memories"):
-            d = dict(row)
-            for field in ("embedding", "tags", "metadata"):
-                raw = d.get(field)
-                if raw:
-                    try:
-                        d[field] = json.loads(raw)
-                    except (TypeError, ValueError):
-                        pass
             try:
-                Memory(**d)
+                Memory(**row_to_memory_dict(row))
             except Exception:  # noqa: BLE001 - any rejected row is quarantined
                 count += 1
     return count
