@@ -24,8 +24,29 @@ _INSERT_SQL = (
 _GOOD_CONTENT = "a memory that must stay reachable"
 
 
+def _drop_integrity_triggers(db_path):
+    """Make the store look like one written before the integrity guards.
+
+    The guards (server/core/db/schema.py) refuse these rows on the way in, so a
+    test that needs a *pre-existing* bad row has to take them off first. That
+    is not a workaround: damage written before the guards existed, or by a tool
+    that dropped them, is exactly the case the read path still has to survive.
+    """
+    with sqlite3.connect(db_path) as conn:
+        names = [
+            row[0]
+            for row in conn.execute(
+                "SELECT name FROM sqlite_master WHERE type = 'trigger' "
+                "AND name LIKE 'memories_integrity%'"
+            )
+        ]
+        for name in names:
+            conn.execute("DROP TRIGGER " + name)
+
+
 def _insert_invalid_row(db_path, row_id, **overrides):
     """Write a row the way an external tool would: straight through SQLite."""
+    _drop_integrity_triggers(db_path)
     values = {
         "content": "written by an external tool",
         "memory_type": "episodic",
