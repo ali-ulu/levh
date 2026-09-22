@@ -38,7 +38,7 @@ def default_db_path() -> str:
 CURRENT_SCHEMA_VERSION = 2
 
 
-_SCHEMA = """
+_TABLES = """
 CREATE TABLE IF NOT EXISTS memories (
     id          TEXT PRIMARY KEY,
     content     TEXT NOT NULL,
@@ -221,6 +221,90 @@ CREATE TABLE IF NOT EXISTS findings (
 );
 
 """
+
+
+#: Row-level storage integrity, one entry per rule:
+#: ``(rule, columns, condition-on-NEW, what-to-tell-the-writer)``.
+#:
+#: SQLite cannot add CHECK or NOT NULL to a table that already exists, and this
+#: table cannot simply be rebuilt: ``attachments.memory_id`` references it with
+#: ON DELETE CASCADE, so dropping ``memories`` would take attachment rows with
+#: it. Triggers reach every store instead - the ones this build creates and the
+#: ones already on disk - and they bind every writer, not just this codebase.
+#:
+#: The case they close (seen twice on one real machine): an outside agent wrote
+#: a memory straight into the SQLite file and left ``id`` NULL. SQLite does not
+#: imply NOT NULL from PRIMARY KEY on a non-INTEGER key, so the INSERT
+#: succeeded and the row was then unreachable - the read path quarantined it
+#: and the memory was gone, with no error at the point of writing. The same
+#: write now fails and names the column the model needs.
+_MEMORY_ROW_RULES: tuple[tuple[str, str, str, str], ...] = (
+    (
+        "id",
+        "id",
+        "NEW.id IS NULL OR length(trim(NEW.id)) = 0",
+        "memories.id is required: this model reads rows by id, so a row without "
+        "one can never be recalled. Generate one, for example "
+        "lower(hex(randomblob(16))).",
+    ),
+    (
+        "content",
+        "content",
+        "NEW.content IS NULL OR length(trim(NEW.content)) = 0",
+        "memories.content is required: a memory with no text cannot be recalled.",
+    ),
+    (
+        "memory_type",
+        "memory_type",
+        "NEW.memory_type IS NULL OR NEW.memory_type NOT IN ('short_term', 'episodic')",
+        "memories.memory_type must be short_term or episodic; any other value is "
+        "rejected by the model on read.",
+    ),
+    (
+        "importance",
+        "importance",
+        "NEW.importance IS NOT NULL AND (NEW.importance < 0.0 OR NEW.importance > 1.0)",
+        "memories.importance must be between 0.0 and 1.0.",
+    ),
+    (
+        "frequency",
+        "frequency",
+        "NEW.frequency IS NOT NULL AND NEW.frequency < 1",
+        "memories.frequency counts recalls, so it cannot be below 1.",
+    ),
+    (
+        "timestamps",
+        "created_at, accessed_at",
+        "NEW.created_at IS NULL OR NEW.accessed_at IS NULL",
+        "memories.created_at and memories.accessed_at are required.",
+    ),
+)
+
+
+#: The trigger body, one statement per rule and event below. Kept as a
+#: template rather than string concatenation so the SQL reads as SQL.
+_TRIGGER_TEMPLATE = """CREATE TRIGGER IF NOT EXISTS memories_integrity_{rule}_{suffix}
+BEFORE {event} ON memories
+FOR EACH ROW
+WHEN {condition}
+BEGIN
+    SELECT RAISE(ABORT, '{message}');
+END;
+"""
+
+
+def _memory_integrity_ddl() -> str:
+    """The trigger DDL: one INSERT and one UPDATE guard per rule above."""
+    return "".join(
+        _TRIGGER_TEMPLATE.format(
+            rule=rule, suffix=suffix, event=event, condition=condition, message=message
+        )
+        for rule, columns, condition, message in _MEMORY_ROW_RULES
+        for suffix, event in (("ai", "INSERT"), ("au", "UPDATE OF " + columns))
+    )
+
+
+_SCHEMA = _TABLES + _memory_integrity_ddl()
 
 
 # Indexes are created AFTER migrations so they can reference columns that

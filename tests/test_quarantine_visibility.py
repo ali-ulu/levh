@@ -41,6 +41,7 @@ async def _store_with_one_good_memory(db_path):
 
 
 def _insert_invalid_row(db_path, row_id):
+    _drop_integrity_triggers(db_path)
     with sqlite3.connect(db_path) as conn:
         conn.execute(
             _INSERT_SQL,
@@ -72,6 +73,26 @@ async def _read_path_quarantined_ids(db_path, caplog):
     return ids, rows
 
 
+def _drop_integrity_triggers(db_path):
+    """Make the store look like one written before the integrity guards.
+
+    The guards (server/core/db/schema.py) refuse these rows on the way in, so a
+    test that needs a *pre-existing* bad row has to take them off first. That
+    is not a workaround: damage written before the guards existed, or by a tool
+    that dropped them, is exactly the case the read path still has to survive.
+    """
+    with sqlite3.connect(db_path) as conn:
+        names = [
+            row[0]
+            for row in conn.execute(
+                "SELECT name FROM sqlite_master WHERE type = 'trigger' "
+                "AND name LIKE 'memories_integrity%'"
+            )
+        ]
+        for name in names:
+            conn.execute("DROP TRIGGER " + name)
+
+
 def _insert_raw_row(db_path, row_id, **columns):
     """Insert a row shaped the way a corrupting writer might leave it."""
     values = {
@@ -86,6 +107,7 @@ def _insert_raw_row(db_path, row_id, **columns):
         "accessed_at": "2026-01-01T00:00:00+00:00",
     }
     values.update(columns)
+    _drop_integrity_triggers(db_path)
     columns_sql = ", ".join(values)
     placeholders = ", ".join("?" for _ in values)
     with sqlite3.connect(db_path) as conn:
