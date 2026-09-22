@@ -51,9 +51,12 @@ async def _publish_engine() -> MemoryEngine:
     else:
         # Keep provider in sync when tests inject a custom engine here.
         engine_provider.set_engine(_engine)
+    # Published before the first await on purpose: initialize() connects the DB
+    # and can then fail on stored data, and the engine that already holds that
+    # connection must stay reachable so the lifespan can close it.
+    app.state.engine = _engine
     await _engine.initialize()  # idempotent
     _subscribe_broadcaster(_engine)
-    app.state.engine = _engine
     return _engine
 
 
@@ -73,17 +76,22 @@ async def lifespan(_app: FastAPI):
     from server.core.logging import install_logging
 
     install_logging()
-    engine = await get_engine()
-    # Librarian bekçi ajanı — sunucu açılınca başlar, kapanırken durur.
-    # Public demo'da çalışmaz: orada her yazma zaten reddedilir ve bekçinin
-    # kendi bulguları demo korpusunu kirletir.
+    # The engine is resolved INSIDE the try. A failing initialize() has already
+    # connected the DB, and an open aiosqlite worker thread keeps the process
+    # alive forever - that is how a failed startup used to hang instead of
+    # exiting non-zero (orphan `levh serve` processes with no listener).
+    engine: MemoryEngine | None = None
     librarian_task = None
-    if not deps.public_demo() and get_env("LEVH_LIBRARIAN", "1").strip().lower() not in {
-        "0", "false", "off",
-    }:
-        from server.core import librarian
-        librarian_task = librarian.start_background()
     try:
+        engine = await get_engine()
+        # Librarian bekçi ajanı — sunucu açılınca başlar, kapanırken durur.
+        # Public demo'da çalışmaz: orada her yazma zaten reddedilir ve bekçinin
+        # kendi bulguları demo korpusunu kirletir.
+        if not deps.public_demo() and get_env("LEVH_LIBRARIAN", "1").strip().lower() not in {
+            "0", "false", "off",
+        }:
+            from server.core import librarian
+            librarian_task = librarian.start_background()
         yield
     finally:
         if librarian_task:
@@ -93,7 +101,11 @@ async def lifespan(_app: FastAPI):
             # and Python reports it as "Task was destroyed but it is pending".
             with contextlib.suppress(asyncio.CancelledError):
                 await librarian_task
-        await engine.shutdown()
+        # ``_publish_engine`` publishes before initializing, so even a startup
+        # that failed mid-way has an owner and its DB is closed here.
+        target = engine if engine is not None else getattr(_app.state, "engine", None)
+        if target is not None:
+            await target.shutdown()
 
 
 # ── FastAPI app ─────────────────────────────────────────────────────

@@ -13,6 +13,31 @@ import aiosqlite
 
 
 
+def row_to_memory_dict(row) -> dict:
+    """Decode one stored row into the mapping :class:`Memory` validates.
+
+    Storage shape is not model shape: ``embedding``/``tags``/``metadata`` are
+    JSON text in SQLite (and NULL when never set), and ``pinned`` is an
+    integer. Every reader that wants to check a row against the model must
+    start here, or it will judge rows on how they are *stored* instead of what
+    they mean: a NULL ``metadata`` reads as "no metadata" (``{}``), not as an
+    invalid row.
+
+    Lives at module level so surfaces outside the query layer — ``levh
+    doctor`` counting quarantined rows — share the one conversion instead of
+    re-deriving it (and drifting from it).
+    """
+    d = dict(row)
+    for field in ("embedding", "tags", "metadata"):
+        raw = d.get(field)
+        if raw:
+            d[field] = json.loads(raw)
+        else:
+            d[field] = [] if field == "tags" else ({} if field == "metadata" else None)
+    d["pinned"] = bool(d.get("pinned"))
+    return d
+
+
 class MemoryQueries:
     """Memory rows: insert, search, update, delete and the residue audit."""
 
@@ -210,12 +235,5 @@ class MemoryQueries:
 
     @staticmethod
     def _row_to_memory(row: aiosqlite.Row) -> dict:
-        d = dict(row)
-        for field in ("embedding", "tags", "metadata"):
-            raw = d.get(field)
-            if raw:
-                d[field] = json.loads(raw)
-            else:
-                d[field] = [] if field == "tags" else ({} if field == "metadata" else None)
-        d["pinned"] = bool(d.get("pinned"))
-        return d
+        """Decode a stored row; see :func:`row_to_memory_dict` (single owner)."""
+        return row_to_memory_dict(row)

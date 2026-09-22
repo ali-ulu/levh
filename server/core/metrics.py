@@ -75,6 +75,9 @@ _HELP: dict[str, str] = {
     ),
     "levh_derived_rebuild_total": "Derived-state rebuild passes, by outcome.",
     "levh_admission_verdict_total": "Admission gate verdicts, by decision.",
+    "levh_memory_rows_quarantined_total": (
+        "Stored memory rows rejected by the model and skipped at read time."
+    ),
     "levh_db_lock_wait_seconds": (
         "Time spent waiting for the SQLite write lock before the busy timeout."
     ),

@@ -68,6 +68,8 @@ function isActive(pathname: string, href: string) {
 function LogoMark() {
   return (
     <span className="levh-logo-shell" aria-hidden="true">
+      {/* Static export (`output: "export"` + `images.unoptimized`) — next/image adds no optimization here. */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src="/brand/levh-mark.png" alt="" className="levh-logo-mark" />
     </span>
   );
