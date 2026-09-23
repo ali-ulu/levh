@@ -41,7 +41,7 @@ secure = ["cryptography>=42"]
 pdf = ["fpdf2>=2.7"]
 # Text extraction for the file-import feature (PDF/Word/Excel uploads).
 files = ["pypdf>=4.0", "python-docx>=1.1", "openpyxl>=3.1"]
-dev = ["pytest", "pytest-asyncio", "build", "twine", "fpdf2>=2.7", "ruff==0.16.7", "mypy==2.3.1", "pytest-cov>=5.0", "diff-cover>=9.0", "bandit==1.9.4", "cyclonedx-bom==7.4.0"]
+dev = ["pytest", "pytest-asyncio", "build", "twine", "fpdf2>=2.7", "ruff==0.16.8", "mypy==2.3.1", "pytest-cov>=5.0", "diff-cover>=9.0", "bandit==1.9.4", "cyclonedx-bom==7.4.0"]
 
 [project.urls]
 Homepage = "https://levh.ai-ulu.com/"
