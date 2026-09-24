@@ -168,3 +168,44 @@ def test_structured_log_record_is_json(monkeypatch, capsys):
     assert payload["event"] == "store_ok"
     assert payload["memory_id"] == "m1"
     assert payload["level"] == "INFO"
+
+
+def _run_serve_banner(monkeypatch, capsys, tmp_path, *, json_mode):
+    """Drive cmd_serve up to the banner, stubbing out uvicorn."""
+    import argparse
+
+    import uvicorn
+
+    from server.commands import diagnostics
+
+    monkeypatch.chdir(tmp_path)
+    if json_mode:
+        monkeypatch.setenv("LEVH_LOG_JSON", "1")
+    else:
+        monkeypatch.delenv("LEVH_LOG_JSON", raising=False)
+    monkeypatch.setattr(uvicorn, "run", lambda *a, **k: None)
+
+    args = argparse.Namespace(host="127.0.0.1", port=9123, reload=False)
+    assert diagnostics.cmd_serve(args) == 0
+    return capsys.readouterr().out
+
+
+def test_serve_banner_is_json_when_log_json_enabled(monkeypatch, capsys, tmp_path):
+    out = _run_serve_banner(monkeypatch, capsys, tmp_path, json_mode=True)
+
+    lines = [line for line in out.strip().splitlines() if line.strip()]
+    payloads = [json.loads(line) for line in lines]
+    events = {payload["event"] for payload in payloads}
+    assert "serve_starting" in events
+    starting = next(p for p in payloads if p["event"] == "serve_starting")
+    assert starting["host"] == "127.0.0.1"
+    assert starting["port"] == 9123
+
+
+def test_serve_banner_stays_plaintext_when_log_json_unset(monkeypatch, capsys, tmp_path):
+    out = _run_serve_banner(monkeypatch, capsys, tmp_path, json_mode=False)
+
+    assert "Starting LEVH API on 127.0.0.1:9123" in out
+    assert "Dashboard: http://127.0.0.1:9123/" in out
+    for line in out.strip().splitlines():
+        assert not line.lstrip().startswith("{"), line

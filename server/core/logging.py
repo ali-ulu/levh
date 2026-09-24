@@ -6,10 +6,10 @@ gives you a wall of text with no stable fields, so "how many retries did the
 retry layer do today" is a ``grep -c`` over prose that happens to still match.
 
 This module keeps the prose (a JSON line still carries ``event`` and
-``message``) but adds a machine-readable payload beside it. The entry point is
-:func:`emit`, which writes one JSON object straight to ``stdout`` — used by
-``levh serve`` for its startup line and by anything that runs before logging is
-configured. Once logging is configured, :class:`JsonFormatter` renders every
+``message``) but adds a machine-readable payload beside it. :func:`emit` writes
+one JSON object straight to ``stdout`` — used by anything that runs before
+logging is configured, so the record cannot vanish while handlers are still
+missing. Once logging is configured, :class:`JsonFormatter` renders every
 record on the standard library logging pipeline as that same object, so
 ``LEVH_LOG_JSON=1`` makes the whole server emit structured records with no
 formatter registry to maintain.
@@ -71,10 +71,12 @@ def emit(
 ) -> None:
     """Emit *event*, bypassing the configured handlers entirely.
 
-    ``levh serve`` prints its startup banner before ``logging`` has handlers
-    attached to the root logger, so a record there would vanish when JSON mode
-    is on. This writes the JSON line to *stream* (``sys.stdout`` by default) and
-    does nothing else: the banner is a one-off, not a log stream.
+    Prefer :func:`install_logging` plus a normal ``logger.info`` call: once the
+    root logger has handlers, :class:`JsonFormatter` structures the record on
+    the standard pipeline. This helper exists for output that is written before
+    that setup can run, where a record would vanish when JSON mode is on. It
+    writes the JSON line to *stream* (``sys.stdout`` by default) and does
+    nothing else.
     """
     if not json_enabled():
         if message:
