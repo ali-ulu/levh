@@ -29,6 +29,12 @@ updates:
       # plugin ecosystem declares eslint 10 support.
       - dependency-name: "eslint"
         update-types: ["version-update:semver-major"]
+      # typescript 7 is the native (Go) compiler port: it removes options this
+      # tsconfig still sets (target=es5, baseUrl), and typescript-eslint caps
+      # its peer range at <6.1.0, so lint and the sbom job fail outright.
+      # Re-enable once typescript-eslint supports TS >=7.1.
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
