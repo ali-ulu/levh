@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import os
 import sys
 from pathlib import Path
@@ -16,7 +17,7 @@ from server.commands.paths import DEFAULT_CONFIG, MCP_DIR
 from server.core.runtime_config import CONFIG_DIR, CONFIG_FILE
 from server.core.env import get_env
 from server.core.log_filters import install_access_log_filters
-from server.core.logging import install_logging
+from server.core.logging import emit, install_logging
 from server.core.runtime_config import resolve_runtime_config, runtime_env
 
 
@@ -191,8 +192,24 @@ def cmd_serve(args: argparse.Namespace) -> int:
             file=sys.stderr,
         )
         return 1
-    print(f"  Starting LEVH API on {host}:{port}")
-    print(f"  Dashboard: http://{host}:{port}/   API docs: http://{host}:{port}/docs")
+    # The banner runs before install_logging() below, so emit() is the only path
+    # that can structure it when LEVH_LOG_JSON=1. With JSON off emit() prints
+    # the message verbatim, preserving the previous human-readable banner.
+    logger = logging.getLogger("levh.serve")
+    emit(
+        logger,
+        "serve_starting",
+        host=host,
+        port=port,
+        message=f"  Starting LEVH API on {host}:{port}",
+    )
+    emit(
+        logger,
+        "serve_dashboard",
+        host=host,
+        port=port,
+        message=f"  Dashboard: http://{host}:{port}/   API docs: http://{host}:{port}/docs",
+    )
     install_logging()
     install_access_log_filters()
     uvicorn.run("server.api:app", host=host, port=port, reload=args.reload)
