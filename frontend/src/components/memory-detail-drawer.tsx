@@ -413,7 +413,7 @@ export function MemoryDetailDrawer({
                         tickFormatter={(v) => `${Math.round(v * 100)}%`}
                       />
                       <Tooltip
-                        formatter={(v: number) => [`${(v * 100).toFixed(0)}%`, "Predicted retention"]}
+                        formatter={(v) => [`${(Number(v) * 100).toFixed(0)}%`, "Predicted retention"]}
                         labelFormatter={(d) => `Day ${d}`}
                         contentStyle={{
                           backgroundColor: "hsl(var(--card))",
