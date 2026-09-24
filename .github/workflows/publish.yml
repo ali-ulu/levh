@@ -102,7 +102,7 @@ jobs:
       # same two BOMs as artifacts on each run; shipping them *with the tag* is
       # what lets a consumer audit the exact release they installed rather than
       # hunting for the CI run that built it.
-      - uses: astral-sh/setup-uv@v10.1.0
+      - uses: astral-sh/setup-uv@v10.2.0
         with:
           python-version: "3.12"
           enable-cache: true
