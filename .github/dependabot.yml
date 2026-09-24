@@ -22,6 +22,13 @@ updates:
         update-types:
           - "minor"
           - "patch"
+    ignore:
+      # eslint 10 drops context.getFilename(), which eslint-plugin-react
+      # (via eslint-config-next) still calls, and every eslint-plugin-* the
+      # config pulls in caps its peer range at ^9. Re-enable once the Next.js
+      # plugin ecosystem declares eslint 10 support.
+      - dependency-name: "eslint"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
