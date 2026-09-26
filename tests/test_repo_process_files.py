@@ -540,3 +540,47 @@ def test_changelog_has_exactly_one_unreleased_heading():
         "section may be unreleased, so a second one is either a released "
         "section missing its `## <version>` heading or a duplicate"
     )
+
+
+def test_changelog_heading_matches_the_version_publish_extracts():
+    """The release heading must be exactly `## <version>`, nothing appended.
+
+    `publish.yml` pulls the release notes with an exact-line match,
+    `awk -v v="## $VERSION" '$0 == v {found=1; next} …'`. A heading that carries
+    a date or any other suffix (`## 2.32.0 - 2026-09-20`) never equals `v`, so
+    the extraction yields nothing and the GitHub Release is published with the
+    `See CHANGELOG.md.` fallback instead of the notes — silently, with a green
+    workflow. Every historical heading is dateless for this reason; this test
+    keeps a future release from reintroducing the suffix and shipping a blank
+    release.
+    """
+    version = tomllib.loads(
+        (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    )["project"]["version"]
+    changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
+
+    assert re.search(
+        rf"^## {re.escape(version)}\s*$", changelog, flags=re.MULTILINE
+    ), (
+        f"CHANGELOG.md has no bare `## {version}` heading; publish.yml's awk "
+        "matches that line exactly, so any suffix (a date, a title) makes the "
+        "GitHub Release notes come out empty"
+    )
+
+    # Reproduce publish.yml's extraction so the assertion is about the notes a
+    # user would read, not just the heading's shape.
+    found = False
+    notes: list[str] = []
+    for line in changelog.splitlines():
+        if line == f"## {version}":
+            found = True
+            continue
+        if found and line.startswith("## "):
+            break
+        if found:
+            notes.append(line)
+    assert found, f"awk could not find `## {version}` in CHANGELOG.md"
+    assert any(line.strip() for line in notes), (
+        f"publish.yml would extract an empty release-notes section for {version}"
+    )
+

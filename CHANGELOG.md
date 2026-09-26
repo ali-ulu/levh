@@ -6,7 +6,7 @@
 
 - TBD
 
-## 2.32.0 - 2026-09-20
+## 2.32.0
 
 ### Frontend toolchain: Tailwind v4, ESLint 9, Next 16 (#188, #186, #189)
 
@@ -94,6 +94,57 @@
   parameter and the unused template are gone, and the module docstring no
   longer advertises a periodic-checkpoint capability these hooks do not
   provide. Recurring checkpoints remain available via `levh checkpoint auto`.
+
+### A row the model cannot read no longer takes the store down (#267, #273)
+
+- A store row the model rejects — an outside agent writing
+  `memory_type="long_term"`, or a NULL `id` that SQLite allows on a non-INTEGER
+  primary key — used to abort every startup: `EpisodicMemory.get_all()` raised
+  out of `MemoryEngine.initialize()` and every other memory became unreachable.
+  Such rows are now quarantined: skipped with a warning that names the row, so
+  the store stays readable.
+- The store now enforces the model's own contract on INSERT and UPDATE through
+  triggers generated from one rules table in the schema module (id, content,
+  memory_type, importance, frequency, timestamps). A rejected write names the
+  column and what the model needs, and the store file is left untouched.
+- A failed startup no longer leaves the process alive forever: the engine is
+  published before `initialize()` and shut down in every outcome, so
+  `levh serve` exits non-zero on startup failure instead of hanging on the
+  open aiosqlite worker thread.
+
+### Quarantined rows are visible, and doctor counts them the way the read path does (#270, #272)
+
+- Every quarantine increments `levh_memory_rows_quarantined_total` in the
+  Prometheus registry, and `levh doctor` fails on any row the current model
+  cannot accept — so a store quietly rotting under an external writer produces
+  a standing signal instead of passing a health review silently.
+- The doctor count now judges rows by meaning rather than storage shape:
+  `metadata` and `tags` are NULL when never set, and reading those columns raw
+  made every sparse row look invalid (2 genuinely unreachable rows read as 18).
+  The storage-shape-to-model conversion lives in one place —
+  `server.core.db.memories.row_to_memory_dict` — shared by the query layer and
+  the doctor check, with an equivalence test pinning the two together.
+- `levh doctor` inspects SQLite from a running event loop, so the check no
+  longer trips on the async driver it is reading through (#271).
+
+### Structured startup and static-export polish (#284, #268)
+
+- `levh serve` printed its startup banner with bare `print()`, so
+  `LEVH_LOG_JSON=1` did not make it structured even though `logging.py`
+  advertised that path. It now routes through `emit()` — verbatim when JSON is
+  off, a JSON record when on — and the stale docstrings describe what `emit()`
+  is actually for (#284).
+- The static-export logo opts out of `no-img-element` explicitly, so the
+  frontend lint gate stays green without a blanket rule change (#268).
+
+### Dependency and CI maintenance
+
+- Dependabot bumps across the frontend graph (vitest 2 → 5 with a vite 6.4
+  floor, jsdom 25 → 30, recharts 2 → 3, `@types/node` 20 → 26, lucide-react,
+  `@testing-library/jest-dom`) and the workflow graph (`actions/setup-node`,
+  `actions/setup-python`, `actions/upload-pages-artifact`,
+  `astral-sh/setup-uv`), plus dependabot rules that stop it opening major
+  TypeScript and ESLint bumps that would need a migration of their own.
 
 ## 2.31.0
 
