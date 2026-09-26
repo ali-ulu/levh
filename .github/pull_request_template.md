@@ -36,3 +36,4 @@ Say "none — docs only" when that is true; it is a useful answer.
 - [ ] Local gates green: `EMBEDDER_MODE=hash python -m pytest -q` and `python -m ruff check .`
 - [ ] Frontend gates run if `frontend/` changed: `npm ci && npm run build`
 - [ ] No secrets, runtime artifacts, or generated exports committed
+- [ ] Commits are signed off (`git commit -s`) per the DCO in CONTRIBUTING.md

@@ -108,3 +108,29 @@ Follow the existing history: a type prefix, a lowercase summary, and the issue
 number in parentheses — for example `fix: debounce write-triggered rebuild
 retries (#166)`. The `feat` / `fix` / `docs` / `refactor` / `test` / `chore`
 prefixes are what the changelog is generated from.
+
+## Sign-off (Developer Certificate of Origin)
+
+Every commit must carry a `Signed-off-by` line certifying the
+[Developer Certificate of Origin](https://developercertificate.org/) — that you
+wrote the change or otherwise have the right to submit it under the project's
+license.
+
+```bash
+git commit -s -m "fix: ..."
+```
+
+This produces the trailer from your configured `user.name` and `user.email`:
+
+```
+Signed-off-by: Your Name <you@example.com>
+```
+
+The line is not a copyright assignment. It is what lets the project keep
+licensing coherent: LEVH is AGPL-3.0-or-later, and a contribution that arrives
+with no provenance cannot later be relicensed or offered under a commercial
+term without going back to every author. `git commit -s` costs one flag and
+avoids that.
+
+To add the trailer to commits you already made, use `git rebase --signoff
+<base>` before opening the pull request.

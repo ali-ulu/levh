@@ -2,9 +2,34 @@
 
 ## Unreleased
 
-### Placeholder for future changes (#103)
+### Docs: one tool count, and a test that keeps it that way (#103)
 
-- TBD
+- The README's documentation table said "All 69 tools" while the feature list
+  four sections above said 73, and the landing page at `docs/index.html` still
+  advertised 59. Three answers to one question, none of them checked.
+  `README.md` and `docs/index.html` now say 73, and
+  `test_no_published_prose_quotes_a_stale_tool_count` reads every count in the
+  root `*.md`, the published `docs/*.md` and the landing page against
+  `server.tools.profiles.profile_counts()`, so the next tool cannot leave one
+  behind. `CHANGELOG.md` is excluded: each entry records the count that release
+  actually shipped, and forcing those to today's number would falsify history.
+
+### Contributing: require DCO sign-off (#103)
+
+- `CONTRIBUTING.md` now asks for `git commit -s`, and the pull request template
+  carries it as a checklist item. The project is AGPL-3.0-or-later; a
+  contribution with no provenance cannot later be relicensed or offered under a
+  commercial term without going back to every author, and the sign-off is what
+  keeps that door open. It is not a copyright assignment.
+
+### Frontend: an automated accessibility gate (#103)
+
+- Accessibility coverage was manual and thin — 18 `aria-label` attributes
+  across 10 files and 18 pages, with no automated check. `jest-axe` is wired into
+  the vitest setup and `src/components/ui.a11y.test.tsx` runs axe over the UI
+  primitives every page is built from: labelled form controls, a titled dialog,
+  and a card. One test asserts axe *rejects* an unlabelled input, so a broken
+  matcher registration cannot masquerade as a clean suite.
 
 ## 2.32.0
 

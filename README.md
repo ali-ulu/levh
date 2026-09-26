@@ -167,7 +167,7 @@ levh mcp init my-server --with-memory   # scaffold an MCP server on this databas
 | [Platform Setup](docs/mcp-client-config.md) | Claude Desktop, Claude Code, Cursor, Windsurf, VS Code (Cline), jcode, omp, opencode, Codex, Hermes |
 | [Configuration](docs/configuration.md) | Environment variables, precedence, Docker |
 | [Architecture](docs/ARCHITECTURE.md) | Layers, engine, scoring internals |
-| [MCP Tools](docs/mcp-tools.md) | All 69 tools and the profile bands |
+| [MCP Tools](docs/mcp-tools.md) | All 73 tools and the profile bands |
 | [REST API](docs/api-reference.md) | Every endpoint |
 | [CLI](docs/cli.md) | Every command |
 | [Evaluation](docs/memory-evaluation.md) | Recall benchmark, golden fixtures, dogfood |

@@ -163,14 +163,48 @@ def test_no_document_quotes_a_hand_maintained_test_count():
     )
 
 
-@pytest.mark.parametrize("doc_name", ["getting-started.md"])
-def test_no_document_quotes_a_stale_tool_count(doc_name):
+# The tool count is quoted in prose, which is exactly what goes stale: the
+# README said 69 in its doc table while saying 73 four sections above, and the
+# landing page still advertised 59. One number, three answers. The count now
+# comes from the registry and is checked everywhere a reader meets it, so a
+# tool added or removed cannot leave one of them behind.
+_TOOL_COUNT_RE = re.compile(r"(\d+) (?:MCP )?tools")
+
+
+def _published_prose_files() -> list[Path]:
+    """Every reader-facing file that quotes a tool count.
+
+    Root `*.md` (the README), the published `docs/*.md`, and `docs/index.html`
+    — the landing page deployed to Pages, which is the first place a visitor
+    meets the number and the last place anyone thought to update.
+
+    `CHANGELOG.md` is excluded on purpose: it is a historical ledger, and each
+    entry records the count that release actually shipped (39, 41, 59 …).
+    Forcing those to today's number would falsify the history this check exists
+    to protect.
+    """
+    root = [p for p in sorted(DOCS.parent.glob("*.md")) if p.name != "CHANGELOG.md"]
+    return root + sorted(DOCS.glob("*.md")) + [DOCS / "index.html"]
+
+
+def test_no_published_prose_quotes_a_stale_tool_count():
     from server.tools.profiles import profile_counts
 
     total = profile_counts()["full"]
-    text = (DOCS / doc_name).read_text(encoding="utf-8")
-    stale = [m for m in re.findall(r"(\d+) (?:MCP )?tools", text) if int(m) != total]
-    assert not stale, f"{doc_name} quotes {stale} tools; there are {total}"
+    offenders: list[str] = []
+    for path in _published_prose_files():
+        if not path.exists():
+            continue
+        text = path.read_text(encoding="utf-8", errors="replace")
+        offenders += [
+            f"{path.name}: {m.group(0)!r}"
+            for m in _TOOL_COUNT_RE.finditer(text)
+            if int(m.group(1)) != total
+        ]
+    assert not offenders, (
+        f"stale tool counts (there are {total}): {offenders}; "
+        "derive the number from server.tools.profiles instead of quoting it"
+    )
 
 
 # `docs/error-handling.md` announced the count of `except Exception` sites in

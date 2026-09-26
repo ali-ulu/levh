@@ -95,6 +95,12 @@ reproduces the extraction and fails if the suffix returns.
   `.ruff.toml` selects correctness rules only — do not reformat untouched code.
 - Do not commit runtime artifacts: `.env`, `*.db`, `.next`, `node_modules`,
   logs, generated exports.
+- `npm run build` dirties tracked files: `frontend/next-env.d.ts`,
+  `frontend/tsconfig.json` and every `frontend/out/**` page. The build is the
+  source of truth for the packaged `server/dashboard/`, so the churn is real
+  output, not corruption — but it is not part of a feature change. Run
+  `git checkout -- frontend/next-env.d.ts frontend/tsconfig.json frontend/out`
+  before staging, or the diff carries hundreds of regenerated files.
 - Root-level and `docs/*.md` files are checked by
   `tests/test_docs_match_code.py`: relative links must resolve, prose references
   to `tests/<file>.py` must exist, and internal debt inventories belong under
