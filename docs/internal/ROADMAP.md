@@ -44,14 +44,14 @@ numbered findings, and because each one is also a candidate revenue surface.
 
 | Item | Topic | State | Next step | Reference |
 | --- | --- | --- | --- | --- |
-| connectors | Encrypted backup plus sync connectors (Jira, Linear, Slack, GitHub) for automatic memory accumulation | deferred | Decide whether sync is pull-on-demand or a background worker before writing a connector; `cryptography` is already a core dependency for passphrase-encrypted backups, so the encryption half is unblocked. | #298 |
+| connectors | Slack sync connector | deferred | Jira, Linear and GitHub connectors now exist, and the pull-on-demand question is settled by the existing `ingest_items` sync framework — no worker is planned. Slack is the remaining one, and it needs OAuth-style bot credentials plus a channel-history paging decision before it is written. | #298 |
 | typescript-sdk | TypeScript SDK over the REST and MCP surface | deferred | Decide whether it is generated from `openapi.json` or hand-written; a generated client is the cheaper default and `openapi.json` is already committed. | #298 |
 | multi-user-postgres | Multi-user auth, tenancy, and a Postgres backend | deferred | Blocked on the design issue; identity must be designed before storage or the schema encodes single-principal assumptions. | #302 |
 
 ## Why these are deferred rather than started
 
-Every item above except the connectors is gated on one of two design decisions
-that are open on purpose:
+Every item above except the Slack connector is gated on one of two design
+decisions that are open on purpose:
 
 - **Tenancy.** `LEVH_TOKEN` gates the whole server as a single principal — it
   identifies no user, workspace, or role. Team features and a hosted tier both
@@ -61,5 +61,7 @@ that are open on purpose:
   surfaces (support/SLA, hosted sync, team workspace, SSO + metering) are ordered
   by how little they disturb the local-first core. See #298.
 
-The connectors and the TypeScript SDK are the two items that do **not** need
-either decision first, which is why they are the cheapest to resume.
+The connectors and the TypeScript SDK are the items that do **not** need either
+decision first, which is why they are the cheapest to resume. Jira and Linear
+landed on that reasoning: they cost no architecture, and the sync framework they
+plug into already existed.

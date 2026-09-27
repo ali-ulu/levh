@@ -2,6 +2,28 @@
 
 ## Unreleased
 
+### Connectors: Jira and Linear, pull-on-demand
+
+- Two connectors were registered but did not exist: the report's connector list
+  named Jira and Linear, and `docs/connectors.md` promised them nowhere. Both now
+  exist, follow the `github`/`notion` shape (httpx, no SDK), and are registered in
+  `server/connectors/__init__.py`, so they appear in `list_connectors()`, the
+  `/api/connectors` routes, and `import_from_app`.
+- `jira` uses Jira Cloud REST API v3. The legacy `GET /rest/api/3/search` is
+  deprecated in favour of `/rest/api/3/search/jql`, and the default JQL is
+  `updated >= -90d` — a first sync must not walk an entire site by accident.
+  Atlassian Document Format descriptions are flattened to text, because a nested
+  ADF tree stored as-is is unsearchable.
+- `linear` uses the GraphQL API with cursor pagination; `team_ids` and
+  `project_ids` translate into Linear's `IssueFilter`.
+- Both are capped at 100 issues by default and stop on a short page, so a single
+  invocation is bounded. Sync is one fetch per call — LEVH has no scheduler, and
+  the roadmap's "pull-on-demand or worker" question is answered by the framework
+  that already exists: on-demand.
+- Covered by `tests/test_jira_linear_connectors.py`, which drives the real
+  connector code against `httpx.MockTransport` and asserts the outgoing request
+  (auth header, JQL, filter, cursor) as well as the parsed memory.
+
 ### Pages: retire the GitHub Pages deployment (#103)
 
 - `deploy-pages.yml` published `docs/` to Pages, and the custom domain

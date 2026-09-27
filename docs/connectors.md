@@ -10,6 +10,8 @@ import_from_app("transcript",  config={"transcript_path": "/path/to/meeting.vtt"
 import_from_app("notion",      config={"api_key": "ntn_xxx", "database_ids": ["..."]})
 import_from_app("obsidian",    config={"vault_path": "/path/to/vault"})
 import_from_app("github",      config={"token": "ghp_xxx", "repos": ["owner/repo"]})
+import_from_app("jira",        config={"base_url": "https://x.atlassian.net", "email": "me@x.com", "api_token": "..."})
+import_from_app("linear",      config={"api_key": "lin_api_xxx", "team_ids": ["..."]})
 import_from_app("local_files", config={"directory": "/path/to/project"})
 ```
 
@@ -31,3 +33,21 @@ your machine:
   *"what did we decide in the roadmap call?"*. Options: `summarize`, `max_chars`.
 
 Or use the **Import from Apps** panel in the dashboard's Settings page.
+
+**Jira & Linear — the tracker pair** (pull-on-demand, no background worker):
+
+- **Jira** (`jira`): Jira Cloud REST API v3. Each issue → a memory led by
+  `KEY: summary`, with status, type, assignee, priority, and the description
+  (Atlassian Document Format is flattened to text). Requires `base_url`,
+  `email`, and `api_token` (or `JIRA_BASE_URL` / `JIRA_EMAIL` / `JIRA_API_TOKEN`).
+  Defaults to a bounded `updated >= -90d` JQL so a first sync cannot walk an
+  entire site; override with `jql`. Options: `max_issues`, `include_comments`.
+- **Linear** (`linear`): Linear GraphQL API. Each issue → a memory led by
+  `IDENTIFIER: title`, with state, assignee, team, project, and labels. Requires
+  `api_key` (or `LINEAR_API_KEY`). Options: `team_ids`, `project_ids`,
+  `max_issues`, `include_comments`.
+
+Both run only when you call `import_from_app` (or the sync route) — there is no
+scheduler in LEVH, so "sync" means one fetch per invocation. Repeat calls are
+safe: the admission gate dedupes, and `/api/connectors/sync` records last-synced
+state per connector.

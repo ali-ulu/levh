@@ -21,17 +21,21 @@ def register(mcp: FastMCP, engine: MemoryEngine) -> None:
         config: str = "{}",
         importance: float = 0.5,
     ) -> str:
-        """Import data from an external app (local files, Obsidian, Notion, GitHub).
+        """Import data from an external app.
 
         Args:
             connector: Connector name — one of "local_files", "obsidian",
-                       "notion", "github".
+                       "notion", "github", "jira", "linear", plus the offline
+                       "calendar", "email" and "transcript" importers.
             config: JSON string of connector-specific configuration.
                     Examples:
                       local_files:  {"directory": "/path/to/project"}
                       obsidian:     {"vault_path": "/path/to/vault"}
                       notion:       {"api_key": "ntn_...", "database_ids": ["..."]}
                       github:       {"token": "ghp_...", "repos": ["owner/repo"]}
+                      jira:         {"base_url": "https://x.atlassian.net",
+                                     "email": "me@x.com", "api_token": "..."}
+                      linear:       {"api_key": "lin_api_...", "team_ids": ["..."]}
             importance: Default importance for imported memories (0-1). Default 0.5.
         """
         import json

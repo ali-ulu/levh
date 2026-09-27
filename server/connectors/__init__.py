@@ -30,6 +30,8 @@ def _ensure_registry() -> dict[str, type[BaseConnector]]:
     from .calendar import CalendarConnector
     from .email_connector import EmailConnector
     from .transcript import TranscriptConnector
+    from .jira import JiraConnector
+    from .linear import LinearConnector
 
     _REGISTRY = {
         LocalFilesConnector.name: LocalFilesConnector,
@@ -39,6 +41,8 @@ def _ensure_registry() -> dict[str, type[BaseConnector]]:
         CalendarConnector.name: CalendarConnector,
         EmailConnector.name: EmailConnector,
         TranscriptConnector.name: TranscriptConnector,
+        JiraConnector.name: JiraConnector,
+        LinearConnector.name: LinearConnector,
     }
     return _REGISTRY
 
