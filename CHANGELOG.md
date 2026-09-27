@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+### Pages: retire the GitHub Pages deployment (#103)
+
+- `deploy-pages.yml` published `docs/` to Pages, and the custom domain
+  `levh.ai-ulu.com` was never claimed — the site answered 404 on the domain
+  while `ali-ulu.github.io/levh/` worked, and `pyproject.toml` shipped both as
+  the package Homepage and Documentation URL. The deployment is removed and the
+  three places that pointed at it now point at the README: the PyPI project
+  URLs, the README badge, and the landing page's `og:url`.
+- `docs/index.html` is kept as the landing page source so it can be hosted
+  elsewhere later; nothing in the repo serves it now.
+
 ### Docs: one tool count, and a test that keeps it that way (#103)
 
 - The README's documentation table said "All 69 tools" while the feature list

@@ -9,7 +9,7 @@
   <img src="https://img.shields.io/badge/MCP-Protocol-blue?logo=anthropic" alt="MCP">
   <img src="https://img.shields.io/badge/Python-3.11%2B-3776ab?logo=python" alt="Python">
   <img src="https://img.shields.io/badge/License-AGPL--3.0--or--later-green" alt="License">
-  <a href="https://levh.ai-ulu.com/"><img src="https://img.shields.io/badge/website-levh.ai--ulu.com-0D1117?logo=googlechrome&logoColor=white" alt="LEVH website"></a>
+  <a href="https://github.com/ali-ulu/levh#readme"><img src="https://img.shields.io/badge/docs-README-0D1117?logo=readme&logoColor=white" alt="LEVH documentation"></a>
 </p>
 
 <p align="center">
