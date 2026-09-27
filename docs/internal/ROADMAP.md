@@ -38,7 +38,7 @@ numbered findings, and because each one is also a candidate revenue surface.
 | Item | Topic | State | Next step | Reference |
 | --- | --- | --- | --- | --- |
 | connectors | Slack sync connector | deferred | Jira, Linear and GitHub connectors now exist, and the pull-on-demand question is settled by the existing `ingest_items` sync framework — no worker is planned. Slack is the remaining one, and it needs OAuth-style bot credentials plus a channel-history paging decision before it is written. | #298 |
-| typescript-sdk | TypeScript SDK over the REST and MCP surface | done | — | #306 |
+| typescript-sdk | TypeScript SDK over the REST and MCP surface | done | — | #307 |
 | multi-user-postgres | Multi-user auth, tenancy, and a Postgres backend | deferred | Blocked on the design issue; identity must be designed before storage or the schema encodes single-principal assumptions. | #302 |
 
 ## Why these are deferred rather than started
