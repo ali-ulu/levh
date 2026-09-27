@@ -20,14 +20,14 @@ quietly dropped. Adding a row without a next step is what that test refuses.
 
 | Item | Topic | State | Next step | Reference |
 | --- | --- | --- | --- | --- |
-| 4 | Frontend i18n (more than one UI language) | deferred | Open a design issue before any code: scope is the ~20 pages plus the shared UI primitives, and the string-extraction mechanism is the decision that has to come first. | |
+| 4 | Frontend i18n (more than one UI language) | deferred | Design issue #308 is open; the extraction mechanism must be settled there before any page is converted. | #308 |
 | 5 | End-to-end tests over a real server and browser | done | — | #299 |
 | 6 | Page-level accessibility coverage (axe over each route) | done | — | #299 |
 | 8 | Not recorded at decision time | skipped | — | |
 | 9 | Not recorded at decision time | cancelled | — | |
 | 10 | Not recorded at decision time | ignored | — | |
 | 11 | Not recorded at decision time | skipped | — | |
-| B | Commercial surfaces and a shared/team memory server | proposed | Maintainer decision on the two design issues; no code until the tenancy shape is agreed. | #298, #302 |
+| B | Commercial surfaces and a shared/team memory server | proposed | Concrete revenue paths and the features each requires are proposed in #309, on top of the #298/#302 design decisions; no code until the tenancy shape is agreed. | #298, #302, #309 |
 
 ## Backlog workstreams
 
