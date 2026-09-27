@@ -3,9 +3,16 @@
 Tarih: 2026-09-27 · Kapsam: dış rapor maddeleri · Tür: karar kaydı
 
 This is the decision record for the items in the external quality/feature report
-that are **not** being implemented now. It exists so that a decision — "skipped",
-"cancelled", "deferred", "proposed" — is a fact in the tree instead of something
-that has to be reconstructed from a conversation or an issue thread.
+of 2026-09-27 that are **not** being implemented now. It exists so that a
+decision — "skipped", "cancelled", "deferred", "proposed" — is a fact in the
+tree instead of something that has to be reconstructed from a conversation or an
+issue thread.
+
+The `skipped` / `cancelled` / `ignored` rows below are the maintainer's calls on
+items that were judged out of scope for a code change. `skipped` and `ignored`
+mean "not now and not tracked further"; the distinction is that `ignored` records
+an item the maintainer considers out of scope on its merits (there is nothing to
+revisit), while `skipped` just defers the decision.
 
 It is internal on purpose: a dated list of open gaps reads as a product claim
 when it reaches `docs/*.md`, which is why it lives here alongside the other
@@ -23,10 +30,10 @@ quietly dropped. Adding a row without a next step is what that test refuses.
 | 4 | Frontend i18n (more than one UI language) | deferred | Open a design issue before any code: scope is the ~20 pages plus the shared UI primitives, and the string-extraction mechanism is the decision that has to come first. | |
 | 5 | End-to-end tests over a real server and browser | done | — | #299 |
 | 6 | Page-level accessibility coverage (axe over each route) | done | — | #299 |
-| 8 | Not recorded at decision time | skipped | — | |
-| 9 | Not recorded at decision time | cancelled | — | |
-| 10 | Not recorded at decision time | ignored | — | |
-| 11 | Not recorded at decision time | skipped | — | |
+| 8 | Bus factor: a second maintainer | skipped | — | |
+| 9 | PostgreSQL / pgvector added as a standalone scale fix, independent of tenancy | cancelled | — | |
+| 10 | SOC 2 / compliance posture | ignored | — | |
+| 11 | Revenue strategy | skipped | — | |
 | B | Commercial surfaces and a shared/team memory server | proposed | Maintainer decision on the two design issues; no code until the tenancy shape is agreed. | #298, #302 |
 
 ## Backlog workstreams

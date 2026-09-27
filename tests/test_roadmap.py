@@ -96,6 +96,18 @@ def test_done_row_points_at_its_change(row):
     )
 
 
+def test_every_report_item_is_recorded():
+    """The report numbered 11 items plus B; a decision record that silently
+    omits one is how an item gets lost. The set is checked explicitly so that
+    adding item 12, or dropping a row, is a visible change to this test."""
+    expected = {"4", "5", "6", "8", "9", "10", "11", "B"}
+    recorded = {item for item, _, _, _, _ in _rows()}
+    assert expected <= recorded, (
+        f"report items missing from docs/internal/ROADMAP.md: "
+        f"{sorted(expected - recorded)}"
+    )
+
+
 def test_roadmap_is_listed_in_the_internal_index():
     """docs/internal/README.md is the entry point for the folder; a new
     inventory that is not named there is one a reader will not find."""
