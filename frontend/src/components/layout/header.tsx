@@ -1,10 +1,11 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { ThemeSwitcher } from "@/components/layout/theme-switcher";
+import { CommandPalette } from "@/components/command-palette";
 import {
   Dialog,
   DialogContent,
@@ -19,9 +20,9 @@ const HEALTH_POLL_MS = 30000;
 
 export function Header() {
   const [online, setOnline] = useState<boolean | null>(null);
-  const [query, setQuery] = useState("");
   const [helpOpen, setHelpOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -42,26 +43,58 @@ export function Header() {
     };
   }, []);
 
-  const submit = (event: FormEvent) => {
-    event.preventDefault();
-    const clean = query.trim();
-    if (!clean) return;
-    router.push(`/memories/?q=${encodeURIComponent(clean)}`);
-  };
+  // The help dialog lists ⌘K and ⌘⇧A, but nothing listened for them — the
+  // documented shortcuts were decoration. Wire both here, on the component
+  // that owns the search button and the capture link they map to.
+  useEffect(() => {
+    const isEditable = (target: EventTarget | null) => {
+      const el = target as HTMLElement | null;
+      if (!el) return false;
+      return (
+        el.tagName === "INPUT" ||
+        el.tagName === "TEXTAREA" ||
+        el.tagName === "SELECT" ||
+        el.isContentEditable
+      );
+    };
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      const mod = event.metaKey || event.ctrlKey;
+      if (!mod) return;
+
+      const key = event.key.toLowerCase();
+      if (key === "k") {
+        // ⌘K is ours even from a text field — it is the escape hatch out of
+        // typing. ⌘⇧A is not: inside a field it is a select-all, and stealing
+        // it would break editing.
+        event.preventDefault();
+        setPaletteOpen((open) => !open);
+      } else if (key === "a" && event.shiftKey && !isEditable(event.target)) {
+        event.preventDefault();
+        router.push("/#quick-capture");
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [router]);
 
   return (
     <>
     <header className="premium-header sticky top-0 z-30 flex h-[68px] items-center gap-4 px-4 sm:px-6 lg:px-8">
-      <form onSubmit={submit} className="relative hidden w-full max-w-xl md:block">
-        <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <input
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="Search memories, people, projects…"
-          className="premium-search h-10 w-full rounded-xl border pl-10 pr-16 text-sm outline-none transition focus:ring-2 focus:ring-primary/20"
-        />
-        <span className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md border bg-background/60 px-1.5 py-0.5 text-[10px] text-muted-foreground">⌘ K</span>
-      </form>
+      {/* One search surface, not two. This was a real <form> that navigated to
+          /memories?q= on Enter while the ⌘K badge beside it promised a palette
+          that did not exist. It is now a button that opens the palette, which
+          owns recall, keyboard navigation and the result list. */}
+      <button
+        type="button"
+        onClick={() => setPaletteOpen(true)}
+        className="premium-search relative hidden h-10 w-full max-w-xl items-center gap-2 rounded-xl border pl-10 pr-16 text-left text-sm text-muted-foreground transition focus:ring-2 focus:ring-primary/20 md:flex"
+      >
+        <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2" />
+        <span>Search memories, people, projects…</span>
+        <span className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md border bg-background/60 px-1.5 py-0.5 text-[10px]">⌘ K</span>
+      </button>
 
       <div className="ml-auto flex items-center gap-2 sm:gap-3">
         {online !== null && (
@@ -135,6 +168,8 @@ export function Header() {
         </div>
       </DialogContent>
     </Dialog>
+
+    <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
     </>
   );
 }

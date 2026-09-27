@@ -96,6 +96,20 @@
   mismatch between what the release commits and what `_dashboard_dir()` prefers
   is tracked separately.
 
+### Frontend: the search shortcut is real now (#103)
+
+- The header printed "⌘ K — Search memories" and the Quick Help dialog listed
+  it alongside ⌘⇧A, but no listener existed for either key: the badge was
+  decoration and the shortcut did nothing. A documented shortcut that is dead
+  reads as a broken app rather than an unbound key. `CommandPalette` now backs
+  the badge — a dialog over the same recall endpoint, with debounced search,
+  arrow-key navigation, Enter to open the memory and a live-region result
+  count. ⌘K toggles and ⌘⇧A reaches quick capture, but only outside a text
+  field, where that combination is select-all and stealing it would break
+  editing. The header's inline `<form>` was removed rather than kept as a
+  second, divergent search surface. Covered by `palette.spec.ts` (browser) and
+  `command-palette.a11y.test.tsx` (named dialog, labelled field).
+
 ## 2.32.0
 
 ### Frontend toolchain: Tailwind v4, ESLint 9, Next 16 (#188, #186, #189)
