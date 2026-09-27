@@ -13,8 +13,14 @@ test("Cmd/Ctrl+K opens the search palette, which finds a stored memory", async (
   request,
 }) => {
   const needle = `palette-${Date.now()}`;
+  // Deliberately not a "The X ... this memory" sentence: the other specs use
+  // that shape, and the hash fallback embedder scores two such sentences at
+  // ~0.91 — above the 0.90 duplicate-review threshold — so the second one is
+  // rejected by the admission gate. Distinct wording keeps each spec's fixture
+  // independent of what the others wrote.
+  const content = `Rollout note ${needle}: the release captain moved the deploy to Thursday.`;
   const stored = await request.post(`${NOAUTH_URL}/api/memories`, {
-    data: { content: `The ${needle} token belongs to this memory.` },
+    data: { content },
   });
   expect(stored.ok()).toBeTruthy();
 
@@ -33,6 +39,16 @@ test("Cmd/Ctrl+K opens the search palette, which finds a stored memory", async (
   const result = dialog.getByRole("button", { name: new RegExp(needle) });
   await expect(result).toBeVisible();
 
+  // Enter opens the highlighted row, and the palette highlights the first
+  // result — but recall is a semantic ranking, and with the hash fallback
+  // embedder the top hit for a needle is not reliably the needle's own memory.
+  // Walk the highlight down to the row this test stored, so the keyboard path
+  // is asserted without depending on where the ranking happened to place it.
+  const rows = dialog.getByRole("listitem").getByRole("button");
+  const index = (await rows.allInnerTexts()).findIndex((text) => text.includes(needle));
+  expect(index).toBeGreaterThanOrEqual(0);
+  for (let i = 0; i < index; i++) await page.keyboard.press("ArrowDown");
+
   // Enter on the highlighted row is the keyboard path a power user takes; it
   // must land on the memory, not just close the palette.
   await page.keyboard.press("Enter");
@@ -40,7 +56,7 @@ test("Cmd/Ctrl+K opens the search palette, which finds a stored memory", async (
   // The palette navigates with the memory's full content as the query, so
   // assert the shape of the URL and that the memory is on the page.
   await expect(page).toHaveURL(/\/memories\/\?q=.+/);
-  await expect(page.getByText(`The ${needle} token belongs to this memory.`)).toBeVisible();
+  await expect(page.getByText(content)).toBeVisible();
 });
 
 test("Cmd/Ctrl+K is a toggle, and Escape closes the palette", async ({ page }) => {
