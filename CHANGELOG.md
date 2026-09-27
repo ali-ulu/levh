@@ -13,6 +13,19 @@
 - `docs/index.html` is kept as the landing page source so it can be hosted
   elsewhere later; nothing in the repo serves it now.
 
+### Dashboard: serve an export that carries its bundles (#103)
+
+- A fresh checkout served a blank dashboard. `frontend/out` is committed as HTML
+  shells while its content-hashed `_next` bundles are gitignored and kept out of
+  the release commits, and `_dashboard_dir()` accepted the first directory with
+  an `index.html` — so it chose that partial export, `/` answered 200, and every
+  chunk 404'd while React never hydrated. The packaged copy under
+  `server/dashboard` was complete and never reached. `_dashboard_dir()` now
+  requires `_next/static` before it trusts an export and falls through to the
+  packaged copy; an export with an `index.html` but no bundles is still returned
+  as a last resort, so an intentionally bundle-less directory stays servable.
+  Covered by `tests/test_dashboard_dir.py`.
+
 ### Docs: one tool count, and a test that keeps it that way (#103)
 
 - The README's documentation table said "All 69 tools" while the feature list

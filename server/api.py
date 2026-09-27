@@ -280,22 +280,45 @@ app.mount("/api/mcp", mcp_sse.sse_app())
 
 # ── Dashboard static files (built Next.js export) ──────────────────
 
+def _dashboard_candidates() -> list[str]:
+    """Dashboard export directories in preference order (override first)."""
+    return [
+        get_env("LEVH_DASHBOARD_DIR", "").strip(),
+        os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "frontend", "out"),
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "dashboard"),
+    ]
+
+
 def _dashboard_dir() -> str | None:
     """Return the first available dashboard static export directory.
 
     Source checkouts serve ``frontend/out``. Built wheels serve the packaged
     copy under ``server/dashboard``. ``LEVH_DASHBOARD_DIR`` can override
     both for Docker or custom deployments.
+
+    ``index.html`` alone is not enough to call an export servable. ``frontend/out``
+    is committed as HTML shells while its content-hashed ``_next`` bundles are
+    gitignored and excluded from the release commits, so a fresh checkout has an
+    ``index.html`` that points at bundles no process can serve: ``/`` answers 200
+    while every chunk 404s and React never hydrates. Preferring a candidate that
+    actually carries its bundles keeps that partial export from shadowing the
+    complete packaged copy. A candidate with neither ``_next`` nor ``index.html``
+    is still rejected; one with ``index.html`` but no ``_next`` is a last resort
+    so an intentionally bundle-less directory stays servable.
     """
-    candidates = [
-        get_env("LEVH_DASHBOARD_DIR", "").strip(),
-        os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "frontend", "out"),
-        os.path.join(os.path.dirname(os.path.abspath(__file__)), "dashboard"),
-    ]
-    for candidate in candidates:
-        if candidate and os.path.isdir(candidate) and os.path.exists(os.path.join(candidate, "index.html")):
+    incomplete: str | None = None
+    for candidate in _dashboard_candidates():
+        if not candidate or not os.path.isdir(candidate):
+            continue
+        if not os.path.exists(os.path.join(candidate, "index.html")):
+            continue
+        # Next writes its client bundles under `_next/static`; `_next` alone can
+        # exist as an empty directory.
+        if os.path.isdir(os.path.join(candidate, "_next", "static")):
             return candidate
-    return None
+        if incomplete is None:
+            incomplete = candidate
+    return incomplete
 
 
 class DashboardStaticFiles(StaticFiles):
