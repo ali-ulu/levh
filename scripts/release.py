@@ -50,6 +50,11 @@ VERSION_SITES = [
     ("frontend/package.json", re.compile(r'^(  "version": ")([^"]+)(")', re.MULTILINE), FULL),
     ("server/api.py", re.compile(r'(version=")([^"]+)(")'), FULL),
     (
+        "sdk/typescript/package.json",
+        re.compile(r'^(  "version": ")([^"]+)(")', re.MULTILINE),
+        FULL,
+    ),
+    (
         "frontend/src/components/layout/sidebar.tsx",
         re.compile(r"(LEVH Engine v)(\d+\.\d+)()"),
         MINOR,
@@ -204,6 +209,13 @@ def assert_consistent() -> None:
         )
     if f"LEVH Engine v{minor}" not in _read("frontend/src/components/layout/sidebar.tsx"):
         problems.append(f"sidebar.tsx not at minor v{minor}")
+
+    sdk_pkg = re.search(r'"version": "([^"]+)"', _read("sdk/typescript/package.json"))
+    if not sdk_pkg or sdk_pkg.group(1) != version:
+        problems.append(
+            f"sdk/typescript/package.json = {sdk_pkg.group(1) if sdk_pkg else '?'} "
+            f"(want {version})"
+        )
 
     # packaged dashboard — scan every emitted asset for a stale badge
     dashboard = REPO_ROOT / "server" / "dashboard"

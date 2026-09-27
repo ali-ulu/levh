@@ -24,6 +24,31 @@
   connector code against `httpx.MockTransport` and asserts the outgoing request
   (auth header, JQL, filter, cursor) as well as the parsed memory.
 
+### TypeScript SDK, generated from the committed contract
+
+- The roadmap deferred a TypeScript SDK on one question: generate it from
+  `openapi.json` or hand-write it. It is generated. The contract is already
+  frozen by `tests/test_openapi_contract.py` and is the thing clients are told
+  to code against, so a generator reading the contract cannot drift from the
+  published API the way a hand-written client would.
+- `scripts/generate_sdk.py` emits `sdk/typescript/src/generated/{types,endpoints}.ts`
+  from `openapi.json` alone. `scripts/release.py` now bumps the SDK's
+  `package.json` too, and `assert_consistent` checks it, so a release cannot
+  leave it behind.
+- What the contract supports is the interesting part: it declares request
+  bodies but **no response schemas** — every 200 is an empty object across all
+  102 operations. So the SDK's request types are exact and its responses are
+  `unknown`. A generated `interface MemoryResponse` would compile and then
+  silently stop matching the server; `unknown` is the honest answer, and
+  `tests/test_typescript_sdk.py` fails the day response models appear, as the
+  prompt to tighten it.
+- The client has no dependencies and no build step: Node 22.6+ strips the type
+  annotations itself, so `node --test` runs the shipped `.ts` files. A
+  published package that a caller can audit in an afternoon.
+- Covered by `tests/test_typescript_sdk.py` (drift, determinism, version,
+  operation-table completeness) and `sdk/typescript/src/client.test.ts`
+  (12 tests over URL building, headers, body serialisation and error mapping).
+
 ### Pages: retire the GitHub Pages deployment (#103)
 
 - `deploy-pages.yml` published `docs/` to Pages, and the custom domain

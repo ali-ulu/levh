@@ -169,6 +169,7 @@ levh mcp init my-server --with-memory   # scaffold an MCP server on this databas
 | [Architecture](docs/ARCHITECTURE.md) | Layers, engine, scoring internals |
 | [MCP Tools](docs/mcp-tools.md) | All 73 tools and the profile bands |
 | [REST API](docs/api-reference.md) | Every endpoint |
+| [TypeScript SDK](docs/typescript-sdk.md) | Typed client, generated from the contract |
 | [CLI](docs/cli.md) | Every command |
 | [Evaluation](docs/memory-evaluation.md) | Recall benchmark, golden fixtures, dogfood |
 | [Testing](docs/testing.md) | Running the suite |

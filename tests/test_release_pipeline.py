@@ -77,6 +77,10 @@ def _write_min_tree(root, version, minor, dashboard_badge):
     (root / "server" / "api.py").write_text(
         f'app = FastAPI(version="{version}")\n', encoding="utf-8"
     )
+    (root / "sdk" / "typescript").mkdir(parents=True, exist_ok=True)
+    (root / "sdk" / "typescript" / "package.json").write_text(
+        f'{{\n  "version": "{version}"\n}}\n', encoding="utf-8"
+    )
     (root / "frontend" / "src" / "components" / "layout" / "sidebar.tsx").write_text(
         f"LEVH Engine v{minor}\n", encoding="utf-8"
     )

@@ -252,6 +252,31 @@ jobs:
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=high
 
+  # The TypeScript SDK is a second projection of the frozen `openapi.json`, so
+  # it has to be checked in both directions: the Python suite owns the contract
+  # drift test (it can import the generator), and this job runs the SDK's own
+  # suite and typecheck with a real Node toolchain.
+  #
+  # There is no `npm ci`, because the package has no dependencies — not even dev
+  # ones. Node 22.6+ strips TypeScript types natively, so `node --test` runs the
+  # shipped files directly, and `tsc` is fetched by `npx` as a tool rather than
+  # installed from a lockfile. That keeps a published package's supply-chain
+  # surface empty, which is the point of a client this thin.
+  sdk-typescript:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: sdk/typescript
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+      - name: Test (node --test)
+        run: npm test
+      - name: Typecheck (tsc --noEmit)
+        run: npx --yes -p typescript@5 tsc --noEmit
+
   # End-to-end: the frontend, the HTTP layer and the engine in one process.
   #
   # Every other job tests a slice through a seam — the component suite mocks

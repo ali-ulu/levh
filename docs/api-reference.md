@@ -16,6 +16,11 @@ hidden from the OpenAPI schema and new clients should target `/api/v1`.
 `/api/health` has no version - it is the liveness probe and must stay reachable
 before the versioned surface is known to work.
 
+A typed TypeScript client generated from this same schema is available; see
+[TypeScript SDK](typescript-sdk.md). Note that the schema declares request
+bodies but no response bodies, so the SDK types requests exactly and returns
+responses as `unknown`.
+
 All `/api/v1/*` endpoints except the probes require `X-LEVH-Token` when
 `LEVH_TOKEN` is set. `/api/health` (liveness) and `/api/readyz` (readiness) are
 both exempt: an orchestrator's probe cannot attach a header, and gating them

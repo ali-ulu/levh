@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "skipLibCheck": true
+  },
+  "include": ["src"],
+  // The tests use `node:test` and `node:assert`, whose types live in
+  // `@types/node`. Keeping that out means the shipped package has no
+  // dependencies at all — not even dev ones — at the cost of not
+  // type-checking the test files, which `node --test` runs anyway.
+  "exclude": ["src/**/*.test.ts"]
+}
