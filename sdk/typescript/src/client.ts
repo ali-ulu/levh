@@ -39,6 +39,21 @@ export interface CallOptions {
   signal?: AbortSignal;
 }
 
+/**
+ * Drop trailing slashes so joining with an operation path cannot produce `//`.
+ *
+ * Written as a scan rather than `.replace(/\/+$/, "")`: that regex is
+ * polynomial on pathological input (CodeQL js/polynomial-redos), and the call
+ * site is a caller-supplied `baseUrl`.
+ */
+function trimTrailingSlashes(value: string): string {
+  let end = value.length;
+  while (end > 0 && value[end - 1] === "/") {
+    end -= 1;
+  }
+  return value.slice(0, end);
+}
+
 /** A non-2xx response. `detail` carries the server's error body when it sent one. */
 export class LevhApiError extends Error {
   readonly status: number;
@@ -70,7 +85,7 @@ export class LevhClient {
   readonly #fetch: typeof globalThis.fetch;
 
   constructor(options: LevhClientOptions = {}) {
-    this.#baseUrl = (options.baseUrl ?? "").replace(/\/+$/, "");
+    this.#baseUrl = trimTrailingSlashes(options.baseUrl ?? "");
     this.#token = options.token ?? "";
     this.#fetch = options.fetch ?? globalThis.fetch;
 

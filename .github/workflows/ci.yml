@@ -5,6 +5,12 @@ on:
     branches: [main, master]
   pull_request:
 
+# Every job only reads the repository, so the token is scoped to that. Without
+# this block the token inherits the repository default, which can include write
+# scopes (CodeQL actions/missing-workflow-permissions).
+permissions:
+  contents: read
+
 jobs:
   lint:
     runs-on: ubuntu-latest

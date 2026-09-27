@@ -39,6 +39,16 @@ test("builds the URL from the operation table", () => {
   );
 });
 
+test("strips any number of trailing slashes, and only trailing ones", () => {
+  const trailing = new LevhClient({ baseUrl: "http://localhost:8000/////" });
+  assert.equal(trailing.url("health_api_health_get"), "http://localhost:8000/api/health");
+  // A slash inside the path is not a trailing slash and must survive.
+  const inner = new LevhClient({ baseUrl: "http://localhost:8000/levh" });
+  assert.equal(inner.url("health_api_health_get"), "http://localhost:8000/levh/api/health");
+  const none = new LevhClient({ baseUrl: "http://localhost:8000" });
+  assert.equal(none.url("health_api_health_get"), "http://localhost:8000/api/health");
+});
+
 test("drops undefined query values and keeps false/0", () => {
   const client = new LevhClient({ baseUrl: "http://x" });
   const url = client.url("list_memories_api_memories_get_v1", {
