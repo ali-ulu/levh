@@ -251,3 +251,54 @@ jobs:
         run: npm test
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=high
+
+  # End-to-end: the frontend, the HTTP layer and the engine in one process.
+  #
+  # Every other job tests a slice through a seam — the component suite mocks
+  # `@/lib/api`, the backend suite imports the app. None of them would notice
+  # a page calling an endpoint that does not exist, a response field renamed
+  # on one side only, or a static export that does not match the API it ships
+  # with. This job boots `levh serve` on two ports and drives it with a real
+  # browser, so those failures land here instead of on a user's machine.
+  #
+  # It needs both toolchains: Node for Playwright and the export, uv/Python
+  # for the server under test.
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.2.0
+        with:
+          python-version: "3.12"
+          enable-cache: true
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install locked Python environment
+        run: uv sync --frozen --extra dev
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: Install Playwright browser
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+      # Build the export the server will actually serve. start-server.sh would
+      # build it too if it were missing, but doing it here keeps the build
+      # output in the job log where a failure is easy to read.
+      - name: Build dashboard export
+        working-directory: frontend
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
+        run: npm run build
+      - name: End-to-end tests
+        working-directory: frontend
+        run: npm run test:e2e
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v5
+        with:
+          name: playwright-report
+          path: frontend/playwright-report/
+          retention-days: 7

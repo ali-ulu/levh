@@ -225,7 +225,7 @@ export default function MemoriesPage() {
       {/* Filter bar */}
       <div className="flex flex-wrap items-center gap-2">
         <Select value={typeFilter} onValueChange={setTypeFilter}>
-          <SelectTrigger className="w-32">
+          <SelectTrigger className="w-32" aria-label="Memory type">
             <SelectValue placeholder="Type" />
           </SelectTrigger>
           <SelectContent>
@@ -235,7 +235,7 @@ export default function MemoriesPage() {
           </SelectContent>
         </Select>
         <Select value={projectFilter} onValueChange={setProjectFilter}>
-          <SelectTrigger className="w-36">
+          <SelectTrigger className="w-36" aria-label="Project filter">
             <SelectValue placeholder="Project" />
           </SelectTrigger>
           <SelectContent>
@@ -248,7 +248,7 @@ export default function MemoriesPage() {
           </SelectContent>
         </Select>
         <Select value={sourceFilter} onValueChange={setSourceFilter}>
-          <SelectTrigger className="w-36">
+          <SelectTrigger className="w-36" aria-label="Source filter">
             <SelectValue placeholder="Source" />
           </SelectTrigger>
           <SelectContent>

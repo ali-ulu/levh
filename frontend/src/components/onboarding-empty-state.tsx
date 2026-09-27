@@ -183,7 +183,7 @@ export function OnboardingEmptyState({ status, onChanged }: OnboardingEmptyState
             <div className="space-y-1.5">
               <Label>Client</Label>
               <Select value={client} onValueChange={setClient}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger aria-label="Client"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {status.clients.map((item) => (
                     <SelectItem key={item.id} value={item.id}>{item.description}</SelectItem>
@@ -194,7 +194,7 @@ export function OnboardingEmptyState({ status, onChanged }: OnboardingEmptyState
             <div className="space-y-1.5">
               <Label>Tool profile</Label>
               <Select value={profile} onValueChange={setProfile}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger aria-label="Tool profile"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {Object.entries(status.profile_counts).map(([name, count]) => (
                     <SelectItem key={name} value={name}>{name} · {count} tools</SelectItem>

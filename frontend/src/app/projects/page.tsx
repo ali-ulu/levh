@@ -361,7 +361,7 @@ export default function ProjectsPage() {
                   generate(ctxProject, style);
                 }}
               >
-                <SelectTrigger className="w-44">
+                <SelectTrigger className="w-44" aria-label="Context file format">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

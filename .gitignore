@@ -52,6 +52,13 @@ frontend/out/
 frontend/node_modules/
 frontend/.env.local
 
+# Playwright (E2E) artifacts — traces, screenshots and the HTML report are
+# per-run outputs, and the report embeds absolute paths from the machine
+# that produced it.
+frontend/test-results/
+frontend/playwright-report/
+frontend/blob-report/
+
 # Worklog / dev artifacts
 worklog.md
 

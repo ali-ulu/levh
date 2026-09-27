@@ -55,6 +55,47 @@
   and a card. One test asserts axe *rejects* an unlabelled input, so a broken
   matcher registration cannot masquerade as a clean suite.
 
+### Frontend: six comboboxes had no accessible name (#103)
+
+- The primitive-level gate above never rendered a page, so it could not see the
+  filters built on top of the primitives. `src/app/pages.a11y.test.tsx` renders
+  each top-level page and runs axe over the result, and it immediately found
+  three `button-name` (critical) violations on `/memories`. The cause is
+  structural, not cosmetic: Radix `SelectTrigger` renders `role="combobox"`, and
+  ARIA takes an author-provided name for that role — its inner text is not one,
+  so the trigger announces as "combobox" with no label. `aria-label` added to all
+  six triggers (`memories`: memory type, project, source; `projects`: context
+  file format; `onboarding-empty-state`: client, tool profile). Verified against
+  the real browser a11y tree, not just the component harness: axe reports 0
+  violations across the top-level routes and the three comboboxes now expose
+  "Memory type", "Project filter", "Source filter".
+
+### Frontend: end-to-end tests over a real server and browser (#103)
+
+- Every existing frontend test mocks `@/lib/api` and every backend test imports
+  the app directly, so nothing exercised a page against the JSON the server
+  actually returns — the seam where a renamed field or a moved route survives
+  both suites. `frontend/e2e/` boots `levh serve` on two ports (one tokenless,
+  one gated by `LEVH_TOKEN`) against throwaway SQLite databases and drives it
+  with Playwright: the dashboard serves and hydrates, every top-level route
+  renders without a client-side crash, a memory written from the UI appears in
+  the list and in search, a memory written over MCP SSE appears in the
+  dashboard, and the auth gate locks page content until the token is entered and
+  rejects a wrong token at the API. `workers: 1` because the servers share a
+  SQLite file. A new `e2e` CI job runs them after building the export, and
+  uploads the Playwright report when it fails.
+
+### Frontend: the E2E server helper rebuilds an incomplete export (#103)
+
+- `frontend/out/` is committed as HTML shells, but its `_next/` bundles are
+  gitignored and excluded from the release commits, so a fresh checkout has an
+  `index.html` that points at hashes no process can serve. The helper's "build
+  only if `index.html` is missing" check therefore left that partial export in
+  place, and the server answered `/` with 200 while every chunk 404'd. It now
+  requires `out/_next` to exist before trusting the export. The underlying
+  mismatch between what the release commits and what `_dashboard_dir()` prefers
+  is tracked separately.
+
 ## 2.32.0
 
 ### Frontend toolchain: Tailwind v4, ESLint 9, Next 16 (#188, #186, #189)
