@@ -1,0 +1,135 @@
+"""The recall-quality regression gate.
+
+Every unit test can pass while ranking quality quietly drops — a weight tweak
+or a candidate-source change moves hit@k without breaking an assertion. This
+runs the labelled corpus on the real pipeline and fails on a gated metric below
+its floor, so a regression is caught where it is introduced.
+
+Only the model-free (``hash``) mode is gated: it is deterministic — no model, no
+network, no platform-specific arithmetic — so the same corpus yields the same
+numbers on every runner. A semantic mode's numbers depend on the installed
+model and are not gated here.
+"""
+
+from __future__ import annotations
+
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+import pytest
+
+os.environ["EMBEDDER_MODE"] = "hash"
+
+from server.core.benchmark import (
+    GATED_METRICS,
+    QUALITY_FLOORS,
+    quality_failures,
+    run_benchmark,
+)
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+@pytest.fixture(scope="module")
+def metrics():
+    import asyncio
+
+    return asyncio.run(run_benchmark("hash", top_k=5))
+
+
+def test_every_gated_metric_clears_its_floor(metrics):
+    failures = quality_failures(metrics)
+    assert failures == [], "recall quality regressed:\n" + "\n".join(failures)
+
+
+def test_floors_cover_the_metrics_that_carry_a_quality_signal():
+    """A floor set that drifts from the report would gate nothing.
+
+    Every declared metric must be one the harness actually produces, or the
+    check silently passes on a missing key.
+    """
+    assert set(QUALITY_FLOORS["hash"]) == set(GATED_METRICS)
+    assert set(GATED_METRICS) <= {"hit@1", "hit@3", "hit@5", "mrr"}
+
+
+def test_a_metric_below_its_floor_is_reported(metrics):
+    """The gate must fail closed: a dropped metric names the failure, and a
+    missing one is not treated as passing."""
+    regressed = dict(metrics, **{"hit@1": 0.0})
+    assert any("hit@1" in f for f in quality_failures(regressed))
+
+    broken = {k: v for k, v in metrics.items() if k != "mrr"}
+    assert any("mrr missing" in f for f in quality_failures(broken))
+
+
+def test_an_ungated_mode_is_not_judged_by_another_modes_floor():
+    """A semantic run's numbers depend on the installed model; gating them on
+    the hash floors would fail on a machine that simply has a different model."""
+    assert quality_failures({"embedder_mode": "openai", "hit@1": 0.0}) == []
+
+
+def test_ci_runs_the_gate():
+    """The gate only regresses if CI stops calling it — pin the step."""
+    ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    assert "levh benchmark --embedder-mode hash --check" in ci
+
+
+def test_cli_check_exits_non_zero_on_a_regression(monkeypatch, capsys):
+    """The CLI wiring, not just the helper: `--check` must turn a failed gate
+    into a non-zero exit so CI can act on it."""
+    from server.commands import quality
+
+    class _Args:
+        embedder_mode = "hash"
+        top_k = 5
+        check = True
+
+    async def _regressed(**_):
+        return {
+            "embedder_mode": "hash",
+            "hit@1": 0.0,
+            "hit@3": 1.0,
+            "hit@5": 1.0,
+            "mrr": 1.0,
+        }
+
+    monkeypatch.setattr("server.core.benchmark.run_benchmark", _regressed)
+    assert quality.cmd_benchmark(_Args()) == 1
+    assert "FAILED" in capsys.readouterr().out
+
+
+def test_cli_check_passes_on_a_healthy_run(monkeypatch):
+    from server.commands import quality
+
+    class _Args:
+        embedder_mode = "hash"
+        top_k = 5
+        check = True
+
+    async def _healthy(**_):
+        return {
+            "embedder_mode": "hash",
+            "hit@1": 1.0,
+            "hit@3": 1.0,
+            "hit@5": 1.0,
+            "mrr": 1.0,
+        }
+
+    monkeypatch.setattr("server.core.benchmark.run_benchmark", _healthy)
+    assert quality.cmd_benchmark(_Args()) == 0
+
+
+def test_benchmark_module_check_flag_passes_on_the_current_corpus():
+    """The standalone entry point honours `--check` too, since it is the one a
+    user or a different CI can invoke without the package console script."""
+    result = subprocess.run(
+        [sys.executable, "-m", "server.core.benchmark", "--embedder", "hash", "--check"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        env={**os.environ, "EMBEDDER_MODE": "hash"},
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "Quality gate passed" in result.stdout

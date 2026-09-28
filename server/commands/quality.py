@@ -14,10 +14,15 @@ from server.core.runtime_config import resolve_runtime_config
 
 
 def cmd_benchmark(args: argparse.Namespace) -> int:
-    """Run the recall-quality benchmark harness (hit@k / MRR)."""
+    """Run the recall-quality benchmark harness (hit@k / MRR).
+
+    With ``--check`` the run doubles as a quality gate: a gated metric below
+    its floor exits non-zero, which is how CI catches a recall regression on a
+    change that otherwise passes every unit test.
+    """
     import asyncio
 
-    from server.core.benchmark import run_benchmark
+    from server.core.benchmark import QUALITY_FLOORS, quality_failures, run_benchmark
 
     mode = args.embedder_mode or resolve_runtime_config().embedder_mode
     metrics = asyncio.run(run_benchmark(embedder_mode=mode, top_k=args.top_k))
@@ -30,6 +35,18 @@ def cmd_benchmark(args: argparse.Namespace) -> int:
     if metrics["embedder_mode"] == "hash":
         print("  Note: hash embedder is non-semantic — pass --embedder-mode "
               "local/openai for a real quality signal.")
+    if not getattr(args, "check", False):
+        return 0
+    failures = quality_failures(metrics)
+    if failures:
+        print("\n  Quality gate FAILED:")
+        for failure in failures:
+            print(f"    {failure}")
+        return 1
+    if metrics["embedder_mode"] in QUALITY_FLOORS:
+        print(f"\n  Quality gate passed for {metrics['embedder_mode']}.")
+    else:
+        print(f"\n  No quality floor defined for {metrics['embedder_mode']}; nothing to gate.")
     return 0
 
 

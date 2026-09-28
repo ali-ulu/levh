@@ -26,6 +26,22 @@ non-package `scripts/` directory. Run with `EMBEDDER_MODE=local`, `ollama`, or
 `openai` for a meaningful semantic signal; the default `hash` embedder is
 non-semantic and intended for deterministic smoke checks.
 
+### Recall quality gate
+
+`levh benchmark --check` exits non-zero when a gated metric falls below its
+floor, and CI runs it on Python 3.12 (`.github/workflows/ci.yml`, step "Recall
+quality gate"). Unit tests can all pass while ranking quality silently drops —
+a weight tweak or a candidate-source change moves hit@k without changing any
+assertion — so this is the only thing watching the numbers themselves.
+
+The floors live in `server/core/benchmark.py::QUALITY_FLOORS` and only the
+model-free (`hash`) mode is gated: it is deterministic (no model, no network,
+no platform-specific arithmetic), so the same corpus yields the same numbers on
+every runner. A semantic mode's numbers depend on the installed model and are
+not gated. Raising the corpus difficulty means editing the floors in the same
+commit, which keeps the change deliberate and reviewable instead of silently
+erasing the signal.
+
 ## Coverage gates
 
 CI enforces two numeric coverage gates, both only on Python 3.12 (the

@@ -92,6 +92,16 @@ jobs:
         env:
           EMBEDDER_MODE: hash
         run: uv run --frozen python -m pytest -q
+      - name: Recall quality gate (3.12 only)
+        # Unit tests can all pass while ranking quality silently drops: a
+        # weight tweak or a candidate-source change moves the numbers without
+        # changing any assertion. This runs the labelled corpus and fails on a
+        # gated metric below its floor — model-free only, and deterministic, so
+        # the same run is meaningful on any runner.
+        if: matrix.python-version == '3.12'
+        env:
+          EMBEDDER_MODE: hash
+        run: uv run --frozen levh benchmark --embedder-mode hash --check
       - name: API smoke
         env:
           EMBEDDER_MODE: hash

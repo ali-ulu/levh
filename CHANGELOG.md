@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+### Feature: the recall-quality benchmark is a CI gate, not just a report (#78)
+
+- `levh benchmark --check` exits non-zero when a gated metric is below its
+  floor, and CI runs it on Python 3.12. Every unit test can pass while
+  ranking quality quietly drops — a weight tweak or a candidate-source change
+  moves hit@k without breaking an assertion — so this is the only thing
+  watching the numbers.
+- Only the model-free (`hash`) mode is gated. It is deterministic, so the same
+  corpus yields the same numbers on every runner; a semantic mode's numbers
+  depend on the installed model and are not gated. Floors live in
+  `server/core/benchmark.py::QUALITY_FLOORS`.
+
 ### Feature: hybrid retrieval — full-text candidates join the vector store (#78)
 
 - The vector store is process-local and only ever holds rows that had an
