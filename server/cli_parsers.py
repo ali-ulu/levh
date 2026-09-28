@@ -90,6 +90,17 @@ def _add_leaf_commands(sub: argparse._SubParsersAction) -> None:
     tune_p.add_argument("--iterations", type=int, default=400, help="Search iterations (default: 400)")
     tune_p.add_argument("--seed", type=int, default=0, help="Random seed; fixed seed = reproducible result")
 
+    reembed_p = sub.add_parser(
+        "reembed",
+        help="Re-derive stored vectors from content after changing embedder mode",
+    )
+    reembed_p.add_argument("--project", type=str, default=None, help="Restrict to one project")
+    reembed_p.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Report what would be re-embedded without changing anything",
+    )
+
 
 def _add_hook_parser(sub: argparse._SubParsersAction) -> argparse.ArgumentParser:
     """Keep the hook subcommand group parser for cli.main() help."""

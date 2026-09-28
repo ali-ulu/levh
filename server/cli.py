@@ -163,6 +163,7 @@ from server.commands.capture import cmd_admit, cmd_attach, cmd_capture, cmd_sync
 from server.commands.context import cmd_context, cmd_continue, cmd_summarize
 from server.commands.hooks import cmd_hook
 from server.commands.quality import cmd_benchmark, cmd_eval_report, cmd_eval_run, cmd_review, cmd_tune
+from server.commands.maintenance import cmd_reembed
 from server.commands.knowledge import cmd_conflicts, cmd_entities, cmd_trust
 from server.commands.privacy import cmd_audit_secrets, cmd_purge, cmd_redact
 from server.commands.checkpoint import cmd_checkpoint
@@ -223,6 +224,8 @@ def main() -> int:
         return cmd_benchmark(args)
     elif args.command == "tune":
         return cmd_tune(args)
+    elif args.command == "reembed":
+        return cmd_reembed(args)
     elif args.command == "review":
         if args.review_command in ("list", "apply"):
             return cmd_review(args)

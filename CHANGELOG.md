@@ -2,6 +2,27 @@
 
 ## Unreleased
 
+### Feature: `levh reembed` repairs vectors left in a previous embedder's space (#78)
+
+- Switching `EMBEDDER_MODE` (`hash` → `local`/`openai`/`ollama`, or back) leaves
+  every stored vector in the *old* embedder's space. Recall compares only
+  vectors whose dimension matches the query and silently skips the rest, so the
+  pre-existing memories stop being reachable — the same "it never remembers"
+  symptom from a second cause. `levh doctor` warned about this but offered no
+  way out.
+- `levh reembed` re-derives each vector from its content, the only input the
+  embedder ever saw, and needs no source beyond the store. `--dry-run` reports
+  the stale set (with a per-project breakdown) without touching anything;
+  `--project` narrows the run.
+- Staleness is judged by `metadata.embedding_provenance`, written on every
+  store/update: a memory is stale when its recorded provider/model/dimension
+  differs from the active embedder. Re-running is a no-op once the store
+  matches.
+- The engine mixin (`server/core/engine/reembed.py`) updates the live vector
+  store in the same step as the DB row, so a running server does not keep
+  serving the old vector until its next reload.
+- `levh doctor`'s dimension warning now names the command.
+
 ### Fix: model-free recall is language-agnostic, so inflected queries match (#78)
 
 - Symptom: model-free recall (the previous entry) ranked on exact word

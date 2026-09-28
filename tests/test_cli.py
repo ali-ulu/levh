@@ -229,6 +229,31 @@ class TestBenchmark:
         assert "embedder_mode  hash" in result.stdout
 
 
+class TestReembed:
+    """levh reembed reports and repairs vectors left behind by a mode switch."""
+
+    def test_dry_run_reports_and_changes_nothing(self, tmp_path):
+        db_path = str(tmp_path / "sm.db")
+        result = _run_cli(
+            "reembed", "--dry-run", timeout=60, extra_env={"SQLITE_DB_PATH": db_path}
+        )
+        assert result.returncode == 0, result.stdout + result.stderr
+        assert "Scanned: 0 memories" in result.stdout
+        assert "already matches" in result.stdout
+
+    def test_dry_run_against_a_store_with_memories(self, tmp_path):
+        db_path = str(tmp_path / "sm.db")
+        env = {"SQLITE_DB_PATH": db_path}
+        stored = _run_cli("capture", "The deploy branch is prod", timeout=60, extra_env=env)
+        assert stored.returncode == 0, stored.stdout + stored.stderr
+
+        # Same embedder mode as the write, so nothing is stale.
+        result = _run_cli("reembed", "--dry-run", timeout=60, extra_env=env)
+        assert result.returncode == 0, result.stdout + result.stderr
+        assert "Scanned: 1 memories" in result.stdout
+        assert "already matches" in result.stdout
+
+
 class TestSummarize:
     """stackmemory summarize <session_id> distills a session."""
 

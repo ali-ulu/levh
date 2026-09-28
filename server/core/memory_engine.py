@@ -31,6 +31,7 @@ from .engine.demo import MemoryDemoMixin
 from .engine.graph import MemoryGraphMixin
 from .engine.dedupe import MemoryDedupeMixin
 from .engine.attachments import MemoryAttachmentsMixin
+from .engine.reembed import MemoryReembedMixin
 from .engine.helpers import EventListener  # noqa: F401
 
 
@@ -63,6 +64,7 @@ class MemoryEngine(
     MemoryGraphMixin,
     MemoryDedupeMixin,
     MemoryAttachmentsMixin,
+    MemoryReembedMixin,
 ):
     """Coordinates the memory layers and services.
 

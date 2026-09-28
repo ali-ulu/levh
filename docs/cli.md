@@ -20,6 +20,7 @@ Run `levh <command> --help` for the flags of any one of them.
 | `levh summarize` | Distill a session into one summary memory |
 | `levh benchmark` | Run the recall-quality benchmark (hit@k / MRR) |
 | `levh tune` | Fit H(x,psi) weights to the labelled query set (offline) |
+| `levh reembed` | Re-derive stored vectors from content after changing embedder mode |
 | `levh hook <sub>` | Auto-capture and session-start hooks |
 | `levh hook install` | Install a hook |
 | `levh hook uninstall` | Remove a hook |

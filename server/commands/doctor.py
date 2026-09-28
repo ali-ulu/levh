@@ -313,7 +313,7 @@ def cmd_doctor(_args: argparse.Namespace) -> int:
             checks.append((
                 "Embedding dimensions",
                 "WARN",
-                f"active={expected_dim}d; stored {detail}; re-embed before relying on complete recall",
+                f"active={expected_dim}d; stored {detail}; run `levh reembed` before relying on complete recall",
             ))
         else:
             detail = "empty store" if not dimension_counts else f"{expected_dim}d={dimension_counts.get(expected_dim, 0)}"
