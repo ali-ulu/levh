@@ -2,6 +2,26 @@
 
 ## Unreleased
 
+### Fix: model-free recall is language-agnostic, so inflected queries match (#78)
+
+- Symptom: model-free recall (the previous entry) ranked on exact word
+  overlap, which assumes every term is stored and queried in the same surface
+  form. Turkish, a first-class store language, inflects: a memory stored as
+  "Veritabanı migrasyonu ... çalışır" was missed by "migrasyonlar ne zaman
+  çalışıyor", and "deploy" was missed by "deployu".
+- Fix: `server.core.lexical` now treats two words as the same term when they
+  share a long enough opening — a language-agnostic stand-in for stemming, with
+  no stemmer, dictionary or per-language table. `migrasyonu`/`migrasyonlar`,
+  `deploy`/`deploying` match; `config`/`confirm` share three characters, below
+  the four-character floor, and do not. The Turkish function words ("bir", "ve",
+  "ile", "bu", …) join the stopword list so they cannot manufacture overlap.
+- The trade is deliberate: short stems over-cover on purpose, because recall
+  scores query coverage, where a false positive costs a little precision while a
+  false negative hides a memory the user asked for.
+- `server/core/benchmark.py` grows three Turkish rows plus two Turkish
+  distractors and a Turkish end-to-end recall case in
+  `tests/test_lexical_recall.py`; hit@1 stays 1.0 across both languages.
+
 ### Fix: model-free recall answers, and the hash gate stops losing new memories (#78)
 
 - Symptom: with no embedding model installed (the default `auto` mode when

@@ -101,6 +101,39 @@ def test_is_semantic_only_false_for_hash():
     assert Embedder(mode="openai").is_semantic is True
 
 
+# ── lexical.similarity across inflections and languages ─────────────
+
+
+def test_inflected_query_matches_its_stored_form():
+    # The stored term is the stem; the query arrives inflected.
+    assert lexical.similarity(
+        "migrasyon nasıl çalışır", "Veritabanı migrasyonu her gece çalışır"
+    ) == 1.0
+    assert lexical.similarity("deploy nerede", "Üretim deployu prod dalında") == 1.0
+
+
+def test_two_inflections_of_one_stem_match_each_other():
+    # Turkish plural and possessive suffixes diverge the two surface forms; the
+    # shared opening is what the match keys on.
+    assert lexical.similarity("migrasyonlar", "migrasyonu saat ikide") == 1.0
+    assert lexical.similarity("deploylar", "deployu çalıştır") == 1.0
+
+
+def test_stem_matching_trades_precision_for_recall():
+    # A short shared opening over-matches on purpose: "config"/"confirm" is
+    # treated as one stem. Recall scores query coverage, so this costs a little
+    # precision in exchange for never hiding an inflected memory.
+    assert lexical.similarity("config", "confirm the order") == 1.0
+    # Below the four-character floor the opening is a coincidence, not a stem.
+    assert lexical.similarity("code style", "coding standards") == 0.0
+
+
+def test_turkish_stopwords_carry_no_signal():
+    # "bir", "ve", "ile", "bu" are the Turkish function words; alone they must
+    # not manufacture overlap between unrelated notes.
+    assert lexical.similarity("bir ve ile bu", UNRELATED) == 0.0
+
+
 # ── recall ──────────────────────────────────────────────────────────
 
 
@@ -133,6 +166,19 @@ async def test_recall_still_scoped_by_project(engine):
     other = await engine.store(content=FACT, project="b", memory_type="episodic")
     result = await engine.recall(QUESTION, project="b", top_k=5, reinforce=False)
     assert [m.id for m in result.memories] == [other.id]
+
+
+@pytest.mark.asyncio
+async def test_recall_finds_a_turkish_memory_from_an_inflected_query(engine):
+    stored = await engine.store(
+        content="Veritabanı migrasyonu her gece saat ikide çalışır",
+        memory_type="episodic",
+    )
+    await engine.store(
+        content="Ofis kahve makinesi üçüncü katta duruyor", memory_type="episodic"
+    )
+    result = await engine.recall("migrasyonlar ne zaman çalışıyor", top_k=5, reinforce=False)
+    assert result.memories[0].id == stored.id
 
 
 # ── admission gate ──────────────────────────────────────────────────

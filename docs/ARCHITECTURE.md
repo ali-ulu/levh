@@ -266,8 +266,11 @@ the hash embedder, revisit `tests/test_v2_features.py::test_interference_*`.
   (`server.core.lexical`) and adds keyword candidates; the admission gate
   narrows its duplicate signal to exact identity (a byte-for-byte re-store still
   rejects) instead of the near-duplicate band; retroactive interference uses a
-  lexical floor instead of `INTERFERENCE_THRESHOLD`. Under `local`/`ollama`/
-  `openai` the cosine is used exactly as before. The stored vectors are
+  lexical floor instead of `INTERFERENCE_THRESHOLD`. The lexical signal is
+  language-agnostic: two words match when they share a long enough opening
+  (`migrasyonu`/`migrasyonlar`), standing in for a stemmer without one, and the
+  English and Turkish function words share one stopword list. Under `local`/
+  `ollama`/`openai` the cosine is used exactly as before. The stored vectors are
   unchanged — no re-embed or migration — they are simply not read as relevance.
   Covered by `tests/test_lexical_recall.py`; measured on
   `server/core/benchmark.py` (hit@1 0.5 → 1.0 under `hash`).

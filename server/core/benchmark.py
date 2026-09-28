@@ -35,6 +35,21 @@ DATASET: list[tuple[str, list[str]]] = [
         "what are the rate limits per key",
         "Rate limiting is 100 requests per minute per API key",
     ]),
+    # Turkish is a first-class store language (#78). These queries arrive with
+    # inflected, differently-worded forms of the stored terms, so they exercise
+    # the language-agnostic stemming in server.core.lexical, not just translation.
+    ("Veritabanı migrasyonu her gece saat ikide çalışır", [
+        "migrasyonlar ne zaman çalışıyor",
+        "Veritabanı migrasyonu her gece saat ikide çalışır",
+    ]),
+    ("Üretim ortamına deploy prod dalından yapılır", [
+        "deploy hangi daldan yapılıyor",
+        "Üretim ortamına deploy prod dalından yapılır",
+    ]),
+    ("Ödeme servisi hata durumunda üç kez yeniden dener", [
+        "ödeme hatalarında kaç deneme yapılıyor",
+        "Ödeme servisi hata durumunda üç kez yeniden dener",
+    ]),
 ]
 
 DISTRACTORS = [
@@ -43,6 +58,8 @@ DISTRACTORS = [
     "The logo uses the hex color #7c3aed",
     "Vacation requests go through the HR portal",
     "The staging environment resets every night at 2am",
+    "Ofis kahve makinesi üçüncü katta duruyor",
+    "İzin talepleri insan kaynakları üzerinden yapılır",
 ]
 
 
