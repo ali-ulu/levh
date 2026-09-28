@@ -18,14 +18,19 @@ DATASET: list[tuple[str, list[str]]] = [
     ("The production deploy branch is prod, not main", [
         "which branch do we deploy to production from",
         "The production deploy branch is prod, not main",
+        # Paraphrase with no shared content word but the synonym layer: "ship"
+        # and "release" expand to "deploy".
+        "where do releases get shipped from",
     ]),
     ("API authentication uses JWT tokens with a 15 minute expiry", [
         "how does auth work and how long do tokens last",
         "API authentication uses JWT tokens with a 15 minute expiry",
+        "how do users log in",
     ]),
     ("The Postgres connection pool max size is 20", [
         "what is the database connection pool limit",
         "The Postgres connection pool max size is 20",
+        "how big is the sql connection pool",
     ]),
     ("Frontend state is managed with Zustand, not Redux", [
         "which state management library does the frontend use",
@@ -41,10 +46,14 @@ DATASET: list[tuple[str, list[str]]] = [
     ("Veritabanı migrasyonu her gece saat ikide çalışır", [
         "migrasyonlar ne zaman çalışıyor",
         "Veritabanı migrasyonu her gece saat ikide çalışır",
+        # Cross-language: English terms reach the Turkish memory through the
+        # shipped dictionary (#78).
+        "when do database migrations run",
     ]),
     ("Üretim ortamına deploy prod dalından yapılır", [
         "deploy hangi daldan yapılıyor",
         "Üretim ortamına deploy prod dalından yapılır",
+        "which branch is used for a release",
     ]),
     ("Ödeme servisi hata durumunda üç kez yeniden dener", [
         "ödeme hatalarında kaç deneme yapılıyor",
@@ -52,14 +61,23 @@ DATASET: list[tuple[str, list[str]]] = [
     ]),
 ]
 
+#: Unrelated memories plus deliberate near-misses: rows that share the surface
+#: vocabulary of a query but answer a different question. Without them the
+#: corpus is trivially separable and every floor sits at 1.0, so the gate cannot
+#: observe a regression — a near-miss that starts winning is exactly the ranking
+#: drop a real store sees.
 DISTRACTORS = [
     "The office coffee machine is on the third floor",
     "Standup is at 10am every weekday",
     "The logo uses the hex color #7c3aed",
     "Vacation requests go through the HR portal",
     "The staging environment resets every night at 2am",
+    "The staging deploy branch is stage, not prod",
+    "The production database backup runs every night",
+    "API authentication for the admin panel uses a password",
     "Ofis kahve makinesi üçüncü katta duruyor",
     "İzin talepleri insan kaynakları üzerinden yapılır",
+    "Ödeme ekranı mobil uygulamada iki saniyede açılır",
 ]
 
 #: Minimum metrics a mode must reach on :data:`DATASET`, checked in CI by
@@ -71,12 +89,15 @@ DISTRACTORS = [
 #: A semantic mode's numbers depend on the installed model and must be judged
 #: on the machine that has it, not on a CI runner without one.
 #:
-#: These are the values the current corpus actually achieves. A drop below them
-#: is a recall regression and fails the build; raising the corpus difficulty is
-#: done by editing the floors in the same commit, which is a deliberate and
-#: reviewable act rather than a silent erasure of the signal.
+#: These are the values the current corpus actually achieves. The corpus mixes
+#: easy, exact queries with paraphrases that have no shared content word and
+#: near-miss distractors, so the numbers sit below 1.0 and a weight tweak or a
+#: candidate-source change moves them. A drop below these floors is a recall
+#: regression and fails the build; raising the corpus difficulty is done by
+#: editing the floors in the same commit, which is a deliberate and reviewable
+#: act rather than a silent erasure of the signal.
 QUALITY_FLOORS: dict[str, dict[str, float]] = {
-    "hash": {"hit@1": 1.0, "hit@3": 1.0, "hit@5": 1.0, "mrr": 1.0},
+    "hash": {"hit@1": 0.667, "hit@3": 0.905, "hit@5": 0.905, "mrr": 0.778},
 }
 
 #: Metrics that carry a quality signal, in report order.

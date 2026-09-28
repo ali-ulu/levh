@@ -22,6 +22,21 @@
   copies recall actually scores, so a removed replacement cannot leave its
   predecessor demoted.
 
+### Feature: the recall-quality gate watches a corpus that can actually fail (#78)
+
+- The gate was real but toothless: the corpus was easy enough that every metric
+  sat at 1.0, so no ranking regression could ever move a number below its
+  floor. The floors were the corpus's own perfect score, not a quality bar.
+- The corpus now mixes exact-match queries with paraphrases that share no
+  content word with the stored memory — reached only through the synonym layer
+  or the language-agnostic stem — and adds near-miss distractors that carry a
+  query's vocabulary but answer a different question (a staging branch beside
+  the production one, an admin-panel password beside the API's JWT).
+- The floors are the real numbers the pipeline now achieves (`hit@1` 0.667,
+  `hit@3` 0.905, `hit@5` 0.905, `mrr` 0.778 on 21 queries), below 1.0, so a
+  weight tweak or a candidate-source change that reorders results fails the
+  build instead of passing unnoticed.
+
 ### Feature: recall learns the words you might use instead (#78)
 
 - Model-free ranking matches the words of the query against the words of a

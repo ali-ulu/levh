@@ -56,6 +56,27 @@ def test_floors_cover_the_metrics_that_carry_a_quality_signal():
     assert set(GATED_METRICS) <= {"hit@1", "hit@3", "hit@5", "mrr"}
 
 
+def test_the_corpus_can_actually_fail(metrics):
+    """A gate whose corpus scores 1.0 everywhere cannot observe a regression.
+
+    The floors are the corpus's own achieved numbers; if the corpus is easy
+    enough that they reach 1.0, every gated metric passes no matter how the
+    ranking changes. At least one gated metric must sit strictly below 1.0.
+    """
+    assert any(value < 1.0 for value in metrics.values() if isinstance(value, float)), (
+        "every metric is 1.0 — the corpus cannot fail, so the gate is decorative"
+    )
+
+
+def test_the_corpus_has_near_miss_distractors():
+    """The distractor set must include rows that share a query's vocabulary but
+    answer a different question, or it is trivially separable."""
+    from server.core.benchmark import DISTRACTORS
+
+    assert any("staging" in row and "deploy" in row for row in DISTRACTORS)
+    assert any("password" in row for row in DISTRACTORS)
+
+
 def test_a_metric_below_its_floor_is_reported(metrics):
     """The gate must fail closed: a dropped metric names the failure, and a
     missing one is not treated as passing."""

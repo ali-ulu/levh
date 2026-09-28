@@ -38,9 +38,16 @@ The floors live in `server/core/benchmark.py::QUALITY_FLOORS` and only the
 model-free (`hash`) mode is gated: it is deterministic (no model, no network,
 no platform-specific arithmetic), so the same corpus yields the same numbers on
 every runner. A semantic mode's numbers depend on the installed model and are
-not gated. Raising the corpus difficulty means editing the floors in the same
-commit, which keeps the change deliberate and reviewable instead of silently
-erasing the signal.
+not gated.
+
+The corpus is deliberately not trivial: alongside exact-match queries it mixes
+paraphrases that share no content word with the stored memory (reaching it only
+through the synonym layer or the language-agnostic stem) and near-miss
+distractors that share a query's vocabulary but answer a different question. So
+the floors sit below 1.0 and a weight tweak or a candidate-source change moves
+them — the gate can actually observe a regression. Raising the corpus
+difficulty means editing the floors in the same commit, which keeps the change
+deliberate and reviewable instead of silently erasing the signal.
 
 ## Coverage gates
 
