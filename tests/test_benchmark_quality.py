@@ -14,7 +14,6 @@ model and are not gated here.
 from __future__ import annotations
 
 import os
-import subprocess
 import sys
 from pathlib import Path
 
@@ -30,6 +29,9 @@ from server.core.benchmark import (
 )
 
 ROOT = Path(__file__).resolve().parents[1]
+
+_HEALTHY = {"embedder_mode": "hash", "hit@1": 1.0, "hit@3": 1.0, "hit@5": 1.0, "mrr": 1.0}
+_REGRESSED = {**_HEALTHY, "hit@1": 0.0}
 
 
 @pytest.fixture(scope="module")
@@ -121,15 +123,81 @@ def test_cli_check_passes_on_a_healthy_run(monkeypatch):
     assert quality.cmd_benchmark(_Args()) == 0
 
 
-def test_benchmark_module_check_flag_passes_on_the_current_corpus():
-    """The standalone entry point honours `--check` too, since it is the one a
-    user or a different CI can invoke without the package console script."""
-    result = subprocess.run(
-        [sys.executable, "-m", "server.core.benchmark", "--embedder", "hash", "--check"],
-        cwd=ROOT,
-        capture_output=True,
-        text=True,
-        env={**os.environ, "EMBEDDER_MODE": "hash"},
+def _fake_run(metrics: dict):
+    async def _run(*_, **__):
+        return metrics
+
+    return _run
+
+
+def test_module_main_reports_a_failed_gate(monkeypatch, capsys):
+    """`python -m server.core.benchmark --check` is entry point a different CI
+    or a user invokes without the console script; it must fail closed."""
+    from server.core import benchmark
+
+    monkeypatch.setattr(benchmark, "run_benchmark", _fake_run(_REGRESSED))
+    monkeypatch.setattr(sys, "argv", ["benchmark", "--embedder", "hash", "--check"])
+
+    assert benchmark.main() == 1
+    out = capsys.readouterr().out
+    assert "Quality gate failed" in out and "hit@1" in out
+
+
+def test_module_main_reports_a_passed_gate(monkeypatch, capsys):
+    from server.core import benchmark
+
+    monkeypatch.setattr(benchmark, "run_benchmark", _fake_run(_HEALTHY))
+    monkeypatch.setattr(sys, "argv", ["benchmark", "--embedder", "hash", "--check"])
+
+    assert benchmark.main() == 0
+    assert "Quality gate passed for hash" in capsys.readouterr().out
+
+
+def test_module_main_says_nothing_to_gate_for_an_ungated_mode(monkeypatch, capsys):
+    from server.core import benchmark
+
+    monkeypatch.setattr(
+        benchmark, "run_benchmark", _fake_run({**_HEALTHY, "embedder_mode": "openai"})
     )
-    assert result.returncode == 0, result.stdout + result.stderr
-    assert "Quality gate passed" in result.stdout
+    monkeypatch.setattr(sys, "argv", ["benchmark", "--embedder", "openai", "--check"])
+
+    assert benchmark.main() == 0
+    assert "nothing to gate" in capsys.readouterr().out
+
+
+def test_module_main_without_check_never_gates(monkeypatch):
+    from server.core import benchmark
+
+    monkeypatch.setattr(benchmark, "run_benchmark", _fake_run(_REGRESSED))
+    monkeypatch.setattr(sys, "argv", ["benchmark", "--embedder", "hash"])
+
+    assert benchmark.main() == 0
+
+
+def test_cli_without_check_never_gates(monkeypatch):
+    """Plain `levh benchmark` stays a report — `--check` is opt-in, so an
+    existing workflow that reads the numbers is unaffected."""
+    from server.commands import quality
+
+    class _Args:
+        embedder_mode = "hash"
+        top_k = 5
+        check = False
+
+    monkeypatch.setattr("server.core.benchmark.run_benchmark", _fake_run(_REGRESSED))
+    assert quality.cmd_benchmark(_Args()) == 0
+
+
+def test_cli_check_says_nothing_to_gate_for_an_ungated_mode(monkeypatch, capsys):
+    from server.commands import quality
+
+    class _Args:
+        embedder_mode = "openai"
+        top_k = 5
+        check = True
+
+    monkeypatch.setattr(
+        "server.core.benchmark.run_benchmark", _fake_run({**_HEALTHY, "embedder_mode": "openai"})
+    )
+    assert quality.cmd_benchmark(_Args()) == 0
+    assert "nothing to gate" in capsys.readouterr().out
