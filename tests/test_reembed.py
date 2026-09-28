@@ -10,12 +10,15 @@ vector store — not just the DB row — ends up holding the new vector.
 
 from __future__ import annotations
 
+import argparse
+import asyncio
 import os
 import tempfile
 
 import pytest
 import pytest_asyncio
 
+from server.core.engine.reembed import _PROGRESS_EVERY
 from server.core.memory_engine import MemoryEngine
 
 
@@ -151,3 +154,146 @@ async def test_progress_callback_reports_each_memory(engine):
 
     assert report["reembedded"] == 3
     assert seen == [(1, 3), (2, 3), (3, 3)]
+
+
+@pytest.mark.asyncio
+async def test_a_long_run_without_a_callback_still_yields(engine, monkeypatch):
+    # Past the batch size the loop has to hand the event loop back; without a
+    # callback the periodic yield is the only thing that does.
+    for i in range(_PROGRESS_EVERY + 1):
+        await engine.store(content=f"fact number {i}", memory_type="episodic")
+    engine._embedder = _StubEmbedder("v2")
+
+    yielded = 0
+    real_sleep = asyncio.sleep
+
+    async def _counting_sleep(delay):
+        nonlocal yielded
+        yielded += 1
+        await real_sleep(delay)
+
+    monkeypatch.setattr(asyncio, "sleep", _counting_sleep)
+    report = await engine.reembed_memories()
+
+    assert report["reembedded"] == _PROGRESS_EVERY + 1
+    assert yielded >= 1
+
+
+# ── the reporting wrapper ──────────────────────────────────────────
+
+
+def _engine_and_prints():
+    """A fresh engine plus a list that captures what the command prints."""
+    fd, path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    engine = MemoryEngine(db_path=path, embedder_mode="hash", short_term_max=50)
+    lines: list[str] = []
+    return engine, path, lines
+
+
+@pytest.mark.asyncio
+async def test_cli_reports_an_empty_store():
+    from server.commands.maintenance import reembed_engine
+
+    engine, path, lines = _engine_and_prints()
+    try:
+        await engine.initialize()
+        rc = await reembed_engine(engine, dry_run=True, print_fn=lines.append)
+        out = "\n".join(lines)
+        assert rc == 0
+        assert "Scanned: 0 memories" in out
+        assert "already matches" in out
+    finally:
+        await engine.shutdown()
+        if os.path.exists(path):
+            os.unlink(path)
+
+
+@pytest.mark.asyncio
+async def test_cli_reports_a_dry_run_breakdown():
+    from server.commands.maintenance import reembed_engine
+
+    engine, path, lines = _engine_and_prints()
+    try:
+        await engine.initialize()
+        await engine.store(content="alpha one", project="a", memory_type="episodic")
+        await engine.store(content="beta two", project="b", memory_type="episodic")
+        engine._embedder = _StubEmbedder("v2")
+
+        rc = await reembed_engine(engine, dry_run=True, print_fn=lines.append)
+        out = "\n".join(lines)
+        assert rc == 0
+        assert "would re-embed 2 of them" in out
+        assert "a: 1" in out and "b: 1" in out
+        assert "Dry run: nothing was changed" in out
+        # Dry run left the store alone.
+        assert (await engine.reembed_memories(dry_run=True))["stale"] == 2
+    finally:
+        await engine.shutdown()
+        if os.path.exists(path):
+            os.unlink(path)
+
+
+@pytest.mark.asyncio
+async def test_cli_reports_real_repairs():
+    from server.commands.maintenance import reembed_engine
+
+    engine, path, lines = _engine_and_prints()
+    try:
+        await engine.initialize()
+        await engine.store(content="alpha one", memory_type="episodic")
+        engine._embedder = _StubEmbedder("v2")
+
+        rc = await reembed_engine(engine, dry_run=False, print_fn=lines.append)
+        assert rc == 0
+        assert "re-embedded 1 of them" in "\n".join(lines)
+    finally:
+        await engine.shutdown()
+        if os.path.exists(path):
+            os.unlink(path)
+
+
+@pytest.mark.asyncio
+async def test_cli_progress_line_prints_after_the_first_batch():
+    from server.commands.maintenance import reembed_engine
+
+    engine, path, lines = _engine_and_prints()
+    try:
+        await engine.initialize()
+        for i in range(_PROGRESS_EVERY):
+            await engine.store(content=f"fact number {i}", memory_type="episodic")
+        engine._embedder = _StubEmbedder("v2")
+
+        rc = await reembed_engine(engine, dry_run=False, print_fn=lines.append)
+        assert rc == 0
+        assert any(
+            f"re-embedded {_PROGRESS_EVERY}/{_PROGRESS_EVERY}" in line for line in lines
+        )
+    finally:
+        await engine.shutdown()
+        if os.path.exists(path):
+            os.unlink(path)
+
+
+def test_cli_entry_point_dispatches_to_the_command(monkeypatch, capsys):
+    # The wrapper's job is process plumbing: build the engine, run the loop,
+    # shut down. Exercise it through the real argparse namespace the parser
+    # produces, so a renamed flag fails here rather than in a user's terminal.
+    # Sync on purpose: cmd_reembed owns its own asyncio.run, exactly as it does
+    # when the CLI process invokes it.
+    from server.commands import maintenance
+    from server.core import engine_provider
+
+    fd, path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    engine = MemoryEngine(db_path=path, embedder_mode="hash", short_term_max=50)
+    monkeypatch.setattr(engine_provider, "get_engine", lambda: engine)
+    try:
+        rc = maintenance.cmd_reembed(argparse.Namespace(project=None, dry_run=True))
+        out = capsys.readouterr().out
+        assert rc == 0
+        assert "Scanned: 0 memories" in out
+    finally:
+        if os.path.exists(path):
+            os.unlink(path)
+
