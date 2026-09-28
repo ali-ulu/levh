@@ -91,6 +91,29 @@ class EpisodicMemory:
         )
         return [m for m in (_row_to_memory(r) for r in rows) if m]
 
+    async def search_fts_ids(self, query: str, limit: int = 50) -> list[str]:
+        """Ids matching ``query`` by full-text (FTS5) search, best first.
+
+        The candidate source the vector store cannot provide for a row that
+        has no embedding: FTS indexes content, not vectors, so it still finds
+        it. Empty when FTS5 is unavailable (LIKE-fallback runtimes), and recall
+        degrades to the vector-only behaviour it had before.
+        """
+        return await self.db.search_memory_ids_fts(query, limit=limit)
+
+    async def get_many(self, memory_ids: list[str]) -> list[Memory]:
+        """Resolve ids to memories, skipping ids that no longer exist.
+
+        Reads straight from SQLite (the source of truth), so a candidate found
+        by FTS but not yet in the process-local vector store is still returned,
+        and a peer's concurrent delete simply drops out. One query, not one per
+        id: this runs on the recall hot path.
+        """
+        if not memory_ids:
+            return []
+        rows = await self.db.get_memories_by_ids(memory_ids)
+        return [m for m in (_row_to_memory(r) for r in rows) if m]
+
     async def update(self, memory: Memory) -> bool:
         updates = memory.model_dump(exclude={"id"})
         # Serialize list/dict fields that DB layer expects

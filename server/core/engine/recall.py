@@ -122,6 +122,19 @@ class MemoryRecallMixin:
                     by_id[memory.id] = memory
                     keyword_ids.add(memory.id)
 
+        # Full-text candidates: FTS indexes content, so it reaches rows the
+        # vector store cannot — most importantly an embedding-less row (a peer
+        # imported it, or a mode switch left it without a vector). Those rows
+        # are invisible to every in-memory candidate path and so were silently
+        # unrecallable; the DB is the source of truth and FTS reads it.
+        fts_ids = await self.episodic.search_fts_ids(query, limit=top_k * 3)
+        for memory in await self.episodic.get_many(
+            [mid for mid in fts_ids if mid not in by_id]
+        ):
+            if _predicate(memory):
+                by_id[memory.id] = memory
+                keyword_ids.add(memory.id)
+
         cosine_by_id = {memory.id: similarity for memory, similarity in candidates}
 
         scored: list[tuple[Memory, float]] = []
@@ -138,8 +151,18 @@ class MemoryRecallMixin:
             cosine = cosine_by_id.get(memory_id, 0.0)
             if lexical_terms_set:
                 similarity = lexical_similarity(query, memory.content)
+                sim_source = similarity_source
+            elif memory_id in keyword_ids:
+                # Semantic mode, but this candidate was reached by FTS only —
+                # it has no vector the query could compare against, so a
+                # cosine of 0 would bury a genuine term match. Fall back to
+                # coverage and say so, rather than reporting a cosine that was
+                # never measured.
+                similarity = lexical_similarity(query, memory.content)
+                sim_source = "lexical"
             else:
                 similarity = cosine
+                sim_source = similarity_source
             hscore = self.scorer.compute(
                 similarity=similarity,
                 decay_factor=decay,
@@ -163,7 +186,7 @@ class MemoryRecallMixin:
                     beta_component=bd["beta_component"],
                     gamma_component=bd["gamma_component"],
                     delta_component=bd["delta_component"],
-                    similarity_source=similarity_source,
+                    similarity_source=sim_source,
                     similarity=round(float(similarity), 6),
                     cosine=round(float(cosine), 6),
                     candidate_source=(

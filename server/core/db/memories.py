@@ -11,6 +11,7 @@ from typing import Optional
 
 import aiosqlite
 
+from server.core.lexical import terms as lexical_terms
 
 
 def row_to_memory_dict(row) -> dict:
@@ -147,6 +148,62 @@ class MemoryQueries:
         rows = await cursor.fetchall()
         await cursor.close()
         return [self._row_to_memory(r) for r in rows]
+
+
+    async def search_memory_ids_fts(self, query: str, limit: int = 50) -> list[str]:
+        """Memory ids whose content matches ``query``, best (bm25) first.
+
+        The hybrid-retrieval candidate source: FTS indexes content, so it
+        reaches a row the vector store cannot — one without an embedding. It
+        matches inflected forms the vector store never had a vector for.
+
+        Terms are OR-ed, not AND-ed as the stored-content search does: a
+        candidate fetch wants *any* term to pull a row, then ranks by bm25 and
+        re-ranks by H(x,ψ). An AND query would demand every query word appear,
+        so "which branch do we deploy from" would find nothing. Stopwords are
+        dropped first so the OR is not swamped by function words. Empty when
+        FTS5 is unavailable, so callers fall back cleanly.
+        """
+        fts_query = self._fts_or_query(query)
+        if not fts_query or not self._db.fts5_available:
+            return []
+        cursor = await self._db.conn.execute(
+            "SELECT memory_id FROM memories_fts WHERE memories_fts MATCH ? "
+            "ORDER BY bm25(memories_fts) LIMIT ?",
+            (fts_query, limit),
+        )
+        rows = await cursor.fetchall()
+        await cursor.close()
+        return [row[0] for row in rows]
+
+    @staticmethod
+    def _fts_or_query(text: str) -> str:
+        """Prefix-OR FTS5 query over the content words of ``text``.
+
+        ``""`` when there is nothing to search.
+        """
+        if not text:
+            return ""
+        return " OR ".join(f"{term}*" for term in sorted(lexical_terms(text))[:20])
+
+    async def get_memories_by_ids(self, memory_ids: list[str]) -> list[dict]:
+        """Fetch several rows in one query, preserving the caller's order.
+
+        ``row_to_memory_dict`` is applied per row (never raw) so a caller sees
+        model-shaped values, exactly like ``get_memory``.
+        """
+        if not memory_ids:
+            return []
+        placeholders = ",".join("?" for _ in memory_ids)
+        cursor = await self._db.conn.execute(
+            f"SELECT * FROM memories WHERE id IN ({placeholders})",  # nosec B608 - placeholders are `?`, values bound
+            tuple(memory_ids),
+        )
+        rows = await cursor.fetchall()
+        await cursor.close()
+        by_id = {self._row_to_memory(r)["id"]: r for r in rows}
+        return [self._row_to_memory(by_id[mid]) for mid in memory_ids if mid in by_id]
+
 
     async def content_exists(self, content: str, project: Optional[str] = None) -> bool:
         """Whether a memory with byte-for-byte identical ``content`` exists.

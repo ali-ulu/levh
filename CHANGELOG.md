@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+### Feature: hybrid retrieval — full-text candidates join the vector store (#78)
+
+- The vector store is process-local and only ever holds rows that had an
+  embedding. A row without one — imported by a peer, or left vector-less by a
+  mode switch — was invisible to every candidate path, so recall could never
+  return it however well its words matched. Recall now also asks SQLite's FTS5
+  index, which is keyed on content and reaches those rows regardless of
+  vectors; the database is the source of truth and it was sitting unused as a
+  recall candidate source.
+- FTS candidates are ranked by bm25, then re-ranked by H(x,ψ) like every other
+  candidate, and are labelled `keyword` in the `explain` breakdown.
+- In semantic mode a candidate reached only by FTS has no vector the query can
+  compare against, so it is scored on term coverage and reported as such
+  rather than as a measured-looking cosine of 0.
+- Query filters (project/session/importance) gate the FTS source too, and a
+  runtime whose SQLite lacks FTS5 simply contributes no FTS candidates —
+  recall degrades to the previous vector-only behaviour.
+
 ### Feature: recall can explain why a memory ranked where it did (#78)
 
 - A recall score is a weighted sum of four penalties, so the number alone
