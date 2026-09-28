@@ -7,11 +7,15 @@ file readable. Bodies are unchanged from the single-file version.
 from __future__ import annotations
 
 import json
+import logging
+import sqlite3
 from typing import Optional
 
 import aiosqlite
 
 from server.core.lexical import terms as lexical_terms
+
+logger = logging.getLogger(__name__)
 
 
 def row_to_memory_dict(row) -> dict:
@@ -273,6 +277,22 @@ class MemoryQueries:
             cursor = await self._db.conn.execute(
                 "DELETE FROM memories WHERE id = ?", (memory_id,)
             )
+            # Clear the supersession pointer on any memory this one replaced,
+            # so a deleted replacement cannot leave its predecessor demoted in
+            # recall forever. Custom-registered JSON functions make this safe
+            # where json_extract is unavailable; the fallback is a no-op scan.
+            try:
+                await self._db.conn.execute(
+                    "UPDATE memories SET metadata = json_remove(metadata, '$.superseded_by', '$.superseded_at') "
+                    "WHERE json_extract(metadata, '$.superseded_by') = ?",
+                    (memory_id,),
+                )
+            except sqlite3.OperationalError:
+                logger.warning(
+                    "supersession pointer cleanup skipped while deleting %s: "
+                    "JSON functions unavailable",
+                    memory_id,
+                )
             await self._db.conn.execute(
                 "DELETE FROM entities WHERE id NOT IN "
                 "(SELECT DISTINCT entity_id FROM memory_entities)"

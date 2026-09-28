@@ -47,6 +47,13 @@ DEFAULT_HALF_LIFE_HOURS = 168.0  # 1 week
 DEFAULT_REINFORCEMENT_GAIN = 0.5  # each recall multiplies stability by up to 1.75x
 DEFAULT_MAX_STABILITY_HOURS = 8760.0  # 1 year — a well-reinforced memory nearly never forgotten
 
+# Score added to a superseded memory when it is ranked. Weakening a memory's
+# stability only changes how fast it will decay from then on, so it does not
+# demote the old fact today; this explicit penalty does. It is smaller than the
+# gaps the weighted terms produce (α alone spans 0.4), so it breaks a tie or a
+# small lead without letting a stale fact beat a genuinely better match.
+SUPERSEDED_PENALTY = 0.15
+
 
 class HScoreCalculator:
     """Computes H(x,ψ) scores for memory relevance.

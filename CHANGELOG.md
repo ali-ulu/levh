@@ -2,6 +2,26 @@
 
 ## Unreleased
 
+### Feature: a superseded fact ranks below the one that replaced it (#78)
+
+- Writing a near-identical memory weakens the older one (retroactive
+  interference), but weakening only lowers the score the old memory *will*
+  have: it decays faster from then on, while today's ranking is untouched. The
+  replaced fact still tied with its replacement and could outrank it on
+  importance or access frequency — "forgetting works, but the old answer keeps
+  coming back first."
+- The write path now records the supersession on the older memory
+  (`metadata.superseded_by` / `superseded_at`), and recall adds a small,
+  bounded penalty so the current fact wins. The penalty is smaller than the
+  gaps the four weighted terms produce, so it breaks a tie or a small lead
+  without letting a stale fact beat a genuinely better match.
+- The demotion is shown in the `explain` breakdown as `superseded_penalty`, and
+  the single-memory score route applies the same term, so the two surfaces
+  agree on the score a memory ranks with.
+- Deleting the replacement clears the pointer in SQLite and in the in-memory
+  copies recall actually scores, so a removed replacement cannot leave its
+  predecessor demoted.
+
 ### Feature: recall learns the words you might use instead (#78)
 
 - Model-free ranking matches the words of the query against the words of a

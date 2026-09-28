@@ -156,6 +156,7 @@ class ScoreBreakdown(BaseModel):
     beta_component: float   # β·decay
     gamma_component: float  # γ·(1-importance)
     delta_component: float  # δ·(1-freq_norm)
+    superseded_penalty: float = 0.0  # added when a newer memory replaced this one
     similarity_source: str = "cosine"
     similarity: float = 0.0
     cosine: float = 0.0

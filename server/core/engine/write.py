@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import sqlite3
 import time
+from datetime import datetime, timezone
 
 from .helpers import logger
 from .. import metrics
@@ -148,8 +149,19 @@ class MemoryWriteMixin:
             # SQLite contention here must not fail a store the caller already
             # succeeded at. Worst case, one older memory keeps its prior
             # stability a little longer than ideal — not a correctness issue.
+            #
+            # Weakening only changes how fast the old memory will decay from
+            # now on, so today's ranking is untouched: the superseded fact
+            # still ties with, and can outrank, the one that replaced it. The
+            # supersession is recorded so recall can rank it accordingly.
+            old.metadata = dict(old.metadata or {})
+            old.metadata["superseded_by"] = new_memory.id
+            old.metadata["superseded_at"] = datetime.now(timezone.utc).isoformat()
             try:
-                await self.db.update_memory(old.id, {"stability_hours": weakened})
+                await self.db.update_memory(
+                    old.id,
+                    {"stability_hours": weakened, "metadata": old.metadata},
+                )
             except sqlite3.OperationalError:
                 logger.warning(
                     "interference weaken skipped for %s: transient SQLite error",
@@ -297,11 +309,37 @@ class MemoryWriteMixin:
         if deleted:
             self.short_term.remove(memory_id)
             self.vector_store.remove(memory_id)
+            # The cascade also cleared any supersession pointer to this memory
+            # in SQLite; the cached copies recall actually scores must not keep
+            # it, or a deleted replacement would leave its predecessor demoted.
+            self._clear_supersession_caches(memory_id)
             if existing and existing.session_id:
                 await self._refresh_session_count(existing.session_id)
             self._mark_derived_dirty()
             self._emit("deleted", {"id": memory_id})
         return deleted
+
+    def _clear_supersession_caches(self, replacement_id: str) -> None:
+        """Drop the supersession pointer that names ``replacement_id`` from the
+        in-memory copies.
+
+        ``delete_memory_cascade`` clears it in SQLite, but recall ranks the
+        vector store's cached ``Memory`` objects, so a cached predecessor would
+        stay demoted until the next process restart (#78).
+        """
+        for memory in self.vector_store.memories():
+            metadata = getattr(memory, "metadata", None)
+            if metadata and metadata.get("superseded_by") == replacement_id:
+                memory.metadata = dict(metadata)
+                memory.metadata.pop("superseded_by", None)
+                memory.metadata.pop("superseded_at", None)
+        st = self.short_term.get_all()
+        for memory in st:
+            metadata = getattr(memory, "metadata", None)
+            if metadata and metadata.get("superseded_by") == replacement_id:
+                memory.metadata = dict(metadata)
+                memory.metadata.pop("superseded_by", None)
+                memory.metadata.pop("superseded_at", None)
 
     def _refresh_memory_caches(self, memory: Memory) -> None:
         """Keep the in-memory layers in sync with a memory that was just

@@ -14,6 +14,7 @@ from .. import metrics
 from ..lexical import expand_terms
 from ..lexical import similarity_expanded as lexical_similarity
 from ..lexical import terms as lexical_terms
+from ..hscore import SUPERSEDED_PENALTY
 from ..synonyms import SynonymTable
 from ..types import (
     Memory,
@@ -205,6 +206,15 @@ class MemoryRecallMixin:
                 importance=memory.importance,
                 frequency=memory.frequency,
             )
+            # A superseded memory is one that a newer, near-identical memory
+            # replaced (the write path marks it). Weakening its stability
+            # lowers the score it *will* have, not the one it has now: the
+            # replaced fact still ties with its replacement and can outrank it
+            # on importance or access frequency. The explicit penalty is what
+            # actually demotes it, so the current fact wins the ranking.
+            superseded = bool(getattr(memory, "metadata", {}).get("superseded_by"))
+            superseded_penalty = SUPERSEDED_PENALTY if superseded else 0.0
+            hscore = min(1.0, hscore + superseded_penalty)
             memory.hscore = hscore
             scored.append((memory, hscore))
             if explain:
@@ -222,6 +232,7 @@ class MemoryRecallMixin:
                     beta_component=bd["beta_component"],
                     gamma_component=bd["gamma_component"],
                     delta_component=bd["delta_component"],
+                    superseded_penalty=superseded_penalty,
                     similarity_source=sim_source,
                     similarity=round(float(similarity), 6),
                     cosine=round(float(cosine), 6),

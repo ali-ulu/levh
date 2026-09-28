@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import numpy as np
 
+from ..hscore import SUPERSEDED_PENALTY
 from ..types import (
     ScoreBreakdown,
 )
@@ -67,6 +68,14 @@ class MemoryExplainMixin:
             importance=memory.importance,
             frequency=memory.frequency,
         )
+        # Same demotion recall applies, so this route reports the score the
+        # memory actually ranks with rather than the pre-penalty one.
+        superseded_penalty = (
+            SUPERSEDED_PENALTY
+            if (memory.metadata or {}).get("superseded_by")
+            else 0.0
+        )
+        total = min(1.0, total + superseded_penalty)
 
         return ScoreBreakdown(
             memory_id=memory_id,
@@ -76,4 +85,5 @@ class MemoryExplainMixin:
             beta_component=bd["beta_component"],
             gamma_component=bd["gamma_component"],
             delta_component=bd["delta_component"],
+            superseded_penalty=superseded_penalty,
         )

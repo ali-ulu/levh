@@ -126,6 +126,12 @@ stability *= 1 + gain·(0.5 + importance)      (capped at MAX_STABILITY_HOURS)
 
 **Weaken** — negative feedback / interference shrink stability (floor 1h).
 
+Weakening is forward-looking: it changes how fast the memory decays from now
+on, not the score it has today. So interference also *records* the
+supersession (`metadata.superseded_by`), and recall adds a small bounded
+`superseded_penalty` when it ranks — otherwise the replaced fact would tie
+with, and could outrank, the one that replaced it.
+
 Pinned memories skip decay entirely (`decay = 1.0`). This is why the
 `_refresh_memory_caches` invariant (§6) matters: recall scores from cached
 objects, so a pin that only hit SQLite would still be decayed at ranking time.
@@ -138,14 +144,15 @@ objects, so a pin that only hit SQLite would still be decayed at ranking time.
 1. validate `memory_type`, embed the content
 2. add to short-term (if short_term) + vector store, persist to SQLite
 3. apply **retroactive interference** — near-identical older memories in the
-   same project get weakened
+   same project get weakened and marked superseded (so recall can demote them)
 4. emit `stored`
 
 **recall(query, top_k, …, reinforce=True)**
 1. embed query
 2. `vector_store.search` with a pre-ranking predicate (session/project/importance
    filters applied *before* top-k so filtered recalls still fill up)
-3. compute `H` per candidate (pinned ⇒ decay=1.0)
+3. compute `H` per candidate (pinned ⇒ decay=1.0), adding the superseded
+   penalty for a memory a newer one replaced
 4. sort ascending, take top-k
 5. if `reinforce`: bump frequency, reset decay clock, grow stability, persist.
    `reinforce=False` = read-only (dashboard previews don't inflate the signal)
