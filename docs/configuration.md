@@ -50,6 +50,7 @@ the process that launches it when environment overrides are required.
 | `LEVH_SQLITE_BUSY_TIMEOUT_MS` | `5000` | SQLite lock wait before failing; file databases use WAL mode |
 | `LEVH_SAFETY_BACKUP_DIR` | DB sibling `safety-backups/` | Location for automatic pre-replace SQLite safety backups |
 | `LEVH_CONFIG_PATH` | `<cwd>/.stackmemory/config.json` | Redirect where the JSON config file is read from |
+| `LEVH_SYNONYMS_PATH` | packaged vocabulary | JSON file of equivalent terms used to expand recall queries (see below). Unset means `server/data/synonyms.json`, shipped with the package; set it to use a store's own vocabulary |
 | `LEVH_PUBLIC_DEMO` | `false` | When `true`, mutating API calls are refused so the process can serve a read-only public instance |
 | `LEVH_MCP_PROFILE` | `full` | MCP tool surface: `minimal`, `work`, `admin` or `full`. Written into generated client configs by `levh mcp config --profile <name>` |
 | `LEVH_AGENT` | — | Agent identity recorded with presence/heartbeat rows. Falls back to `AGENT_NAME`, `CLAUDE_AGENT`, `CURSOR_AGENT`, then `auto-connect` |
@@ -62,6 +63,36 @@ the process that launches it when environment overrides are required.
 | `LEVH_VERSION` | `unknown` | Version reported when package metadata is unavailable |
 | `LEVH_DOGFOOD_ENABLED` | `false` | Append whitelisted aggregate dogfood events to a local JSONL file; no content leaves the process |
 | `LEVH_ONBOARDING_RECEIPT_PATH` | `.stackmemory/onboarding-receipt.json` | Where the local, privacy-safe onboarding receipt is written |
+
+---
+
+## Query synonyms
+
+Model-free recall (`EMBEDDER_MODE=hash`) ranks by word overlap, so a memory
+written as "API authentication uses JWT tokens" does not match the query "how
+do users log in" — no word is shared. A synonyms file supplies the missing
+equivalences: each group is one idea written several ways, and a query term
+expanded through it can reach the memory.
+
+```json
+{
+  "groups": [
+    ["login", "signin", "log in", "authentication", "auth"],
+    ["deploy", "deployment", "release"],
+    ["migration", "migrate", "migrasyon"]
+  ]
+}
+```
+
+Point `LEVH_SYNONYMS_PATH` at the file. Without it, the vocabulary shipped with
+the package (`server/data/synonyms.json`) is used, so expansion works out of
+the box. The file is re-read when its mtime changes, so editing it takes effect
+without restarting the process. A map shape (`{"login": ["signin"]}`) is
+accepted too, and a malformed file is logged and ignored rather than failing
+recall.
+
+Expansion is retrieval-only; it never widens the duplicate check, since two
+memories that use different words for the same idea are not duplicates.
 
 ---
 

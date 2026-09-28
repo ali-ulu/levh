@@ -21,6 +21,7 @@ per-language rule table.
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping
 
 _WORD = re.compile(r"\w+", flags=re.UNICODE)
 
@@ -94,6 +95,25 @@ def similarity(query: str, content: str) -> float:
     score 1.0 even though the content has words the query does not. A query
     term counts as present when the content contains the term itself or an
     inflected form of it (see ``_stem_matches``).
+
+    Synonym expansion is *not* applied here — this is the raw surface-word
+    signal. Recall uses :func:`similarity_expanded` so a memory can still score
+    on the words it shares even when the query's other words were translated.
+    """
+    return similarity_expanded(query, content)
+
+
+def similarity_expanded(
+    query: str, content: str, expansions: Mapping[str, frozenset[str]] | None = None
+) -> float:
+    """Query coverage, where a query term also matches its synonyms.
+
+    ``expansions`` maps a query term to the terms the store considers
+    equivalent (see :mod:`server.core.synonyms`). A query term is covered when
+    the content contains the term, an inflection of it, *or* any of its
+    equivalents. Counting it once keeps this a coverage ratio in [0, 1], so
+    expansions broaden what matches without inflating the score of a memory
+    that merely shares a thesaurus entry with everything else.
     """
     query_terms = terms(query)
     if not query_terms:
@@ -102,6 +122,44 @@ def similarity(query: str, content: str) -> float:
     if not content_terms:
         return 0.0
     matched = sum(
-        1 for term in query_terms if any(_stem_matches(term, word) for word in content_terms)
+        1
+        for term in query_terms
+        if _term_matches(term, content_terms, expansions)
     )
     return matched / len(query_terms)
+
+
+def _term_matches(
+    term: str, content_terms: set[str], expansions: Mapping[str, frozenset[str]] | None
+) -> bool:
+    if any(_stem_matches(term, word) for word in content_terms):
+        return True
+    if not expansions:
+        return False
+    equivalents = expansions.get(term)
+    if not equivalents:
+        return False
+    return any(
+        _stem_matches(equivalent, word)
+        for equivalent in equivalents
+        for word in content_terms
+    )
+
+
+def expand_terms(
+    query: str, expansions: Mapping[str, frozenset[str]] | None
+) -> set[str]:
+    """Query terms plus the equivalents of those that have any.
+
+    The candidate-retrieval half of expansion: the flat set is what the
+    keyword scan and the FTS query look for. Membership is not attribution, so
+    flattening is right here — unlike the score, which needs to know *which*
+    query term an equivalent answers for.
+    """
+    query_terms = terms(query)
+    if not expansions:
+        return query_terms
+    expanded = set(query_terms)
+    for term in query_terms:
+        expanded.update(expansions.get(term, frozenset()))
+    return expanded

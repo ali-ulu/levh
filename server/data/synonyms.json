@@ -1,0 +1,29 @@
+{
+  "_comment": "Equivalent terms for model-free recall. Each group is one idea written several ways; every member is matched to every other. Retrieval only - never the duplicate check. Point LEVH_SYNONYMS_PATH at this file, or copy and edit it for a local vocabulary.",
+  "groups": [
+    ["login", "signin", "sign in", "log in", "authentication", "auth"],
+    ["logout", "signout", "sign out", "log out"],
+    ["deploy", "deployment", "release", "ship", "rollout"],
+    ["database", "db", "postgres", "postgresql", "sql"],
+    ["migration", "migrate", "migrasyon", "sema degisikligi"],
+    ["config", "configuration", "settings", "ayar", "yapilandirma"],
+    ["token", "jwt", "access token", "bearer"],
+    ["ci", "pipeline", "continuous integration", "build pipeline"],
+    ["cache", "caching", "redis", "onbellek"],
+    ["queue", "message queue", "broker", "kuyruk"],
+    ["branch", "dal", "git branch"],
+    ["test", "tests", "testing", "unit test", "testler"],
+    ["error", "exception", "failure", "hata"],
+    ["deadline", "due date", "teslim tarihi", "son tarih"],
+    ["meeting", "standup", "sync", "toplanti", "gorusme"],
+    ["budget", "cost", "butce", "maliyet"],
+    ["customer", "client", "musteri"],
+    ["employee", "staff", "calisan", "personel"],
+    ["password", "credential", "secret", "sifre", "parola"],
+    ["permission", "role", "access", "yetki", "izin"],
+    ["performance", "latency", "speed", "gecikme"],
+    ["backup", "snapshot", "yedek"],
+    ["dashboard", "panel", "ui", "arayuz"],
+    ["report", "summary", "rapor", "ozet"]
+  ]
+}

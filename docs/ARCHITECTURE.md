@@ -269,11 +269,18 @@ the hash embedder, revisit `tests/test_v2_features.py::test_interference_*`.
   lexical floor instead of `INTERFERENCE_THRESHOLD`. The lexical signal is
   language-agnostic: two words match when they share a long enough opening
   (`migrasyonu`/`migrasyonlar`), standing in for a stemmer without one, and the
-  English and Turkish function words share one stopword list. Under `local`/
-  `ollama`/`openai` the cosine is used exactly as before. The stored vectors are
+  English and Turkish function words share one stopword list. Term *synonyms*
+  are a separate, optional layer on top (`server.core.synonyms`): word overlap
+  cannot bridge a paraphrase, so a query term is expanded with its equivalents
+  from a built-in map plus a vocabulary file (`LEVH_SYNONYMS_PATH`, defaulting
+  to the packaged `server/data/synonyms.json`), and recall also bridges a query
+  term that names an entity to the memories the graph links to it. Expansion is
+  retrieval-only — the duplicate check is untouched, because different wording
+  is not duplication. Under `local`/`ollama`/`openai` the cosine is used exactly
+  as before. The stored vectors are
   unchanged — no re-embed or migration — they are simply not read as relevance.
-  Covered by `tests/test_lexical_recall.py`; measured on
-  `server/core/benchmark.py` (hit@1 0.5 → 1.0 under `hash`).
+  Covered by `tests/test_lexical_recall.py` and `tests/test_synonym_recall.py`;
+  measured on `server/core/benchmark.py` (hit@1 0.5 → 1.0 under `hash`).
 - **Concurrency:** one shared `aiosqlite` connection serializes writes; `recall`
   mutates cached objects in place. Single-writer local use is safe; a
   high-concurrency multi-writer deployment would want a connection pool +

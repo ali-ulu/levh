@@ -57,7 +57,7 @@ include = ["server*"]
 exclude = ["frontend*", "tests*"]
 
 [tool.setuptools.package-data]
-server = ["dashboard/**/*", "fixtures/evaluation/*.json"]
+server = ["dashboard/**/*", "fixtures/evaluation/*.json", "data/*.json"]
 
 [tool.coverage.run]
 source = ["server"]
@@ -118,6 +118,7 @@ files = [
     "server/core/runtime_config.py",
     "server/core/short_term.py",
     "server/core/summarizer.py",
+    "server/core/synonyms.py",
     "server/core/text_entities.py",
     "server/core/trust.py",
     "server/core/types.py",

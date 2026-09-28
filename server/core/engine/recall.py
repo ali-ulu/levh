@@ -11,8 +11,10 @@ from __future__ import annotations
 import time
 
 from .. import metrics
-from ..lexical import similarity as lexical_similarity
+from ..lexical import expand_terms
+from ..lexical import similarity_expanded as lexical_similarity
 from ..lexical import terms as lexical_terms
+from ..synonyms import SynonymTable
 from ..types import (
     Memory,
     RecallResult,
@@ -91,9 +93,17 @@ class MemoryRecallMixin:
         # of the two would let its noise win. With a real embedder the cosine
         # is already the better ranking; behaviour is unchanged for
         # local/openai/ollama.
-        lexical_terms_set = (
-            set() if self.embedder.is_semantic else lexical_terms(query)
+        #
+        # Word overlap alone misses synonymy, though: "how do users log in"
+        # shares no surface word with a memory about JWT authentication. The
+        # synonym table turns a query term into its equivalents, which then
+        # take part in both candidate retrieval and the score.
+        synonym_table = SynonymTable.load()
+        expansions = synonym_table.expand(query)
+        query_terms = (
+            expand_terms(query, expansions) if not self.embedder.is_semantic else set()
         )
+        lexical_terms_set = query_terms
         similarity_source = "cosine" if self.embedder.is_semantic else "lexical"
 
         def _predicate(memory: Memory) -> bool:
@@ -114,6 +124,8 @@ class MemoryRecallMixin:
         # cosine ranked poorly, so a strong keyword match can still surface.
         by_id: dict[str, Memory] = {memory.id: memory for memory, _ in candidates}
         keyword_ids: set[str] = set()
+        entity_ids: set[str] = set()
+        synonym_ids: list[str] = []
         if lexical_terms_set:
             for memory in self.vector_store.memories():
                 if memory.id in by_id or not _predicate(memory):
@@ -122,18 +134,42 @@ class MemoryRecallMixin:
                     by_id[memory.id] = memory
                     keyword_ids.add(memory.id)
 
+            # The keyword scan above only sees the vector store's rows; the FTS
+            # query below reaches the rest, and is widened with the synonyms so
+            # a translated term finds the stored wording.
+            synonym_query = " ".join(
+                [query, *sorted({e for eqs in expansions.values() for e in eqs})]
+            )
+            synonym_ids = await self.episodic.search_fts_ids(
+                synonym_query, limit=top_k * 3
+            )
+
         # Full-text candidates: FTS indexes content, so it reaches rows the
         # vector store cannot — most importantly an embedding-less row (a peer
         # imported it, or a mode switch left it without a vector). Those rows
         # are invisible to every in-memory candidate path and so were silently
         # unrecallable; the DB is the source of truth and FTS reads it.
         fts_ids = await self.episodic.search_fts_ids(query, limit=top_k * 3)
+        fts_ids = list(dict.fromkeys(fts_ids + synonym_ids))
         for memory in await self.episodic.get_many(
             [mid for mid in fts_ids if mid not in by_id]
         ):
             if _predicate(memory):
                 by_id[memory.id] = memory
                 keyword_ids.add(memory.id)
+
+        # Entity bridge: a query term that is the name of something in the graph
+        # ("Zephyr") reaches every memory connected to that entity. The graph
+        # already stores this; it was only ever exposed as its own endpoint, so
+        # recall could not use it as a candidate source at all. A memory already
+        # pulled in by the vector store still counts as an entity hit here, so
+        # the label reports the stronger signal rather than the incidental one.
+        for memory in await self._entity_linked_memories(query_terms, lexical_terms(query)):
+            if not _predicate(memory):
+                continue
+            if memory.id not in by_id:
+                by_id[memory.id] = memory
+            entity_ids.add(memory.id)
 
         cosine_by_id = {memory.id: similarity for memory, similarity in candidates}
 
@@ -150,15 +186,15 @@ class MemoryRecallMixin:
             )
             cosine = cosine_by_id.get(memory_id, 0.0)
             if lexical_terms_set:
-                similarity = lexical_similarity(query, memory.content)
+                similarity = lexical_similarity(query, memory.content, expansions)
                 sim_source = similarity_source
-            elif memory_id in keyword_ids:
-                # Semantic mode, but this candidate was reached by FTS only —
-                # it has no vector the query could compare against, so a
-                # cosine of 0 would bury a genuine term match. Fall back to
-                # coverage and say so, rather than reporting a cosine that was
-                # never measured.
-                similarity = lexical_similarity(query, memory.content)
+            elif memory_id in keyword_ids or memory_id in entity_ids:
+                # Semantic mode, but this candidate was reached by FTS or the
+                # entity graph only — it has no vector the query could compare
+                # against, so a cosine of 0 would bury a genuine term match.
+                # Fall back to coverage and say so, rather than reporting a
+                # cosine that was never measured.
+                similarity = lexical_similarity(query, memory.content, expansions)
                 sim_source = "lexical"
             else:
                 similarity = cosine
@@ -190,7 +226,9 @@ class MemoryRecallMixin:
                     similarity=round(float(similarity), 6),
                     cosine=round(float(cosine), 6),
                     candidate_source=(
-                        "keyword" if memory_id in keyword_ids else "vector"
+                        "entity"
+                        if memory_id in entity_ids
+                        else ("keyword" if memory_id in keyword_ids else "vector")
                     ),
                     decay_factor=decay,
                     importance=memory.importance,
@@ -234,6 +272,42 @@ class MemoryRecallMixin:
                 [breakdowns_by_id[m.id] for m, _ in top] if explain else []
             ),
         )
+
+    # Matches to try when bridging a query to the entity graph, and the cap on
+    # how many memories the bridge may contribute. Small on purpose: an entity
+    # hit is a strong signal but a common entity ("github", "todo") would
+    # otherwise flood recall with everything it touches.
+    _ENTITY_MATCH_LIMIT = 5
+    _ENTITY_MEMORY_LIMIT = 30
+
+    async def _entity_linked_memories(
+        self, expanded_terms: set[str], raw_terms: set[str]
+    ) -> list[Memory]:
+        """Memories reached through the entity graph by the query's own words.
+
+        A query term that names an entity ("Zephyr") pulls the memories that
+        mention it. Resolution is the graph's own (case-insensitive substring
+        on the entity name/key), deliberately permissive; the match cap and the
+        memory cap below bound how much a common entity can contribute.
+        """
+        terms = expanded_terms or raw_terms
+        if not terms:
+            return []
+        memory_ids: list[str] = []
+        seen_entities: set[str] = set()
+        for term in sorted(terms):
+            entity_id = await self.db.find_entity(term)
+            if not entity_id or entity_id in seen_entities:
+                continue
+            seen_entities.add(entity_id)
+            if len(seen_entities) > self._ENTITY_MATCH_LIMIT:
+                break
+            memory_ids.extend(
+                await self.db.entity_memory_ids(entity_id, limit=self._ENTITY_MEMORY_LIMIT)
+            )
+        if not memory_ids:
+            return []
+        return await self.episodic.get_many(list(dict.fromkeys(memory_ids)))
 
     async def ask(
         self,

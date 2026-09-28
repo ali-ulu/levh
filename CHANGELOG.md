@@ -2,6 +2,30 @@
 
 ## Unreleased
 
+### Feature: recall learns the words you might use instead (#78)
+
+- Model-free ranking matches the words of the query against the words of a
+  memory, which finds an inflection (`migrasyon` → `migrasyonu`) but not a
+  synonym: a memory about JWT authentication shared no surface word with "how
+  do users log in" and so could never become a candidate, however well it
+  answered the question. A query term is now expanded with the terms the store
+  considers equivalent, and the expansions take part in candidate retrieval
+  and in the lexical score.
+- Sources merge: a small built-in map for equivalences that cost nothing to
+  know, and a vocabulary file. `LEVH_SYNONYMS_PATH` points at a store's own
+  file; unset means the vocabulary shipped with the package
+  (`server/data/synonyms.json`), so expansion works out of the box. The file
+  is cached by mtime, so editing it takes effect without a restart.
+- Multi-word members match as phrases, so "log in" reaches its group even
+  though the tokenizer also sees "log" and "in".
+- The table is deliberately not applied to the duplicate check: two memories
+  that merely use different words for the same idea are not duplicates, and
+  widening that comparison would start dropping real memories.
+- Recall also bridges to the entity graph: a query term that names an entity
+  pulls the memories linked to it, labelled `entity` in the `explain`
+  breakdown. The graph already stored this; it was only ever exposed as its
+  own endpoint, so recall could not use it as a candidate source.
+
 ### Feature: the recall-quality benchmark is a CI gate, not just a report (#78)
 
 - `levh benchmark --check` exits non-zero when a gated metric is below its
