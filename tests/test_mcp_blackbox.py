@@ -81,6 +81,17 @@ async def test_mcp_stdio_protocol_blackbox(tmp_path):
                 assert "Stdio protocol black-box memory" in _tool_text(recalled)
                 assert "MemoryType." not in _tool_text(recalled)
                 assert "Type: episodic" in _tool_text(recalled)
+                # explain adds the "why" line; without it the same call stays
+                # compact.
+                assert "why:" not in _tool_text(recalled)
+                explained = await session.call_tool(
+                    "recall_memory",
+                    {"query": "Stdio protocol", "top_k": 3, "explain": True},
+                )
+                assert explained.isError is False
+                text = _tool_text(explained)
+                assert "why:" in text and "via lexical" in text
+                assert "candidate from" in text
 
 
 @pytest.mark.asyncio

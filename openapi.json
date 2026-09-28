@@ -697,6 +697,12 @@
       },
       "RecallRequest": {
         "properties": {
+          "explain": {
+            "default": false,
+            "description": "Return a per-result score breakdown: which signal drove the ranking, where each candidate came from, and the four H(x,\u03c8) penalties that sum to the score. Off by default; the ranking is identical either way.",
+            "title": "Explain",
+            "type": "boolean"
+          },
           "memory_types": {
             "items": {
               "$ref": "#/components/schemas/MemoryType"

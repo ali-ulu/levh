@@ -165,6 +165,7 @@ export type PinRequest = {
 };
 
 export type RecallRequest = {
+  explain?: boolean;
   memory_types?: MemoryType[];
   min_importance?: number;
   project?: string | null;

@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+### Feature: recall can explain why a memory ranked where it did (#78)
+
+- A recall score is a weighted sum of four penalties, so the number alone
+  cannot separate a memory that *matched poorly* from one that *matched well
+  but decayed*. Those call for opposite responses — rephrase the query vs.
+  re-read and reinforce the memory — and "it forgot" versus "it never matched"
+  is exactly the ambiguity behind the recall complaints.
+- `recall(explain=True)` (REST `explain`, MCP `recall_memory(explain=true)`)
+  returns, per result: which signal drove the ranking (lexical in model-free
+  mode, cosine with a real embedder), the raw cosine even when it did not rank,
+  where the candidate came from (`vector` or `keyword` — a stale vector the
+  query dimension skipped is found by terms and labelled), and the four
+  components that sum to the score.
+- Off by default, and the ranking is identical either way; the components are
+  already computed on this path, so there is no extra work — only a larger
+  payload when asked for.
+
 ### Feature: `levh reembed` repairs vectors left in a previous embedder's space (#78)
 
 - Switching `EMBEDDER_MODE` (`hash` → `local`/`openai`/`ollama`, or back) leaves

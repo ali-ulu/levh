@@ -16,6 +16,7 @@ from ..lexical import terms as lexical_terms
 from ..types import (
     Memory,
     RecallResult,
+    ScoreBreakdown,
 )
 
 
@@ -30,6 +31,7 @@ class MemoryRecallMixin:
         project: str | None = None,
         min_importance: float = 0.0,
         reinforce: bool = True,
+        explain: bool = False,
     ) -> RecallResult:
         """Time the ranked recall and record its latency (issue #145).
 
@@ -46,6 +48,7 @@ class MemoryRecallMixin:
                 project=project,
                 min_importance=min_importance,
                 reinforce=reinforce,
+                explain=explain,
             )
         finally:
             metrics.observe(
@@ -60,6 +63,7 @@ class MemoryRecallMixin:
         project: str | None = None,
         min_importance: float = 0.0,
         reinforce: bool = True,
+        explain: bool = False,
     ) -> RecallResult:
         """Recall memories ranked by H(x,ψ) score.
 
@@ -71,6 +75,12 @@ class MemoryRecallMixin:
         previews) so browsing the UI does not artificially strengthen memories
         or inflate their access frequency — only genuine AI recall should
         reinforce.
+
+        Set ``explain=True`` to also return a per-result :class:`ScoreBreakdown`
+        naming which signal drove the ranking, where each candidate came from,
+        and the four penalty components that sum to the score. The extra work is
+        nil — the components are computed on this path already — but it is
+        opt-in so the common recall stays a compact payload.
         """
         await self._sync_with_external_writes()
         query_embedding = await self.embedder.embed(query)
@@ -84,6 +94,7 @@ class MemoryRecallMixin:
         lexical_terms_set = (
             set() if self.embedder.is_semantic else lexical_terms(query)
         )
+        similarity_source = "cosine" if self.embedder.is_semantic else "lexical"
 
         def _predicate(memory: Memory) -> bool:
             if min_importance and memory.importance < min_importance:
@@ -102,16 +113,19 @@ class MemoryRecallMixin:
         # In model-free mode the query terms also pull candidates the positional
         # cosine ranked poorly, so a strong keyword match can still surface.
         by_id: dict[str, Memory] = {memory.id: memory for memory, _ in candidates}
+        keyword_ids: set[str] = set()
         if lexical_terms_set:
             for memory in self.vector_store.memories():
                 if memory.id in by_id or not _predicate(memory):
                     continue
                 if lexical_terms_set & lexical_terms(memory.content):
                     by_id[memory.id] = memory
+                    keyword_ids.add(memory.id)
 
         cosine_by_id = {memory.id: similarity for memory, similarity in candidates}
 
         scored: list[tuple[Memory, float]] = []
+        breakdowns_by_id: dict[str, ScoreBreakdown] = {}
         for memory_id, memory in by_id.items():
             # Pinned memories are exempt from time decay. Everyone else decays
             # from their LAST ACCESS at their OWN stability (half-life), not a
@@ -121,10 +135,11 @@ class MemoryRecallMixin:
                 if memory.pinned
                 else self.scorer.compute_decay(memory.accessed_at, half_life_hours=memory.stability_hours)
             )
+            cosine = cosine_by_id.get(memory_id, 0.0)
             if lexical_terms_set:
                 similarity = lexical_similarity(query, memory.content)
             else:
-                similarity = cosine_by_id.get(memory_id, 0.0)
+                similarity = cosine
             hscore = self.scorer.compute(
                 similarity=similarity,
                 decay_factor=decay,
@@ -133,6 +148,31 @@ class MemoryRecallMixin:
             )
             memory.hscore = hscore
             scored.append((memory, hscore))
+            if explain:
+                bd = self.scorer.breakdown(
+                    similarity=similarity,
+                    decay_factor=decay,
+                    importance=memory.importance,
+                    frequency=memory.frequency,
+                )
+                breakdowns_by_id[memory_id] = ScoreBreakdown(
+                    memory_id=memory_id,
+                    content_snippet=memory.content[:100],
+                    total_hscore=hscore,
+                    alpha_component=bd["alpha_component"],
+                    beta_component=bd["beta_component"],
+                    gamma_component=bd["gamma_component"],
+                    delta_component=bd["delta_component"],
+                    similarity_source=similarity_source,
+                    similarity=round(float(similarity), 6),
+                    cosine=round(float(cosine), 6),
+                    candidate_source=(
+                        "keyword" if memory_id in keyword_ids else "vector"
+                    ),
+                    decay_factor=decay,
+                    importance=memory.importance,
+                    frequency=memory.frequency,
+                )
 
         # Sort by score (lower = better relevance)
         scored.sort(key=lambda x: x[1])
@@ -167,6 +207,9 @@ class MemoryRecallMixin:
         return RecallResult(
             memories=[m for m, _ in top],
             scores=[s for _, s in top],
+            breakdowns=(
+                [breakdowns_by_id[m.id] for m, _ in top] if explain else []
+            ),
         )
 
     async def ask(

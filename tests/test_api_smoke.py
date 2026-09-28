@@ -90,6 +90,21 @@ async def test_api_smoke_full_surface(api_client):
     # 6. Recall
     r = await c.post("/api/memories/recall", json={"query": "smoke test", "top_k": 3})
     assert r.status_code == 200 and "memories" in r.json()
+    # Off by default: no breakdown payload unless asked.
+    assert r.json()["breakdowns"] == []
+
+    # 6b. Recall with explain — the why behind each score.
+    r = await c.post(
+        "/api/memories/recall",
+        json={"query": "smoke test", "top_k": 3, "explain": True},
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["breakdowns"] and len(body["breakdowns"]) == len(body["memories"])
+    bd = body["breakdowns"][0]
+    assert bd["similarity_source"] == "lexical"
+    assert bd["candidate_source"] in {"vector", "keyword"}
+    assert bd["memory_id"] == body["memories"][0]["id"]
 
     # 7. Stats
     r = await c.get("/api/stats")

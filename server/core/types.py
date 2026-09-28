@@ -121,6 +121,15 @@ class RecallRequest(BaseModel):
     session_id: Optional[str] = None
     project: Optional[str] = None
     min_importance: float = Field(default=0.0, ge=0.0, le=1.0)
+    explain: bool = Field(
+        default=False,
+        description=(
+            "Return a per-result score breakdown: which signal drove the "
+            "ranking, where each candidate came from, and the four H(x,ψ) "
+            "penalties that sum to the score. Off by default; the ranking is "
+            "identical either way."
+        ),
+    )
     reinforce: bool = Field(
         default=True,
         description=(
@@ -131,13 +140,14 @@ class RecallRequest(BaseModel):
     )
 
 
-class RecallResult(BaseModel):
-    memories: list[Memory]
-    scores: list[float]
-
-
 class ScoreBreakdown(BaseModel):
-    """Individual H(x,ψ) components for visualization."""
+    """Individual H(x,ψ) components for visualization.
+
+    The four ``*_component`` values sum to ``total_hscore``. ``similarity_source``
+    and ``cosine`` are only meaningful on a recall result (which signal actually
+    drove the ranking, and the raw cosine even when it did not); the single-memory
+    ``/score-breakdown`` route leaves them at their defaults.
+    """
 
     memory_id: str
     content_snippet: str
@@ -146,3 +156,16 @@ class ScoreBreakdown(BaseModel):
     beta_component: float   # β·decay
     gamma_component: float  # γ·(1-importance)
     delta_component: float  # δ·(1-freq_norm)
+    similarity_source: str = "cosine"
+    similarity: float = 0.0
+    cosine: float = 0.0
+    candidate_source: str = "vector"
+    decay_factor: float = 1.0
+    importance: float = 0.0
+    frequency: int = 0
+
+
+class RecallResult(BaseModel):
+    memories: list[Memory]
+    scores: list[float]
+    breakdowns: list[ScoreBreakdown] = Field(default_factory=list)

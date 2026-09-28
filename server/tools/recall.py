@@ -15,6 +15,7 @@ def register(mcp: FastMCP, engine: MemoryEngine) -> None:
         session_id: str = "",
         project: str = "",
         min_importance: float = 0.0,
+        explain: bool = False,
     ) -> str:
         """Recall relevant memories ranked by H(x,ψ) relevance score.
 
@@ -24,6 +25,10 @@ def register(mcp: FastMCP, engine: MemoryEngine) -> None:
             session_id: Optional session filter.
             project: Optional project/workspace filter.
             min_importance: Minimum importance threshold (0-1).
+            explain: Add the score breakdown per result — which signal ranked
+                it, where the candidate came from, and the four penalties.
+                Use when a memory you expected did not surface, or surfaced
+                low, and you need to know why.
         """
         result = await engine.recall(
             query=query,
@@ -31,11 +36,13 @@ def register(mcp: FastMCP, engine: MemoryEngine) -> None:
             session_id=session_id or None,
             project=project or None,
             min_importance=min_importance,
+            explain=explain,
         )
 
         if not result.memories:
             return "No matching memories found."
 
+        breakdowns = {bd.memory_id: bd for bd in result.breakdowns}
         lines = [f"Found {len(result.memories)} memories:\n"]
         for i, (mem, score) in enumerate(zip(result.memories, result.scores), 1):
             snippet = mem.content[:120] + ("..." if len(mem.content) > 120 else "")
@@ -46,4 +53,15 @@ def register(mcp: FastMCP, engine: MemoryEngine) -> None:
                 f"{' | Project: ' + mem.project if mem.project else ''}\n"
                 f"   Tags: {', '.join(mem.tags) or 'none'}"
             )
+            bd = breakdowns.get(mem.id)
+            if bd is not None:
+                lines.append(
+                    f"   why: total {bd.total_hscore:.4f} = "
+                    f"match {bd.alpha_component:.4f} (similarity "
+                    f"{bd.similarity:.3f} via {bd.similarity_source}) + "
+                    f"decay {bd.beta_component:.4f} + "
+                    f"importance {bd.gamma_component:.4f} + "
+                    f"frequency {bd.delta_component:.4f}; "
+                    f"candidate from {bd.candidate_source}"
+                )
         return "\n\n".join(lines)
