@@ -197,6 +197,9 @@ async def recall_memories(req: RecallRequest, engine=Depends(get_engine)):
         ],
         "scores": result.scores,
         "breakdowns": [bd.model_dump() for bd in result.breakdowns],
+        # Only present when nothing was returned: why it was empty, from the
+        # store's own counts.
+        "diagnosis": result.diagnosis.model_dump() if result.diagnosis else None,
     }
 
 

@@ -174,6 +174,67 @@ class AggregateQueries:
             for name, count in sorted(counts.items(), key=lambda kv: -kv[1])
         ]
 
+    async def count_memories_matching_terms(self, terms: list[str]) -> int:
+        """How many stored memories share at least one content term with
+        ``terms``, ignoring every filter. Diagnostic only: tells an empty
+        recall apart from a recall whose filter excluded a match.
+
+        Matching uses SQLite's LIKE over each term rather than FTS, because the
+        query here is a term list the caller already stemmed and the point is a
+        cheap count, not a ranked hit set.
+        """
+        if not terms:
+            return 0
+        clauses = " OR ".join("lower(content) LIKE ?" for _ in terms)
+        params = [f"%{term.lower()}%" for term in terms]
+        cursor = await self._db.conn.execute(
+            f"SELECT COUNT(*) FROM memories WHERE {clauses}",  # nosec B608 - clause count is the term count, values bound
+            params,
+        )
+        row = await cursor.fetchone()
+        await cursor.close()
+        return row[0]
+
+    async def count_recall_mismatches(
+        self,
+        project: Optional[str] = None,
+        session_id: Optional[str] = None,
+        min_importance: float = 0.0,
+    ) -> dict[str, int]:
+        """Count stored memories in the recall's scope and how each filter
+        narrows the pool.
+
+        Returns ``in_scope_total`` (everything the filters would admit) and a
+        per-filter exclusion count. The exclusion counts are per-filter, so a
+        memory excluded by two filters is counted twice — the numbers are there
+        to name the filter that emptied the recall, not to partition the table.
+        """
+        cursor = await self._db.conn.execute(
+            "SELECT session_id, project, importance FROM memories"
+        )
+        rows = await cursor.fetchall()
+        await cursor.close()
+
+        in_scope = 0
+        by_project = by_session = by_importance = 0
+        for sess, proj, importance in rows:
+            if project and proj != project:
+                by_project += 1
+                continue
+            if session_id and sess != session_id:
+                by_session += 1
+                continue
+            if min_importance and (importance or 0.0) < min_importance:
+                by_importance += 1
+                continue
+            in_scope += 1
+        return {
+            "in_scope_total": in_scope,
+            "excluded_by_project": by_project,
+            "excluded_by_session": by_session,
+            "excluded_by_importance": by_importance,
+        }
+
     async def count_sessions(self, status: Optional[str] = None) -> int:
         if status:
             cursor = await self._db.conn.execute("SELECT COUNT(*) FROM sessions WHERE status = ?", (status,))

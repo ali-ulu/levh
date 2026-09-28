@@ -166,7 +166,32 @@ class ScoreBreakdown(BaseModel):
     frequency: int = 0
 
 
+class RecallDiagnosis(BaseModel):
+    """Why an empty recall returned nothing.
+
+    Attached to a ``RecallResult`` only when no memory was returned, so the
+    "why is nothing coming back" question — the one a user asks exactly when
+    recall is broken — has an answer that is a function of the store, not a
+    guess. Computed from counts over the same table the candidate pipeline
+    reads; deterministic and model-free.
+    """
+
+    query: str
+    stored_total: int
+    in_scope_total: int
+    excluded_by_project: int = 0
+    excluded_by_session: int = 0
+    excluded_by_importance: int = 0
+    query_terms: list[str] = Field(default_factory=list)
+    reasons: list[str] = Field(default_factory=list)
+
+    @property
+    def empty_store(self) -> bool:
+        return self.stored_total == 0
+
+
 class RecallResult(BaseModel):
     memories: list[Memory]
     scores: list[float]
     breakdowns: list[ScoreBreakdown] = Field(default_factory=list)
+    diagnosis: Optional[RecallDiagnosis] = None

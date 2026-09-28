@@ -40,6 +40,10 @@ def register(mcp: FastMCP, engine: MemoryEngine) -> None:
         )
 
         if not result.memories:
+            if result.diagnosis is not None:
+                return "No matching memories found. Why: " + "; ".join(
+                    result.diagnosis.reasons
+                )
             return "No matching memories found."
 
         breakdowns = {bd.memory_id: bd for bd in result.breakdowns}

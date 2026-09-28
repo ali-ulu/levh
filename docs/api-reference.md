@@ -48,7 +48,7 @@ because it is a read that has to POST to carry its query.
 | POST | `/api/v1/memories/held/{held_id}/discard` | Drop a held candidate. The row stays with its verdict, so the discard is recorded |
 | POST | `/api/v1/memories/import` | Import memories from JSON |
 | GET | `/api/v1/memories/low-trust` | Stored memories whose provenance/trust confidence is below ``threshold`` (least confident first). Run… |
-| POST | `/api/v1/memories/recall` | Recall by query, ranked by H(x,ψ). Reinforcement is forced off in public demo mode |
+| POST | `/api/v1/memories/recall` | Recall by query, ranked by H(x,ψ). Reinforcement is forced off in public demo mode. An empty result carries a `diagnosis` naming why nothing matched |
 | POST | `/api/v1/memories/redact-all` | Bulk redaction of secrets across stored memories. dry_run=true (default) only previews; set false to rewrite every… |
 | GET | `/api/v1/memories/review` | Spaced-repetition review queue — fading, unpinned, un-snoozed memories due for a… |
 | POST | `/api/v1/memories/trust/recompute` | Compute and persist the provenance/trust score for every memory |

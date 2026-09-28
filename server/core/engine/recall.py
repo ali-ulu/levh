@@ -18,6 +18,7 @@ from ..hscore import SUPERSEDED_PENALTY
 from ..synonyms import SynonymTable
 from ..types import (
     Memory,
+    RecallDiagnosis,
     RecallResult,
     ScoreBreakdown,
 )
@@ -276,12 +277,86 @@ class MemoryRecallMixin:
             {"query": query, "count": len(top), "ids": [m.id for m, _ in top]},
         )
 
+        diagnosis = None
+        if not top:
+            diagnosis = await self._diagnose_empty_recall(
+                query=query,
+                project=project,
+                session_id=session_id,
+                min_importance=min_importance,
+                query_terms=sorted(lexical_terms_set),
+            )
+
         return RecallResult(
             memories=[m for m, _ in top],
             scores=[s for _, s in top],
             breakdowns=(
                 [breakdowns_by_id[m.id] for m, _ in top] if explain else []
             ),
+            diagnosis=diagnosis,
+        )
+
+    async def _diagnose_empty_recall(
+        self,
+        query: str,
+        project: str | None,
+        session_id: str | None,
+        min_importance: float,
+        query_terms: list[str],
+    ) -> RecallDiagnosis:
+        """Explain an empty recall from the store's own counts.
+
+        Recall returning nothing has several indistinguishable causes — no
+        memories at all, a filter that excludes all of them, or a query that
+        matches none of the stored wording. The counts come from the same
+        table the candidate pipeline reads, so the reasons reported are facts
+        about the store, not a guess about which stage dropped the row.
+        """
+        stored_total = await self.db.count_memories()
+        matching_total = await self.db.count_memories_matching_terms(query_terms)
+        scope = await self.db.count_recall_mismatches(
+            project=project,
+            session_id=session_id,
+            min_importance=min_importance,
+        )
+
+        reasons: list[str] = []
+        if stored_total == 0:
+            reasons.append("no memories are stored yet")
+        elif not query_terms:
+            reasons.append("the query has no content words to match on (all stopwords)")
+        elif matching_total == 0:
+            reasons.append(
+                "no stored memory shares a word with the query — try the wording "
+                "it was stored with, or a broader term"
+            )
+        elif scope["in_scope_total"] == 0:
+            parts = []
+            if project:
+                parts.append(f"project={project!r}")
+            if session_id:
+                parts.append(f"session_id={session_id!r}")
+            if min_importance > 0.0:
+                parts.append(f"min_importance={min_importance}")
+            scope_desc = ", ".join(parts) if parts else "the active filters"
+            reasons.append(
+                f"all {matching_total} matching memories are hidden by {scope_desc}"
+            )
+        else:
+            reasons.append(
+                f"{matching_total} memories match the query and {scope['in_scope_total']} "
+                "are in scope, but none surfaced — the store may need a rebuild"
+            )
+
+        return RecallDiagnosis(
+            query=query,
+            stored_total=stored_total,
+            in_scope_total=scope["in_scope_total"],
+            excluded_by_project=scope["excluded_by_project"],
+            excluded_by_session=scope["excluded_by_session"],
+            excluded_by_importance=scope["excluded_by_importance"],
+            query_terms=query_terms,
+            reasons=reasons,
         )
 
     # Matches to try when bridging a query to the entity graph, and the cap on

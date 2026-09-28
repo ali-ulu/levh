@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+### Feature: an empty recall says why it was empty (#78)
+
+- An empty result has several indistinguishable causes — no memories at all, a
+  filter that excludes every match, or a query whose wording appears nowhere —
+  and they call for different fixes. `RecallResult` now carries a
+  `RecallDiagnosis` when nothing was returned: `stored_total`,
+  `in_scope_total`, a per-filter exclusion count, the query terms actually
+  matched on, and plain-language `reasons`.
+- The counts come from the same table the candidate pipeline reads, so the
+  reason is a fact about the store rather than a guess about which stage
+  dropped the row. A wording mismatch is reported ahead of a filter, because a
+  filter is not what emptied a recall that could match nothing anywhere.
+- Exposed on `POST /api/memories/recall` as `diagnosis` (null when the recall
+  returned something) and as a one-line "Why:" in the `recall_memory` MCP tool.
+- Model-free and deterministic: no embedder is consulted for the diagnosis.
+
 ### Fix: a differently scoped fact no longer demotes the real one (#78)
 
 - Model-free supersession scored overlap one-way, the same shape as recall's
