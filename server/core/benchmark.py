@@ -97,7 +97,7 @@ DISTRACTORS = [
 #: editing the floors in the same commit, which is a deliberate and reviewable
 #: act rather than a silent erasure of the signal.
 QUALITY_FLOORS: dict[str, dict[str, float]] = {
-    "hash": {"hit@1": 0.667, "hit@3": 0.905, "hit@5": 0.905, "mrr": 0.778},
+    "hash": {"hit@1": 0.714, "hit@3": 0.905, "hit@5": 0.905, "mrr": 0.802},
 }
 
 #: Metrics that carry a quality signal, in report order.

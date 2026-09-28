@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 
 from .helpers import logger
 from .. import metrics
-from ..lexical import similarity as lexical_similarity
+from ..lexical import mutual_similarity
 from ..types import (
     Memory,
     MemoryType,
@@ -22,10 +22,20 @@ from ..types import (
 
 # Word-overlap share above which a new memory is treated as superseding an
 # older one in model-free mode. The cosine threshold (INTERFERENCE_THRESHOLD,
-# default 0.97) is calibrated for a real embedder; calibrated samples of a
-# one-word edit score ~0.8 word overlap and unrelated same-project notes ~0.2,
-# so this sits comfortably between them (see tests/test_lexical_recall.py).
-_LEXICAL_INTERFERENCE_FLOOR = 0.6
+# default 0.97) is calibrated for a real embedder.
+#
+# The score here is *symmetric* coverage — the shared terms as a share of the
+# longer memory — not the query-coverage used for ranking. Query coverage asks
+# "does this memory answer the words I used", which a longer, unrelated memory
+# can pass merely by containing the new one's words. Supersession is a claim
+# that two memories are about the same thing, so it must hold in both
+# directions. Calibrated samples: a one-value edit ("...is main" -> "...is
+# prod") scores ~0.67, a reworded restatement ~0.8, and two memories that share
+# only a topic frame ("production deploy branch" vs "staging deploy branch")
+# score ~0.6. The floor sits above the topic-frame overlap so a differently
+# scoped fact does not demote the real one (see tests/test_lexical_recall.py
+# and tests/test_superseded_demotion.py).
+_LEXICAL_INTERFERENCE_FLOOR = 0.65
 
 
 class MemoryWriteMixin:
@@ -195,7 +205,7 @@ class MemoryWriteMixin:
                 new_memory.embedding, top_k=5, predicate=candidate
             )
         return [
-            (memory, lexical_similarity(new_memory.content, memory.content))
+            (memory, mutual_similarity(new_memory.content, memory.content))
             for memory in self.vector_store.memories()
             if candidate(memory)
         ]

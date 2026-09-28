@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+### Fix: a differently scoped fact no longer demotes the real one (#78)
+
+- Model-free supersession scored overlap one-way, the same shape as recall's
+  query coverage. That let a memory which merely *contains* another's words
+  count as a replacement: "the production deploy branch is prod, not main" was
+  marked superseded by "the staging deploy branch is stage, not prod", because
+  the near-miss answers every word of the real fact while the real fact does
+  not answer every word of the near-miss. The real answer was then demoted and
+  dropped out of the top hit.
+- Supersession now scores symmetric coverage (`lexical.mutual_similarity`, the
+  minimum of both directions) and the floor sits above the topic-frame overlap
+  (~0.6) that a differently scoped fact produces, so only a genuine
+  restatement or one-value edit is treated as a replacement.
+- Recall's ranking coverage is unchanged; only the write-path supersession
+  test moved.
+- On the hardened benchmark corpus this restores `hit@1` from 0.667 to 0.714
+  and `mrr` from 0.778 to 0.802, so the floors move with it and the gate holds
+  the real fact at the top.
+
 ### Feature: a superseded fact ranks below the one that replaced it (#78)
 
 - Writing a near-identical memory weakens the older one (retroactive

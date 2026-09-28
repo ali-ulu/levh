@@ -101,6 +101,38 @@ def test_is_semantic_only_false_for_hash():
     assert Embedder(mode="openai").is_semantic is True
 
 
+# ── lexical.mutual_similarity ───────────────────────────────────────
+
+
+def test_mutual_similarity_is_bounded_by_the_longer_text():
+    short = "The deploy branch is prod"
+    long = "The production deploy branch is prod, not main"
+    # One direction covers fully, the other does not; the symmetric score is
+    # the smaller, so the longer text's extra words are not free.
+    assert lexical.mutual_similarity(short, long) == lexical.similarity(long, short)
+    assert lexical.mutual_similarity(short, long) < 1.0
+
+
+def test_mutual_similarity_separates_a_replacement_from_a_topic_frame():
+    """The write path's whole calibration in one assertion: a one-value edit is
+    a replacement, a differently scoped fact that merely shares the frame is
+    not."""
+    replacement = lexical.mutual_similarity(
+        "The production deploy branch is main",
+        "The production deploy branch is prod",
+    )
+    topic_frame = lexical.mutual_similarity(
+        "The production deploy branch is prod, not main",
+        "The staging deploy branch is stage, not prod",
+    )
+    assert topic_frame < 0.65 <= replacement
+
+
+def test_mutual_similarity_is_symmetric():
+    a, b = "Postgres pool is 20", "The Postgres connection pool max size is 20"
+    assert lexical.mutual_similarity(a, b) == lexical.mutual_similarity(b, a)
+
+
 # ── lexical.similarity across inflections and languages ─────────────
 
 

@@ -146,6 +146,20 @@ def _term_matches(
     )
 
 
+def mutual_similarity(a: str, b: str) -> float:
+    """Symmetric overlap of two texts' content words, in [0, 1].
+
+    The minimum of the two directional coverages, so the score is bounded by
+    the *longer* text's share of shared terms: two memories score high only
+    when each contains most of the other. Recall's :func:`similarity` is
+    deliberately one-directional (does this answer my query?); supersession
+    needs the other question — are these two memories about the same thing? —
+    and a topical frame that only one direction covers must not count as a
+    replacement (see ``server.core.engine.write``).
+    """
+    return min(similarity(a, b), similarity(b, a))
+
+
 def expand_terms(
     query: str, expansions: Mapping[str, frozenset[str]] | None
 ) -> set[str]:

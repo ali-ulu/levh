@@ -24,6 +24,7 @@ from server.core.memory_engine import MemoryEngine
 
 OLD = "The production deploy branch is main"
 NEW = "The production deploy branch is prod"
+REAL_FACT = "The production deploy branch is prod, not main"
 QUESTION = "which branch do we deploy to production from"
 
 
@@ -139,6 +140,43 @@ async def test_pinned_memory_is_never_superseded(engine):
     old = await engine.store(content=OLD, memory_type="episodic", pinned=True)
     await engine.store(content=NEW, memory_type="episodic")
     assert "superseded_by" not in (await engine.get_memory(old.id)).metadata
+
+
+@pytest.mark.asyncio
+async def test_a_differently_scoped_fact_does_not_supersede(engine):
+    """A near-miss that shares the topic frame but answers a different question
+    is not a replacement. Scoring overlap one-way let this mark the real fact
+    superseded: the near-miss contains every word of the older memory even
+    though the older memory does not contain every word of the near-miss."""
+    real = await engine.store(content=REAL_FACT, memory_type="episodic")
+    await engine.store(
+        content="The staging deploy branch is stage, not prod", memory_type="episodic"
+    )
+    assert "superseded_by" not in (await engine.get_memory(real.id)).metadata
+
+
+@pytest.mark.asyncio
+async def test_a_topic_miss_does_not_outrank_the_real_fact(engine):
+    """With the real fact no longer wrongly demoted, the near-miss cannot score
+    strictly above it. (Equal scores are a legitimate tie; the point is that the
+    near-miss gains no supersession advantage.)"""
+    real = await engine.store(content=REAL_FACT, memory_type="episodic")
+    await engine.store(
+        content="The staging deploy branch is stage, not prod", memory_type="episodic"
+    )
+    result = await engine.recall(QUESTION, top_k=5, reinforce=False)
+    ranked = [m.id for m in result.memories]
+    scores = dict(zip(ranked, result.scores))
+    miss_id = next(i for i in ranked if i != real.id)
+    assert scores[real.id] >= scores[miss_id] - 1e-9
+
+
+@pytest.mark.asyncio
+async def test_a_genuine_replacement_still_supersedes_after_the_tightening(engine):
+    """The symmetric floor must not stop a real one-value edit from being
+    recorded — over-tightening would defeat the whole feature."""
+    old, new = await _supersede(engine)
+    assert (await engine.get_memory(old.id)).metadata["superseded_by"] == new.id
 
 
 @pytest.mark.asyncio
