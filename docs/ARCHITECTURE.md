@@ -257,6 +257,20 @@ the hash embedder, revisit `tests/test_v2_features.py::test_interference_*`.
 
 - **Scale:** the NumPy vector store is fine to ~50K vectors; beyond that, swap
   in an ANN store (§7). Every search is O(n) over dimension-matched vectors.
+- **The hash embedder is not trusted as meaning.** `hash` is positional-char
+  based: two unrelated sentences score ~0.83 cosine and distinct facts sharing a
+  prefix cross the 0.90 near-duplicate threshold, while a memory whose every
+  content word matches the query can still rank below noise that merely shares a
+  prefix. `Embedder.is_semantic` is `False` for it, and every cosine-as-meaning
+  decision branches on that: recall ranks model-free mode on query word-overlap
+  (`server.core.lexical`) and adds keyword candidates; the admission gate
+  narrows its duplicate signal to exact identity (a byte-for-byte re-store still
+  rejects) instead of the near-duplicate band; retroactive interference uses a
+  lexical floor instead of `INTERFERENCE_THRESHOLD`. Under `local`/`ollama`/
+  `openai` the cosine is used exactly as before. The stored vectors are
+  unchanged — no re-embed or migration — they are simply not read as relevance.
+  Covered by `tests/test_lexical_recall.py`; measured on
+  `server/core/benchmark.py` (hit@1 0.5 → 1.0 under `hash`).
 - **Concurrency:** one shared `aiosqlite` connection serializes writes; `recall`
   mutates cached objects in place. Single-writer local use is safe; a
   high-concurrency multi-writer deployment would want a connection pool +

@@ -148,6 +148,25 @@ class MemoryQueries:
         await cursor.close()
         return [self._row_to_memory(r) for r in rows]
 
+    async def content_exists(self, content: str, project: Optional[str] = None) -> bool:
+        """Whether a memory with byte-for-byte identical ``content`` exists.
+
+        The exact-duplicate check the admission gate uses when it has no
+        trustworthy similarity signal (the hash embedder; see
+        ``Embedder.is_semantic``). Filtered by ``project`` so a literal re-store
+        in one workspace does not shadow the same text in another.
+        """
+        query = "SELECT 1 FROM memories WHERE content = ?"
+        params: list = [content]
+        if project is not None:
+            query += " AND project = ?"
+            params.append(project)
+        query += " LIMIT 1"
+        cursor = await self._db.conn.execute(query, params)
+        row = await cursor.fetchone()
+        await cursor.close()
+        return row is not None
+
     async def update_memory(self, memory_id: str, updates: dict) -> bool:
         sets = []
         params = []

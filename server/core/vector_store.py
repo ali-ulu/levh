@@ -87,6 +87,11 @@ class VectorStore:
         self._memories.pop(memory_id, None)
         return True
 
+    def memories(self) -> list[Memory]:
+        """Every stored memory, for signals that are not cosine (see
+        ``server.core.lexical``). Order is unspecified."""
+        return list(self._memories.values())
+
     def get(self, memory_id: str) -> Optional[Memory]:
         return self._memories.get(memory_id)
 

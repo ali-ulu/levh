@@ -107,13 +107,15 @@ reproduces the extraction and fails if the suffix returns.
   `docs/internal/`.
 - This file is itself a root `*.md`, so any link you add here is validated too.
 - The E2E suite runs against one shared SQLite store per server. Two traps:
-  (1) with no embedding provider configured, the hash fallback embedder scores
-  differently-worded sentences as high as ~0.91 similar, above the 0.90
-  duplicate-review threshold, so `POST /api/memories` answers 409 for a fixture
-  that merely echoes another spec's sentence shape — give each spec distinct
-  wording. (2) `/api/memories/recall` is a semantic ranking, so the first result
-  for a needle is not reliably that needle's own memory; a spec must not assume
-  the top hit. Both bit `e2e/palette.spec.ts` in #300.
+  (1) with no embedding provider configured, the hash fallback embedder is
+  positional, not semantic — model-free recall now ranks on word overlap and the
+  admission gate only rejects *exact* duplicates (see
+  `tests/test_lexical_recall.py`), so a `409` means the fixture duplicated
+  another spec's content byte-for-byte, and `server/core/benchmark.py` is the
+  quality signal to watch. Give each spec distinct wording anyway.
+  (2) `/api/memories/recall` is a semantic ranking, so the first result for a
+  needle is not reliably that needle's own memory; a spec must not assume the
+  top hit. Both bit `e2e/palette.spec.ts` in #300.
 - Locally, Playwright reuses an already-running server on 8930/8931
   (`reuseExistingServer: !CI`). A server you left running from a debug session
   is silently reused with its stale database, producing flakes that look like

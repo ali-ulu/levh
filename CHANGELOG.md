@@ -2,6 +2,41 @@
 
 ## Unreleased
 
+### Fix: model-free recall answers, and the hash gate stops losing new memories (#78)
+
+- Symptom: with no embedding model installed (the default `auto` mode when
+  `sentence-transformers` is absent, i.e. every plain `pip install levh`), a
+  memory could be written without error and then not come back from recall.
+  `forget` worked; remembering did not.
+- Cause, two halves:
+  1. The `hash` fallback embedder is positional-char based, so its cosine
+     measures character positions, not meaning. A memory whose every content
+     word matches the query could rank below noise that merely shares a prefix,
+     so recall returned the wrong entries.
+  2. That same cosine fed the admission gate. Unrelated sentences score ~0.83
+     and distinct facts sharing a prefix cross the 0.90 "possible duplicate"
+     threshold, so genuinely new content was answered `review`, parked in
+     `held_memories`, and never admitted — invisible to recall.
+- Fix: `Embedder.is_semantic` states whether the resolved mode yields
+  meaning-bearing vectors (only `hash` is `False`), and every decision that
+  treated cosine as meaning branches on it:
+  * recall ranks model-free mode on query word-overlap
+    (`server.core.lexical`) and pulls keyword candidates the positional cosine
+    missed;
+  * the admission gate narrows to *exact* duplicates under `hash` (a
+    byte-for-byte re-store still rejects) instead of the near-duplicate band;
+  * retroactive interference uses a lexical floor instead of the cosine
+    threshold, so a superseding edit still weakens the older memory while an
+    unrelated one does not.
+  Under a real embedder (`local`/`ollama`/`openai`) the cosine is used exactly
+  as before. No vector is rewritten and no migration is needed — the same
+  `hash` vectors are stored, they are just not trusted for ranking.
+- Measured on `server/core/benchmark.py` under `EMBEDDER_MODE=hash`:
+  hit@1 0.5 → 1.0, MRR 0.608 → 1.0.
+- Covered by `tests/test_lexical_recall.py`: five distinct facts stored and
+  recalled with no model, keyword rank beating positional noise, an exact
+  duplicate still rejected, and supersession still weakening the older memory.
+
 ### Connectors: Jira and Linear, pull-on-demand
 
 - Two connectors were registered but did not exist: the report's connector list

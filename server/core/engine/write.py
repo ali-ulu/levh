@@ -13,10 +13,18 @@ import time
 
 from .helpers import logger
 from .. import metrics
+from ..lexical import similarity as lexical_similarity
 from ..types import (
     Memory,
     MemoryType,
 )
+
+# Word-overlap share above which a new memory is treated as superseding an
+# older one in model-free mode. The cosine threshold (INTERFERENCE_THRESHOLD,
+# default 0.97) is calibrated for a real embedder; calibrated samples of a
+# one-word edit score ~0.8 word overlap and unrelated same-project notes ~0.2,
+# so this sits comfortably between them (see tests/test_lexical_recall.py).
+_LEXICAL_INTERFERENCE_FLOOR = 0.6
 
 
 class MemoryWriteMixin:
@@ -127,12 +135,10 @@ class MemoryWriteMixin:
                 and m.project == new_memory.project
             )
 
-        similar = self.vector_store.search(
-            new_memory.embedding, top_k=5, predicate=_candidate
-        )
+        similar = self._interference_candidates(new_memory, _candidate)
         interfered: list[str] = []
         for old, similarity in similar:
-            if similarity < self.interference_threshold:
+            if similarity < self._interference_floor():
                 continue
             weakened = self.scorer.weaken(old.stability_hours, self.interference_factor)
             # This write is best-effort, like the embedder/summarizer fallbacks
@@ -163,6 +169,34 @@ class MemoryWriteMixin:
                 },
             )
         return interfered
+
+    def _interference_candidates(self, new_memory: Memory, candidate):
+        """The older memories to compare against the new one.
+
+        With a real embedder the vector store's top-5 is the cheap, correct
+        proximity set. The hash fallback's cosine is positional, so it ranks
+        the wrong neighbours: model-free mode scores every candidate in the
+        project by word overlap instead (see ``server.core.lexical``).
+        """
+        if self.embedder.is_semantic:
+            return self.vector_store.search(
+                new_memory.embedding, top_k=5, predicate=candidate
+            )
+        return [
+            (memory, lexical_similarity(new_memory.content, memory.content))
+            for memory in self.vector_store.memories()
+            if candidate(memory)
+        ]
+
+    def _interference_floor(self) -> float:
+        """The similarity above which a new memory is treated as superseding.
+
+        The env-tuned cosine threshold is meaningless for word overlap, so
+        model-free mode uses a dedicated lexical floor instead.
+        """
+        if self.embedder.is_semantic:
+            return self.interference_threshold
+        return _LEXICAL_INTERFERENCE_FLOOR
 
     async def update_memory(
         self,

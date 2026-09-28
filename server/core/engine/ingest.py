@@ -39,7 +39,14 @@ class MemoryIngestMixin:
         probe_text, _ = redact_secrets(content or "")
         probe_text = (probe_text or "").strip()
         max_sim = 0.0
-        if probe_text:
+        # The duplicate signal is only as trustworthy as the embedder behind it.
+        # With the position-based hash fallback the cosine reflects character
+        # positions, not meaning — distinct facts with a shared prefix score as
+        # "possible duplicate" and would be held for review, i.e. lost, which is
+        # the one failure the gate exists to prevent. Under that mode the gate
+        # narrows to exact-duplicate detection (which recall-side lexical
+        # matching does not need either). See Embedder.is_semantic.
+        if probe_text and self.embedder.is_semantic:
             embedding = await self.embedder.embed(probe_text)
 
             def _pred(m: Memory) -> bool:
@@ -52,7 +59,15 @@ class MemoryIngestMixin:
             neighbours = self.vector_store.search(embedding, top_k=1, predicate=_pred)
             if neighbours:
                 max_sim = float(neighbours[0][1])
+        elif probe_text:
+            # Model-free mode: a byte-for-byte identical memory is still a
+            # duplicate. Recall can tell "same words" from "same meaning" via
+            # word overlap; the gate only needs to stop literal re-stores.
+            max_sim = 1.0 if await self._has_identical_content(probe_text, project) else 0.0
         return evaluate(content, max_similarity=max_sim, min_length=min_length)
+
+    async def _has_identical_content(self, content: str, project: str | None) -> bool:
+        return await self.db.memories.content_exists(content, project=project)
 
     async def admit_memory(
         self,

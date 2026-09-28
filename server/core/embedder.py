@@ -91,6 +91,19 @@ class Embedder:
 
     # ── Public API ────────────────────────────────────────────────
 
+    @property
+    def is_semantic(self) -> bool:
+        """Whether the resolved mode produces meaning-bearing vectors.
+
+        Only ``hash`` is not. Any caller that treats cosine as a
+        duplicate/relatedness/relevance signal must consult this first: the
+        hash vectors are positional, so their cosine reflects character
+        positions rather than meaning and is unusable for those decisions.
+        Recall falls back to word overlap (``server.core.lexical``) and the
+        admission gate to exact-duplicate detection under this mode.
+        """
+        return self.mode != "hash"
+
     def identity(self) -> dict:
         """Stable provenance receipt for vectors produced by this instance."""
         if self.mode == "openai":

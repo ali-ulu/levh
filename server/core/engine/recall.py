@@ -11,6 +11,8 @@ from __future__ import annotations
 import time
 
 from .. import metrics
+from ..lexical import similarity as lexical_similarity
+from ..lexical import terms as lexical_terms
 from ..types import (
     Memory,
     RecallResult,
@@ -72,6 +74,16 @@ class MemoryRecallMixin:
         """
         await self._sync_with_external_writes()
         query_embedding = await self.embedder.embed(query)
+        # The hash embedder's cosine is positional, not semantic (see
+        # Embedder.is_semantic). Ranking on it hides memories whose every
+        # content word matches the query, so model-free mode ranks on
+        # word-overlap instead — the cosine is meaningless there and a max()
+        # of the two would let its noise win. With a real embedder the cosine
+        # is already the better ranking; behaviour is unchanged for
+        # local/openai/ollama.
+        lexical_terms_set = (
+            set() if self.embedder.is_semantic else lexical_terms(query)
+        )
 
         def _predicate(memory: Memory) -> bool:
             if min_importance and memory.importance < min_importance:
@@ -87,8 +99,20 @@ class MemoryRecallMixin:
             query_embedding, top_k=top_k * 3, predicate=_predicate
         )
 
+        # In model-free mode the query terms also pull candidates the positional
+        # cosine ranked poorly, so a strong keyword match can still surface.
+        by_id: dict[str, Memory] = {memory.id: memory for memory, _ in candidates}
+        if lexical_terms_set:
+            for memory in self.vector_store.memories():
+                if memory.id in by_id or not _predicate(memory):
+                    continue
+                if lexical_terms_set & lexical_terms(memory.content):
+                    by_id[memory.id] = memory
+
+        cosine_by_id = {memory.id: similarity for memory, similarity in candidates}
+
         scored: list[tuple[Memory, float]] = []
-        for memory, similarity in candidates:
+        for memory_id, memory in by_id.items():
             # Pinned memories are exempt from time decay. Everyone else decays
             # from their LAST ACCESS at their OWN stability (half-life), not a
             # global one — a memory that's been recalled often forgets slower.
@@ -97,6 +121,10 @@ class MemoryRecallMixin:
                 if memory.pinned
                 else self.scorer.compute_decay(memory.accessed_at, half_life_hours=memory.stability_hours)
             )
+            if lexical_terms_set:
+                similarity = lexical_similarity(query, memory.content)
+            else:
+                similarity = cosine_by_id.get(memory_id, 0.0)
             hscore = self.scorer.compute(
                 similarity=similarity,
                 decay_factor=decay,
