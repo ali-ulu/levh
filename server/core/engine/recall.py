@@ -8,9 +8,12 @@ the split verifiable.
 
 from __future__ import annotations
 
+import hashlib
+import logging
 import time
 
 from .. import metrics
+from ..env import get_env
 from ..lexical import expand_terms
 from ..lexical import similarity_expanded as lexical_similarity
 from ..lexical import terms as lexical_terms
@@ -22,6 +25,21 @@ from ..types import (
     RecallResult,
     ScoreBreakdown,
 )
+
+logger = logging.getLogger("levh.recall_log")
+
+#: Longest query kept in the log. A recall query is a question, not a document;
+#: anything past this is the caller pasting context it should have stored.
+MAX_QUERY_CHARS = 1000
+
+#: Default retention for logged rows, in days. Bounded by default because the
+#: table holds user-typed text — "never deleted" is a decision someone should
+#: make deliberately, not inherit.
+DEFAULT_RECALL_LOG_RETENTION_DAYS = 30
+
+
+def _truthy(value: str) -> bool:
+    return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
 class MemoryRecallMixin:
@@ -58,6 +76,66 @@ class MemoryRecallMixin:
             metrics.observe(
                 "levh_recall_latency_seconds", time.perf_counter() - started
             )
+
+    def _recall_log_config(self) -> tuple[bool, int]:
+        """``(enabled, retention_days)``, read at call time.
+
+        Read here rather than at import: issue #143 taught this codebase not to
+        freeze an env answer where a later-set variable cannot reach it, and a
+        flag a test cannot flip without reloading the module is a flag no test
+        will bother flipping.
+        """
+        enabled = _truthy(get_env("LEVH_RECALL_LOG", "0"))
+        try:
+            days = int(get_env("LEVH_RECALL_LOG_DAYS", str(DEFAULT_RECALL_LOG_RETENTION_DAYS)))
+        except ValueError:
+            days = DEFAULT_RECALL_LOG_RETENTION_DAYS
+        return enabled, max(0, days)
+
+    async def _log_recall(
+        self,
+        *,
+        query: str,
+        top: list,
+        top_k: int,
+        session_id: str | None,
+        project: str | None,
+        reinforce: bool,
+    ) -> None:
+        """Append the ranked outcome to ``recall_log``. Never raises.
+
+        A log that can break the thing it logs is worse than no log: by here
+        the recall has already succeeded and the caller is waiting on its
+        answer. Failure is reported rather than swallowed — the record is
+        evidence, and missing evidence should show up in the log, not vanish.
+        """
+        enabled, retention_days = self._recall_log_config()
+        if not enabled:
+            return
+        try:
+            # Imported lazily: admission pulls the write path, and a read path
+            # that has not opted into logging should not pay for it.
+            from ..admission import redact_secrets
+
+            # The query is the only free text this row carries, so it gets the
+            # same scrub a stored memory gets before it lands anywhere.
+            safe_query, _types = redact_secrets(query or "")
+            ids = [m.id for m, _ in top]
+            await self.db.record_recall(
+                {
+                    "query": (safe_query or "")[:MAX_QUERY_CHARS],
+                    "query_sha256": hashlib.sha256((query or "").encode("utf-8")).hexdigest(),
+                    "result_ids": ids,
+                    "result_count": len(ids),
+                    "top_k": int(top_k),
+                    "project": project,
+                    "session_id": session_id,
+                    "reinforced": bool(reinforce),
+                },
+                prune_max_days=retention_days,
+            )
+        except Exception:  # telemetry must never fail the recall it describes
+            logger.exception("recall log write failed")
 
     async def _recall(
         self,
@@ -275,6 +353,18 @@ class MemoryRecallMixin:
         self._emit(
             "recalled",
             {"query": query, "count": len(top), "ids": [m.id for m, _ in top]},
+        )
+
+        # Logged before the empty-recall diagnosis below: "we asked and got
+        # nothing" is the row a precision number most needs, and it must not
+        # depend on the diagnosis succeeding.
+        await self._log_recall(
+            query=query,
+            top=top,
+            top_k=top_k,
+            session_id=session_id,
+            project=project,
+            reinforce=reinforce,
         )
 
         diagnosis = None

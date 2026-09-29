@@ -220,6 +220,34 @@ CREATE TABLE IF NOT EXISTS findings (
     external_ref  TEXT                           -- set only by a manual export
 );
 
+-- What a recall actually returned, logged so precision can be measured after
+-- the fact rather than inferred from a benchmark the user never ran.
+--
+-- This is the raw material for "was the right memory in the list, and how much
+-- of the list was noise" over *real* queries. A benchmark answers that on the
+-- corpus its author wrote; this answers it on the corpus the user has.
+--
+-- Two deliberate properties:
+--   * ``result_ids`` is a ranked JSON array — the position matters, because a
+--     precision number without ordering cannot distinguish "gold at rank 1"
+--     from "gold at rank 10".
+--   * ``query`` holds the ONLY free text in the row, and it is redacted with
+--     the same ``redact_secrets()`` the admission gate uses before it lands,
+--     then truncated. ``query_sha256`` keeps the raw digest so identical
+--     queries group together without the raw text being kept twice.
+CREATE TABLE IF NOT EXISTS recall_log (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    query        TEXT NOT NULL,            -- redacted + truncated
+    query_sha256 TEXT NOT NULL,            -- digest of the RAW query
+    result_ids   TEXT NOT NULL,            -- JSON array, ranked best-first
+    result_count INTEGER NOT NULL,
+    top_k        INTEGER NOT NULL,
+    project      TEXT,
+    session_id   TEXT,
+    reinforced   INTEGER NOT NULL DEFAULT 0,
+    logged_at    TEXT NOT NULL
+);
+
 """
 
 
@@ -329,6 +357,10 @@ CREATE INDEX IF NOT EXISTS idx_attach_memory ON attachments(memory_id);
 CREATE INDEX IF NOT EXISTS idx_held_status ON held_memories(status, created_at DESC);
 -- The inbox is read as "what is still open", most recently seen first.
 CREATE INDEX IF NOT EXISTS idx_find_status ON findings(status, last_seen_at DESC);
+-- The recall log is read two ways: "what did we just ask" (recency, and the
+-- retention prune) and "how did we do on this question" (group by digest).
+CREATE INDEX IF NOT EXISTS idx_recall_log_when ON recall_log(logged_at DESC);
+CREATE INDEX IF NOT EXISTS idx_recall_log_sha  ON recall_log(query_sha256);
 """
 
 

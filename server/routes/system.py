@@ -25,6 +25,7 @@ async def get_stats(engine=Depends(get_engine)):
 async def get_config(engine=Depends(get_engine)):
     """Current server configuration (for the Settings page)."""
     embedder_mode = engine._embedder.mode if engine._embedder else engine._embedder_mode
+    recall_log_enabled, recall_log_days = engine._recall_log_config()
     return {
         "db_path": engine.db.db_path,
         "embedder_mode": embedder_mode,
@@ -49,6 +50,16 @@ async def get_config(engine=Depends(get_engine)):
         # model, so the Settings page can state it plainly instead of leaving
         # users to infer it from the presence of an API key.
         "outbound": llm_policy.outbound_status(),
+        # Whether this install records what recall actually returned, and how
+        # much it has recorded. Reported so the Settings page can state it: a
+        # measurement nobody can see being on is a measurement nobody reads,
+        # and a table quietly holding typed queries is worse than one the
+        # operator knows about.
+        "recall_log": {
+            "enabled": recall_log_enabled,
+            "retention_days": recall_log_days,
+            **await engine.db.recall_log_stats(),
+        },
         "version": APP_VERSION,
     }
 

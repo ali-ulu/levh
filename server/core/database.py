@@ -31,6 +31,7 @@ from .db.findings import FindingQueries
 from .db.guard import GuardQueries
 from .db.held import HeldMemoryQueries
 from .db.memories import MemoryQueries
+from .db.recall_log import RecallLogQueries
 from .db.sessions import SessionQueries
 from .db.snapshot import SnapshotQueries
 from .db.trust import TrustQueries
@@ -76,6 +77,7 @@ class Database:
         self.attachments = AttachmentQueries(self)
         self.held = HeldMemoryQueries(self)
         self.findings = FindingQueries(self)
+        self.recall_log = RecallLogQueries(self)
         self._groups = (
             self.memories,
             self.aggregates,
@@ -87,6 +89,7 @@ class Database:
             self.attachments,
             self.held,
             self.findings,
+            self.recall_log,
         )
 
     async def connect(self) -> None:
