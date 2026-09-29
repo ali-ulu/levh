@@ -1,0 +1,129 @@
+# Plan: proving continuity, then federating it
+
+Status: proposal · Owner: maintainers · Scope: two next workstreams
+
+This is a plan, not a decision record: it names what will be built, in what
+order, and what would make us stop. The decision states for the report items
+live in [`ROADMAP.md`](ROADMAP.md); the tenancy and federation architecture
+questions live in #302, #309 and #298. Nothing here is a promise until a row
+lands in one of those.
+
+The two workstreams answer one question from two ends:
+
+- **Continuity proves the core works in real use.** The product claims sessions
+  start already briefed. That claim is currently backed by construction
+  (the brief is printed at startup; hooks are installed), not by measurement
+  of whether the agent actually *used* the memory and got better answers.
+- **Federation proves the core travels.** The documented next architecture
+  step is a shared/team memory server, and the first thing that breaks is the
+  single-process assumption. Building federation before the continuity surface
+  is instrumented means carrying unmeasured behavior across a process boundary
+  and never being able to attribute a regression to either side.
+
+Ordering: **Phase A first, Phase B second.** A is cheap, offline, and produces
+the before/after numbers B needs to show federation did not damage recall.
+
+---
+
+## Phase A — prove continuity end to end
+
+### A0. Reconcile the brief's transport inventory
+
+The multi-channel story is real (stderr bridge, native session-start hooks,
+tool/resource) but it is stated unevenly across the tree: `universal_hooks.py`
+and `docs/mcp-client-config.md` document the opt-in/default flags, while the
+README's per-client list is prose. Nothing checks the three channels against
+the code, so a client added to one list and not another drifts silently.
+
+Next step: a single table — client × channel (stderr / hook / tool) × default —
+kept honest by a test that reads the same registries the installers read.
+
+### A1. Measure whether continuity is delivered and used
+
+This is the highest-value gap: feature count is not evidence. Two signals, both
+offline and already partially present:
+
+- **Delivery.** `LEVH_AUTO_BRIEF` prints the brief; nothing asserts it reached
+  the agent. We can measure that the stderr line was emitted and, for hooks,
+  that the `levh continue --if-any` call succeeded and produced output.
+- **Use.** The engine already records recall events and reinforces recalled
+  memories. A continuity-specific counter (briefs delivered, briefs whose
+  suggested memories were then recalled, `recall_memory` calls in the first N
+  turns of a session) turns "the agent starts briefed" from a claim into a
+  number.
+
+Next step: extend the golden-fixture evaluator
+(`server/core/evaluation.py`, `tests/fixtures/evaluation/*.json`) with a
+continuity scenario: store a checkpoint + a pinned rule + a blocker, then assert
+the brief surfaces them in that order and that a subsequent recall reinforces
+the surfaced memory. Determinism and privacy contracts already apply.
+
+### A2. Close the weak link honestly
+
+The README already names the weak link: clients with no hook surface depend on
+the agent choosing to call `recall_memory`. Options, cheapest first:
+
+1. Keep the AGENTS.md rule and measure its hit rate with A1. If agents do call
+   it, the "filing cabinet with extra steps" apology can become a measurement.
+2. For MCP clients that surface a server "instructions"/initialize field, push
+   a one-line directive there.
+3. A lightweight polling tool is a last resort — it adds a tool without adding
+   a push channel, which is the problem it claims to solve.
+
+Next step: decide between 1 and 2 with A1's data before writing any client
+adapter.
+
+---
+
+## Phase B — federate, and keep the core measurable
+
+Federation is a protocol decision inside #302's tenancy design, not a new
+product surface invented here. The minimum viable shape, mapped to code that
+already exists:
+
+| Concern | Where it lives today | Federation requirement |
+| --- | --- | --- |
+| Provenance of a memory | `Memory.source`, `metadata`, `server/core/trust.py` | Carry the *origin instance* and confidence, not just a source type. |
+| Survives the boundary | `server/core/crypto.py` (Fernet envelope, `MAGIC` header) | Sign the envelope so an exchanged memory is attributable, not merely encrypted. |
+| Import path | `server/core/engine/transfer.py` — `export_memories` / `import_memories_gated` | A peer's bundle enters through the *same* admission gate; nothing bypasses it. |
+| Receiver re-scoring | `H(x,ψ)` in `server/core/hscore.py`, decay in `server/core/engine/decay.py` | An imported memory arrives with the sender's importance but decays on the receiver's clock — "your important" becomes "my candidate". |
+| Conflict | `server/core/conflict.py` + `conflict_service.py` | Disagreements between peers are conflict *candidates*, reviewed, never auto-merged. |
+| Bypass risk | single-process assumption (`docs/ARCHITECTURE.md` §1) | The exchange is a pull/push of bundles, not a shared live store — the engine stays single-process. |
+
+The honest warning from the architecture analysis stands: this is the hardest
+option, because it forces the provenance model and the trust model to be
+designed on purpose rather than inherited from a single principal.
+
+### B0. A federation envelope, offline first
+
+Before any networking: define a bundle (peers, provenance, signature) and round
+it trip through `import_memories_gated` in a test. If a peer's bundle cannot be
+distinguished from a local write after import, the design is not ready for a
+socket. Next step: spec the envelope in #302; land it as an offline format with
+a fixture, no transport.
+
+### B1. Exchange transport
+
+Only after B0: a pull-first transport (instance A fetches B's bundles) rather
+than a shared store, so the single-process engine is untouched. This is where
+the tenancy decision (#302) must be settled, because identity determines who may
+pull from whom.
+
+### B2. Measure that federation preserved recall quality
+
+Re-run Phase A's continuity scenario across two instances and assert the
+imported memory is recalled on the receiver, decays on the receiver's clock, and
+never outranks a local memory the receiver pinned. Next step: fixture in
+`tests/fixtures/evaluation/` once B1 exists.
+
+---
+
+## What would make us stop
+
+- If A1 shows agents already call `recall_memory` reliably before the prompt,
+  A2 shrinks to documentation and no adapter is written.
+- If B0 shows the admission gate cannot accept a peer bundle without a
+  provenance field that does not exist yet, the tenancy design (#302) grows a
+  required section before any transport work starts.
+- If federation cannot be expressed without a shared live store, it is out of
+  scope for the single-process core and belongs in the hosted tier (#298).

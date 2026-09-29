@@ -38,6 +38,8 @@ numbered findings, and because each one is also a candidate revenue surface.
 | Item | Topic | State | Next step | Reference |
 | --- | --- | --- | --- | --- |
 | connectors | Slack sync connector | deferred | Jira, Linear and GitHub connectors now exist, and the pull-on-demand question is settled by the existing `ingest_items` sync framework — no worker is planned. Slack is the remaining one, and it needs OAuth-style bot credentials plus a channel-history paging decision before it is written. | #298 |
+| continuity-proof | Measure that the continuity brief is delivered and used, not just emitted | proposed | Phase A of [`PLAN-CONTINUITY-AND-FEDERATION.md`](PLAN-CONTINUITY-AND-FEDERATION.md): add a continuity scenario to the golden-fixture evaluator plus delivery/use counters, then decide the no-hook client story from that data. | #302 |
+| memory-federation | Peer memory exchange with provenance, signature and receiver-side decay | proposed | Phase B of [`PLAN-CONTINUITY-AND-FEDERATION.md`](PLAN-CONTINUITY-AND-FEDERATION.md): spec an offline envelope that re-enters through `import_memories_gated` before any transport; blocked on the tenancy decision. | #302, #309 |
 | typescript-sdk | TypeScript SDK over the REST and MCP surface | done | — | #307 |
 | multi-user-postgres | Multi-user auth, tenancy, and a Postgres backend | deferred | Blocked on the design issue; identity must be designed before storage or the schema encodes single-principal assumptions. | #302 |
 
