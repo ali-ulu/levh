@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+### Perf: recall searches a matrix, not a restacked copy per call (#78)
+
+- `VectorStore.search` rebuilt `np.stack([...])` over every candidate on every
+  call — an O(n) copy per query, on top of a per-query norms pass and a full
+  `argsort`. At 20K 384-d vectors an unfiltered top-k search cost ~31 ms and a
+  filtered one ~35 ms.
+- Each dimension now keeps a normalised, capacity-doubling row matrix plus an
+  `id -> row` map, so a search is one `matrix @ query` product; ranking above
+  the cut uses `argpartition` (O(n)) and only the survivors are sorted. The
+  same 20K search now costs ~0.8 ms (about 40x) and a filtered search ~9 ms
+  (about 4x); the predicate still runs per row, unchanged.
+- Behaviour is preserved: the same cosine scores, the same
+  predicate-before-ranking contract, and mixed-dimension tolerance via
+  per-dimension buckets. Removal is O(1) (tail swap) and re-adding an id
+  replaces its row in place.
+
 ### Feature: an empty recall says why it was empty (#78)
 
 - An empty result has several indistinguishable causes — no memories at all, a

@@ -263,7 +263,9 @@ the hash embedder, revisit `tests/test_v2_features.py::test_interference_*`.
 ## 10. Operational notes & known limits
 
 - **Scale:** the NumPy vector store is fine to ~50K vectors; beyond that, swap
-  in an ANN store (§7). Every search is O(n) over dimension-matched vectors.
+  in an ANN store (§7). Every search is O(n) over dimension-matched vectors, but
+  it is a single normalized matrix product plus an `argpartition` cut — not a
+  per-call `np.stack` and full sort, which is what made the old store costly.
 - **The hash embedder is not trusted as meaning.** `hash` is positional-char
   based: two unrelated sentences score ~0.83 cosine and distinct facts sharing a
   prefix cross the 0.90 near-duplicate threshold, while a memory whose every

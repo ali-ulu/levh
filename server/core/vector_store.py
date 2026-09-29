@@ -12,10 +12,14 @@ from .types import Memory
 class VectorStore:
     """NumPy-based in-memory vector store for semantic search (MVP).
 
-    Holds float32 vectors in a dict keyed by memory ID. Vectors of any
-    dimension are accepted (e.g. after switching between OpenAI 1536-d and
-    local 384-d embeddings); search only compares vectors whose dimension
-    matches the query, so a mode switch never crashes recall.
+    Vectors of any dimension are accepted (e.g. after switching between OpenAI
+    1536-d and local 384-d embeddings); search only compares vectors whose
+    dimension matches the query, so a mode switch never crashes recall.
+
+    Each dimension keeps a normalised, capacity-doubling row matrix plus an
+    ``id -> row`` map, so a search is one ``matrix @ query`` product instead of
+    an ``np.stack`` over every candidate on each call. The top-k comes from
+    ``argpartition`` (O(n)) rather than a full sort.
 
     Scalable to ~50K vectors before RAM becomes a concern.
     Migration path: swap this class for Qdrant/Milvus when needed.
@@ -23,22 +27,64 @@ class VectorStore:
 
     def __init__(self, dimension: int = 384):
         self.dimension = dimension
-        self._vectors: dict[str, np.ndarray] = {}
         self._memories: dict[str, Memory] = {}
+        self._row_of: dict[str, tuple[int, int]] = {}  # id -> (dim, row)
+        self._id_by_row: dict[int, dict[int, str]] = {}  # dim -> row -> id
+        self._matrices: dict[int, np.ndarray] = {}  # dim -> (capacity, dim)
+        self._count: dict[int, int] = {}  # dim -> live rows
 
     @property
     def size(self) -> int:
-        return len(self._vectors)
+        return len(self._memories)
 
     def add(self, memory: Memory) -> None:
         """Add (or replace) a memory in the vector store."""
         emb = memory.embedding
         if not emb:
             return
-        self._vectors[memory.id] = np.array(emb, dtype=np.float32)
+        vector = np.asarray(emb, dtype=np.float32)
+        vector = vector / (np.linalg.norm(vector) + 1e-8)
+        dim = vector.shape[0]
+        existing = self._row_of.get(memory.id)
+        if existing is not None and existing[0] != dim:
+            self._drop_row(memory.id)  # re-embedded at a new dimension
+        self._store_row(memory.id, dim, vector)
         self._memories[memory.id] = memory
         if self.size == 1:
-            self.dimension = len(emb)
+            self.dimension = dim
+
+    def _store_row(self, memory_id: str, dim: int, vector: np.ndarray) -> None:
+        matrix = self._matrices.get(dim)
+        if matrix is None:
+            matrix = self._matrices[dim] = np.empty((0, dim), dtype=np.float32)
+            self._count[dim] = 0
+            self._id_by_row[dim] = {}
+        existing = self._row_of.get(memory_id)
+        if existing is not None:  # same dimension: replace in place
+            matrix[existing[1]] = vector
+            return
+        count = self._count[dim]
+        if count >= matrix.shape[0]:
+            capacity = max(4, matrix.shape[0] * 2)
+            grown = np.empty((capacity, dim), dtype=np.float32)
+            grown[:count] = matrix[:count]
+            matrix = self._matrices[dim] = grown
+        matrix[count] = vector
+        self._id_by_row[dim][count] = memory_id
+        self._row_of[memory_id] = (dim, count)
+        self._count[dim] = count + 1
+
+    def _drop_row(self, memory_id: str) -> None:
+        dim, row = self._row_of.pop(memory_id)
+        count = self._count[dim] - 1
+        matrix = self._matrices[dim]
+        id_by_row = self._id_by_row[dim]
+        last_id = id_by_row.pop(count)
+        if row != count:  # swap the tail row into the freed slot
+            matrix[row] = matrix[count]
+            id_by_row[row] = last_id
+            self._row_of[last_id] = (dim, row)
+        self._count[dim] = count
 
     def search(
         self,
@@ -54,36 +100,47 @@ class VectorStore:
             predicate: Optional filter applied BEFORE ranking, so filtered
                 searches (per session/project) still return up to top_k results.
         """
-        if not self._vectors:
+        dim = len(query_embedding)
+        matrix = self._matrices.get(dim)
+        count = self._count.get(dim, 0)
+        if matrix is None or count == 0:
             return []
+        id_by_row = self._id_by_row[dim]
 
-        query = np.array(query_embedding, dtype=np.float32)
-        query_dim = query.shape[0]
-
-        candidate_ids = [
-            mid
-            for mid, vec in self._vectors.items()
-            if vec.shape[0] == query_dim
-            and (predicate is None or predicate(self._memories[mid]))
-        ]
-        if not candidate_ids:
-            return []
-
+        query = np.asarray(query_embedding, dtype=np.float32)
         query_norm = query / (np.linalg.norm(query) + 1e-8)
-        matrix = np.stack([self._vectors[i] for i in candidate_ids])
-        norms = matrix / (np.linalg.norm(matrix, axis=1, keepdims=True) + 1e-8)
-        similarities = norms @ query_norm
 
-        actual_k = min(top_k, len(candidate_ids))
-        top_indices = np.argsort(similarities)[::-1][:actual_k]
+        if predicate is None:
+            similarities = matrix[:count] @ query_norm
+            rows: Optional[np.ndarray] = None
+        else:
+            rows = np.fromiter(
+                (r for r in range(count) if predicate(self._memories[id_by_row[r]])),
+                dtype=np.intp,
+            )
+            if rows.size == 0:
+                return []
+            similarities = matrix[rows] @ query_norm
+
+        total = similarities.shape[0]
+        k = min(top_k, total)
+        if k < total:
+            top = np.argpartition(similarities, -k)[-k:]
+        else:
+            top = np.arange(total)
+        order = top[np.argsort(similarities[top])[::-1]]
 
         return [
-            (self._memories[candidate_ids[idx]], float(similarities[idx]))
-            for idx in top_indices
+            (
+                self._memories[id_by_row[top_row if rows is None else rows[top_row]]],
+                float(similarities[top_row]),
+            )
+            for top_row in order
         ]
 
     def remove(self, memory_id: str) -> bool:
-        self._vectors.pop(memory_id, None)
+        if memory_id in self._row_of:
+            self._drop_row(memory_id)
         self._memories.pop(memory_id, None)
         return True
 
@@ -96,5 +153,8 @@ class VectorStore:
         return self._memories.get(memory_id)
 
     def clear(self) -> None:
-        self._vectors.clear()
         self._memories.clear()
+        self._row_of.clear()
+        self._id_by_row.clear()
+        self._matrices.clear()
+        self._count.clear()

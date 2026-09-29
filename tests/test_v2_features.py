@@ -7,6 +7,7 @@ import sqlite3
 import sys
 import tempfile
 
+import numpy as np
 import pytest
 import pytest_asyncio
 
@@ -383,6 +384,62 @@ def test_vector_store_predicate():
     store.add(m2)
     results = store.search([1.0, 0.0], top_k=5, predicate=lambda m: m.session_id == "s2")
     assert [m.id for m, _ in results] == [m2.id]
+
+
+def test_vector_store_search_matches_brute_force_across_top_k():
+    """The matrix + argpartition path must rank exactly like a full sort."""
+    rng = np.random.default_rng(7)
+    store = VectorStore()
+    memories = [
+        Memory(content=f"m{i}", embedding=list(rng.normal(size=8)))
+        for i in range(200)
+    ]
+    for memory in memories:
+        store.add(memory)
+
+    query = list(rng.normal(size=8))
+    query_norm = np.asarray(query, dtype=np.float32)
+    query_norm = query_norm / np.linalg.norm(query_norm)
+    scored = []
+    for memory in memories:
+        vector = np.asarray(memory.embedding, dtype=np.float32)
+        scored.append((memory.id, float(vector / np.linalg.norm(vector) @ query_norm)))
+    expected = [mid for mid, _ in sorted(scored, key=lambda item: -item[1])]
+
+    for top_k in (1, 10, 200):
+        results = store.search(query, top_k=top_k)
+        assert [m.id for m, _ in results] == expected[:top_k]
+
+
+def test_vector_store_remove_swaps_the_tail_row():
+    store = VectorStore()
+    kept = [Memory(content=f"k{i}", embedding=[0.0, 1.0]) for i in range(3)]
+    drop = Memory(content="drop", embedding=[1.0, 0.0])
+    for memory in kept:
+        store.add(memory)
+    store.add(drop)
+
+    assert store.remove(drop.id) is True
+    assert store.remove(drop.id) is True  # idempotent
+    assert store.size == 3
+
+    # The freed slot was the last row; the vector that pointed at it must still
+    # resolve after the tail swap.
+    results = store.search([0.0, 1.0], top_k=10)
+    assert {m.id for m, _ in results} == {m.id for m in kept}
+    assert all(abs(score - 1.0) < 1e-6 for _, score in results)
+
+
+def test_vector_store_replace_keeps_a_single_row():
+    store = VectorStore()
+    memory = Memory(content="v1", embedding=[1.0, 0.0])
+    store.add(memory)
+    memory.embedding = [0.0, 1.0]  # re-embedded in place
+    store.add(memory)
+
+    assert store.size == 1
+    results = store.search([0.0, 1.0], top_k=5)
+    assert [(m.id, round(score, 6)) for m, score in results] == [(memory.id, 1.0)]
 
 
 # ── Sessions ───────────────────────────────────────────────────────
