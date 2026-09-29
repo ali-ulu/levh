@@ -38,19 +38,23 @@ the code, so a client added to one list and not another drifts silently.
 Next step: a single table — client × channel (stderr / hook / tool) × default —
 kept honest by a test that reads the same registries the installers read.
 
-### A1. Measure whether continuity is delivered and used
+### A1. Measure whether continuity is emitted and used
 
 This is the highest-value gap: feature count is not evidence. Two signals, both
 offline and already partially present:
 
-- **Delivery.** `LEVH_AUTO_BRIEF` prints the brief; nothing asserts it reached
-  the agent. We can measure that the stderr line was emitted and, for hooks,
-  that the `levh continue --if-any` call succeeded and produced output.
+- **Emission — a proxy for delivery, not delivery itself.** `LEVH_AUTO_BRIEF`
+  prints the brief to stderr and a hook runs `levh continue --limit 5 --if-any`;
+  both are producer-side events we can count (the stderr line was written, the
+  hook call succeeded and produced output). Neither proves the agent read it:
+  that is the client's behavior, outside our process. Name the counter
+  accordingly (`briefs emitted`, not `briefs delivered`) so the number cannot be
+  read as a delivery guarantee.
 - **Use.** The engine already records recall events and reinforces recalled
-  memories. A continuity-specific counter (briefs delivered, briefs whose
-  suggested memories were then recalled, `recall_memory` calls in the first N
-  turns of a session) turns "the agent starts briefed" from a claim into a
-  number.
+  memories. A continuity-specific counter (briefs whose suggested memories were
+  then recalled, `recall_memory` calls in the first N turns of a session) is the
+  only signal that speaks to use rather than emission, and turns "the agent
+  starts briefed" from a claim into a number.
 
 Next step: extend the golden-fixture evaluator
 (`server/core/evaluation.py`, `tests/fixtures/evaluation/*.json`) with a

@@ -9,10 +9,11 @@ scorecards age quickly and read as product claims when seen from outside.
   `skipped`, `cancelled`, `ignored`) and a next step. Maintained, and checked by
   `tests/test_roadmap.py`.
 - [`PLAN-CONTINUITY-AND-FEDERATION.md`](PLAN-CONTINUITY-AND-FEDERATION.md) —
-  proposal for the two next workstreams: prove the continuity brief is delivered
-  and used (Phase A), then exchange memories between instances with provenance,
-  signature and receiver-side decay (Phase B). A plan, not a decision record;
-  the states live in `ROADMAP.md`.
+  proposal for the two next workstreams: measure that the continuity brief is
+  emitted and used — emission being a producer-side proxy, since whether the
+  agent read it is the client's behavior (Phase A) — then exchange memories
+  between instances with provenance, signature and receiver-side decay (Phase
+  B). A plan, not a decision record; the states live in `ROADMAP.md`.
 - [`SOLID_KARNESI.md`](SOLID_KARNESI.md) — module-by-module SOLID scorecard and
   technical-debt inventory (Turkish). **Archived**: it is a 2026-09-13 snapshot
   and is no longer maintained; completed items are struck through and the file
