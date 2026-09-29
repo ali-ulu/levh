@@ -101,7 +101,12 @@ designed on purpose rather than inherited from a single principal.
 ### B0. A federation envelope, offline first
 
 Before any networking: define a bundle (peers, provenance, signature) and round
-it trip through `import_memories_gated` in a test. If a peer's bundle cannot be
+it trip through `import_memories_gated` in a test with admitted, rejected and
+review-held entries — assert admitted entries persist, rejected entries do not,
+and review-held entries reach `hold_for_review`. An admitted-only bundle would
+pass while a later implementation persisted exactly the entries the gate exists
+to stop, so exercising all three outcomes is what makes "nothing bypasses the
+gate" a testable claim rather than an intention. If a peer's bundle cannot be
 distinguished from a local write after import, the design is not ready for a
 socket. Next step: spec the envelope in #302; land it as an offline format with
 a fixture, no transport.
