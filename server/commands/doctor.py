@@ -16,6 +16,12 @@ from server.core.runtime_config import resolve_runtime_config
 from server.core.runtime_config import configured_bind_host
 
 
+#: How long a doctor repair waits for a store another process is writing to.
+#: A live server holds this database; a repair that blocked on it would hang
+#: the very command an operator runs to find out what is wrong.
+_DB_BUSY_TIMEOUT_SECONDS = 5.0
+
+
 def _running_bind_host(runtime) -> str | None:
     """Ask a live server what address it is bound to, or ``None`` if silent.
 
@@ -68,8 +74,8 @@ def _candidate_ports(runtime) -> list[int]:
 
 
 
-def _count_quarantined_rows(db_path: str) -> int:
-    """Count stored rows the current model cannot accept.
+def _quarantined_rowids(db_path: str) -> list[int]:
+    """Rowids of stored rows the current model cannot accept.
 
     Mirrors the read-time quarantine in ``server.core.episodic`` on a raw
     sqlite3 connection so ``levh doctor`` reports the loss without starting
@@ -77,21 +83,104 @@ def _count_quarantined_rows(db_path: str) -> int:
     ``row_to_memory_dict`` the query layer uses before the model sees it —
     checking raw columns instead counted every NULL ``metadata`` as a broken
     row, which is how 2 unreachable rows reported as 18.
+
+    Rowids, not ids, are what makes the list actionable: the rows named here are
+    exactly the ones that may have no id to name them by, and a rowid is the one
+    address SQLite gives a row that cannot answer to its own primary key.
     """
     import sqlite3
 
     from server.core.db.memories import row_to_memory_dict
     from server.core.types import Memory
 
-    count = 0
+    rowids: list[int] = []
     with sqlite3.connect(db_path) as conn:
         conn.row_factory = sqlite3.Row
-        for row in conn.execute("SELECT * FROM memories"):
+        for row in conn.execute("SELECT rowid, * FROM memories"):
+            # ``rowid`` is deliberately kept out of the mapping handed to the
+            # model: it is a storage address, not a ``Memory`` field, and
+            # passing it through would quarantine every row on a model that
+            # refuses unknown keys.
+            columns = {key: row[key] for key in row.keys() if key != "rowid"}
             try:
-                Memory(**row_to_memory_dict(row))
+                Memory(**row_to_memory_dict(columns))
             except Exception:  # noqa: BLE001 - any rejected row is quarantined
-                count += 1
-    return count
+                rowids.append(int(row["rowid"]))
+    return rowids
+
+
+def _count_quarantined_rows(db_path: str) -> int:
+    """How many stored rows the current model cannot accept."""
+    return len(_quarantined_rowids(db_path))
+
+
+def _quarantine_detail(db_path: str, rowids: list[int]) -> str:
+    """One line naming the quarantined rows, and how to repair what can be.
+
+    The count alone told an operator memories were being lost and gave them
+    nothing to do about it. Rowids make the rows findable in the file, and a row
+    that only lacks an id is the one case the store can repair itself, so the
+    line ends with the command that does it.
+    """
+    named = ", ".join(str(rowid) for rowid in rowids[:5])
+    if len(rowids) > 5:
+        named += f", +{len(rowids) - 5} more"
+    detail = f"{len(rowids)} row(s) this build rejects; recall skips them (rowid {named})"
+    try:
+        idless = _idless_rowids(db_path)
+    except Exception:  # noqa: BLE001 - the repair hint is optional, the count is not
+        return detail
+    if idless:
+        detail += f"; {len(idless)} without an id - repair with `levh doctor --fix-ids`"
+    return detail
+
+
+def _idless_rowids(db_path: str) -> list[int]:
+    """Rowids whose ``id`` is NULL or blank — the quarantine this one repairs.
+
+    ``memories_integrity_id_ai`` has refused such writes since #267, so these
+    rows were stored before the trigger existed (or by a tool that dropped it).
+    They are the one quarantine reason fixable without inventing content: give
+    the row an id and the model accepts it, so ``levh doctor --fix-ids`` can act
+    on the diagnosis instead of only reporting it.
+    """
+    import sqlite3
+
+    with sqlite3.connect(db_path, timeout=_DB_BUSY_TIMEOUT_SECONDS) as conn:
+        cursor = conn.execute(
+            "SELECT rowid FROM memories "
+            "WHERE id IS NULL OR length(trim(id)) = 0 ORDER BY rowid"
+        )
+        return [int(row[0]) for row in cursor.fetchall()]
+
+
+def _recover_idless_rows(db_path: str) -> list[tuple[int, str]]:
+    """Give every id-less row a generated id; return the ``(rowid, id)`` pairs.
+
+    Only ``id`` is written — the content, timestamps and scores a memory still
+    has are left exactly as they were, which is what keeps this a repair rather
+    than a deletion. The FTS entry the corrupt write left behind is keyed on the
+    NULL it was inserted with, so it is dropped here too: nothing can join back
+    to it, and leaving it means a text hit that resolves to no memory.
+    """
+    import sqlite3
+    import uuid
+
+    assigned = [(rowid, uuid.uuid4().hex) for rowid in _idless_rowids(db_path)]
+    if not assigned:
+        return []
+    with sqlite3.connect(db_path, timeout=_DB_BUSY_TIMEOUT_SECONDS) as conn:
+        conn.executemany(
+            "UPDATE memories SET id = ? WHERE rowid = ?",
+            [(memory_id, rowid) for rowid, memory_id in assigned],
+        )
+        fts_exists = conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'memories_fts'"
+        ).fetchone()
+        if fts_exists:
+            conn.execute("DELETE FROM memories_fts WHERE memory_id IS NULL")
+        conn.commit()
+    return assigned
 
 
 def _run_coroutine_blocking(coro):
@@ -110,7 +199,7 @@ def _run_coroutine_blocking(coro):
         return executor.submit(asyncio.run, coro).result()
 
 
-def cmd_doctor(_args: argparse.Namespace) -> int:
+def cmd_doctor(args: argparse.Namespace) -> int:
     """Run system health checks."""
     checks: list[tuple[str, str, str]] = []
     ok = True
@@ -260,6 +349,25 @@ def cmd_doctor(_args: argparse.Namespace) -> int:
         checks.append(("Dogfood metrics", "FAIL", str(e)))
         ok = False
 
+    # 12b. A repair, and only when it was asked for. Rows that merely lack an id
+    # are given one back before the store is inspected below, so the report
+    # describes the store as this command just left it. Without the flag doctor
+    # writes nothing, which is what keeps it safe to run against a live server.
+    if getattr(args, "fix_ids", False):
+        try:
+            recovered = _recover_idless_rows(db_path)
+        except Exception as e:  # noqa: BLE001 - a failed repair is reported, never fatal
+            checks.append(("Repaired ids", "FAIL", str(e)))
+            ok = False
+        else:
+            if recovered:
+                assigned = ", ".join(
+                    f"rowid {rowid} -> {memory_id[:8]}" for rowid, memory_id in recovered
+                )
+                checks.append(("Repaired ids", "PASS", f"{len(recovered)} row(s) given an id: {assigned}"))
+            else:
+                checks.append(("Repaired ids", "PASS", "no row was missing an id"))
+
     # 13. Database initialization / memory count. Zero memories are a WARN,
     # not a failure: the product is installed but still in first-run state.
     memory_count: int | None = None
@@ -277,12 +385,13 @@ def cmd_doctor(_args: argparse.Namespace) -> int:
             # corrupting writer no longer takes the API down — but the skip is
             # otherwise invisible. Counting the rows the model cannot accept
             # makes the loss observable where operators already look.
-            quarantined = _count_quarantined_rows(db_path)
+            quarantined_rowids = _quarantined_rowids(db_path)
+            quarantined = len(quarantined_rowids)
             quarantine_note = f"; {quarantined} quarantined row(s) skipped on read" if quarantined else ""
             if memory_count:
                 checks.append(("Memory store", "PASS", f"{memory_count} memories"))
                 if quarantined:
-                    checks.append(("Quarantined rows", "WARN", f"{quarantined} row(s) this build rejects; recall skips them"))
+                    checks.append(("Quarantined rows", "WARN", _quarantine_detail(db_path, quarantined_rowids)))
                     ok = False
             else:
                 checks.append(("Memory store", "WARN", "database ready; no memories yet" + quarantine_note))
