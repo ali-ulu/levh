@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+### Fix: make the SAST nosec staleness test pass on Windows (#103)
+
+- `test_sast_nosec_annotations_all_still_suppress_a_live_finding` compared
+  bandit's `filename` field against the annotation scan's posix-normalised
+  paths verbatim; on Windows bandit reports `server\\commands\\doctor.py`, so
+  every real finding mismatched and all nosec annotations were falsely
+  reported stale. The comparison now normalises both sides through
+  `Path.as_posix()`.
+
+### Fix: bound the write-storm rebuild-count assertion to the hot loop it
+exists to catch (#103)
+
+- `test_write_storm_does_not_retry_per_write` asserted `attempts <= 10`, but
+  the debounce admits ~10 retries per second by design and a loaded runner
+  measured 13 in its storm window — a timing flake, not a hot loop. The
+  hot loop the test exists to catch is one attempt per write (50); the
+  bound now asserts that: `attempts < 50` and `warnings < 50`.
+
 ### Fix: a row stored without an id can be repaired, not only reported (#324)
 
 - `levh doctor` counted quarantined rows and stopped there. The rows that most

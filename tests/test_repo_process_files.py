@@ -452,7 +452,10 @@ def test_sast_nosec_annotations_all_still_suppress_a_live_finding():
 
     def suppresses(rule: str, path: str, line: int) -> bool:
         for finding in findings:
-            if finding["test_id"] != rule or finding["filename"] != path:
+            # bandit reports paths with the platform separator; the annotation
+            # scan above normalises to posix, so compare on the basename path
+            # with separators normalised both ways.
+            if finding["test_id"] != rule or Path(finding["filename"]).as_posix() != path:
                 continue
             span = finding.get("line_range") or [finding["line_number"]]
             if span[0] <= line <= span[-1]:
