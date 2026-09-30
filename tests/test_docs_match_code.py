@@ -15,6 +15,7 @@ archive (issue #217).
 from __future__ import annotations
 
 import ast
+import os
 import re
 import subprocess
 import tomllib
@@ -42,12 +43,19 @@ def _shipped_server_python_files() -> list[Path]:
     Falls back to the directory walk where git cannot answer - a source tarball,
     an export with no index - because an unavailable answer must not be read as
     "this codebase has no files", which would pass every gate below.
+
+    `cwd` alone does not pin the repository: an inherited `GIT_DIR`,
+    `GIT_WORK_TREE` or `GIT_INDEX_FILE` would point `ls-files` at another
+    checkout without moving the answer, so the environment's `GIT_*` variables
+    are stripped and the call reads only the tree this test file sits in.
     """
     root = SERVER.parent
+    env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
     try:
         listing = subprocess.run(
             ["git", "ls-files", "-z", "--", "server"],
             cwd=root,
+            env=env,
             capture_output=True,
             timeout=20,
             check=True,
