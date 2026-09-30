@@ -63,6 +63,21 @@ Run `levh <command> --help` for the flags of any one of them.
 | `levh conflicts list` | List conflict candidates |
 | `levh conflicts review` | Review a candidate |
 
+## Repairing what doctor finds
+
+`levh doctor` diagnoses and does not touch the store — except when asked:
+
+```bash
+levh doctor --fix-ids   # give a stored row that only lacks an id a generated one
+```
+
+A row written before the write-time integrity triggers existed can arrive with no
+`id`. The read path quarantines such a row: the memory is in the file and
+invisible to recall, and every deletion path takes an id it does not have.
+`--fix-ids` assigns an id and changes nothing else, which makes the memory
+recallable again and reachable by `levh purge`. Rows quarantined for any other
+reason are left exactly as they are — a missing id is the one defect this repairs.
+
 ## The ones worth knowing first
 
 ```bash

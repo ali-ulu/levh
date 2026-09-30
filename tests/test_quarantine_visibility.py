@@ -167,7 +167,7 @@ async def test_metrics_endpoint_serves_the_quarantine_counter(tmp_path):
 # -- levh doctor surface --------------------------------------------------
 
 
-def _doctor_output(db_path):
+def _doctor_output(db_path, args=None):
     import os
 
     from server.cli import cmd_doctor
@@ -179,7 +179,7 @@ def _doctor_output(db_path):
 
     buf = _io.StringIO()
     with contextlib.redirect_stdout(buf):
-        code = cmd_doctor(argparse.Namespace())
+        code = cmd_doctor(args or argparse.Namespace())
     return code, buf.getvalue()
 
 
@@ -235,3 +235,160 @@ async def test_doctor_count_matches_the_read_path(tmp_path, caplog):
     assert doctor_count == 2
     assert "sparse-1" not in read_ids
     assert "sparse-1" in {memory.id for memory in listed}
+
+# -- the row is addressable, and repairable ---------------------------------
+#
+# Counting quarantined rows made the loss visible but left it a dead end: the
+# row that most needs naming is the one with no id to name it by, and every
+# deletion path in the product takes an id. What follows makes a row whose only
+# defect is a missing id get that id back, so the memory becomes recallable
+# again instead of merely reported.
+
+
+@pytest.mark.asyncio
+async def test_the_query_layer_cannot_write_an_unreachable_row(tmp_path):
+    """`insert_memory` binds a dict, so the row itself has to refuse it.
+
+    The suspicion behind issue #324 was that this binding was the loophole that
+    left a NULL-id row on a real machine. It is not: ``memories_integrity_id_ai``
+    binds every writer, including this one, and the assertion below is the
+    evidence rather than the assumption.
+    """
+    db_path = tmp_path / "store.db"
+    await _store_with_one_good_memory(db_path)
+
+    engine = MemoryEngine(db_path=str(db_path), embedder_mode="hash")
+    try:
+        await engine.initialize()
+        with pytest.raises(sqlite3.IntegrityError, match="memories.id is required"):
+            await engine.episodic.db.insert_memory(
+                {
+                    "id": None,
+                    "content": "written without an id",
+                    "memory_type": "episodic",
+                    "embedding": None,
+                    "importance": 0.5,
+                    "frequency": 1,
+                    "tags": [],
+                    "session_id": None,
+                    "project": None,
+                    "source": None,
+                    "pinned": 0,
+                    "metadata": {},
+                    "hscore": None,
+                    "created_at": "2026-01-01T00:00:00+00:00",
+                    "accessed_at": "2026-01-01T00:00:00+00:00",
+                    "decay_factor": 1.0,
+                    "stability_hours": 168.0,
+                    "recall_count": 0,
+                }
+            )
+        listed = await engine.episodic.get_all()
+    finally:
+        await engine.shutdown()
+
+    assert len(listed) == 1, "the refused row must not have been written"
+
+
+@pytest.mark.asyncio
+async def test_doctor_names_the_quarantined_rows_by_rowid(tmp_path):
+    """A count says something is wrong; a rowid says where to look in the file."""
+    db_path = tmp_path / "store.db"
+    await _store_with_one_good_memory(db_path)
+    _insert_invalid_row(db_path, "bad-1")
+
+    _code, out = _doctor_output(db_path)
+    assert "(rowid 2)" in out, out
+
+
+@pytest.mark.asyncio
+async def test_doctor_offers_the_repair_it_can_perform(tmp_path):
+    """The warning has to carry its own way out.
+
+    A row that only lacks an id is the one quarantine an operator can clear with
+    one command, and a fix nobody can discover from the message is a fix that
+    will not happen while the memory stays unreachable.
+    """
+    db_path = tmp_path / "store.db"
+    await _store_with_one_good_memory(db_path)
+    _insert_raw_row(db_path, None)
+
+    _code, out = _doctor_output(db_path)
+    assert "1 without an id" in out, out
+    assert "levh doctor --fix-ids" in out, out
+
+
+@pytest.mark.asyncio
+async def test_fix_ids_makes_an_idless_memory_recallable(tmp_path):
+    """The repair writes an id and nothing else, and the memory comes back."""
+    db_path = tmp_path / "store.db"
+    await _store_with_one_good_memory(db_path)
+    _insert_raw_row(db_path, None)
+
+    code, out = _doctor_output(db_path, argparse.Namespace(fix_ids=True))
+    assert "Repaired ids" in out, out
+    assert code == 0, out
+
+    with sqlite3.connect(db_path) as conn:
+        recovered = conn.execute(
+            "SELECT id FROM memories WHERE content = 'written by an external tool'"
+        ).fetchone()
+        orphaned = conn.execute(
+            "SELECT COUNT(*) FROM memories_fts WHERE memory_id IS NULL"
+        ).fetchone()[0]
+        indexed = conn.execute(
+            "SELECT COUNT(*) FROM memories_fts WHERE memory_id = ?", (recovered[0],)
+        ).fetchone()[0]
+
+    assert recovered[0] and len(recovered[0]) == 32, "a generated id, not a placeholder"
+    assert orphaned == 0, "the FTS entry keyed on the NULL must not outlive the repair"
+    assert indexed == 1, "the recovered memory has to be findable by text as well"
+
+    engine = MemoryEngine(db_path=str(db_path), embedder_mode="hash")
+    try:
+        await engine.initialize()
+        listed = await engine.episodic.get_all()
+    finally:
+        await engine.shutdown()
+    assert len(listed) == 2, "the repaired row is read back as a memory"
+
+
+@pytest.mark.asyncio
+async def test_fix_ids_leaves_a_row_it_cannot_repair_alone(tmp_path):
+    """A row rejected for its type still has an id; inventing another one would
+    change nothing, and rewriting what the user never asked about is not a
+    repair, so doctor reports it and keeps its hands off."""
+    db_path = tmp_path / "store.db"
+    await _store_with_one_good_memory(db_path)
+    _insert_raw_row(db_path, "bad-enum", memory_type="long_term")
+
+    code, out = _doctor_output(db_path, argparse.Namespace(fix_ids=True))
+    assert "no row was missing an id" in out, out
+    assert "Quarantined rows" in out, out
+    assert code == 1
+
+    with sqlite3.connect(db_path) as conn:
+        stored = conn.execute(
+            "SELECT memory_type FROM memories WHERE id = 'bad-enum'"
+        ).fetchone()
+    assert stored[0] == "long_term", "untouched"
+
+
+@pytest.mark.asyncio
+async def test_fix_ids_on_a_healthy_store_writes_nothing(tmp_path):
+    """The flag runs on every store an operator trusts, so the common case has
+    to be a no-op rather than an update that rewrites ids it did not need to."""
+    from server.commands.doctor import _recover_idless_rows
+
+    db_path = tmp_path / "store.db"
+    await _store_with_one_good_memory(db_path)
+
+    with sqlite3.connect(db_path) as conn:
+        before = conn.execute("SELECT id, rowid FROM memories ORDER BY rowid").fetchall()
+
+    assert _recover_idless_rows(str(db_path)) == []
+
+    with sqlite3.connect(db_path) as conn:
+        after = conn.execute("SELECT id, rowid FROM memories ORDER BY rowid").fetchall()
+    assert after == before
+

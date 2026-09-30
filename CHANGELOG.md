@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+### Fix: a row stored without an id can be repaired, not only reported (#324)
+
+- `levh doctor` counted quarantined rows and stopped there. The rows that most
+  need naming are the ones with no `id` to name them by, and every deletion path
+  takes an id, so the warning described a loss with no way out.
+- It now names the quarantined rows by rowid, and `levh doctor --fix-ids` gives a
+  row whose only defect is a missing id a generated one. The memory comes back to
+  recall and becomes reachable by `levh purge`; the stale FTS entry keyed on the
+  NULL is dropped in the same write. A row rejected for any other reason keeps its
+  content and its type untouched — a missing id is the one defect this repairs.
+- Doctor still writes nothing without the flag, and the repair waits at most 5 s
+  for a store a live server is writing to rather than hanging the command an
+  operator runs to find out what is wrong.
+- Two new `except Exception` boundaries (a failed repair, an optional hint), so
+  the count in `docs/error-handling.md` moved 59 to 61.
+
 ### Perf: recall searches a matrix, not a restacked copy per call (#78)
 
 - `VectorStore.search` rebuilt `np.stack([...])` over every candidate on every
