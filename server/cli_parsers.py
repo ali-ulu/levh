@@ -21,7 +21,12 @@ def _add_leaf_commands(sub: argparse._SubParsersAction) -> None:
     These have no nested subparsers and are not needed again by cli.main(),
     so they live here as one compact block instead of one helper each.
     """
-    sub.add_parser("doctor", help="Check system health and dependencies")
+    doctor_p = sub.add_parser("doctor", help="Check system health and dependencies")
+    doctor_p.add_argument(
+        "--fix-ids",
+        action="store_true",
+        help="give a stored row that only lacks an id a generated one, so it can be recalled again",
+    )
 
     setup_p = sub.add_parser("setup", help="First-run setup for demo or real data")
     setup_mode = setup_p.add_mutually_exclusive_group()
