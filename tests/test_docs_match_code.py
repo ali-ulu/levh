@@ -15,7 +15,9 @@ archive (issue #217).
 from __future__ import annotations
 
 import ast
+import os
 import re
+import subprocess
 import tomllib
 from collections import Counter
 from datetime import date, timedelta
@@ -25,6 +27,50 @@ import pytest
 
 DOCS = Path(__file__).resolve().parent.parent / "docs"
 SERVER = Path(__file__).resolve().parent.parent / "server"
+
+
+def _shipped_server_python_files() -> list[Path]:
+    """Every `server/*.py` a checkout of this commit actually contains.
+
+    These inventories describe the code that ships, and a checkout of a commit
+    holds tracked files and nothing else. Walking the directory instead counts
+    whatever a neighbouring process left in the same working tree: on a machine
+    where two agents share one checkout, an untracked `server/core/sentinel.py`
+    lifted the derived count from 61 to 68 and turned the gate red on a pull
+    request that had not touched error handling (observed 2026-09-29 while
+    opening #325, where the branch's own number was right all along).
+
+    Falls back to the directory walk where git cannot answer - a source tarball,
+    an export with no index - because an unavailable answer must not be read as
+    "this codebase has no files", which would pass every gate below.
+
+    `cwd` alone does not pin the repository: an inherited `GIT_DIR`,
+    `GIT_WORK_TREE` or `GIT_INDEX_FILE` would point `ls-files` at another
+    checkout without moving the answer, so the environment's `GIT_*` variables
+    are stripped and the call reads only the tree this test file sits in.
+    """
+    root = SERVER.parent
+    env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+    try:
+        listing = subprocess.run(
+            ["git", "ls-files", "-z", "--", "server"],
+            cwd=root,
+            env=env,
+            capture_output=True,
+            timeout=20,
+            check=True,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return sorted(SERVER.rglob("*.py"))
+    names = [n for n in listing.stdout.decode("utf-8", "replace").split("\0") if n.endswith(".py")]
+    if not names:
+        return sorted(SERVER.rglob("*.py"))
+    return sorted(root / name for name in names)
+
+
+#: Resolved once: the git call is cheap, and every inventory below has to agree
+#: on the same tree, or two gates would disagree about what `server/` is.
+SERVER_PY_FILES = _shipped_server_python_files()
 
 
 def _normalize(path: str) -> str:
@@ -219,7 +265,7 @@ _EXCEPT_EXCEPTION_SITE_RE = re.compile(r"the (\d+) `except Exception` sites in `
 def _except_exception_handlers() -> list[tuple[ast.ExceptHandler, str]]:
     """Every bare `except Exception:` clause in `server/`, with its source line."""
     handlers: list[tuple[ast.ExceptHandler, str]] = []
-    for path in sorted(SERVER.rglob("*.py")):
+    for path in SERVER_PY_FILES:
         source = path.read_text(encoding="utf-8")
         try:
             tree = ast.parse(source)
@@ -288,7 +334,7 @@ def _referenced_env_names() -> set[str]:
     missing from the template actually live.
     """
     names: set[str] = set()
-    for path in sorted(SERVER.rglob("*.py")):
+    for path in SERVER_PY_FILES:
         tree = ast.parse(path.read_text(encoding="utf-8"))
         for node in ast.walk(tree):
             if isinstance(node, ast.Constant) and isinstance(node.value, str) and _ENV_NAME_RE.match(node.value):
