@@ -20,6 +20,11 @@ spellings that could outrank the pin. These tests hold it to that:
 
 On a hostile machine (the CI ``hostile-env`` job plants one) the scrub is what
 keeps both true.
+
+The same trap exists without a path. ``LEVH_RECALL_LOG`` is read at call time
+and decides whether recalls are recorded, so a developer who exports it to
+exercise the log reddens ``tests/test_recall_log.py`` while CI stays green.
+conftest scrubs it too; the behaviour-flag guard below holds that in place.
 """
 
 from __future__ import annotations
@@ -125,6 +130,53 @@ def test_conftest_derives_its_scrub_list_from_the_source_of_truth():
             "get_env does not read them; the derivation has drifted from the "
             "behavior conftest.py pins against"
         )
+
+
+def test_the_suite_scrubs_the_behaviour_flags():
+    """A flag a developer exports must not reach a test.
+
+    ``LEVH_RECALL_LOG`` is not a path, so the store pin does not touch it, yet
+    it decides whether recalls are recorded and reddens the recall-log tests
+    when a developer exports it. The autouse scrub is the fix; this asserts the
+    flag is actually absent from the suite's environment, so an edit that drops
+    the tuple from conftest fails here.
+    """
+    from tests.conftest import _FLAG_ENV
+
+    for name in _FLAG_ENV:
+        assert name not in os.environ, (
+            f"{name} steers test behaviour; tests/conftest.py must scrub it or "
+            "a developer who exports it reddens the suite locally while CI "
+            "stays green"
+        )
+
+
+def test_a_subprocess_with_the_flag_exported_still_sees_the_default():
+    """A machine exporting ``LEVH_RECALL_LOG`` must not redden the suite.
+
+    Reproduces the 2026-10-01 report: with the flag exported, the recall-log
+    default test failed because nothing scrubbed it. The child inherits the
+    planted flag, so conftest's scrub is the only thing that can make it pass.
+    """
+    env = dict(os.environ)
+    env["LEVH_RECALL_LOG"] = "1"
+    env["EMBEDDER_MODE"] = "hash"
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            "-q",
+            "tests/test_recall_log.py::test_nothing_is_recorded_until_the_flag_is_set",
+        ],
+        cwd=str(REPO_ROOT),
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
 
 
 def test_the_suite_pins_the_store_outside_the_workspace():

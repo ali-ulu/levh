@@ -113,12 +113,15 @@ jobs:
         if: matrix.python-version == '3.12'
         run: uv run --frozen twine check dist/*
 
-  # The suite must survive a machine that steers it at a real memory store.
-  # On 2026-09-13 a developer-level LEVH_SQLITE_DB_PATH made subprocess tests
-  # write fixture rows into the real database while CI stayed green, because
-  # Actions machines have no such variable. This job plants a decoy pointing at
-  # a canary database and runs the full suite against it: any leak now fails
-  # loudly here instead of silently writing to production memory on Windows.
+  # The suite must survive a machine that steers it at a real memory store, and
+  # a machine with behaviour flags exported. On 2026-09-13 a developer-level
+  # LEVH_SQLITE_DB_PATH made subprocess tests write fixture rows into the real
+  # database while CI stayed green, because Actions machines have no such
+  # variable. LEVH_RECALL_LOG is the same trap without a path: exported to
+  # exercise the recall log locally, it reddens tests/test_recall_log.py while
+  # CI stays green. This job plants decoys for both and runs the full suite
+  # against them: a leak or an unscrubbed flag now fails loudly here instead of
+  # silently writing to production memory or flaking on a developer's machine.
   hostile-env:
     runs-on: ubuntu-latest
     steps:
@@ -135,6 +138,10 @@ jobs:
           echo "SQLITE_DB_PATH=${{ github.workspace }}/canary/stackmemory.db" >> "$GITHUB_ENV"
           echo "STACKMEMORY_SQLITE_DB_PATH=${{ github.workspace }}/canary/stackmemory.db" >> "$GITHUB_ENV"
           echo "LEVH_CONFIG_PATH=${{ github.workspace }}/canary/config.json" >> "$GITHUB_ENV"
+      - name: Plant the decoy behaviour flags
+        run: |
+          echo "LEVH_RECALL_LOG=1" >> "$GITHUB_ENV"
+          echo "LEVH_RECALL_LOG_DAYS=1" >> "$GITHUB_ENV"
       - name: Test against the canary
         env:
           EMBEDDER_MODE: hash
