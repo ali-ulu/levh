@@ -1,0 +1,57 @@
+{
+  "name": "skill_promotion",
+  "memories": [
+    {
+      "key": "reused-runbook",
+      "content": "When the ingest worker wedges, restart it with systemctl restart ingest-worker before touching the queue.",
+      "source": "cli",
+      "importance": 0.7,
+      "tags": ["ops-runbook"],
+      "expected_admission": "admit"
+    },
+    {
+      "key": "used-once-tip",
+      "content": "The staging database password rotates on the first monday of the month.",
+      "source": "cli",
+      "importance": 0.7,
+      "expected_admission": "admit"
+    },
+    {
+      "key": "violated-shortcut",
+      "content": "When a migration fails, delete the migration file and re-run the whole batch from scratch.",
+      "source": "cli",
+      "importance": 0.7,
+      "expected_admission": "admit"
+    }
+  ],
+  "recall_before_eval": [
+    {
+      "query": "How do I restart the ingest worker when it wedges?",
+      "times": 3
+    },
+    {
+      "query": "When does the staging database password rotate?",
+      "times": 1
+    },
+    {
+      "query": "What do I do when a migration fails?",
+      "times": 3
+    }
+  ],
+  "violations": [
+    {
+      "key": "violated-shortcut",
+      "task": "migration failure recovery",
+      "wrong_action": "delete the migration file and re-run the whole batch",
+      "severity": "high"
+    }
+  ],
+  "queries": [
+    {
+      "query": "How do I restart the ingest worker when it wedges?",
+      "expected_memory_keys": ["reused-runbook"]
+    }
+  ],
+  "expected_conflict_count": 0,
+  "expected_procedure_candidates": ["reused-runbook"]
+}

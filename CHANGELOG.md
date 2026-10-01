@@ -47,6 +47,45 @@
 - Surfaces: `POST /api/guard/check`, the `check_action` MCP tool (in the
   `work` profile — a gate consulted only in admin sessions is consulted too
   late), and `GuardService.check_action`.
+### Feature: procedural memory — propose repeatedly-reused memories as skills (#339)
+
+- `MemoryType` has two values, `short_term` and `episodic`; the taxonomy's third
+  and fourth, semantic and procedural, were missing. This lands procedural, and
+  it lands it the way the research the issue cites does: **a skill is not stored
+  the first time it is seen — it is verified by repeated successful reuse before
+  it is promoted.**
+- The raw material was already in the store and unread. `memories.recall_count`
+  and `memories.frequency` count reuse and nothing consumed them as a signal;
+  `violations` records a rule that failed. `server/core/procedure.py` reads
+  those three counters and nothing else — no model, no network, no new schema —
+  which is what makes the rule a pure function and the whole path offline.
+- **A tag, not an enum value.** Promotion marks a memory `levh-procedure`.
+  Adding a `MemoryType` member would touch the model, the schema's CHECK
+  constraint, the docs gate and the MCP surface for a distinction the store does
+  not need to enforce — and `RULE_TAG` is the precedent for exactly this.
+- **Proposed, never promoted.** Nothing pins a memory, clears its decay clock or
+  changes its type. A candidate becomes a row in the findings inbox — the same
+  "signal, not verdict" surface `conflict.py` and the admission gate's `review`
+  verdict use — and a person promotes it. The *proposal* is a function of the
+  counters; the *promotion* is a decision this layer never makes.
+- Three exclusions, each with a reason: a **pinned** memory is already exempt
+  from decay; an **already-tagged** memory is a decision a human made; a memory
+  with a **recorded violation** is not a success story. The last is the only
+  clause that can fail a memory the counters alone would pass — it is the
+  "no violation recorded against it" requirement, and it is also the whole
+  demotion story: a procedure that later fails is caught by the same rule.
+- The thresholds are all three together (`recall_count >= 3`,
+  `frequency >= 3`, `importance >= 0.5`), not any: a memory recalled three times
+  in one session is a hot query, not a skill.
+- Ships with the **"skill promotion"** golden fixture the issue asked for: a
+  memory reused three times with no violation becomes a proposed procedure; one
+  reused once does not; one with a violation does not. The evaluation report
+  gains a `procedures` surface counting *proposals*, never promotions.
+- The rule is deliberately not on the librarian loop yet. The proposal path is
+  the deliverable; putting it on a timer is a follow-up, though the finding
+  fingerprint already folds a repeated proposal into one row (it bumps
+  `occurrences` rather than filing a duplicate), so a loop would not spam the
+  inbox.
 
 ### Feature: recall quality from the store's own recall log (#336)
 

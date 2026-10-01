@@ -28,6 +28,7 @@ import tempfile
 from pathlib import Path
 
 from server.core.memory_engine import MemoryEngine
+from server.core import procedure
 
 EVALUATION_VERSION = "memory-eval-v1"
 
@@ -124,6 +125,45 @@ async def _run_fixture(fixture: dict, embedder_mode: str) -> dict:
             if key in key_to_id:
                 await engine.reinforce_memory(key_to_id[key])
 
+        # 1c) Accumulated reuse. Promotion is a threshold over counters, so a
+        #     fixture has to *build* the counters rather than declare them:
+        #     each entry recalls and reinforces, which is what a real reuse
+        #     does (bumps recall_count and frequency).
+        #
+        #     ``top_k`` defaults to 1 on purpose. A live recall reinforces
+        #     *every* memory it returns, so recalling a shared store at the
+        #     usual top_k would hand incidental reuse to every memory the query
+        #     happened to surface — and a fixture could no longer say "this one
+        #     was reused, that one was not". One hit means the memory the query
+        #     is actually about.
+        for r in fixture.get("recall_before_eval", []):
+            for _ in range(int(r.get("times", 1))):
+                await engine.recall(
+                    query=r["query"], top_k=int(r.get("top_k", 1)), reinforce=True
+                )
+
+        # 1d) Violations a fixture wants on record. A memory with one is not a
+        #     success story, so this is how a fixture pins the "no violation"
+        #     clause of the promotion rule.
+        for v in fixture.get("violations", []):
+            if v["key"] not in key_to_id:
+                continue
+            await engine.db.insert_violation(
+                {
+                    "id": f"v_{v['key']}",
+                    "rule_id": key_to_id[v["key"]],
+                    "task": v.get("task"),
+                    "wrong_action": v.get("wrong_action", ""),
+                    "root_cause": v.get("root_cause"),
+                    "tool_name": v.get("tool_name"),
+                    "severity": v.get("severity", "medium"),
+                    "source": v.get("source", "fixture"),
+                    "occurred_at": v.get("occurred_at", "2026-01-01T00:00:00+00:00"),
+                    "resolved": 0,
+                    "resolution": None,
+                }
+            )
+
         # 2) Derived pipeline: trust then conflict candidates (same order the
         #    live pipeline uses; detection reads trust context).
         await engine.recompute_trust_scores()
@@ -211,6 +251,16 @@ async def _run_fixture(fixture: dict, embedder_mode: str) -> dict:
             )
             outcome["recovered"].append(hit)
 
+        # 8) Procedure promotion (2.32): which memories the promotion rule
+        #    proposes as skills, by fixture key. Run last so it reads the
+        #    counters the earlier steps left — reuse evidence is accumulated,
+        #    not declared.
+        proposed = await procedure.propose_procedures(engine)
+        proposed_ids = {p["memory_id"] for p in proposed}
+        outcome["procedure_candidates"] = sorted(
+            key for key, mid in key_to_id.items() if mid in proposed_ids
+        )
+
         return outcome
     finally:
         await engine.shutdown()
@@ -266,6 +316,18 @@ async def run_evaluation(
     # ── Trust ─────────────────────────────────────────────────────
     trust_checks = [t for o in outcomes for t in o["trust"]]
 
+    # ── Procedural promotion (2.32) ───────────────────────────────
+    # Counts proposals, not promotions: nothing here promotes anything, and
+    # the metric says so by name.
+    procedure_candidates = sum(len(o["procedure_candidates"]) for o in outcomes)
+    procedure_mismatches = 0
+    for fx, o in zip(fixtures, outcomes):
+        expected_candidates = fx.get("expected_procedure_candidates")
+        if expected_candidates is not None:
+            procedure_mismatches += o["procedure_candidates"] != sorted(
+                expected_candidates
+            )
+
     def _rate(n: int, d: int) -> float:
         return round(n / d, 4) if d else 0.0
 
@@ -277,6 +339,11 @@ async def run_evaluation(
         fp_ok = o["conflicts"]["false_positives"] == 0 or fx.get(
             "known_false_positives", False
         )
+        procedure_ok = (
+            "expected_procedure_candidates" not in fx
+            or o["procedure_candidates"]
+            == sorted(fx["expected_procedure_candidates"])
+        )
         fixture_results.append(
             {
                 "name": o["name"],
@@ -287,6 +354,7 @@ async def run_evaluation(
                     and o["conflicts"].get("count_ok", True)
                     and o["conflicts"]["missed"] == 0
                     and fp_ok
+                    and procedure_ok
                 ),
             }
         )
@@ -348,6 +416,14 @@ async def run_evaluation(
         "lifecycle": {
             "review_distribution": review_dist,
             "fading_recovery_rate": _rate(sum(recoveries), len(recoveries)),
+        },
+        # "procedures" measures the promotion rule: how many memories it
+        # *proposes* as skills and how often it disagreed with a fixture's
+        # declared candidates. It never counts promotions — the rule does not
+        # promote, a human does.
+        "procedures": {
+            "candidates": procedure_candidates,
+            "mismatches": procedure_mismatches,
         },
     }
 

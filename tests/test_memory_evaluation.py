@@ -43,6 +43,7 @@ def test_fixture_set_covers_required_scenarios():
         "fading_important_memory",
         "redacted_secret",
         "conflict_false_positive",
+        "skill_promotion",
     }
     assert required <= names
 
@@ -64,7 +65,7 @@ def test_report_is_versioned_and_labels_its_surfaces(report):
     # Bare "accuracy" is banned — each surface is named for what it measures.
     serialized = json.dumps(report)
     assert '"accuracy"' not in serialized
-    for surface in ("recall", "quality", "conflicts", "lifecycle"):
+    for surface in ("recall", "quality", "conflicts", "lifecycle", "procedures"):
         assert surface in report
 
 
@@ -119,6 +120,17 @@ def test_lifecycle_metrics(report):
     assert lc["review_distribution"].get("weaken", 0) >= 1
     # A reinforced fading memory must be recallable again.
     assert lc["fading_recovery_rate"] == 1.0
+
+
+def test_procedure_promotion_is_measured_as_proposals_only(report):
+    """The skill-promotion scenario (#339): a memory reused enough with no
+    violation becomes a *proposed* procedure; one reused once, or one with a
+    violation, does not."""
+    p = report["procedures"]
+    assert p["candidates"] >= 1
+    assert p["mismatches"] == 0
+    # Nothing here promotes: the rule proposes and a human decides.
+    assert "promotions" not in p
 
 
 @pytest.mark.asyncio

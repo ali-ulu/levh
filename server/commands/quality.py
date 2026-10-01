@@ -154,6 +154,8 @@ def cmd_eval_run(args: argparse.Namespace) -> int:
     c = report["conflicts"]
     print(f"  conflict: precision {c['precision']}  recall {c['recall']}  "
           f"false positives {c['false_positives']}")
+    p = report["procedures"]
+    print(f"  procedure: candidates {p['candidates']}  mismatches {p['mismatches']}")
     print(f"  report → {args.output}\n")
     return 0 if passed == report["fixture_count"] else 1
 
