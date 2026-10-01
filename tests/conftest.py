@@ -1,6 +1,6 @@
 """Shared test setup.
 
-The suite must describe its own environment. It did not, in three ways.
+The suite must describe its own environment. It did not, in four ways.
 
 Several tests assert what happens with *no* LLM configuration but read the
 developer's real environment, so on a machine with OPENAI_BASE_URL pointed at
@@ -33,6 +33,14 @@ them back as duplicates (``stored: 0``) instead of a clean database. So the
 suite no longer merely avoids steering variables: it pins the store itself,
 one temp database per test, and keeps the spellings that could outrank it
 scrubbed. CI's ``hostile-env`` job pins the scrub end to end.
+
+It happened a fourth way, on 2026-10-01: ``LEVH_RECALL_LOG`` is a behaviour
+flag rather than a path, so the store pin does not cover it, and a developer
+who exported it to exercise the recall log locally reddened
+``tests/test_recall_log.py`` — the one file they were most likely to be
+working on. Like the LLM variables, the flag and its retention window are
+scrubbed so the default is silence; a test that wants logging on sets the
+variable with monkeypatch, which runs after this fixture and wins.
 """
 
 from __future__ import annotations
@@ -62,6 +70,16 @@ _LLM_ENV = (
 _PINNED_ENV = "SQLITE_DB_PATH"
 _PINNED_BASE_NAMES = (_PINNED_ENV,)
 
+# Behaviour flags that steer the suite without naming a path, so the store pin
+# does not cover them. Read by server.core.engine.recall at call time; a
+# developer who exports one to exercise the feature reddens the suite locally
+# while CI stays green. Unlike the path names these have no accepted spellings
+# to derive — they are the flag and its retention window, scrubbed verbatim.
+_FLAG_ENV = (
+    "LEVH_RECALL_LOG",
+    "LEVH_RECALL_LOG_DAYS",
+)
+
 # Every name through which a developer's environment could redirect the suite
 # (or the CLI/server/MCP subprocesses it spawns) at the real memory store.
 # Derived from accepted_env_var_names — the same acceptance rules get_env
@@ -82,6 +100,20 @@ _ISOLATED_STORE_NAME = "isolated.db"
 @pytest.fixture(autouse=True)
 def _neutral_llm_environment(monkeypatch: pytest.MonkeyPatch) -> None:
     for name in _LLM_ENV:
+        monkeypatch.delenv(name, raising=False)
+
+
+@pytest.fixture(autouse=True)
+def _neutral_flag_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Make the default the baseline for behaviour flags too.
+
+    ``LEVH_RECALL_LOG`` decides whether recalls are recorded, so a developer
+    who exported it reddens the recall-log tests while CI stays green — the
+    same invisible failure mode the LLM and store scrubs exist to kill. A test
+    that wants the flag on sets it with monkeypatch, which runs after this
+    fixture and wins.
+    """
+    for name in _FLAG_ENV:
         monkeypatch.delenv(name, raising=False)
 
 

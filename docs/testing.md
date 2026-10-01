@@ -97,7 +97,11 @@ variable in the surrounding environment can quietly redirect them at the real
 memory store. `tests/conftest.py` therefore scrubs every name that can steer
 the suite — `LEVH_SQLITE_DB_PATH`, `SQLITE_DB_PATH`,
 `STACKMEMORY_SQLITE_DB_PATH` and `LEVH_CONFIG_PATH` — before each test, the
-same way it neutralises the LLM variables.
+same way it neutralises the LLM variables. Behaviour flags that steer the
+suite without naming a path are scrubbed too: `LEVH_RECALL_LOG` and
+`LEVH_RECALL_LOG_DAYS` decide whether recalls are recorded, so a developer who
+exports them to exercise the recall log would otherwise redden
+`tests/test_recall_log.py` while CI stayed green.
 
 This is not paranoia: on 2026-09-13 a developer-level `LEVH_SQLITE_DB_PATH`
 made 28 subprocess tests write fixture rows into the *real* memory database
@@ -106,9 +110,10 @@ while CI stayed green, because Actions machines have no such variable.
 plain one the tests set, so the isolation promise silently inverted.
 
 CI runs the same defense as a job: **hostile-env** plants decoy variables
-pointing at a canary database and runs the full suite against it. If any test
-still reaches the real store, the canary fills up and the job fails — the
-leak is caught in CI instead of on someone's production memory. The contract
-is pinned by `tests/test_env_leak_isolation.py`; keep that file and the
-conftest list in sync when a new steering variable is introduced.
+pointing at a canary database, and decoy behaviour flags, then runs the full
+suite against them. If any test still reaches the real store, the canary fills
+up and the job fails — the leak is caught in CI instead of on someone's
+production memory. The contract is pinned by
+`tests/test_env_leak_isolation.py`; keep that file and the conftest list in
+sync when a new steering variable or behaviour flag is introduced.
 
