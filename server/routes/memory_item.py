@@ -9,12 +9,19 @@ from server.core.types import Memory
 from server.routes.deps import get_engine
 from server.routes.models import (
     FeedbackRequest,
+    ForgettingCurveResponse,
+    MemoryDeleteResponse,
     MemoryOut,
     PinRequest,
+    PurgeMemoryResponse,
+    RedactMemoryResponse,
+    RelatedMemoriesResponse,
     ReviewMemoryResponse,
     ReviewRequest,
+    ScoreBreakdownResponse,
     UpdateRequest,
 )
+from server.routes.models import TrustBreakdownResponse
 
 router = APIRouter()
 
@@ -84,7 +91,7 @@ async def memory_feedback(memory_id: str, req: FeedbackRequest, engine=Depends(g
     return mem.model_dump(exclude={"embedding"})
 
 
-@router.post("/api/memories/{memory_id}/redact")
+@router.post("/api/memories/{memory_id}/redact", response_model=RedactMemoryResponse)
 async def redact_memory(memory_id: str, engine=Depends(get_engine)):
     """Strip secrets from an already-stored memory in place, recorded
     auditably in its metadata's redaction_history."""
@@ -94,14 +101,14 @@ async def redact_memory(memory_id: str, engine=Depends(get_engine)):
     return result
 
 
-@router.post("/api/memories/{memory_id}/purge")
+@router.post("/api/memories/{memory_id}/purge", response_model=PurgeMemoryResponse)
 async def purge_memory(memory_id: str, engine=Depends(get_engine)):
     """Hard-delete a memory across every layer and verify nothing survives.
     Pinned memories are purged too — this is a deliberate human action."""
     return await engine.purge_memory(memory_id)
 
 
-@router.get("/api/memories/{memory_id}/forgetting-curve")
+@router.get("/api/memories/{memory_id}/forgetting-curve", response_model=ForgettingCurveResponse)
 async def get_forgetting_curve(memory_id: str, days: int = 30, engine=Depends(get_engine)):
     """Predicted retention curve for a memory — powers the 'memory strength'
     visualization in the dashboard's detail drawer."""
@@ -111,7 +118,7 @@ async def get_forgetting_curve(memory_id: str, days: int = 30, engine=Depends(ge
     return curve
 
 
-@router.get("/api/memories/{memory_id}/trust")
+@router.get("/api/memories/{memory_id}/trust", response_model=TrustBreakdownResponse)
 async def get_memory_trust(memory_id: str, engine=Depends(get_engine)):
     """Provenance/trust breakdown for a memory — explainable, deterministic,
     NOT truth, and independent of H-score recall ranking."""
@@ -121,7 +128,7 @@ async def get_memory_trust(memory_id: str, engine=Depends(get_engine)):
     return result
 
 
-@router.get("/api/memories/{memory_id}/related")
+@router.get("/api/memories/{memory_id}/related", response_model=RelatedMemoriesResponse)
 async def related_memories(memory_id: str, top_k: int = 5, engine=Depends(get_engine)):
     """Memories most similar to this one — the 'related memories' graph edge,
     computed live from embeddings. Powers 'see also' in the detail drawer."""
@@ -137,13 +144,13 @@ async def related_memories(memory_id: str, top_k: int = 5, engine=Depends(get_en
     }
 
 
-@router.delete("/api/memories/{memory_id}")
+@router.delete("/api/memories/{memory_id}", response_model=MemoryDeleteResponse)
 async def delete_memory(memory_id: str, engine=Depends(get_engine)):
     success = await engine.forget(memory_id)
     return {"deleted": success}
 
 
-@router.get("/api/memories/{memory_id}/score-breakdown")
+@router.get("/api/memories/{memory_id}/score-breakdown", response_model=ScoreBreakdownResponse)
 async def get_score_breakdown(memory_id: str, query: str = "", engine=Depends(get_engine)):
     """Return H(x,ψ) score breakdown for a specific memory + query pair.
 

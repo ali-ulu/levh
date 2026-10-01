@@ -6,12 +6,17 @@ from __future__ import annotations
 from fastapi import Depends, APIRouter, HTTPException
 
 from server.routes.deps import get_engine
-from server.routes.models import ConflictReviewRequest
+from server.routes.models import (
+    ConflictDetectResponse,
+    ConflictListResponse,
+    ConflictReviewResponse,
+    ConflictReviewRequest,
+)
 
 router = APIRouter()
 
 
-@router.post("/api/conflicts/detect")
+@router.post("/api/conflicts/detect", response_model=ConflictDetectResponse)
 async def detect_conflicts(engine=Depends(get_engine)):
     """Scan stored memories for conflict CANDIDATES — pairs that share an
     entity and show an opposing surface pattern. Idempotent: never resets
@@ -19,14 +24,14 @@ async def detect_conflicts(engine=Depends(get_engine)):
     return await engine.detect_conflict_candidates()
 
 
-@router.get("/api/conflicts")
+@router.get("/api/conflicts", response_model=ConflictListResponse)
 async def list_conflicts(status: str = "open", limit: int = 100, engine=Depends(get_engine)):
     """List conflict candidates, optionally filtered by status. Pass an empty
     status to list every status."""
     return {"conflicts": await engine.list_conflict_candidates(status=status or None, limit=limit)}
 
 
-@router.post("/api/conflicts/{conflict_id:path}/review")
+@router.post("/api/conflicts/{conflict_id:path}/review", response_model=ConflictReviewResponse)
 async def review_conflict(conflict_id: str, req: ConflictReviewRequest, engine=Depends(get_engine)):
     """Apply a human review decision to a conflict candidate. ``conflict_id``
     may contain ``|`` so the path converter is used."""

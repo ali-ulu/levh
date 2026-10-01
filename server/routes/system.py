@@ -12,7 +12,7 @@ from server.core.runtime_config import configured_bind_host
 from server.core.types import MemoryStats
 from server.routes.deps import get_engine
 from server.routes.deps import APP_VERSION, api_token, logger
-from server.routes.models import HealthResponse
+from server.routes.models import BenchmarkResponse, HealthResponse, ReadyzResponse, ServerConfigResponse
 
 router = APIRouter()
 
@@ -23,7 +23,7 @@ async def get_stats(engine=Depends(get_engine)):
     return stats.model_dump()
 
 
-@router.get("/api/config")
+@router.get("/api/config", response_model=ServerConfigResponse)
 async def get_config(engine=Depends(get_engine)):
     """Current server configuration (for the Settings page)."""
     embedder_mode = engine._embedder.mode if engine._embedder else engine._embedder_mode
@@ -103,7 +103,7 @@ async def get_metrics():
     )
 
 
-@router.get("/api/readyz")
+@router.get("/api/readyz", response_model=ReadyzResponse)
 async def ready(engine=Depends(get_engine)):
     """Readiness probe: this process can actually serve reads and writes.
 
@@ -167,7 +167,7 @@ async def ready(engine=Depends(get_engine)):
     return payload
 
 
-@router.post("/api/benchmark/recall")
+@router.post("/api/benchmark/recall", response_model=BenchmarkResponse)
 async def benchmark_recall(embedder_mode: str = "", top_k: int = 5, engine=Depends(get_engine)):
     """Run the recall-quality benchmark harness (hit@k / MRR on a labelled
     corpus) and return the metrics — powers the Settings 'Recall Quality'

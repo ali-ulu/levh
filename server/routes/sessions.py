@@ -5,25 +5,30 @@ from __future__ import annotations
 
 from fastapi import Depends, APIRouter, HTTPException
 
+from server.core.types import Session
 from server.routes.deps import get_engine
-from server.routes.models import CreateSessionRequest
+from server.routes.models import (
+    CreateSessionRequest,
+    SessionDeleteResponse,
+    SummarizeSessionResponse,
+)
 
 router = APIRouter()
 
 
-@router.post("/api/sessions")
+@router.post("/api/sessions", response_model=Session)
 async def create_session(req: CreateSessionRequest, engine=Depends(get_engine)):
     session = await engine.create_session(name=req.name, metadata=req.metadata)
     return session.model_dump()
 
 
-@router.get("/api/sessions")
+@router.get("/api/sessions", response_model=list[Session])
 async def list_sessions(limit: int = 50, engine=Depends(get_engine)):
     sessions = await engine.list_sessions(limit=limit)
     return [s.model_dump() for s in sessions]
 
 
-@router.get("/api/sessions/{session_id}")
+@router.get("/api/sessions/{session_id}", response_model=Session)
 async def get_session(session_id: str, engine=Depends(get_engine)):
     session = await engine.get_session(session_id)
     if not session:
@@ -31,7 +36,7 @@ async def get_session(session_id: str, engine=Depends(get_engine)):
     return session.model_dump()
 
 
-@router.delete("/api/sessions/{session_id}")
+@router.delete("/api/sessions/{session_id}", response_model=SessionDeleteResponse)
 async def delete_session(session_id: str, memories: str = "refuse", engine=Depends(get_engine)):
     """Delete a session, saying what happens to its memories.
 
@@ -53,7 +58,7 @@ async def delete_session(session_id: str, memories: str = "refuse", engine=Depen
     return result
 
 
-@router.patch("/api/sessions/{session_id}/end")
+@router.patch("/api/sessions/{session_id}/end", response_model=Session)
 async def end_session(session_id: str, engine=Depends(get_engine)):
     session = await engine.end_session(session_id)
     if not session:
@@ -61,7 +66,7 @@ async def end_session(session_id: str, engine=Depends(get_engine)):
     return session.model_dump()
 
 
-@router.post("/api/sessions/{session_id}/summarize")
+@router.post("/api/sessions/{session_id}/summarize", response_model=SummarizeSessionResponse)
 async def summarize_session(session_id: str, engine=Depends(get_engine)):
     """Distill a session's memories into one durable summary memory (LLM when
     OPENAI_API_KEY is set, deterministic extractive fallback otherwise)."""

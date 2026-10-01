@@ -2,20 +2,23 @@
 
 ## Unreleased
 
-### Feature: response schemas for the core REST surface (#307, #309)
+### Feature: response schemas for the full REST surface (#307, #309)
 
 - The published contract declared request bodies precisely but left every `200`
   response an empty object, so SDK clients could only receive `unknown`. The
-  core memory surface now declares what it returns: store/get/list memories,
-  fading, the review queue, review decisions, ask, consolidate, stats and
-  health — 14 of 110 operations, each shape verified against the live handler
-  response field-by-field rather than guessed.
+  full REST surface now declares what it returns — 108 of 110 operations
+  across sessions, entities, findings, agents/checkpoints, attachments,
+  conflicts, connectors, knowledge (people/organizations/timeline/briefing/
+  meeting-prep), guard, memory extras (dedupe, held memories, secrets,
+  trust, import/export), system, librarian and onboarding. The two untyped
+  operations have no JSON body (binary backup/metrics exports). Each shape
+  was verified against the live handler response field-by-field rather than
+  guessed.
 - `scripts/export_openapi.py` is the regeneration counterpart of the contract
   freeze test, so a deliberate schema change can be committed with its
   contract update in one step.
-- The TypeScript SDK regenerates with 12 new response types and typed
-  convenience methods (`health`, `stats`, `listMemories`, `storeMemory`,
-  `ask`); untyped operations keep the honest `unknown` default.
+- The TypeScript SDK regenerates with ~120 new response types; untyped
+  operations keep the honest `unknown` default.
 
 ### Fix: make the SAST nosec staleness test pass on Windows (#103)
 

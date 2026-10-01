@@ -15,6 +15,18 @@ from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisco
 from pydantic import BaseModel, Field
 
 from server.routes.deps import get_engine, get_engine_for
+from server.routes.models import (
+    AgentCheckpointOut,
+    AgentConnectResponse,
+    AgentDisconnectResponse,
+    AgentHeartbeatResponse,
+    AgentMetricsResponse,
+    AgentSessionOut,
+    AgentStatsResponse,
+    CheckpointCreateResponse,
+    CollaborationResponse,
+    UsageBillingResponse,
+)
 
 router = APIRouter()
 
@@ -88,7 +100,7 @@ class CheckpointRequest(BaseModel):
 
 # ── Agent connection ─────────────────────────────────────────────────
 
-@router.post("/api/agents/connect")
+@router.post("/api/agents/connect", response_model=AgentConnectResponse)
 async def agent_connect(req: AgentConnectRequest, engine=Depends(get_engine)):
     """Record an agent connecting to LEVH."""
     tracker = engine.agent_tracker
@@ -105,7 +117,7 @@ async def agent_connect(req: AgentConnectRequest, engine=Depends(get_engine)):
     return result
 
 
-@router.post("/api/agents/{agent_session_id}/heartbeat")
+@router.post("/api/agents/{agent_session_id}/heartbeat", response_model=AgentHeartbeatResponse)
 async def agent_heartbeat(agent_session_id: str, engine=Depends(get_engine)):
     """Send a heartbeat to keep an agent connection alive."""
     tracker = engine.agent_tracker
@@ -120,7 +132,7 @@ async def agent_heartbeat(agent_session_id: str, engine=Depends(get_engine)):
     return result
 
 
-@router.post("/api/agents/{agent_session_id}/disconnect")
+@router.post("/api/agents/{agent_session_id}/disconnect", response_model=AgentDisconnectResponse)
 async def agent_disconnect(agent_session_id: str, engine=Depends(get_engine)):
     """Disconnect an agent from LEVH."""
     tracker = engine.agent_tracker
@@ -133,7 +145,7 @@ async def agent_disconnect(agent_session_id: str, engine=Depends(get_engine)):
 
 # ── Agent queries ────────────────────────────────────────────────────
 
-@router.get("/api/agents")
+@router.get("/api/agents", response_model=list[AgentSessionOut])
 async def list_agents(limit: int = 50, engine=Depends(get_engine)):
     """List all agent connections (active and disconnected)."""
     tracker = engine.agent_tracker
@@ -142,7 +154,7 @@ async def list_agents(limit: int = 50, engine=Depends(get_engine)):
     return await tracker.get_agent_activity(limit=limit)
 
 
-@router.get("/api/agents/online")
+@router.get("/api/agents/online", response_model=list[AgentSessionOut])
 async def list_online_agents(engine=Depends(get_engine)):
     """List currently online agents."""
     tracker = engine.agent_tracker
@@ -151,7 +163,7 @@ async def list_online_agents(engine=Depends(get_engine)):
     return await tracker.get_online_agents()
 
 
-@router.get("/api/agents/stats")
+@router.get("/api/agents/stats", response_model=AgentStatsResponse)
 async def agent_stats(engine=Depends(get_engine)):
     """Get aggregate agent usage statistics."""
     tracker = engine.agent_tracker
@@ -162,7 +174,7 @@ async def agent_stats(engine=Depends(get_engine)):
 
 # ── Agent Performance Metrics ────────────────────────────────────────
 
-@router.get("/api/agents/{agent_name}/metrics")
+@router.get("/api/agents/{agent_name}/metrics", response_model=AgentMetricsResponse)
 async def agent_metrics(agent_name: str, engine=Depends(get_engine)):
     """Get performance metrics for a specific agent."""
     tracker = engine.agent_tracker
@@ -171,7 +183,7 @@ async def agent_metrics(agent_name: str, engine=Depends(get_engine)):
     return await tracker.get_agent_metrics(agent_name)
 
 
-@router.get("/api/agents/metrics/usage")
+@router.get("/api/agents/metrics/usage", response_model=UsageBillingResponse)
 async def usage_billing(engine=Depends(get_engine)):
     """Get usage billing metrics for all agents."""
     tracker = engine.agent_tracker
@@ -182,7 +194,7 @@ async def usage_billing(engine=Depends(get_engine)):
 
 # ── Agent Collaboration ──────────────────────────────────────────────
 
-@router.get("/api/agents/collaboration/{project}")
+@router.get("/api/agents/collaboration/{project}", response_model=CollaborationResponse)
 async def agent_collaboration(project: str, engine=Depends(get_engine)):
     """Get collaboration info for agents working on the same project."""
     tracker = engine.agent_tracker
@@ -193,7 +205,7 @@ async def agent_collaboration(project: str, engine=Depends(get_engine)):
 
 # ── Checkpoints ──────────────────────────────────────────────────────
 
-@router.post("/api/checkpoints")
+@router.post("/api/checkpoints", response_model=CheckpointCreateResponse)
 async def create_checkpoint(req: CheckpointRequest, engine=Depends(get_engine)):
     """Create a checkpoint of current work state."""
     tracker = engine.agent_tracker
@@ -212,7 +224,7 @@ async def create_checkpoint(req: CheckpointRequest, engine=Depends(get_engine)):
     return result
 
 
-@router.get("/api/checkpoints")
+@router.get("/api/checkpoints", response_model=list[AgentCheckpointOut])
 async def list_checkpoints(
     agent_name: str = "",
     project: str = "",

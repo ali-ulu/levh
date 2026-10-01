@@ -21,7 +21,16 @@ from pathlib import Path, PurePosixPath
 from fastapi import Depends, APIRouter, HTTPException
 
 from server.routes.deps import get_engine
-from server.routes.models import AttachFileRequest, AttachmentUploadRequest
+from server.routes.models import (
+    AttachFileRequest,
+    AttachmentListResponse,
+    AttachmentOut,
+    AttachmentUploadRequest,
+    AttachmentVerifyResponse,
+    AttachmentDeleteResponse,
+    UploadedFileResponse,
+    VerifyAllAttachmentsResponse,
+)
 
 router = APIRouter()
 
@@ -70,7 +79,7 @@ def _attachments_dir() -> Path:
     return attachments_dir()
 
 
-@router.post("/api/attachments/upload")
+@router.post("/api/attachments/upload", response_model=UploadedFileResponse)
 async def upload_attachment(req: AttachmentUploadRequest):
     """Store an uploaded file locally and return the path to attach from."""
 
@@ -91,7 +100,7 @@ async def upload_attachment(req: AttachmentUploadRequest):
     return {"path": str(target), "filename": display, "bytes": len(blob)}
 
 
-@router.post("/api/memories/{memory_id}/attachments")
+@router.post("/api/memories/{memory_id}/attachments", response_model=AttachmentOut)
 async def attach_file(memory_id: str, req: AttachFileRequest, engine=Depends(get_engine)):
     """Attach a local file to a memory by reference (path + sha256), with
     optional derived text (OCR/transcript/caption) that recall actually
@@ -104,12 +113,14 @@ async def attach_file(memory_id: str, req: AttachFileRequest, engine=Depends(get
         raise HTTPException(status_code=400, detail=str(exc))
 
 
-@router.get("/api/memories/{memory_id}/attachments")
+@router.get(
+    "/api/memories/{memory_id}/attachments", response_model=AttachmentListResponse
+)
 async def list_memory_attachments(memory_id: str, engine=Depends(get_engine)):
     return {"attachments": await engine.list_memory_attachments(memory_id)}
 
 
-@router.post("/api/attachments/{attachment_id}/verify")
+@router.post("/api/attachments/{attachment_id}/verify", response_model=AttachmentVerifyResponse)
 async def verify_attachment(attachment_id: str, engine=Depends(get_engine)):
     """Re-check the file against what was recorded at attach time. A missing
     or changed file raises a conflict candidate rather than silently altering
@@ -120,12 +131,12 @@ async def verify_attachment(attachment_id: str, engine=Depends(get_engine)):
         raise HTTPException(status_code=404, detail=str(exc))
 
 
-@router.post("/api/attachments/verify-all")
+@router.post("/api/attachments/verify-all", response_model=VerifyAllAttachmentsResponse)
 async def verify_all_attachments(engine=Depends(get_engine)):
     return await engine.verify_all_attachments()
 
 
-@router.delete("/api/attachments/{attachment_id}")
+@router.delete("/api/attachments/{attachment_id}", response_model=AttachmentDeleteResponse)
 async def delete_attachment(attachment_id: str, engine=Depends(get_engine)):
     deleted = await engine.delete_attachment(attachment_id)
     if not deleted:

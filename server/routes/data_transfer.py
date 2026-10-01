@@ -10,7 +10,13 @@ from fastapi import Depends, APIRouter, HTTPException
 from fastapi.responses import Response
 
 from server.routes.deps import get_engine
-from server.routes.models import BackupRequest, FileImportRequest, RestoreRequest
+from server.routes.models import (
+    BackupRequest,
+    FileImportRequest,
+    FileImportResponse,
+    RestoreRequest,
+    RestoreResponse,
+)
 from server.routes.deps import APP_VERSION
 
 router = APIRouter()
@@ -104,7 +110,7 @@ async def create_backup(req: BackupRequest, engine=Depends(get_engine)):
     )
 
 
-@router.post("/api/restore")
+@router.post("/api/restore", response_model=RestoreResponse)
 async def restore_backup(req: RestoreRequest, engine=Depends(get_engine)):
     """Restore from a backup file. ``content_b64`` is the base64-encoded
     backup bytes (encrypted or plain — auto-detected). ``passphrase`` is
@@ -130,7 +136,7 @@ async def restore_backup(req: RestoreRequest, engine=Depends(get_engine)):
     return result
 
 
-@router.post("/api/import/file")
+@router.post("/api/import/file", response_model=FileImportResponse)
 async def import_file(req: FileImportRequest, engine=Depends(get_engine)):
     """Turn an arbitrary uploaded file into memories.
 

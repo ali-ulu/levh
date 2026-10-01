@@ -10,18 +10,31 @@ from server.core.types import Memory, RecallRequest
 from server.routes.deps import get_engine
 from server.routes.models import (
     AdmissionEvalRequest,
+    AdmitMemoryResponse,
     AdmitRequest,
     AskResponse,
     AskRequest,
     ConsolidateResponse,
     ConsolidateRequest,
+    ConsolidateSimilarResponse,
     DedupeRequest,
+    DedupeResponse,
+    EvaluateAdmissionResponse,
+    ExportMemoriesResponse,
     FadingMemoryOut,
+    HeldAdmitResponse,
+    HeldMemoryListResponse,
+    ImportMemoriesResponse,
     ImportRequest,
+    LowTrustResponse,
     MemoryOut,
+    RecallResponse,
     RedactAllRequest,
+    RedactAllResponse,
     ReviewQueueResponse,
+    SecretAuditResponse,
     StoreRequest,
+    TrustRecomputeResponse,
 )
 from server.routes.deps import public_demo
 
@@ -117,7 +130,7 @@ async def get_review_queue(threshold: float = 0.5, project: str = "", limit: int
     }
 
 
-@router.get("/api/memories/held")
+@router.get("/api/memories/held", response_model=HeldMemoryListResponse)
 async def list_held_memories(status: str = "held", project: str = "", limit: int = 50, engine=Depends(get_engine)):
     """Candidates the admission gate answered ``review`` for and parked for a
     human — near-duplicates it declined to decide on its own.
@@ -134,7 +147,7 @@ async def list_held_memories(status: str = "held", project: str = "", limit: int
     }
 
 
-@router.post("/api/memories/held/{held_id}/admit")
+@router.post("/api/memories/held/{held_id}/admit", response_model=HeldAdmitResponse)
 async def admit_held_memory(held_id: str, engine=Depends(get_engine)):
     """Keep a held candidate: store it as the memory it was going to be, with
     the importance, tags, session, project, source and type it arrived with."""
@@ -147,7 +160,7 @@ async def admit_held_memory(held_id: str, engine=Depends(get_engine)):
     return result
 
 
-@router.post("/api/memories/held/{held_id}/discard")
+@router.post("/api/memories/held/{held_id}/discard", response_model=HeldAdmitResponse)
 async def discard_held_memory(held_id: str, engine=Depends(get_engine)):
     """Drop a held candidate. The row stays with its verdict, so a discard is
     recorded rather than leaving no trace."""
@@ -160,21 +173,21 @@ async def discard_held_memory(held_id: str, engine=Depends(get_engine)):
     return result
 
 
-@router.get("/api/memories/audit-secrets")
+@router.get("/api/memories/audit-secrets", response_model=SecretAuditResponse)
 async def get_audit_secrets(engine=Depends(get_engine)):
     """Read-only scan for secrets (credentials, tokens) that slipped into
     stored memories before the admission gate existed."""
     return {"audit": await engine.audit_secrets()}
 
 
-@router.post("/api/memories/redact-all")
+@router.post("/api/memories/redact-all", response_model=RedactAllResponse)
 async def redact_all_secrets(req: RedactAllRequest, engine=Depends(get_engine)):
     """Bulk redaction of secrets across stored memories. dry_run=true
     (default) only previews; set false to rewrite every flagged memory."""
     return await engine.redact_all_secrets(dry_run=req.dry_run)
 
 
-@router.get("/api/memories/low-trust")
+@router.get("/api/memories/low-trust", response_model=LowTrustResponse)
 async def get_low_trust_memories(threshold: float = 0.4, limit: int = 50, engine=Depends(get_engine)):
     """Stored memories whose provenance/trust confidence is below
     ``threshold`` (least confident first). Run trust/recompute first to
@@ -182,13 +195,13 @@ async def get_low_trust_memories(threshold: float = 0.4, limit: int = 50, engine
     return {"low_trust": await engine.list_low_trust(threshold=threshold, limit=limit)}
 
 
-@router.post("/api/memories/trust/recompute")
+@router.post("/api/memories/trust/recompute", response_model=TrustRecomputeResponse)
 async def recompute_trust_scores(engine=Depends(get_engine)):
     """Compute and persist the provenance/trust score for every memory."""
     return await engine.recompute_trust_scores()
 
 
-@router.post("/api/memories/recall")
+@router.post("/api/memories/recall", response_model=RecallResponse)
 async def recall_memories(req: RecallRequest, engine=Depends(get_engine)):
     result = await engine.recall(
         query=req.query,
@@ -240,7 +253,7 @@ async def consolidate_memories(session_id: str = "", engine=Depends(get_engine))
     return {"consolidated": count}
 
 
-@router.post("/api/memories/dedupe")
+@router.post("/api/memories/dedupe", response_model=DedupeResponse)
 async def dedupe_memories(req: DedupeRequest, engine=Depends(get_engine)):
     """Find (dry_run) or remove near-duplicate memories."""
     if req.dry_run:
@@ -261,7 +274,7 @@ async def dedupe_memories(req: DedupeRequest, engine=Depends(get_engine)):
     return {"dry_run": False, "removed": removed}
 
 
-@router.post("/api/memories/consolidate-similar")
+@router.post("/api/memories/consolidate-similar", response_model=ConsolidateSimilarResponse)
 async def consolidate_similar_memories(req: ConsolidateRequest, engine=Depends(get_engine)):
     """Preview (dry_run) or apply sleep-like consolidation: cluster related
     older memories and compress each cluster into one consolidated memory,
@@ -275,7 +288,7 @@ async def consolidate_similar_memories(req: ConsolidateRequest, engine=Depends(g
     )
 
 
-@router.post("/api/memories/evaluate-admission")
+@router.post("/api/memories/evaluate-admission", response_model=EvaluateAdmissionResponse)
 async def evaluate_admission(req: AdmissionEvalRequest, engine=Depends(get_engine)):
     """Preview the admission gate's verdict for a candidate memory WITHOUT
     storing it: admit / review / redact / reject."""
@@ -286,7 +299,7 @@ async def evaluate_admission(req: AdmissionEvalRequest, engine=Depends(get_engin
     }
 
 
-@router.post("/api/memories/admit")
+@router.post("/api/memories/admit", response_model=AdmitMemoryResponse)
 async def admit_memory(req: AdmitRequest, engine=Depends(get_engine)):
     """Store a candidate memory through the admission gate: dedupe + secret
     redaction. reject/review are not stored unless force=True."""
@@ -308,12 +321,12 @@ async def admit_memory(req: AdmitRequest, engine=Depends(get_engine)):
         raise HTTPException(status_code=422, detail=str(e))
 
 
-@router.post("/api/memories/export")
+@router.post("/api/memories/export", response_model=ExportMemoriesResponse)
 async def export_memories(session_id: str = "", engine=Depends(get_engine)):
     data = await engine.export_memories(session_id=session_id or None)
     return {"count": len(data), "data": data}
 
 
-@router.post("/api/memories/import")
+@router.post("/api/memories/import", response_model=ImportMemoriesResponse)
 async def import_memories(req: ImportRequest, engine=Depends(get_engine)):
     return await engine.import_memories_gated(req.data)

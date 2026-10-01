@@ -398,7 +398,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/HeldMemoryListResponse"
+                }
               }
             }
           },
@@ -436,7 +438,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/HeldAdmitResponse"
+                }
               }
             }
           },
@@ -474,7 +478,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/HeldAdmitResponse"
+                }
               }
             }
           },
@@ -501,7 +507,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/SecretAuditResponse"
+                }
               }
             }
           }
@@ -528,7 +536,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/RedactAllResponse"
+                }
               }
             }
           },
@@ -577,7 +587,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/LowTrustResponse"
+                }
               }
             }
           },
@@ -604,7 +616,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/TrustRecomputeResponse"
+                }
               }
             }
           }
@@ -630,7 +644,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/RecallResponse"
+                }
               }
             }
           },
@@ -746,7 +762,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/DedupeResponse"
+                }
               }
             }
           },
@@ -783,7 +801,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/ConsolidateSimilarResponse"
+                }
               }
             }
           },
@@ -820,7 +840,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/EvaluateAdmissionResponse"
+                }
               }
             }
           },
@@ -857,7 +879,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/AdmitMemoryResponse"
+                }
               }
             }
           },
@@ -895,7 +919,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/ExportMemoriesResponse"
+                }
               }
             }
           },
@@ -931,7 +957,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/ImportMemoriesResponse"
+                }
               }
             }
           },
@@ -968,7 +996,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/UploadedFileResponse"
+                }
               }
             }
           },
@@ -1016,7 +1046,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/AttachmentOut"
+                }
               }
             }
           },
@@ -1051,7 +1083,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/AttachmentListResponse"
+                }
               }
             }
           },
@@ -1089,7 +1123,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/AttachmentVerifyResponse"
+                }
               }
             }
           },
@@ -1115,7 +1151,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/VerifyAllAttachmentsResponse"
+                }
               }
             }
           }
@@ -1142,7 +1180,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/AttachmentDeleteResponse"
+                }
               }
             }
           },
@@ -1313,7 +1353,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/MemoryDeleteResponse"
+                }
               }
             }
           },
@@ -1490,7 +1532,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/RedactMemoryResponse"
+                }
               }
             }
           },
@@ -1528,7 +1572,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/PurgeMemoryResponse"
+                }
               }
             }
           },
@@ -1576,7 +1622,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/ForgettingCurveResponse"
+                }
               }
             }
           },
@@ -1614,7 +1662,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/TrustBreakdownResponse"
+                }
               }
             }
           },
@@ -1662,7 +1712,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/RelatedMemoriesResponse"
+                }
               }
             }
           },
@@ -1710,7 +1762,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/ScoreBreakdownResponse"
+                }
               }
             }
           },
@@ -1746,7 +1800,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
+                }
               }
             }
           },
@@ -1782,7 +1838,13 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Session"
+                  },
+                  "title": "Response List Sessions Api Sessions Get V1"
+                }
               }
             }
           },
@@ -1819,7 +1881,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
+                }
               }
             }
           },
@@ -1865,7 +1929,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/SessionDeleteResponse"
+                }
               }
             }
           },
@@ -1902,7 +1968,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
+                }
               }
             }
           },
@@ -1940,7 +2008,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/SummarizeSessionResponse"
+                }
               }
             }
           },
@@ -1977,7 +2047,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/AgentConnectResponse"
+                }
               }
             }
           },
@@ -2015,7 +2087,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/AgentHeartbeatResponse"
+                }
               }
             }
           },
@@ -2053,7 +2127,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/AgentDisconnectResponse"
+                }
               }
             }
           },
@@ -2092,7 +2168,13 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AgentSessionOut"
+                  },
+                  "title": "Response List Agents Api Agents Get V1"
+                }
               }
             }
           },
@@ -2119,7 +2201,13 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AgentSessionOut"
+                  },
+                  "type": "array",
+                  "title": "Response List Online Agents Api Agents Online Get V1"
+                }
               }
             }
           }
@@ -2136,7 +2224,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/AgentStatsResponse"
+                }
               }
             }
           }
@@ -2164,7 +2254,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/AgentMetricsResponse"
+                }
               }
             }
           },
@@ -2191,7 +2283,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/UsageBillingResponse"
+                }
               }
             }
           }
@@ -2219,7 +2313,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/CollaborationResponse"
+                }
               }
             }
           },
@@ -2256,7 +2352,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/CheckpointCreateResponse"
+                }
               }
             }
           },
@@ -2313,7 +2411,13 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AgentCheckpointOut"
+                  },
+                  "title": "Response List Checkpoints Api Checkpoints Get V1"
+                }
               }
             }
           },
@@ -2352,7 +2456,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/DemoSeedResponse"
+                }
               }
             }
           },
@@ -2379,7 +2485,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingStatusResponse"
+                }
               }
             }
           }
@@ -2406,7 +2514,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingMcpConfigResponse"
+                }
               }
             }
           },
@@ -2443,7 +2553,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/DemoCleanupResponse"
+                }
               }
             }
           },
@@ -2469,7 +2581,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectListResponse"
+                }
               }
             }
           }
@@ -2485,7 +2599,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/SourceListResponse"
+                }
               }
             }
           }
@@ -2501,7 +2617,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/TagListResponse"
+                }
               }
             }
           }
@@ -2530,7 +2648,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/PersonListResponse"
+                }
               }
             }
           },
@@ -2568,7 +2688,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/PersonProfileResponse"
+                }
               }
             }
           },
@@ -2617,7 +2739,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/TimelineResponse"
+                }
               }
             }
           },
@@ -2666,7 +2790,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/BriefingResponse"
+                }
               }
             }
           },
@@ -2715,7 +2841,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/MeetingPrepResponse"
+                }
               }
             }
           },
@@ -2754,7 +2882,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/OrganizationListResponse"
+                }
               }
             }
           },
@@ -2792,7 +2922,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/OrganizationProfileResponse"
+                }
               }
             }
           },
@@ -2851,7 +2983,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/DecisionListResponse"
+                }
               }
             }
           },
@@ -2909,7 +3043,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/ContextResponse"
+                }
               }
             }
           },
@@ -2946,7 +3082,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/ContextFileResponse"
+                }
               }
             }
           },
@@ -2991,7 +3129,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/ServerConfigResponse"
+                }
               }
             }
           }
@@ -3027,7 +3167,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/ReadyzResponse"
+                }
               }
             }
           }
@@ -3066,7 +3208,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/BenchmarkResponse"
+                }
               }
             }
           },
@@ -3191,7 +3335,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/RestoreResponse"
+                }
               }
             }
           },
@@ -3228,7 +3374,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/FileImportResponse"
+                }
               }
             }
           },
@@ -3265,7 +3413,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectorSyncResponse"
+                }
               }
             }
           },
@@ -3302,7 +3452,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectorSyncResponse"
+                }
               }
             }
           },
@@ -3339,7 +3491,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/UploadedFileResponse"
+                }
               }
             }
           },
@@ -3365,7 +3519,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectorSyncStateResponse"
+                }
               }
             }
           }
@@ -3382,7 +3538,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectorListResponse"
+                }
               }
             }
           }
@@ -3410,7 +3568,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectorConfigResponse"
+                }
               }
             }
           },
@@ -3437,7 +3597,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/EntityReindexResponse"
+                }
               }
             }
           }
@@ -3454,7 +3616,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/EntityGraphStatsResponse"
+                }
               }
             }
           }
@@ -3493,7 +3657,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/EntityListResponse"
+                }
               }
             }
           },
@@ -3531,7 +3697,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/EntityProfileResponse"
+                }
               }
             }
           },
@@ -3590,7 +3758,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/GuardViolationListResponse"
+                }
               }
             }
           },
@@ -3639,7 +3809,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/GuardRuleListResponse"
+                }
               }
             }
           },
@@ -3676,7 +3848,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/GuardMistakeResponse"
+                }
               }
             }
           },
@@ -3703,7 +3877,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictDetectResponse"
+                }
               }
             }
           }
@@ -3742,7 +3918,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictListResponse"
+                }
               }
             }
           },
@@ -3790,7 +3968,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictReviewResponse"
+                }
               }
             }
           },
@@ -3849,7 +4029,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/FindingListResponse"
+                }
               }
             }
           },
@@ -3884,7 +4066,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/FindingReportResponse"
+                }
               }
             }
           },
@@ -3932,7 +4116,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/FindingDecisionResponse"
+                }
               }
             }
           },
@@ -3969,7 +4155,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/FindingDeleteResponse"
+                }
               }
             }
           },
@@ -3996,7 +4184,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/LibrarianStatusResponse"
+                }
               }
             }
           }
@@ -4013,7 +4203,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/LibrarianScanResponse"
+                }
               }
             }
           }
@@ -4039,7 +4231,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/LibrarianChatResponse"
+                }
               }
             }
           },
@@ -4087,6 +4281,45 @@
           "content"
         ],
         "title": "AdmissionEvalRequest"
+      },
+      "AdmitMemoryResponse": {
+        "properties": {
+          "stored": {
+            "type": "boolean",
+            "title": "Stored"
+          },
+          "decision": {
+            "$ref": "#/components/schemas/StoreDecision"
+          },
+          "memory": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MemoryOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "held_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Held Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "stored",
+          "decision"
+        ],
+        "title": "AdmitMemoryResponse",
+        "description": "``POST /api/memories`` internal admission result shape."
       },
       "AdmitRequest": {
         "properties": {
@@ -4173,6 +4406,90 @@
         ],
         "title": "AdmitRequest"
       },
+      "AgentCheckpointOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "agent_name": {
+            "type": "string",
+            "title": "Agent Name"
+          },
+          "session_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Session Id"
+          },
+          "project": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project"
+          },
+          "checkpoint_type": {
+            "type": "string",
+            "title": "Checkpoint Type"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          },
+          "memory_ids_json": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Memory Ids Json"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "agent_name",
+          "checkpoint_type",
+          "created_at"
+        ],
+        "title": "AgentCheckpointOut",
+        "description": "An ``agent_checkpoints`` row (``memory_ids_json`` parsed client-side\nstays out of the way; the raw column is what the handler returns)."
+      },
       "AgentConnectRequest": {
         "properties": {
           "agent_name": {
@@ -4205,6 +4522,297 @@
           "agent_name"
         ],
         "title": "AgentConnectRequest"
+      },
+      "AgentConnectResponse": {
+        "properties": {
+          "agent_session_id": {
+            "type": "string",
+            "title": "Agent Session Id"
+          },
+          "agent_name": {
+            "type": "string",
+            "title": "Agent Name"
+          },
+          "display": {
+            "type": "string",
+            "title": "Display"
+          },
+          "icon": {
+            "type": "string",
+            "title": "Icon"
+          },
+          "session_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Session Id"
+          },
+          "project": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project"
+          },
+          "connected_at": {
+            "type": "string",
+            "title": "Connected At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "agent_session_id",
+          "agent_name",
+          "display",
+          "icon",
+          "connected_at"
+        ],
+        "title": "AgentConnectResponse",
+        "description": "``POST /api/agents/connect`` - the created agent-session record."
+      },
+      "AgentDisconnectResponse": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "title": "Ok"
+          },
+          "agent_session_id": {
+            "type": "string",
+            "title": "Agent Session Id"
+          },
+          "disconnected_at": {
+            "type": "string",
+            "title": "Disconnected At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ok",
+          "agent_session_id",
+          "disconnected_at"
+        ],
+        "title": "AgentDisconnectResponse"
+      },
+      "AgentHeartbeatResponse": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "title": "Ok"
+          },
+          "agent_session_id": {
+            "type": "string",
+            "title": "Agent Session Id"
+          },
+          "last_heartbeat": {
+            "type": "string",
+            "title": "Last Heartbeat"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ok",
+          "agent_session_id",
+          "last_heartbeat"
+        ],
+        "title": "AgentHeartbeatResponse"
+      },
+      "AgentMetricsResponse": {
+        "properties": {
+          "agent_name": {
+            "type": "string",
+            "title": "Agent Name"
+          },
+          "display": {
+            "type": "string",
+            "title": "Display"
+          },
+          "connections": {
+            "type": "integer",
+            "title": "Connections"
+          },
+          "sessions": {
+            "type": "integer",
+            "title": "Sessions"
+          },
+          "first_seen": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Seen"
+          },
+          "last_seen": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Seen"
+          },
+          "checkpoints": {
+            "additionalProperties": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "object",
+            "title": "Checkpoints"
+          },
+          "currently_online": {
+            "type": "boolean",
+            "title": "Currently Online"
+          }
+        },
+        "type": "object",
+        "required": [
+          "agent_name",
+          "display",
+          "connections",
+          "sessions",
+          "currently_online"
+        ],
+        "title": "AgentMetricsResponse",
+        "description": "``GET /api/agents/{name}/metrics`` - one agent's performance summary."
+      },
+      "AgentSessionOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "agent_name": {
+            "type": "string",
+            "title": "Agent Name"
+          },
+          "agent_display": {
+            "type": "string",
+            "title": "Agent Display"
+          },
+          "session_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Session Id"
+          },
+          "project": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "connected_at": {
+            "type": "string",
+            "title": "Connected At"
+          },
+          "last_heartbeat_at": {
+            "type": "string",
+            "title": "Last Heartbeat At"
+          },
+          "disconnected_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Disconnected At"
+          },
+          "metadata_json": {
+            "type": "string",
+            "title": "Metadata Json",
+            "default": "{}"
+          },
+          "online": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Online"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "agent_name",
+          "agent_display",
+          "status",
+          "connected_at",
+          "last_heartbeat_at"
+        ],
+        "title": "AgentSessionOut",
+        "description": "An ``agent_sessions`` row as the API returns it: the raw row (``metadata_json`` stays the stored\nJSON string) and ``online`` computed per request from the in-process\npresence table."
+      },
+      "AgentStatsResponse": {
+        "properties": {
+          "total_connections": {
+            "type": "integer",
+            "title": "Total Connections"
+          },
+          "currently_online": {
+            "type": "integer",
+            "title": "Currently Online"
+          },
+          "online_agents": {
+            "items": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Online Agents"
+          },
+          "by_agent": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "By Agent"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total_connections",
+          "currently_online"
+        ],
+        "title": "AgentStatsResponse",
+        "description": "``GET /api/agents/stats`` - aggregate usage statistics."
       },
       "AskRequest": {
         "properties": {
@@ -4275,7 +4883,7 @@
           "answer"
         ],
         "title": "AskResponse",
-        "description": "``POST /api/ask`` \u2014 the cited answer plus the evidence behind it."
+        "description": "``POST /api/ask`` - the cited answer plus the evidence behind it."
       },
       "AskSource": {
         "properties": {
@@ -4349,6 +4957,36 @@
           "path"
         ],
         "title": "AttachFileRequest"
+      },
+      "AttachmentDeleteResponse": {
+        "properties": {
+          "deleted": {
+            "type": "boolean",
+            "title": "Deleted"
+          }
+        },
+        "type": "object",
+        "required": [
+          "deleted"
+        ],
+        "title": "AttachmentDeleteResponse"
+      },
+      "AttachmentListResponse": {
+        "properties": {
+          "attachments": {
+            "items": {
+              "$ref": "#/components/schemas/AttachmentOut"
+            },
+            "type": "array",
+            "title": "Attachments"
+          }
+        },
+        "type": "object",
+        "required": [
+          "attachments"
+        ],
+        "title": "AttachmentListResponse",
+        "description": "``GET /api/memories/{id}/attachments`` - every file attached to one\nmemory."
       },
       "AttachmentOut": {
         "properties": {
@@ -4450,6 +5088,88 @@
         ],
         "title": "AttachmentUploadRequest"
       },
+      "AttachmentVerifyResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "memory_id": {
+            "type": "string",
+            "title": "Memory Id"
+          },
+          "path": {
+            "type": "string",
+            "title": "Path"
+          },
+          "sha256": {
+            "type": "string",
+            "title": "Sha256"
+          },
+          "mime": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mime"
+          },
+          "size": {
+            "type": "integer",
+            "title": "Size"
+          },
+          "derived_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Derived Text"
+          },
+          "derived_by": {
+            "type": "string",
+            "title": "Derived By",
+            "default": "none"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "default": "ok"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "verified_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verified At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "memory_id",
+          "path",
+          "sha256",
+          "size",
+          "created_at"
+        ],
+        "title": "AttachmentVerifyResponse",
+        "description": "``POST /api/attachments/{id}/verify`` - the row with its post-check\nstatus (``ok`` / ``missing`` / ``changed``)."
+      },
       "BackupRequest": {
         "properties": {
           "passphrase": {
@@ -4460,6 +5180,241 @@
         },
         "type": "object",
         "title": "BackupRequest"
+      },
+      "BenchmarkResponse": {
+        "properties": {
+          "embedder_mode": {
+            "type": "string",
+            "title": "Embedder Mode"
+          },
+          "requested_embedder_mode": {
+            "type": "string",
+            "title": "Requested Embedder Mode"
+          },
+          "queries": {
+            "type": "integer",
+            "title": "Queries"
+          },
+          "hit@1": {
+            "type": "number",
+            "title": "Hit@1"
+          },
+          "hit@3": {
+            "type": "number",
+            "title": "Hit@3"
+          },
+          "hit@5": {
+            "type": "number",
+            "title": "Hit@5"
+          },
+          "mrr": {
+            "type": "number",
+            "title": "Mrr"
+          }
+        },
+        "type": "object",
+        "required": [
+          "embedder_mode",
+          "requested_embedder_mode",
+          "queries",
+          "hit@1",
+          "hit@3",
+          "hit@5",
+          "mrr"
+        ],
+        "title": "BenchmarkResponse",
+        "description": "``POST /api/benchmark/recall`` - recall-quality metrics."
+      },
+      "BriefingBody": {
+        "properties": {
+          "generated_at": {
+            "type": "string",
+            "title": "Generated At"
+          },
+          "today": {
+            "items": {
+              "$ref": "#/components/schemas/BriefingItemOut"
+            },
+            "type": "array",
+            "title": "Today"
+          },
+          "commitments": {
+            "items": {
+              "$ref": "#/components/schemas/BriefingCommitmentOut"
+            },
+            "type": "array",
+            "title": "Commitments"
+          },
+          "fading": {
+            "items": {
+              "$ref": "#/components/schemas/BriefingFadingOut"
+            },
+            "type": "array",
+            "title": "Fading"
+          },
+          "counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Counts"
+          }
+        },
+        "type": "object",
+        "required": [
+          "generated_at"
+        ],
+        "title": "BriefingBody"
+      },
+      "BriefingCommitmentOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date"
+          },
+          "project": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "text"
+        ],
+        "title": "BriefingCommitmentOut"
+      },
+      "BriefingFadingOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary"
+          },
+          "retention": {
+            "type": "number",
+            "title": "Retention"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "summary",
+          "retention"
+        ],
+        "title": "BriefingFadingOut"
+      },
+      "BriefingItemOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "time": {
+            "type": "string",
+            "title": "Time"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "summary",
+          "time"
+        ],
+        "title": "BriefingItemOut"
+      },
+      "BriefingResponse": {
+        "properties": {
+          "briefing": {
+            "$ref": "#/components/schemas/BriefingBody"
+          }
+        },
+        "type": "object",
+        "required": [
+          "briefing"
+        ],
+        "title": "BriefingResponse",
+        "description": "``GET /api/briefing`` - the deterministic daily briefing."
+      },
+      "CheckpointCreateResponse": {
+        "properties": {
+          "checkpoint_id": {
+            "type": "string",
+            "title": "Checkpoint Id"
+          },
+          "agent_name": {
+            "type": "string",
+            "title": "Agent Name"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "checkpoint_id",
+          "agent_name",
+          "title",
+          "created_at"
+        ],
+        "title": "CheckpointCreateResponse",
+        "description": "``POST /api/checkpoints`` - the created checkpoint's identity."
       },
       "CheckpointRequest": {
         "properties": {
@@ -4499,6 +5454,156 @@
         "type": "object",
         "title": "CheckpointRequest"
       },
+      "CollaborationResponse": {
+        "properties": {
+          "project": {
+            "type": "string",
+            "title": "Project"
+          },
+          "agents": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Agents"
+          },
+          "shared_checkpoints": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Shared Checkpoints"
+          },
+          "collaboration_score": {
+            "type": "integer",
+            "title": "Collaboration Score"
+          }
+        },
+        "type": "object",
+        "required": [
+          "project",
+          "collaboration_score"
+        ],
+        "title": "CollaborationResponse",
+        "description": "``GET /api/agents/collaboration/{project}``."
+      },
+      "ConflictDetectResponse": {
+        "properties": {
+          "new_candidates": {
+            "type": "integer",
+            "title": "New Candidates"
+          },
+          "pairs_examined": {
+            "type": "integer",
+            "title": "Pairs Examined"
+          },
+          "open_total": {
+            "type": "integer",
+            "title": "Open Total"
+          },
+          "stale_pruned": {
+            "type": "integer",
+            "title": "Stale Pruned"
+          }
+        },
+        "type": "object",
+        "required": [
+          "new_candidates",
+          "pairs_examined",
+          "open_total",
+          "stale_pruned"
+        ],
+        "title": "ConflictDetectResponse",
+        "description": "``POST /api/conflicts/detect`` - the idempotent scan report."
+      },
+      "ConflictListResponse": {
+        "properties": {
+          "conflicts": {
+            "items": {
+              "$ref": "#/components/schemas/ConflictOut"
+            },
+            "type": "array",
+            "title": "Conflicts"
+          }
+        },
+        "type": "object",
+        "title": "ConflictListResponse"
+      },
+      "ConflictOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "memory_id_a": {
+            "type": "string",
+            "title": "Memory Id A"
+          },
+          "memory_id_b": {
+            "type": "string",
+            "title": "Memory Id B"
+          },
+          "signal_type": {
+            "type": "string",
+            "title": "Signal Type"
+          },
+          "confidence": {
+            "type": "number",
+            "title": "Confidence"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "shared_entities": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Shared Entities"
+          },
+          "explanation": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Explanation"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "reviewed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewed At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "memory_id_a",
+          "memory_id_b",
+          "signal_type",
+          "confidence",
+          "status"
+        ],
+        "title": "ConflictOut",
+        "description": "A conflict-candidate row, JSON columns parsed."
+      },
       "ConflictReviewRequest": {
         "properties": {
           "action": {
@@ -4511,6 +5616,97 @@
           "action"
         ],
         "title": "ConflictReviewRequest"
+      },
+      "ConflictReviewResponse": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "title": "Ok"
+          },
+          "action": {
+            "type": "string",
+            "title": "Action"
+          },
+          "conflict": {
+            "$ref": "#/components/schemas/ConflictOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ok",
+          "action",
+          "conflict"
+        ],
+        "title": "ConflictReviewResponse"
+      },
+      "ConnectorConfigResponse": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "required_config_keys": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Required Config Keys"
+          },
+          "help": {
+            "type": "string",
+            "title": "Help"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "description",
+          "help"
+        ],
+        "title": "ConnectorConfigResponse",
+        "description": "``GET /api/connectors/{name}/config`` adds the help text."
+      },
+      "ConnectorListResponse": {
+        "properties": {
+          "connectors": {
+            "items": {
+              "$ref": "#/components/schemas/ConnectorOut"
+            },
+            "type": "array",
+            "title": "Connectors"
+          }
+        },
+        "type": "object",
+        "title": "ConnectorListResponse"
+      },
+      "ConnectorOut": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "required_config_keys": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Required Config Keys"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "description"
+        ],
+        "title": "ConnectorOut"
       },
       "ConnectorRequest": {
         "properties": {
@@ -4552,6 +5748,158 @@
           "connector"
         ],
         "title": "ConnectorRequest"
+      },
+      "ConnectorSyncResponse": {
+        "properties": {
+          "connector": {
+            "type": "string",
+            "title": "Connector"
+          },
+          "fetched": {
+            "type": "integer",
+            "title": "Fetched"
+          },
+          "stored": {
+            "type": "integer",
+            "title": "Stored"
+          },
+          "redacted": {
+            "type": "integer",
+            "title": "Redacted"
+          },
+          "duplicates": {
+            "type": "integer",
+            "title": "Duplicates"
+          },
+          "held": {
+            "type": "integer",
+            "title": "Held"
+          },
+          "errors": {
+            "type": "integer",
+            "title": "Errors"
+          },
+          "source_key": {
+            "type": "string",
+            "title": "Source Key"
+          },
+          "last_synced_at": {
+            "type": "string",
+            "title": "Last Synced At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "connector",
+          "fetched",
+          "stored",
+          "redacted",
+          "duplicates",
+          "held",
+          "errors",
+          "source_key",
+          "last_synced_at"
+        ],
+        "title": "ConnectorSyncResponse",
+        "description": "The shared ingest report of ``/api/connectors/import`` and\n``/api/connectors/sync``."
+      },
+      "ConnectorSyncStateOut": {
+        "properties": {
+          "source_key": {
+            "type": "string",
+            "title": "Source Key"
+          },
+          "connector": {
+            "type": "string",
+            "title": "Connector"
+          },
+          "project": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project"
+          },
+          "last_synced_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Synced At"
+          },
+          "last_fetched": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Fetched"
+          },
+          "last_stored": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Stored"
+          },
+          "total_stored": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Stored"
+          },
+          "runs": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Runs"
+          }
+        },
+        "type": "object",
+        "required": [
+          "source_key",
+          "connector"
+        ],
+        "title": "ConnectorSyncStateOut",
+        "description": "A ``connector_sync`` bookkeeping row."
+      },
+      "ConnectorSyncStateResponse": {
+        "properties": {
+          "sync_state": {
+            "items": {
+              "$ref": "#/components/schemas/ConnectorSyncStateOut"
+            },
+            "type": "array",
+            "title": "Sync State"
+          }
+        },
+        "type": "object",
+        "title": "ConnectorSyncStateResponse"
       },
       "ConnectorUploadRequest": {
         "properties": {
@@ -4621,6 +5969,43 @@
         ],
         "title": "ConsolidateResponse"
       },
+      "ConsolidateSimilarResponse": {
+        "properties": {
+          "dry_run": {
+            "type": "boolean",
+            "title": "Dry Run"
+          },
+          "clusters_found": {
+            "type": "integer",
+            "title": "Clusters Found"
+          },
+          "consolidated": {
+            "type": "integer",
+            "title": "Consolidated"
+          },
+          "archived": {
+            "type": "integer",
+            "title": "Archived"
+          },
+          "clusters": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Clusters"
+          }
+        },
+        "type": "object",
+        "required": [
+          "dry_run",
+          "clusters_found",
+          "consolidated",
+          "archived"
+        ],
+        "title": "ConsolidateSimilarResponse",
+        "description": "``POST /api/memories/consolidate-similar``."
+      },
       "ContextFileRequest": {
         "properties": {
           "project": {
@@ -4643,6 +6028,42 @@
         "type": "object",
         "title": "ContextFileRequest"
       },
+      "ContextFileResponse": {
+        "properties": {
+          "filename": {
+            "type": "string",
+            "title": "Filename"
+          },
+          "content": {
+            "type": "string",
+            "title": "Content"
+          }
+        },
+        "type": "object",
+        "required": [
+          "filename",
+          "content"
+        ],
+        "title": "ContextFileResponse"
+      },
+      "ContextResponse": {
+        "properties": {
+          "context": {
+            "type": "string",
+            "title": "Context"
+          },
+          "chars": {
+            "type": "integer",
+            "title": "Chars"
+          }
+        },
+        "type": "object",
+        "required": [
+          "context",
+          "chars"
+        ],
+        "title": "ContextResponse"
+      },
       "CreateSessionRequest": {
         "properties": {
           "name": {
@@ -4659,6 +6080,71 @@
         },
         "type": "object",
         "title": "CreateSessionRequest"
+      },
+      "DecisionListResponse": {
+        "properties": {
+          "decisions": {
+            "items": {
+              "$ref": "#/components/schemas/DecisionOut"
+            },
+            "type": "array",
+            "title": "Decisions"
+          }
+        },
+        "type": "object",
+        "title": "DecisionListResponse"
+      },
+      "DecisionOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date"
+          },
+          "project": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "text"
+        ],
+        "title": "DecisionOut",
+        "description": "One detected decision statement."
       },
       "DedupeRequest": {
         "properties": {
@@ -4687,6 +6173,81 @@
         "type": "object",
         "title": "DedupeRequest"
       },
+      "DedupeResponse": {
+        "properties": {
+          "dry_run": {
+            "type": "boolean",
+            "title": "Dry Run"
+          },
+          "groups": {
+            "items": {
+              "items": {
+                "$ref": "#/components/schemas/MemoryOut"
+              },
+              "type": "array"
+            },
+            "type": "array",
+            "title": "Groups"
+          },
+          "duplicates": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duplicates"
+          },
+          "removed": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Removed"
+          }
+        },
+        "type": "object",
+        "required": [
+          "dry_run"
+        ],
+        "title": "DedupeResponse",
+        "description": "``POST /api/memories/dedupe`` - dry-run groups or applied removals."
+      },
+      "DemoCleanupAuditOut": {
+        "properties": {
+          "memory_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Memory Id"
+          },
+          "purged": {
+            "type": "boolean",
+            "title": "Purged"
+          },
+          "residue": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Residue"
+          }
+        },
+        "type": "object",
+        "required": [
+          "purged"
+        ],
+        "title": "DemoCleanupAuditOut"
+      },
       "DemoCleanupRequest": {
         "properties": {
           "confirm": {
@@ -4697,6 +6258,341 @@
         },
         "type": "object",
         "title": "DemoCleanupRequest"
+      },
+      "DemoCleanupResponse": {
+        "properties": {
+          "removed": {
+            "type": "integer",
+            "title": "Removed"
+          },
+          "remaining": {
+            "type": "integer",
+            "title": "Remaining"
+          },
+          "fully_purged": {
+            "type": "boolean",
+            "title": "Fully Purged"
+          },
+          "audits": {
+            "items": {
+              "$ref": "#/components/schemas/DemoCleanupAuditOut"
+            },
+            "type": "array",
+            "title": "Audits"
+          },
+          "entities": {
+            "type": "integer",
+            "title": "Entities"
+          },
+          "entity_links": {
+            "type": "integer",
+            "title": "Entity Links"
+          },
+          "trust_scored": {
+            "type": "integer",
+            "title": "Trust Scored"
+          }
+        },
+        "type": "object",
+        "required": [
+          "removed",
+          "remaining",
+          "fully_purged",
+          "entities",
+          "entity_links",
+          "trust_scored"
+        ],
+        "title": "DemoCleanupResponse",
+        "description": "``POST /api/onboarding/remove-demo``."
+      },
+      "DemoSeedResponse": {
+        "properties": {
+          "seeded": {
+            "type": "integer",
+            "title": "Seeded"
+          },
+          "skipped": {
+            "type": "boolean",
+            "title": "Skipped"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "existing": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Existing"
+          },
+          "entities": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entities"
+          },
+          "entity_links": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entity Links"
+          },
+          "trust_scored": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trust Scored"
+          },
+          "conflict_candidates": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conflict Candidates"
+          }
+        },
+        "type": "object",
+        "required": [
+          "seeded",
+          "skipped"
+        ],
+        "title": "DemoSeedResponse",
+        "description": "``POST /api/seed-demo``."
+      },
+      "EntityGraphStatsResponse": {
+        "properties": {
+          "by_type": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "By Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "by_type"
+        ],
+        "title": "EntityGraphStatsResponse"
+      },
+      "EntityListResponse": {
+        "properties": {
+          "entities": {
+            "items": {
+              "$ref": "#/components/schemas/EntityOut"
+            },
+            "type": "array",
+            "title": "Entities"
+          }
+        },
+        "type": "object",
+        "title": "EntityListResponse"
+      },
+      "EntityNeighborOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "shared": {
+            "type": "integer",
+            "title": "Shared"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "type",
+          "name",
+          "shared"
+        ],
+        "title": "EntityNeighborOut",
+        "description": "A co-occurring entity: the join groups by neighbour and counts shared\nmemories, so this row carries ``shared`` instead of ``mentions``."
+      },
+      "EntityOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type"
+          },
+          "ekey": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ekey"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          },
+          "mentions": {
+            "type": "integer",
+            "title": "Mentions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "type",
+          "name",
+          "mentions"
+        ],
+        "title": "EntityOut",
+        "description": "A persisted entity with its memory mention count."
+      },
+      "EntityProfileResponse": {
+        "properties": {
+          "entity": {
+            "$ref": "#/components/schemas/EntityOut"
+          },
+          "memories": {
+            "items": {
+              "$ref": "#/components/schemas/MemoryOut"
+            },
+            "type": "array",
+            "title": "Memories"
+          },
+          "related": {
+            "items": {
+              "$ref": "#/components/schemas/EntityNeighborOut"
+            },
+            "type": "array",
+            "title": "Related"
+          }
+        },
+        "type": "object",
+        "required": [
+          "entity"
+        ],
+        "title": "EntityProfileResponse",
+        "description": "``GET /api/entities/{id}`` - the entity, its memories, its neighbours."
+      },
+      "EntityReindexResponse": {
+        "properties": {
+          "memories": {
+            "type": "integer",
+            "title": "Memories"
+          },
+          "entities": {
+            "type": "integer",
+            "title": "Entities"
+          },
+          "links": {
+            "type": "integer",
+            "title": "Links"
+          },
+          "by_type": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "By Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "memories",
+          "entities",
+          "links",
+          "by_type"
+        ],
+        "title": "EntityReindexResponse",
+        "description": "``POST /api/entities/reindex`` - the rebuild report."
+      },
+      "EvaluateAdmissionResponse": {
+        "properties": {
+          "decision": {
+            "$ref": "#/components/schemas/StoreDecision"
+          }
+        },
+        "type": "object",
+        "required": [
+          "decision"
+        ],
+        "title": "EvaluateAdmissionResponse",
+        "description": "``POST /api/memories/evaluate-admission``."
+      },
+      "ExportMemoriesResponse": {
+        "properties": {
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          },
+          "data": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Data"
+          }
+        },
+        "type": "object",
+        "required": [
+          "count",
+          "data"
+        ],
+        "title": "ExportMemoriesResponse",
+        "description": "``POST /api/memories/export`` - full records including embeddings."
       },
       "FadingMemoryOut": {
         "properties": {
@@ -4875,6 +6771,47 @@
         ],
         "title": "FileImportRequest"
       },
+      "FileImportResponse": {
+        "properties": {
+          "filename": {
+            "type": "string",
+            "title": "Filename"
+          },
+          "bytes": {
+            "type": "integer",
+            "title": "Bytes"
+          },
+          "parts": {
+            "type": "integer",
+            "title": "Parts"
+          },
+          "memories_created": {
+            "type": "integer",
+            "title": "Memories Created"
+          },
+          "chars_extracted": {
+            "type": "integer",
+            "title": "Chars Extracted"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Warnings"
+          }
+        },
+        "type": "object",
+        "required": [
+          "filename",
+          "bytes",
+          "parts",
+          "memories_created",
+          "chars_extracted"
+        ],
+        "title": "FileImportResponse",
+        "description": "``POST /api/import/file``."
+      },
       "FindingDecisionRequest": {
         "properties": {
           "status": {
@@ -4892,6 +6829,228 @@
           "status"
         ],
         "title": "FindingDecisionRequest"
+      },
+      "FindingDecisionResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "detail": {
+            "type": "string",
+            "title": "Detail"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category"
+          },
+          "severity": {
+            "type": "string",
+            "title": "Severity"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "occurrences": {
+            "type": "integer",
+            "title": "Occurrences"
+          },
+          "first_seen_at": {
+            "type": "string",
+            "title": "First Seen At"
+          },
+          "last_seen_at": {
+            "type": "string",
+            "title": "Last Seen At"
+          },
+          "decided_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decided At"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "external_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "External Ref"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "detail",
+          "category",
+          "severity",
+          "source",
+          "status",
+          "occurrences",
+          "first_seen_at",
+          "last_seen_at"
+        ],
+        "title": "FindingDecisionResponse",
+        "description": "``POST /api/findings/{id}/decide`` \u2014 the updated row."
+      },
+      "FindingDeleteResponse": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "title": "Ok"
+          },
+          "deleted": {
+            "type": "string",
+            "title": "Deleted"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ok",
+          "deleted"
+        ],
+        "title": "FindingDeleteResponse"
+      },
+      "FindingListResponse": {
+        "properties": {
+          "findings": {
+            "items": {
+              "$ref": "#/components/schemas/FindingOut"
+            },
+            "type": "array",
+            "title": "Findings"
+          },
+          "counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Counts"
+          }
+        },
+        "type": "object",
+        "title": "FindingListResponse"
+      },
+      "FindingOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "detail": {
+            "type": "string",
+            "title": "Detail"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category"
+          },
+          "severity": {
+            "type": "string",
+            "title": "Severity"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "occurrences": {
+            "type": "integer",
+            "title": "Occurrences"
+          },
+          "first_seen_at": {
+            "type": "string",
+            "title": "First Seen At"
+          },
+          "last_seen_at": {
+            "type": "string",
+            "title": "Last Seen At"
+          },
+          "decided_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decided At"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "external_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "External Ref"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "detail",
+          "category",
+          "severity",
+          "source",
+          "status",
+          "occurrences",
+          "first_seen_at",
+          "last_seen_at"
+        ],
+        "title": "FindingOut",
+        "description": "One findings-inbox row (the ``findings`` table)."
       },
       "FindingReportRequest": {
         "properties": {
@@ -4925,6 +7084,371 @@
           "title"
         ],
         "title": "FindingReportRequest"
+      },
+      "FindingReportResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "detail": {
+            "type": "string",
+            "title": "Detail"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category"
+          },
+          "severity": {
+            "type": "string",
+            "title": "Severity"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "occurrences": {
+            "type": "integer",
+            "title": "Occurrences"
+          },
+          "first_seen_at": {
+            "type": "string",
+            "title": "First Seen At"
+          },
+          "last_seen_at": {
+            "type": "string",
+            "title": "Last Seen At"
+          },
+          "decided_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decided At"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "external_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "External Ref"
+          },
+          "repeat": {
+            "type": "boolean",
+            "title": "Repeat"
+          },
+          "reopened": {
+            "type": "boolean",
+            "title": "Reopened"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "detail",
+          "category",
+          "severity",
+          "source",
+          "status",
+          "occurrences",
+          "first_seen_at",
+          "last_seen_at",
+          "repeat",
+          "reopened"
+        ],
+        "title": "FindingReportResponse",
+        "description": "``POST /api/findings`` - the stored row plus repeat bookkeeping."
+      },
+      "ForgettingCurveResponse": {
+        "properties": {
+          "memory_id": {
+            "type": "string",
+            "title": "Memory Id"
+          },
+          "pinned": {
+            "type": "boolean",
+            "title": "Pinned"
+          },
+          "stability_hours": {
+            "type": "number",
+            "title": "Stability Hours"
+          },
+          "recall_count": {
+            "type": "integer",
+            "title": "Recall Count"
+          },
+          "current_retention": {
+            "type": "number",
+            "title": "Current Retention"
+          },
+          "curve": {
+            "items": {
+              "additionalProperties": {
+                "type": "number"
+              },
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Curve"
+          }
+        },
+        "type": "object",
+        "required": [
+          "memory_id",
+          "pinned",
+          "stability_hours",
+          "recall_count",
+          "current_retention"
+        ],
+        "title": "ForgettingCurveResponse",
+        "description": "``GET /api/memories/{id}/forgetting-curve``."
+      },
+      "GuardMistakeResponse": {
+        "properties": {
+          "rule_id": {
+            "type": "string",
+            "title": "Rule Id"
+          },
+          "violation_id": {
+            "type": "string",
+            "title": "Violation Id"
+          },
+          "statement": {
+            "type": "string",
+            "title": "Statement"
+          },
+          "pinned": {
+            "type": "boolean",
+            "title": "Pinned"
+          },
+          "severity": {
+            "type": "string",
+            "title": "Severity"
+          },
+          "total_violations": {
+            "type": "integer",
+            "title": "Total Violations"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rule_id",
+          "violation_id",
+          "statement",
+          "pinned",
+          "severity",
+          "total_violations"
+        ],
+        "title": "GuardMistakeResponse",
+        "description": "``POST /api/guard/mistakes`` - the pinned rule and the logged incident."
+      },
+      "GuardRuleListResponse": {
+        "properties": {
+          "rules": {
+            "items": {
+              "$ref": "#/components/schemas/GuardRuleOut"
+            },
+            "type": "array",
+            "title": "Rules"
+          }
+        },
+        "type": "object",
+        "title": "GuardRuleListResponse"
+      },
+      "GuardRuleOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "statement": {
+            "type": "string",
+            "title": "Statement"
+          },
+          "importance": {
+            "type": "number",
+            "title": "Importance"
+          },
+          "severity": {
+            "type": "string",
+            "title": "Severity"
+          },
+          "task": {
+            "type": "string",
+            "title": "Task"
+          },
+          "correct_action": {
+            "type": "string",
+            "title": "Correct Action"
+          },
+          "root_cause": {
+            "type": "string",
+            "title": "Root Cause"
+          },
+          "project": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "statement",
+          "importance",
+          "severity",
+          "task",
+          "correct_action",
+          "root_cause",
+          "created_at"
+        ],
+        "title": "GuardRuleOut",
+        "description": "A pinned rule as the guard reshapes it for the dashboard."
+      },
+      "GuardViolationListResponse": {
+        "properties": {
+          "violations": {
+            "items": {
+              "$ref": "#/components/schemas/GuardViolationOut"
+            },
+            "type": "array",
+            "title": "Violations"
+          }
+        },
+        "type": "object",
+        "title": "GuardViolationListResponse"
+      },
+      "GuardViolationOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "rule_id": {
+            "type": "string",
+            "title": "Rule Id"
+          },
+          "task": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Task"
+          },
+          "wrong_action": {
+            "type": "string",
+            "title": "Wrong Action"
+          },
+          "root_cause": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Root Cause"
+          },
+          "tool_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tool Name"
+          },
+          "severity": {
+            "type": "string",
+            "title": "Severity"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "occurred_at": {
+            "type": "string",
+            "title": "Occurred At"
+          },
+          "resolved": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolved"
+          },
+          "resolution": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolution"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "rule_id",
+          "wrong_action",
+          "severity",
+          "source",
+          "occurred_at"
+        ],
+        "title": "GuardViolationOut",
+        "description": "A ``violations`` row - one recorded mistake."
       },
       "HTTPValidationError": {
         "properties": {
@@ -4971,7 +7495,248 @@
           "api_host"
         ],
         "title": "HealthResponse",
-        "description": "``/api/health`` \u2014 the unauthenticated boundary and liveness report."
+        "description": "``/api/health`` - the unauthenticated boundary and liveness report."
+      },
+      "HeldAdmitResponse": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "title": "Ok"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "memory": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MemoryOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "held_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Held Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ok"
+        ],
+        "title": "HeldAdmitResponse",
+        "description": "``POST /api/memories/held/{id}/admit`` and ``.../discard``.\n\n``ok=False`` bodies carry ``error`` (and ``status`` when the candidate was\nalready decided)."
+      },
+      "HeldMemoryListResponse": {
+        "properties": {
+          "held": {
+            "items": {
+              "$ref": "#/components/schemas/HeldMemoryOut"
+            },
+            "type": "array",
+            "title": "Held"
+          },
+          "waiting": {
+            "type": "integer",
+            "title": "Waiting"
+          }
+        },
+        "type": "object",
+        "required": [
+          "waiting"
+        ],
+        "title": "HeldMemoryListResponse"
+      },
+      "HeldMemoryOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "content": {
+            "type": "string",
+            "title": "Content"
+          },
+          "importance": {
+            "type": "number",
+            "title": "Importance"
+          },
+          "tags_json": {
+            "type": "string",
+            "title": "Tags Json"
+          },
+          "session_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Session Id"
+          },
+          "project": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "memory_type": {
+            "type": "string",
+            "title": "Memory Type"
+          },
+          "pinned": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pinned"
+          },
+          "metadata_json": {
+            "type": "string",
+            "title": "Metadata Json"
+          },
+          "reasons_json": {
+            "type": "string",
+            "title": "Reasons Json"
+          },
+          "max_similarity": {
+            "type": "number",
+            "title": "Max Similarity"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "decided_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decided At"
+          },
+          "admitted_memory_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Admitted Memory Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "content",
+          "importance",
+          "tags_json",
+          "memory_type",
+          "metadata_json",
+          "reasons_json",
+          "max_similarity",
+          "status",
+          "created_at"
+        ],
+        "title": "HeldMemoryOut",
+        "description": "A ``held_memories`` row - the admission gate's parked candidate."
+      },
+      "ImportMemoriesResponse": {
+        "properties": {
+          "imported": {
+            "type": "integer",
+            "title": "Imported"
+          },
+          "redacted": {
+            "type": "integer",
+            "title": "Redacted"
+          },
+          "duplicates": {
+            "type": "integer",
+            "title": "Duplicates"
+          },
+          "held": {
+            "type": "integer",
+            "title": "Held"
+          },
+          "errors": {
+            "type": "integer",
+            "title": "Errors"
+          },
+          "gated": {
+            "type": "boolean",
+            "title": "Gated"
+          }
+        },
+        "type": "object",
+        "required": [
+          "imported",
+          "redacted",
+          "duplicates",
+          "held",
+          "errors",
+          "gated"
+        ],
+        "title": "ImportMemoriesResponse",
+        "description": "``POST /api/memories/import`` - the gated import breakdown."
       },
       "ImportRequest": {
         "properties": {
@@ -4989,6 +7754,303 @@
           "data"
         ],
         "title": "ImportRequest"
+      },
+      "LibrarianActionOut": {
+        "properties": {
+          "action": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Action"
+          },
+          "result": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Result"
+          }
+        },
+        "type": "object",
+        "required": [
+          "action",
+          "result"
+        ],
+        "title": "LibrarianActionOut"
+      },
+      "LibrarianAgentOut": {
+        "properties": {
+          "agent": {
+            "type": "string",
+            "title": "Agent"
+          },
+          "levh_connected": {
+            "type": "boolean",
+            "title": "Levh Connected"
+          },
+          "configs": {
+            "items": {
+              "$ref": "#/components/schemas/LibrarianConfigOut"
+            },
+            "type": "array",
+            "title": "Configs"
+          }
+        },
+        "type": "object",
+        "required": [
+          "agent",
+          "levh_connected"
+        ],
+        "title": "LibrarianAgentOut",
+        "description": "One discovered agent's config scan row (see ``discover_agents``)."
+      },
+      "LibrarianChatResponse": {
+        "properties": {
+          "answer": {
+            "type": "string",
+            "title": "Answer"
+          },
+          "backend": {
+            "type": "string",
+            "title": "Backend"
+          },
+          "actions": {
+            "items": {
+              "$ref": "#/components/schemas/LibrarianActionOut"
+            },
+            "type": "array",
+            "title": "Actions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "answer",
+          "backend"
+        ],
+        "title": "LibrarianChatResponse",
+        "description": "``POST /api/librarian/chat``."
+      },
+      "LibrarianConfigOut": {
+        "properties": {
+          "config": {
+            "type": "string",
+            "title": "Config"
+          },
+          "levh_connected": {
+            "type": "boolean",
+            "title": "Levh Connected"
+          }
+        },
+        "type": "object",
+        "required": [
+          "config",
+          "levh_connected"
+        ],
+        "title": "LibrarianConfigOut"
+      },
+      "LibrarianScanResponse": {
+        "properties": {
+          "at": {
+            "type": "string",
+            "title": "At"
+          },
+          "agents": {
+            "items": {
+              "$ref": "#/components/schemas/LibrarianAgentOut"
+            },
+            "type": "array",
+            "title": "Agents"
+          },
+          "activity": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Activity"
+          },
+          "findings_recorded": {
+            "type": "integer",
+            "title": "Findings Recorded"
+          }
+        },
+        "type": "object",
+        "required": [
+          "at",
+          "activity",
+          "findings_recorded"
+        ],
+        "title": "LibrarianScanResponse",
+        "description": "``POST /api/librarian/scan`` adds how many findings were recorded."
+      },
+      "LibrarianStatusResponse": {
+        "properties": {
+          "at": {
+            "type": "string",
+            "title": "At"
+          },
+          "agents": {
+            "items": {
+              "$ref": "#/components/schemas/LibrarianAgentOut"
+            },
+            "type": "array",
+            "title": "Agents"
+          },
+          "activity": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Activity"
+          }
+        },
+        "type": "object",
+        "required": [
+          "at",
+          "activity"
+        ],
+        "title": "LibrarianStatusResponse",
+        "description": "``GET /api/librarian/status`` - the read-only scan report."
+      },
+      "LowTrustItemOut": {
+        "properties": {
+          "memory_id": {
+            "type": "string",
+            "title": "Memory Id"
+          },
+          "confidence": {
+            "type": "number",
+            "title": "Confidence"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          }
+        },
+        "type": "object",
+        "required": [
+          "memory_id",
+          "confidence",
+          "label"
+        ],
+        "title": "LowTrustItemOut"
+      },
+      "LowTrustResponse": {
+        "properties": {
+          "low_trust": {
+            "items": {
+              "$ref": "#/components/schemas/LowTrustItemOut"
+            },
+            "type": "array",
+            "title": "Low Trust"
+          }
+        },
+        "type": "object",
+        "title": "LowTrustResponse"
+      },
+      "MeetingAttendeeOut": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "last_seen": {
+            "type": "string",
+            "title": "Last Seen"
+          },
+          "interaction_count": {
+            "type": "integer",
+            "title": "Interaction Count"
+          },
+          "recent": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Recent"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "last_seen",
+          "interaction_count"
+        ],
+        "title": "MeetingAttendeeOut"
+      },
+      "MeetingPrepBody": {
+        "properties": {
+          "generated_at": {
+            "type": "string",
+            "title": "Generated At"
+          },
+          "meeting": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Meeting"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "people": {
+            "items": {
+              "$ref": "#/components/schemas/MeetingAttendeeOut"
+            },
+            "type": "array",
+            "title": "People"
+          },
+          "open_commitments": {
+            "items": {
+              "$ref": "#/components/schemas/BriefingCommitmentOut"
+            },
+            "type": "array",
+            "title": "Open Commitments"
+          }
+        },
+        "type": "object",
+        "required": [
+          "generated_at"
+        ],
+        "title": "MeetingPrepBody"
+      },
+      "MeetingPrepResponse": {
+        "properties": {
+          "meeting_prep": {
+            "$ref": "#/components/schemas/MeetingPrepBody"
+          },
+          "recent_decisions": {
+            "items": {
+              "$ref": "#/components/schemas/DecisionOut"
+            },
+            "type": "array",
+            "title": "Recent Decisions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "meeting_prep"
+        ],
+        "title": "MeetingPrepResponse",
+        "description": "``GET /api/meeting-prep`` - the pre-meeting brief."
       },
       "Memory": {
         "properties": {
@@ -5128,6 +8190,19 @@
         ],
         "title": "Memory",
         "description": "A single memory record."
+      },
+      "MemoryDeleteResponse": {
+        "properties": {
+          "deleted": {
+            "type": "boolean",
+            "title": "Deleted"
+          }
+        },
+        "type": "object",
+        "required": [
+          "deleted"
+        ],
+        "title": "MemoryDeleteResponse"
       },
       "MemoryOut": {
         "properties": {
@@ -5273,7 +8348,7 @@
           "content"
         ],
         "title": "MemoryOut",
-        "description": "A memory as the HTTP surface returns it: embedding dropped (large and\nuseless to a client \u2014 similarity is computed server-side) and attachments\njoined where the route does that."
+        "description": "A memory as the HTTP surface returns it: embedding dropped (large and\nuseless to a client - similarity is computed server-side) and attachments\njoined where the route does that."
       },
       "MemoryStats": {
         "properties": {
@@ -5384,6 +8459,76 @@
         ],
         "title": "MistakeRequest"
       },
+      "NameCountOut": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "memory_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Memory Count"
+          },
+          "count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Count"
+          },
+          "last_used": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Used"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "NameCountOut",
+        "description": "Shared row shape of the project/source/tag aggregates."
+      },
+      "OnboardingCheckOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "status",
+          "message"
+        ],
+        "title": "OnboardingCheckOut"
+      },
       "OnboardingMCPConfigRequest": {
         "properties": {
           "client": {
@@ -5400,6 +8545,368 @@
         "type": "object",
         "title": "OnboardingMCPConfigRequest"
       },
+      "OnboardingMcpConfigResponse": {
+        "properties": {
+          "client": {
+            "type": "string",
+            "title": "Client"
+          },
+          "platform": {
+            "type": "string",
+            "title": "Platform"
+          },
+          "profile": {
+            "type": "string",
+            "title": "Profile"
+          },
+          "tool_count": {
+            "type": "integer",
+            "title": "Tool Count"
+          },
+          "profiles_are_security_boundary": {
+            "type": "boolean",
+            "title": "Profiles Are Security Boundary"
+          },
+          "warning": {
+            "type": "string",
+            "title": "Warning"
+          },
+          "onboarding_receipt_written": {
+            "type": "boolean",
+            "title": "Onboarding Receipt Written"
+          },
+          "onboarding_ready": {
+            "type": "boolean",
+            "title": "Onboarding Ready"
+          },
+          "config": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Config"
+          },
+          "config_text": {
+            "type": "string",
+            "title": "Config Text",
+            "default": ""
+          },
+          "config_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Config Path"
+          }
+        },
+        "type": "object",
+        "required": [
+          "client",
+          "platform",
+          "profile",
+          "tool_count",
+          "profiles_are_security_boundary",
+          "warning",
+          "onboarding_receipt_written",
+          "onboarding_ready"
+        ],
+        "title": "OnboardingMcpConfigResponse",
+        "description": "``POST /api/onboarding/mcp-config``."
+      },
+      "OnboardingStatusResponse": {
+        "properties": {
+          "first_run": {
+            "type": "boolean",
+            "title": "First Run"
+          },
+          "ready": {
+            "type": "boolean",
+            "title": "Ready"
+          },
+          "memory_count": {
+            "type": "integer",
+            "title": "Memory Count"
+          },
+          "database_initialized": {
+            "type": "boolean",
+            "title": "Database Initialized"
+          },
+          "embedder_mode": {
+            "type": "string",
+            "title": "Embedder Mode"
+          },
+          "mcp_default_profile": {
+            "type": "string",
+            "title": "Mcp Default Profile"
+          },
+          "mcp_configured": {
+            "type": "boolean",
+            "title": "Mcp Configured"
+          },
+          "mcp_client": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mcp Client"
+          },
+          "mcp_profile": {
+            "type": "string",
+            "title": "Mcp Profile"
+          },
+          "profile_counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Profile Counts"
+          },
+          "clients": {
+            "items": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Clients"
+          },
+          "profiles_are_security_boundary": {
+            "type": "boolean",
+            "title": "Profiles Are Security Boundary"
+          },
+          "profile_warning": {
+            "type": "string",
+            "title": "Profile Warning"
+          },
+          "dogfood_enabled": {
+            "type": "boolean",
+            "title": "Dogfood Enabled"
+          },
+          "dogfood_journal": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Dogfood Journal"
+          },
+          "dogfood_statement": {
+            "type": "string",
+            "title": "Dogfood Statement"
+          },
+          "demo_seeded": {
+            "type": "boolean",
+            "title": "Demo Seeded"
+          },
+          "demo_memory_count": {
+            "type": "integer",
+            "title": "Demo Memory Count"
+          },
+          "recommended_next_step": {
+            "type": "string",
+            "title": "Recommended Next Step"
+          },
+          "checks": {
+            "items": {
+              "$ref": "#/components/schemas/OnboardingCheckOut"
+            },
+            "type": "array",
+            "title": "Checks"
+          }
+        },
+        "type": "object",
+        "required": [
+          "first_run",
+          "ready",
+          "memory_count",
+          "database_initialized",
+          "embedder_mode",
+          "mcp_default_profile",
+          "mcp_configured",
+          "mcp_profile",
+          "profile_counts",
+          "profiles_are_security_boundary",
+          "profile_warning",
+          "dogfood_enabled",
+          "dogfood_journal",
+          "dogfood_statement",
+          "demo_seeded",
+          "demo_memory_count",
+          "recommended_next_step"
+        ],
+        "title": "OnboardingStatusResponse",
+        "description": "``GET /api/onboarding/status`` - first-run readiness."
+      },
+      "OrganizationListResponse": {
+        "properties": {
+          "organizations": {
+            "items": {
+              "$ref": "#/components/schemas/OrganizationOut"
+            },
+            "type": "array",
+            "title": "Organizations"
+          }
+        },
+        "type": "object",
+        "title": "OrganizationListResponse"
+      },
+      "OrganizationOut": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "domain": {
+            "type": "string",
+            "title": "Domain"
+          },
+          "memory_count": {
+            "type": "integer",
+            "title": "Memory Count"
+          },
+          "people": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "People"
+          },
+          "person_count": {
+            "type": "integer",
+            "title": "Person Count"
+          },
+          "sources": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Sources"
+          },
+          "last_seen": {
+            "type": "string",
+            "title": "Last Seen"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "name",
+          "domain",
+          "memory_count",
+          "person_count",
+          "last_seen"
+        ],
+        "title": "OrganizationOut",
+        "description": "An aggregated organization (people capped at 50 in the summary)."
+      },
+      "OrganizationProfileResponse": {
+        "properties": {
+          "organization": {
+            "$ref": "#/components/schemas/OrganizationOut"
+          },
+          "memories": {
+            "items": {
+              "$ref": "#/components/schemas/MemoryOut"
+            },
+            "type": "array",
+            "title": "Memories"
+          }
+        },
+        "type": "object",
+        "required": [
+          "organization"
+        ],
+        "title": "OrganizationProfileResponse"
+      },
+      "PersonListResponse": {
+        "properties": {
+          "people": {
+            "items": {
+              "$ref": "#/components/schemas/PersonOut"
+            },
+            "type": "array",
+            "title": "People"
+          }
+        },
+        "type": "object",
+        "title": "PersonListResponse"
+      },
+      "PersonOut": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "memory_count": {
+            "type": "integer",
+            "title": "Memory Count"
+          },
+          "sources": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Sources"
+          },
+          "last_seen": {
+            "type": "string",
+            "title": "Last Seen"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "name",
+          "memory_count",
+          "last_seen"
+        ],
+        "title": "PersonOut",
+        "description": "An aggregated person (``memory_ids`` dropped for the summary view)."
+      },
+      "PersonProfileResponse": {
+        "properties": {
+          "person": {
+            "$ref": "#/components/schemas/PersonOut"
+          },
+          "memories": {
+            "items": {
+              "$ref": "#/components/schemas/MemoryOut"
+            },
+            "type": "array",
+            "title": "Memories"
+          }
+        },
+        "type": "object",
+        "required": [
+          "person"
+        ],
+        "title": "PersonProfileResponse"
+      },
       "PinRequest": {
         "properties": {
           "pinned": {
@@ -5410,6 +8917,97 @@
         },
         "type": "object",
         "title": "PinRequest"
+      },
+      "ProjectListResponse": {
+        "properties": {
+          "projects": {
+            "items": {
+              "$ref": "#/components/schemas/NameCountOut"
+            },
+            "type": "array",
+            "title": "Projects"
+          }
+        },
+        "type": "object",
+        "title": "ProjectListResponse"
+      },
+      "PurgeMemoryResponse": {
+        "properties": {
+          "memory_id": {
+            "type": "string",
+            "title": "Memory Id"
+          },
+          "existed": {
+            "type": "boolean",
+            "title": "Existed"
+          },
+          "purged": {
+            "type": "boolean",
+            "title": "Purged"
+          },
+          "residue": {
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "type": "object",
+            "title": "Residue"
+          }
+        },
+        "type": "object",
+        "required": [
+          "memory_id",
+          "existed",
+          "purged",
+          "residue"
+        ],
+        "title": "PurgeMemoryResponse",
+        "description": "``POST /api/memories/{id}/purge`` - the purge postcondition audit."
+      },
+      "ReadyzResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "service": {
+            "type": "string",
+            "title": "Service"
+          },
+          "database": {
+            "type": "string",
+            "title": "Database"
+          },
+          "embedder_mode": {
+            "type": "string",
+            "title": "Embedder Mode"
+          },
+          "embedder_ready": {
+            "type": "boolean",
+            "title": "Embedder Ready"
+          },
+          "derived_state_current": {
+            "type": "boolean",
+            "title": "Derived State Current"
+          },
+          "reasons": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Reasons"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "service",
+          "database",
+          "embedder_mode",
+          "embedder_ready",
+          "derived_state_current"
+        ],
+        "title": "ReadyzResponse",
+        "description": "``GET /api/readyz`` - the same body for 200 and 503."
       },
       "RecallRequest": {
         "properties": {
@@ -5479,6 +9077,47 @@
         ],
         "title": "RecallRequest"
       },
+      "RecallResponse": {
+        "properties": {
+          "memories": {
+            "items": {
+              "$ref": "#/components/schemas/MemoryOut"
+            },
+            "type": "array",
+            "title": "Memories"
+          },
+          "scores": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Scores"
+          },
+          "breakdowns": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Breakdowns"
+          },
+          "diagnosis": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Diagnosis"
+          }
+        },
+        "type": "object",
+        "title": "RecallResponse",
+        "description": "``POST /api/memories/recall`` \u2014 ranked memories plus scoring context."
+      },
       "RedactAllRequest": {
         "properties": {
           "dry_run": {
@@ -5489,6 +9128,103 @@
         },
         "type": "object",
         "title": "RedactAllRequest"
+      },
+      "RedactAllResponse": {
+        "properties": {
+          "dry_run": {
+            "type": "boolean",
+            "title": "Dry Run"
+          },
+          "scanned": {
+            "type": "integer",
+            "title": "Scanned"
+          },
+          "flagged": {
+            "type": "integer",
+            "title": "Flagged"
+          },
+          "redacted": {
+            "type": "integer",
+            "title": "Redacted"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SecretAuditItemOut"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "dry_run",
+          "scanned",
+          "flagged",
+          "redacted"
+        ],
+        "title": "RedactAllResponse",
+        "description": "``POST /api/memories/redact-all``."
+      },
+      "RedactMemoryResponse": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "title": "Ok"
+          },
+          "redacted": {
+            "type": "boolean",
+            "title": "Redacted"
+          },
+          "secrets": {
+            "items": {},
+            "type": "array",
+            "title": "Secrets"
+          },
+          "memory_id": {
+            "type": "string",
+            "title": "Memory Id"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ok",
+          "redacted",
+          "memory_id"
+        ],
+        "title": "RedactMemoryResponse",
+        "description": "``POST /api/memories/{id}/redact``."
+      },
+      "RelatedMemoriesResponse": {
+        "properties": {
+          "memory_id": {
+            "type": "string",
+            "title": "Memory Id"
+          },
+          "related": {
+            "items": {
+              "$ref": "#/components/schemas/MemoryOut"
+            },
+            "type": "array",
+            "title": "Related"
+          }
+        },
+        "type": "object",
+        "required": [
+          "memory_id"
+        ],
+        "title": "RelatedMemoriesResponse",
+        "description": "``GET /api/memories/{id}/related`` - nearest neighbours by embedding."
       },
       "RestoreRequest": {
         "properties": {
@@ -5512,6 +9248,79 @@
           "content_b64"
         ],
         "title": "RestoreRequest"
+      },
+      "RestoreResponse": {
+        "properties": {
+          "memories": {
+            "type": "integer",
+            "title": "Memories"
+          },
+          "sessions": {
+            "type": "integer",
+            "title": "Sessions"
+          },
+          "attachments": {
+            "type": "integer",
+            "title": "Attachments"
+          },
+          "replace": {
+            "type": "boolean",
+            "title": "Replace"
+          },
+          "safety_backup_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Safety Backup Path"
+          },
+          "attachment_files_written": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attachment Files Written"
+          },
+          "attachment_files_failed": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attachment Files Failed"
+          },
+          "attachments_by_reference": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attachments By Reference"
+          }
+        },
+        "type": "object",
+        "required": [
+          "memories",
+          "sessions",
+          "attachments",
+          "replace"
+        ],
+        "title": "RestoreResponse",
+        "description": "``POST /api/restore`` - what the restore wrote."
       },
       "ReviewMemoryResponse": {
         "properties": {
@@ -5716,6 +9525,383 @@
         ],
         "title": "ReviewRequest"
       },
+      "ScoreBreakdownResponse": {
+        "properties": {
+          "score": {
+            "type": "number",
+            "title": "Score"
+          },
+          "components": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Components"
+          },
+          "weights": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Weights"
+          }
+        },
+        "type": "object",
+        "required": [
+          "score",
+          "components",
+          "weights"
+        ],
+        "title": "ScoreBreakdownResponse",
+        "description": "``GET /api/memories/{id}/score-breakdown`` - the public H(x,\u03c8) schema."
+      },
+      "SecretAuditItemOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "secret_types": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Secret Types"
+          },
+          "preview": {
+            "type": "string",
+            "title": "Preview"
+          },
+          "project": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "preview"
+        ],
+        "title": "SecretAuditItemOut"
+      },
+      "SecretAuditResponse": {
+        "properties": {
+          "audit": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Audit"
+          }
+        },
+        "type": "object",
+        "required": [
+          "audit"
+        ],
+        "title": "SecretAuditResponse",
+        "description": "``GET /api/memories/audit-secrets``."
+      },
+      "ServerConfigResponse": {
+        "properties": {
+          "db_path": {
+            "type": "string",
+            "title": "Db Path"
+          },
+          "embedder_mode": {
+            "type": "string",
+            "title": "Embedder Mode"
+          },
+          "requested_embedder_mode": {
+            "type": "string",
+            "title": "Requested Embedder Mode"
+          },
+          "embedder_fallback_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Embedder Fallback Reason"
+          },
+          "embedder_dimension": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Embedder Dimension"
+          },
+          "short_term_max": {
+            "type": "integer",
+            "title": "Short Term Max"
+          },
+          "weights": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Weights"
+          },
+          "decay_half_life_hours": {
+            "type": "number",
+            "title": "Decay Half Life Hours"
+          },
+          "reinforcement_gain": {
+            "type": "number",
+            "title": "Reinforcement Gain"
+          },
+          "max_stability_hours": {
+            "type": "number",
+            "title": "Max Stability Hours"
+          },
+          "auto_summarize_sessions": {
+            "type": "boolean",
+            "title": "Auto Summarize Sessions"
+          },
+          "outbound": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Outbound"
+          },
+          "recall_log": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Recall Log"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          }
+        },
+        "type": "object",
+        "required": [
+          "db_path",
+          "embedder_mode",
+          "requested_embedder_mode",
+          "short_term_max",
+          "weights",
+          "decay_half_life_hours",
+          "reinforcement_gain",
+          "max_stability_hours",
+          "auto_summarize_sessions",
+          "outbound",
+          "recall_log",
+          "version"
+        ],
+        "title": "ServerConfigResponse",
+        "description": "``GET /api/config`` \u2014 the Settings page payload. Free-form in shape by\ndesign (it mirrors runtime internals), so the envelope is typed but its\nleaves stay open."
+      },
+      "Session": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "default": "Untitled Session"
+          },
+          "status": {
+            "$ref": "#/components/schemas/SessionStatus",
+            "default": "active"
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Metadata"
+          },
+          "memory_count": {
+            "type": "integer",
+            "title": "Memory Count",
+            "default": 0
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "ended_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ended At"
+          }
+        },
+        "type": "object",
+        "title": "Session",
+        "description": "A memory session (e.g. one coding session)."
+      },
+      "SessionDeleteResponse": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "title": "Ok"
+          },
+          "session_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Session Id"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "memory_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Memory Count"
+          },
+          "memories_detached": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Memories Detached"
+          },
+          "memories_deleted": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Memories Deleted"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ok"
+        ],
+        "title": "SessionDeleteResponse",
+        "description": "``DELETE /api/sessions/{id}`` - what happened to the session and its\nmemories. ``ok=False`` bodies carry ``error`` (and ``memory_count`` when\nthe store refused because the session still holds memories)."
+      },
+      "SessionStatus": {
+        "type": "string",
+        "enum": [
+          "active",
+          "ended"
+        ],
+        "title": "SessionStatus"
+      },
+      "SourceListResponse": {
+        "properties": {
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/NameCountOut"
+            },
+            "type": "array",
+            "title": "Sources"
+          }
+        },
+        "type": "object",
+        "title": "SourceListResponse"
+      },
+      "StoreDecision": {
+        "properties": {
+          "action": {
+            "type": "string",
+            "title": "Action"
+          },
+          "reasons": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Reasons"
+          },
+          "reason_codes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Reason Codes"
+          },
+          "redacted_content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Redacted Content"
+          },
+          "redacted": {
+            "type": "boolean",
+            "title": "Redacted"
+          },
+          "secrets": {
+            "items": {},
+            "type": "array",
+            "title": "Secrets"
+          },
+          "max_similarity": {
+            "type": "number",
+            "title": "Max Similarity"
+          }
+        },
+        "type": "object",
+        "required": [
+          "action",
+          "redacted",
+          "max_similarity"
+        ],
+        "title": "StoreDecision",
+        "description": "The admission gate's verdict over one write (from ``admission.evaluate``)."
+      },
       "StoreRequest": {
         "properties": {
           "content": {
@@ -5801,6 +9987,194 @@
         ],
         "title": "StoreRequest"
       },
+      "SummarizeSessionResponse": {
+        "properties": {
+          "summarized": {
+            "type": "boolean",
+            "title": "Summarized"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MemoryOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "summarized"
+        ],
+        "title": "SummarizeSessionResponse",
+        "description": "``POST /api/sessions/{id}/summarize``."
+      },
+      "TagListResponse": {
+        "properties": {
+          "tags": {
+            "items": {
+              "$ref": "#/components/schemas/NameCountOut"
+            },
+            "type": "array",
+            "title": "Tags"
+          }
+        },
+        "type": "object",
+        "title": "TagListResponse"
+      },
+      "TimelineGroupOut": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "title": "Date"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TimelineItemOut"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "date",
+          "count"
+        ],
+        "title": "TimelineGroupOut"
+      },
+      "TimelineItemOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "memory_type": {
+            "type": "string",
+            "title": "Memory Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "summary",
+          "memory_type"
+        ],
+        "title": "TimelineItemOut"
+      },
+      "TimelineResponse": {
+        "properties": {
+          "timeline": {
+            "items": {
+              "$ref": "#/components/schemas/TimelineGroupOut"
+            },
+            "type": "array",
+            "title": "Timeline"
+          }
+        },
+        "type": "object",
+        "title": "TimelineResponse"
+      },
+      "TrustBreakdownResponse": {
+        "properties": {
+          "memory_id": {
+            "type": "string",
+            "title": "Memory Id"
+          },
+          "confidence": {
+            "type": "number",
+            "title": "Confidence"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "components": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Components"
+          },
+          "evidence": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Evidence"
+          },
+          "explanation": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Explanation"
+          }
+        },
+        "type": "object",
+        "required": [
+          "memory_id",
+          "confidence",
+          "label",
+          "components",
+          "evidence",
+          "explanation"
+        ],
+        "title": "TrustBreakdownResponse",
+        "description": "``GET /api/memories/{id}/trust`` \u2014 the explainable provenance verdict."
+      },
+      "TrustRecomputeResponse": {
+        "properties": {
+          "scored": {
+            "type": "integer",
+            "title": "Scored"
+          },
+          "by_label": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "By Label"
+          }
+        },
+        "type": "object",
+        "required": [
+          "scored",
+          "by_label"
+        ],
+        "title": "TrustRecomputeResponse",
+        "description": "``POST /api/memories/trust/recompute``."
+      },
       "UpdateRequest": {
         "properties": {
           "content": {
@@ -5865,6 +10239,55 @@
         "type": "object",
         "title": "UpdateRequest"
       },
+      "UploadedFileResponse": {
+        "properties": {
+          "path": {
+            "type": "string",
+            "title": "Path"
+          },
+          "filename": {
+            "type": "string",
+            "title": "Filename"
+          },
+          "bytes": {
+            "type": "integer",
+            "title": "Bytes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "path",
+          "filename",
+          "bytes"
+        ],
+        "title": "UploadedFileResponse",
+        "description": "Shared by the upload endpoints: where the bytes landed on this\nmachine, and the display name the caller chose (never the stored path)."
+      },
+      "UsageBillingResponse": {
+        "properties": {
+          "summary": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Summary"
+          },
+          "by_agent": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "By Agent"
+          }
+        },
+        "type": "object",
+        "required": [
+          "summary"
+        ],
+        "title": "UsageBillingResponse",
+        "description": "``GET /api/agents/metrics/usage`` - cross-agent usage summary."
+      },
       "ValidationError": {
         "properties": {
           "loc": {
@@ -5904,6 +10327,29 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "VerifyAllAttachmentsResponse": {
+        "properties": {
+          "ok": {
+            "type": "integer",
+            "title": "Ok"
+          },
+          "missing": {
+            "type": "integer",
+            "title": "Missing"
+          },
+          "changed": {
+            "type": "integer",
+            "title": "Changed"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ok",
+          "missing",
+          "changed"
+        ],
+        "title": "VerifyAllAttachmentsResponse"
       }
     }
   }

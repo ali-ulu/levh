@@ -6,33 +6,46 @@ from __future__ import annotations
 from fastapi import Depends, APIRouter, HTTPException
 
 from server.routes.deps import get_engine
+from server.routes.models import (
+    BriefingResponse,
+    DecisionListResponse,
+    MeetingPrepResponse,
+    OrganizationListResponse,
+    OrganizationProfileResponse,
+    PersonListResponse,
+    PersonProfileResponse,
+    ProjectListResponse,
+    SourceListResponse,
+    TagListResponse,
+    TimelineResponse,
+)
 
 router = APIRouter()
 
 
-@router.get("/api/projects")
+@router.get("/api/projects", response_model=ProjectListResponse)
 async def list_projects(engine=Depends(get_engine)):
     return {"projects": await engine.list_projects()}
 
 
-@router.get("/api/sources")
+@router.get("/api/sources", response_model=SourceListResponse)
 async def list_sources(engine=Depends(get_engine)):
     return {"sources": await engine.list_sources()}
 
 
-@router.get("/api/tags")
+@router.get("/api/tags", response_model=TagListResponse)
 async def list_tags(engine=Depends(get_engine)):
     return {"tags": await engine.list_tags()}
 
 
-@router.get("/api/people")
+@router.get("/api/people", response_model=PersonListResponse)
 async def list_people(limit: int = 200, engine=Depends(get_engine)):
     """Distinct people across all memories (calendar attendees, email
     senders/recipients, transcript speakers), most-frequent first."""
     return {"people": await engine.list_people(limit=min(max(limit, 1), 1000))}
 
 
-@router.get("/api/people/{key:path}")
+@router.get("/api/people/{key:path}", response_model=PersonProfileResponse)
 async def get_person(key: str, engine=Depends(get_engine)):
     """A person's profile plus every memory that mentions them. ``key`` may be
     an email, a person key, or a free-text name (resolved by best match)."""
@@ -42,21 +55,21 @@ async def get_person(key: str, engine=Depends(get_engine)):
     return person
 
 
-@router.get("/api/timeline")
+@router.get("/api/timeline", response_model=TimelineResponse)
 async def get_timeline(days: int = 30, project: str = "", engine=Depends(get_engine)):
     """Episodic memories grouped by day, most recent first — "what happened
     this/last week"."""
     return {"timeline": await engine.timeline(days=min(max(days, 1), 365), project=project or None)}
 
 
-@router.get("/api/briefing")
+@router.get("/api/briefing", response_model=BriefingResponse)
 async def get_briefing(days: int = 7, project: str = "", engine=Depends(get_engine)):
     """Deterministic Daily Briefing — what's on today, open commitments from
     recent memories, and memories that are fading and may need review."""
     return {"briefing": await engine.briefing(days=min(max(days, 1), 90), project=project or None)}
 
 
-@router.get("/api/meeting-prep")
+@router.get("/api/meeting-prep", response_model=MeetingPrepResponse)
 async def get_meeting_prep(query: str = "", within_days: int = 14, engine=Depends(get_engine)):
     """Proactive pre-meeting brief — the next upcoming meeting (or a matched
     one), each attendee's recent context, and relevant open commitments and
@@ -68,14 +81,14 @@ async def get_meeting_prep(query: str = "", within_days: int = 14, engine=Depend
     }
 
 
-@router.get("/api/organizations")
+@router.get("/api/organizations", response_model=OrganizationListResponse)
 async def list_organizations(limit: int = 200, engine=Depends(get_engine)):
     """Distinct organizations across all memories (people grouped by email
     domain), most-frequent first."""
     return {"organizations": await engine.list_organizations(limit=min(max(limit, 1), 1000))}
 
 
-@router.get("/api/organizations/{key:path}")
+@router.get("/api/organizations/{key:path}", response_model=OrganizationProfileResponse)
 async def get_organization(key: str, engine=Depends(get_engine)):
     """An organization's profile plus every memory that mentions someone from
     it. ``key`` may be a domain or a free-text name (resolved by best match)."""
@@ -85,7 +98,7 @@ async def get_organization(key: str, engine=Depends(get_engine)):
     return org
 
 
-@router.get("/api/decisions")
+@router.get("/api/decisions", response_model=DecisionListResponse)
 async def list_decisions(days: int = 90, project: str = "", limit: int = 50, engine=Depends(get_engine)):
     """Deterministic decision detection — statements like "we decided" /
     "agreed to" / "karar verdik" in recent episodic memory content."""

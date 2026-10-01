@@ -12,7 +12,12 @@ if TYPE_CHECKING:  # pragma: no cover - typing only
 from fastapi import APIRouter, Depends, HTTPException
 
 from server.routes.deps import get_engine
-from server.routes.models import MistakeRequest
+from server.routes.models import (
+    GuardMistakeResponse,
+    GuardRuleListResponse,
+    GuardViolationListResponse,
+    MistakeRequest,
+)
 
 router = APIRouter()
 
@@ -23,7 +28,7 @@ def _get_guard(engine: "MemoryEngine") -> "GuardService":
     return GuardService(engine.db, engine)
 
 
-@router.get("/api/guard/violations")
+@router.get("/api/guard/violations", response_model=GuardViolationListResponse)
 async def list_guard_violations(
     days: int = 0, severity: str = "", limit: int = 50,
     engine: "MemoryEngine" = Depends(get_engine),
@@ -37,7 +42,7 @@ async def list_guard_violations(
     }
 
 
-@router.get("/api/guard/rules")
+@router.get("/api/guard/rules", response_model=GuardRuleListResponse)
 async def list_guard_rules(
     project: str = "", limit: int = 50,
     engine: "MemoryEngine" = Depends(get_engine),
@@ -63,7 +68,7 @@ async def list_guard_rules(
     }
 
 
-@router.post("/api/guard/mistakes")
+@router.post("/api/guard/mistakes", response_model=GuardMistakeResponse)
 async def record_guard_mistake(
     req: MistakeRequest,
     engine: "MemoryEngine" = Depends(get_engine),

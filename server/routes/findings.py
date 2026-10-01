@@ -11,12 +11,19 @@ from fastapi import Depends, APIRouter, HTTPException
 
 from server.core import findings as findings_core
 from server.routes.deps import get_engine
-from server.routes.models import FindingDecisionRequest, FindingReportRequest
+from server.routes.models import (
+    FindingDeleteResponse,
+    FindingDecisionResponse,
+    FindingListResponse,
+    FindingReportResponse,
+    FindingDecisionRequest,
+    FindingReportRequest,
+)
 
 router = APIRouter()
 
 
-@router.get("/api/findings")
+@router.get("/api/findings", response_model=FindingListResponse)
 async def list_findings(status: str = "open", category: str = "", limit: int = 100, engine=Depends(get_engine)):
     """List findings, newest sighting first. Pass an empty status for all
     states — that is the "what did we decide about these" view."""
@@ -28,7 +35,7 @@ async def list_findings(status: str = "open", category: str = "", limit: int = 1
     }
 
 
-@router.post("/api/findings")
+@router.post("/api/findings", response_model=FindingReportResponse)
 async def report_finding(req: FindingReportRequest, engine=Depends(get_engine)):
     """Record a finding. Scrubbed and fingerprinted before it is stored, so a
     repeat folds into the existing row instead of creating a new one."""
@@ -44,7 +51,7 @@ async def report_finding(req: FindingReportRequest, engine=Depends(get_engine)):
     return await engine.db.record_finding(row)
 
 
-@router.post("/api/findings/{finding_id}/decide")
+@router.post("/api/findings/{finding_id}/decide", response_model=FindingDecisionResponse)
 async def decide_finding(finding_id: str, req: FindingDecisionRequest, engine=Depends(get_engine)):
     """Apply a human decision: ack, resolved or ignored (open reopens it)."""
     try:
@@ -56,7 +63,7 @@ async def decide_finding(finding_id: str, req: FindingDecisionRequest, engine=De
     return result
 
 
-@router.delete("/api/findings/{finding_id}")
+@router.delete("/api/findings/{finding_id}", response_model=FindingDeleteResponse)
 async def delete_finding(finding_id: str, engine=Depends(get_engine)):
     if not await engine.db.delete_finding(finding_id):
         raise HTTPException(status_code=404, detail="finding not found")

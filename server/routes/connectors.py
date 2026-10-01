@@ -12,7 +12,15 @@ from pathlib import Path, PurePosixPath
 from fastapi import Depends, APIRouter, HTTPException
 
 from server.routes.deps import get_engine
-from server.routes.models import ConnectorRequest, ConnectorUploadRequest
+from server.routes.models import (
+    ConnectorConfigResponse,
+    ConnectorListResponse,
+    ConnectorRequest,
+    ConnectorSyncResponse,
+    ConnectorSyncStateResponse,
+    ConnectorUploadRequest,
+    UploadedFileResponse,
+)
 from server.routes.deps import logger
 
 router = APIRouter()
@@ -72,7 +80,7 @@ def _connector_upload_dir() -> Path:
 MAX_UPLOAD_BYTES = 64 * 1024 * 1024
 
 
-@router.post("/api/connectors/import")
+@router.post("/api/connectors/import", response_model=ConnectorSyncResponse)
 async def connector_import(req: ConnectorRequest, engine=Depends(get_engine)):
     """Import data from an external app via connector."""
     from server.connectors import get_connector
@@ -115,7 +123,7 @@ async def connector_import(req: ConnectorRequest, engine=Depends(get_engine)):
     return result
 
 
-@router.post("/api/connectors/sync")
+@router.post("/api/connectors/sync", response_model=ConnectorSyncResponse)
 async def connector_sync(req: ConnectorRequest, engine=Depends(get_engine)):
     """Connector v2 ingest: fetch, then route items through the admission
     gate (dedupe + secret redaction), with incremental sync bookkeeping."""
@@ -148,7 +156,7 @@ async def connector_sync(req: ConnectorRequest, engine=Depends(get_engine)):
     return result
 
 
-@router.post("/api/connectors/upload")
+@router.post("/api/connectors/upload", response_model=UploadedFileResponse)
 async def connector_upload(req: ConnectorUploadRequest):
     """Store an uploaded file locally and return the path to import from."""
 
@@ -173,12 +181,12 @@ async def connector_upload(req: ConnectorUploadRequest):
     return {"path": str(target), "filename": display, "bytes": len(blob)}
 
 
-@router.get("/api/connectors/sync-state")
+@router.get("/api/connectors/sync-state", response_model=ConnectorSyncStateResponse)
 async def connector_sync_state(engine=Depends(get_engine)):
     return {"sync_state": await engine.list_sync_state()}
 
 
-@router.get("/api/connectors")
+@router.get("/api/connectors", response_model=ConnectorListResponse)
 async def list_connectors():
     """List available connectors and their status."""
     from server.connectors import list_connectors as _list
@@ -186,7 +194,7 @@ async def list_connectors():
     return {"connectors": _list()}
 
 
-@router.get("/api/connectors/{name}/config")
+@router.get("/api/connectors/{name}/config", response_model=ConnectorConfigResponse)
 async def get_connector_config(name: str):
     """Get required config fields for a connector."""
     from server.connectors import get_connector

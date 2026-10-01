@@ -6,12 +6,12 @@ from __future__ import annotations
 from fastapi import Depends, APIRouter
 
 from server.routes.deps import get_engine
-from server.routes.models import ContextFileRequest
+from server.routes.models import ContextFileRequest, ContextFileResponse, ContextResponse
 
 router = APIRouter()
 
 
-@router.get("/api/context")
+@router.get("/api/context", response_model=ContextResponse)
 async def get_context(session_id: str = "", project: str = "", max_tokens: int = 4000, engine=Depends(get_engine)):
     context = await engine.get_context(
         session_id=session_id or None,
@@ -21,7 +21,7 @@ async def get_context(session_id: str = "", project: str = "", max_tokens: int =
     return {"context": context, "chars": len(context)}
 
 
-@router.post("/api/context-file")
+@router.post("/api/context-file", response_model=ContextFileResponse)
 async def generate_context_file(req: ContextFileRequest, engine=Depends(get_engine)):
     """Generate a CLAUDE.md / .cursorrules style context file from memories."""
     content = await engine.generate_context_file(

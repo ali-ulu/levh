@@ -8,12 +8,12 @@ from fastapi import APIRouter
 from fastapi.responses import HTMLResponse, Response
 
 from server.core import librarian
-from server.routes.models import AskRequest
+from server.routes.models import AskRequest, LibrarianChatResponse, LibrarianScanResponse, LibrarianStatusResponse
 
 router = APIRouter()
 
 
-@router.get("/api/librarian/status")
+@router.get("/api/librarian/status", response_model=LibrarianStatusResponse)
 async def librarian_status():
     """Tarama sonucu; hiçbir şey yazmaz.
 
@@ -24,7 +24,7 @@ async def librarian_status():
     return await asyncio.to_thread(librarian.scan)
 
 
-@router.post("/api/librarian/scan")
+@router.post("/api/librarian/scan", response_model=LibrarianScanResponse)
 async def librarian_scan():
     """Manuel tarama — çıkan bulguları gelen kutusuna da yazar."""
     report = await asyncio.to_thread(librarian.scan)
@@ -32,7 +32,7 @@ async def librarian_scan():
     return report
 
 
-@router.post("/api/librarian/chat")
+@router.post("/api/librarian/chat", response_model=LibrarianChatResponse)
 async def librarian_chat(req: AskRequest):
     return await librarian.chat(req.question)
 

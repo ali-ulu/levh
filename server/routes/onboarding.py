@@ -6,25 +6,32 @@ from __future__ import annotations
 from fastapi import Depends, APIRouter, HTTPException
 
 from server.routes.deps import get_engine
-from server.routes.models import DemoCleanupRequest, OnboardingMCPConfigRequest
+from server.routes.models import (
+    DemoCleanupRequest,
+    DemoCleanupResponse,
+    DemoSeedResponse,
+    OnboardingMCPConfigRequest,
+    OnboardingMcpConfigResponse,
+    OnboardingStatusResponse,
+)
 
 router = APIRouter()
 
 
-@router.post("/api/seed-demo")
+@router.post("/api/seed-demo", response_model=DemoSeedResponse)
 async def seed_demo(force: bool = False, engine=Depends(get_engine)):
     """Populate an empty store with a deterministic demo corpus (onboarding).
     Refuses to run on a non-empty store unless ``force=true``."""
     return await engine.seed_demo(force=force)
 
 
-@router.get("/api/onboarding/status")
+@router.get("/api/onboarding/status", response_model=OnboardingStatusResponse)
 async def get_onboarding_status(engine=Depends(get_engine)):
     """Real first-run readiness derived from local storage/configuration."""
     return await engine.onboarding_status()
 
 
-@router.post("/api/onboarding/mcp-config")
+@router.post("/api/onboarding/mcp-config", response_model=OnboardingMcpConfigResponse)
 async def generate_onboarding_mcp_config(req: OnboardingMCPConfigRequest, engine=Depends(get_engine)):
     """Generate a focused MCP client config without persisting secrets."""
     from server.configs import PLATFORMS, generate_config, normalize_platform, render_config
@@ -82,7 +89,7 @@ async def generate_onboarding_mcp_config(req: OnboardingMCPConfigRequest, engine
     }
 
 
-@router.post("/api/onboarding/remove-demo")
+@router.post("/api/onboarding/remove-demo", response_model=DemoCleanupResponse)
 async def remove_onboarding_demo(req: DemoCleanupRequest, engine=Depends(get_engine)):
     """Remove only metadata.demo=true memories using the audited purge path."""
     if not req.confirm:
