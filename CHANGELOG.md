@@ -13,6 +13,39 @@
 - `server/core/procedure.py` and `server/core/guard.py` join the
   `[tool.mypy].files` ratchet, so the three previously-invisible
   `attr-defined` errors now fail CI if they return. The ratchet only grows.
+### Feature: bi-temporal validity — retire superseded facts, keep them auditable (#335)
+
+- A memory now carries a **world-time validity interval** alongside its
+  system-time timestamps. `valid_from` opens at write; `valid_to` closes when
+  a newer memory supersedes it. A retired fact is no longer *current*, so it
+  drops out of ordinary reads — but the row is never deleted, stays auditable,
+  and is reachable through a point-in-time read.
+- `POST /api/memories/recall` and the `recall_memory` MCP tool take `as_of`
+  (an ISO-8601 instant) to ask "what did the store believe then", and
+  `include_superseded` to audit what a current fact replaced. `GET
+  /api/memories` shares the same filter, so a retired fact cannot leak back in
+  through the list surface. An `as_of` read is always read-only: a question
+  about the past must not reinforce a belief the store holds now.
+- **Retirement is opt-in** (`LEVH_SUPERSESSION`, default off). This is the
+  point the issue is emphatic about: forgetting and supersession are different
+  problems. The write path already weakens a whole same-project neighbourhood
+  (wide interference), and turning every such hit into a retirement would hide
+  rows a user never superseded — it broke dedupe/consolidation in the first
+  cut of this change. So weakening stays as it was, and only the flag turns a
+  near-identical write into a retirement.
+- Known limit, recorded in `_retirement_enabled`: the candidate key is
+  near-identical content, which cannot distinguish a genuine one-value edit
+  ("...is main" → "...is prod", lexical overlap 0.75) from a templated
+  enumeration ("...number 3" → "...number 4", overlap 1.00). With the flag on,
+  a templated pair retires like a supersession. Acceptable for a prototype an
+  operator turns on deliberately; not acceptable as a silent default, which is
+  what the flag encodes.
+- Schema v3 adds `valid_from`/`valid_to`/`superseded_by` (additive, nullable)
+  and backfills `valid_from` from `created_at` on connect. The legacy
+  `metadata.superseded_by` pointer is deliberately **not** backfilled into
+  `valid_to`: that pointer is the wide interference signal, not a retirement,
+  so old rows start current. Deleting a replacement reopens its predecessor's
+  window, mirroring the existing metadata-pointer cleanup.
 
 ### Fix: a global guard rule reaches a project-scoped check (#337)
 

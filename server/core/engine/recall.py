@@ -54,6 +54,8 @@ class MemoryRecallMixin:
         min_importance: float = 0.0,
         reinforce: bool = True,
         explain: bool = False,
+        as_of: str | None = None,
+        include_superseded: bool = False,
     ) -> RecallResult:
         """Time the ranked recall and record its latency (issue #145).
 
@@ -71,6 +73,8 @@ class MemoryRecallMixin:
                 min_importance=min_importance,
                 reinforce=reinforce,
                 explain=explain,
+                as_of=as_of,
+                include_superseded=include_superseded,
             )
         finally:
             metrics.observe(
@@ -146,6 +150,8 @@ class MemoryRecallMixin:
         min_importance: float = 0.0,
         reinforce: bool = True,
         explain: bool = False,
+        as_of: str | None = None,
+        include_superseded: bool = False,
     ) -> RecallResult:
         """Recall memories ranked by H(x,ψ) score.
 
@@ -163,6 +169,14 @@ class MemoryRecallMixin:
         and the four penalty components that sum to the score. The extra work is
         nil — the components are computed on this path already — but it is
         opt-in so the common recall stays a compact payload.
+
+        Bi-temporal reads (issue #335): by default a retired fact — one whose
+        ``valid_to`` is set because a newer memory replaced it — is filtered
+        out of the candidate set entirely, so it can neither rank nor be
+        reinforced. ``as_of`` instead asks "what did the store believe on date
+        D", keeping every row whose validity interval contains D, retired or
+        not; it is the auditable-history read and is therefore also read-only
+        (a point-in-time question must not reinforce a current belief).
         """
         await self._sync_with_external_writes()
         query_embedding = await self.embedder.embed(query)
@@ -186,7 +200,32 @@ class MemoryRecallMixin:
         lexical_terms_set = query_terms
         similarity_source = "cosine" if self.embedder.is_semantic else "lexical"
 
+        def _valid_at(memory: Memory) -> bool:
+            """Whether this memory's validity interval contains the read point.
+
+            ``as_of`` asks a point-in-time question, so a retired row whose
+            window still contains D is in scope; every other read wants only
+            the rows that are current now (``valid_to IS NULL``). A NULL
+            ``valid_from`` predates the column and is treated as
+            valid-from-the-beginning so an un-backfilled row is never silently
+            hidden. ISO-8601 strings compare lexicographically, which is why a
+            plain string comparison is correct here.
+            """
+            if include_superseded and not as_of:
+                return True
+            if as_of:
+                start = memory.valid_from
+                end = memory.valid_to
+                if start and start > as_of:
+                    return False
+                if end and end <= as_of:
+                    return False
+                return True
+            return memory.valid_to is None
+
         def _predicate(memory: Memory) -> bool:
+            if not _valid_at(memory):
+                return False
             if min_importance and memory.importance < min_importance:
                 return False
             if session_id and memory.session_id != session_id:
@@ -332,8 +371,10 @@ class MemoryRecallMixin:
         # Reinforce only the memories actually returned: recalling a memory
         # resets its decay clock AND makes it more durable (spaced repetition /
         # the testing effect) — untouched candidates are left completely alone.
-        # A read-only recall (reinforce=False) skips this entirely.
-        if reinforce:
+        # A read-only recall (reinforce=False) skips this entirely. So does a
+        # point-in-time read: ``as_of`` is a question about the past, and
+        # answering it must not strengthen a belief the store holds *now*.
+        if reinforce and not as_of:
             for memory, hscore in top:
                 memory.stability_hours = self.scorer.reinforce(memory.stability_hours, memory.importance)
                 memory.recall_count += 1
@@ -544,6 +585,8 @@ class MemoryRecallMixin:
         pinned: bool | None = None,
         min_importance: float | None = None,
         content_like: str | None = None,
+        as_of: str | None = None,
+        include_superseded: bool = False,
         limit: int = 50,
         offset: int = 0,
     ) -> list[Memory]:
@@ -556,6 +599,8 @@ class MemoryRecallMixin:
             pinned=pinned,
             min_importance=min_importance,
             content_like=content_like,
+            as_of=as_of,
+            include_superseded=include_superseded,
             limit=limit,
             offset=offset,
         )

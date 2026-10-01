@@ -81,6 +81,27 @@ class Memory(BaseModel):
     recall_count: int = Field(
         default=0, ge=0, description="Times this memory has been reinforced by recall."
     )
+    valid_from: Optional[str] = Field(
+        default=None,
+        description=(
+            "World time from which this fact was believed true (issue #335). "
+            "Defaults to created_at at write; NULL only for a row that predates "
+            "the column and has not been backfilled."
+        ),
+    )
+    valid_to: Optional[str] = Field(
+        default=None,
+        description=(
+            "World time at which this fact stopped being current. NULL means "
+            "'still believed'. Set when a newer, near-identical memory "
+            "supersedes this one. A retired row is never deleted and is "
+            "reachable through an as_of read."
+        ),
+    )
+    superseded_by: Optional[str] = Field(
+        default=None,
+        description="Id of the memory that replaced this one, if any (issue #335).",
+    )
 
     def touch(self) -> None:
         """Update accessed_at to now."""
@@ -136,6 +157,23 @@ class RecallRequest(BaseModel):
             "Whether this recall reinforces the returned memories "
             "(resets decay clock, bumps frequency). Set false for read-only "
             "dashboard/search previews so browsing doesn't inflate the signal."
+        ),
+    )
+    as_of: Optional[str] = Field(
+        default=None,
+        description=(
+            "Point-in-time read (issue #335): return what the store believed "
+            "on this ISO-8601 instant, including facts retired since. Always "
+            "read-only — a question about the past never reinforces a current "
+            "belief."
+        ),
+    )
+    include_superseded: bool = Field(
+        default=False,
+        description=(
+            "Opt retired facts back into the candidate set (issue #335). Off "
+            "by default: a superseded fact is not current and must not surface "
+            "in an ordinary read. Set true to audit what was replaced."
         ),
     )
 

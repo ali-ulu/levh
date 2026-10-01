@@ -29,7 +29,24 @@ QUESTION = "which branch do we deploy to production from"
 
 
 @pytest_asyncio.fixture
-async def engine():
+async def engine(monkeypatch):
+    # Retirement (#335) is opt-in; these tests exercise it, so turn it on for
+    # the duration of each test rather than inheriting the off-by-default flag.
+    monkeypatch.setenv("LEVH_SUPERSESSION", "1")
+    fd, path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    eng = MemoryEngine(db_path=path, embedder_mode="hash", short_term_max=50)
+    await eng.initialize()
+    yield eng
+    await eng.shutdown()
+    if os.path.exists(path):
+        os.unlink(path)
+
+
+@pytest_asyncio.fixture
+async def default_engine(monkeypatch):
+    """An engine with the supersession flag left at its default (off)."""
+    monkeypatch.delenv("LEVH_SUPERSESSION", raising=False)
     fd, path = tempfile.mkstemp(suffix=".db")
     os.close(fd)
     eng = MemoryEngine(db_path=path, embedder_mode="hash", short_term_max=50)
@@ -68,14 +85,49 @@ async def test_unrelated_memory_is_not_marked_superseded(engine):
 
 
 @pytest.mark.asyncio
-async def test_superseded_memory_ranks_below_its_replacement(engine):
+async def test_superseded_memory_is_not_current_and_its_replacement_is(engine):
+    """The #335 contract: a superseded fact is *retired*, not merely demoted.
+
+    The old test pinned "the replaced fact still appears, ranked below its
+    replacement". That is exactly the behaviour #335 removes: a fact that is
+    no longer believed must not surface as current at all, however it would
+    rank. What must survive is the replacement being current and the old fact
+    staying reachable through an audit read.
+    """
     old, new = await _supersede(engine)
 
     result = await engine.recall(QUESTION, top_k=5, reinforce=False)
     ranked = [m.id for m in result.memories]
+    assert new.id in ranked
+    assert old.id not in ranked
+
+
+@pytest.mark.asyncio
+async def test_retired_fact_stays_reachable_and_auditable_via_as_of(engine):
+    """Retirement is belief revision, not deletion: the old row is still in
+    the store, still carries its supersession pointer, and a point-in-time
+    read that asks about before the replacement still returns it."""
+    old, new = await _supersede(engine)
+
+    stored = await engine.get_memory(old.id)
+    assert stored.valid_to is not None
+    assert stored.superseded_by == new.id
+    assert stored.valid_from is not None
+
+    # An as_of read taken *before* the supersession sees the old fact.
+    before = await engine.recall(
+        QUESTION, top_k=5, reinforce=False, as_of=stored.valid_from
+    )
+    assert old.id in [m.id for m in before.memories]
+
+    # An audit read that opts the retired rows back in also sees it, and the
+    # explicit penalty still demotes it below its replacement there.
+    audit = await engine.recall(
+        QUESTION, top_k=5, reinforce=False, include_superseded=True
+    )
+    ranked = [m.id for m in audit.memories]
     assert ranked.index(new.id) < ranked.index(old.id)
-    # The demotion is the explicit penalty, not a side effect of anything else.
-    scores = dict(zip(ranked, result.scores))
+    scores = dict(zip(ranked, audit.scores))
     assert scores[old.id] - scores[new.id] >= SUPERSEDED_PENALTY - 1e-9
 
 
@@ -94,7 +146,11 @@ async def test_superseded_penalty_stays_within_the_score_range(engine):
 async def test_explain_exposes_the_penalty_and_components_still_sum(engine):
     old, _new = await _supersede(engine)
 
-    result = await engine.recall(QUESTION, top_k=5, reinforce=False, explain=True)
+    # A retired row is out of the current ranking, so the penalty is only
+    # observable on an audit read that opts it back in (#335).
+    result = await engine.recall(
+        QUESTION, top_k=5, reinforce=False, explain=True, include_superseded=True
+    )
     by_id = {b.memory_id: b for b in result.breakdowns}
     superseded = by_id[old.id]
     assert superseded.superseded_penalty == pytest.approx(SUPERSEDED_PENALTY)
@@ -194,13 +250,76 @@ async def test_deleting_the_replacement_clears_the_pointer(engine):
 @pytest.mark.asyncio
 async def test_recall_stops_demoting_after_the_replacement_is_deleted(engine):
     old, new = await _supersede(engine)
+    # While retired, the old fact is out of a current read entirely (#335).
     before = await engine.recall(QUESTION, top_k=5, reinforce=False)
-    demoted = dict(zip([m.id for m in before.memories], before.scores))[old.id]
+    assert old.id not in [m.id for m in before.memories]
 
     assert await engine.forget(new.id) is True
 
-    # recall scores the vector store's cached copies; the cached predecessor
-    # must not keep a pointer the delete already cleared in SQLite.
+    # Deleting the replacement reopens the predecessor's validity window, so
+    # it becomes current again and is recallable without any penalty.
+    reloaded = await engine.get_memory(old.id)
+    assert reloaded.valid_to is None
+    assert reloaded.superseded_by is None
     result = await engine.recall(QUESTION, top_k=5, reinforce=False)
-    rank = [m.id for m in result.memories].index(old.id)
-    assert result.scores[rank] < demoted
+    assert old.id in [m.id for m in result.memories]
+
+
+@pytest.mark.asyncio
+async def test_retirement_is_off_by_default(default_engine):
+    """Without the flag, a near-identical write still weakens but never
+    retires: the old fact keeps a NULL valid_to and stays in the current
+    read. This is what keeps dedupe/consolidation and every existing caller
+    unaffected by #335 until an operator opts in."""
+    old = await default_engine.store(content=OLD, memory_type="episodic")
+    await default_engine.store(content=NEW, memory_type="episodic")
+
+    stored = await default_engine.get_memory(old.id)
+    assert stored.valid_to is None
+    assert stored.superseded_by is None
+    # Weakening still happened — the interference metadata pointer is set.
+    assert stored.metadata["superseded_by"]
+
+    result = await default_engine.recall(QUESTION, top_k=5, reinforce=False)
+    assert old.id in [m.id for m in result.memories]
+
+
+@pytest.mark.asyncio
+async def test_a_retired_fact_is_hidden_from_the_list_surface(engine):
+    """The list surface shares the validity filter, so a retired fact does not
+    leak back in through ``GET /api/memories`` while it is hidden from recall."""
+    old, _new = await _supersede(engine)
+
+    listed = await engine.list_memories(limit=50)
+    assert old.id not in [m.id for m in listed]
+
+    # ...and a point-in-time list read still finds it.
+    as_of = (await engine.get_memory(old.id)).valid_from
+    historical = await engine.list_memories(limit=50, as_of=as_of)
+    assert old.id in [m.id for m in historical]
+
+
+@pytest.mark.asyncio
+async def test_as_of_read_does_not_reinforce(engine):
+    """A point-in-time question must not strengthen a current belief."""
+    old, _new = await _supersede(engine)
+    as_of = (await engine.get_memory(old.id)).valid_from
+    before = await engine.get_memory(old.id)
+
+    await engine.recall(QUESTION, top_k=5, as_of=as_of)
+
+    after = await engine.get_memory(old.id)
+    assert after.frequency == before.frequency
+    assert after.recall_count == before.recall_count
+
+
+@pytest.mark.asyncio
+async def test_valid_from_is_set_on_write(engine):
+    """A fresh write opens its validity window at creation time (#335)."""
+    mem = await engine.store(content="A brand new fact", memory_type="episodic")
+    assert mem.valid_from is not None
+    assert mem.valid_to is None
+    assert mem.superseded_by is None
+    stored = await engine.get_memory(mem.id)
+    assert stored.valid_from == mem.created_at
+

@@ -75,6 +75,8 @@ class EpisodicMemory:
         min_importance: float | None = None,
         content_like: str | None = None,
         include_global: bool = False,
+        as_of: str | None = None,
+        include_superseded: bool = False,
         limit: int = 50,
         offset: int = 0,
     ) -> list[Memory]:
@@ -88,6 +90,8 @@ class EpisodicMemory:
             min_importance=min_importance,
             content_like=content_like,
             include_global=include_global,
+            as_of=as_of,
+            include_superseded=include_superseded,
             limit=limit,
             offset=offset,
         )

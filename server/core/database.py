@@ -126,6 +126,24 @@ class Database:
             if column not in existing:
                 await self._connection.execute(ddl)
 
+    async def _backfill_validity(self) -> None:
+        """Give pre-existing rows a ``valid_from`` (issue #335).
+
+        ``valid_from`` is backfilled from ``created_at`` — the only world-time
+        signal an old row carries, and the honest reading of "this fact has
+        been believed since we recorded it". ``valid_to``/``superseded_by``
+        are deliberately **not** backfilled from the legacy
+        ``metadata.superseded_by`` pointer: that pointer is the wide
+        *interference* signal (any same-project near neighbour), not a
+        retirement, and treating it as one would retire rows a user never
+        superseded. Retirement is a new, opt-in concept, so old rows start
+        current (``valid_to`` NULL). Idempotent: guarded on
+        ``valid_from IS NULL``, so a second connect is a no-op.
+        """
+        await self._connection.execute(
+            "UPDATE memories SET valid_from = created_at WHERE valid_from IS NULL"
+        )
+
     async def _set_user_version(self, version: int) -> None:
         await self._connection.execute(f"PRAGMA user_version = {int(version)}")
         self.schema_version = int(version)
@@ -184,6 +202,15 @@ class Database:
             self.fts5_available = await self._has_fts5_table()
             if not self.fts5_available:
                 self.fts5_available = await self._install_fts5()
+
+        if version < 3:
+            # Additive column pass so a v2 store gains the bi-temporal columns
+            # (#335) even though it already has the v1 set, then backfill the
+            # rows already on disk.
+            await self._migrate_legacy_columns()
+            await self._backfill_validity()
+            version = 3
+            await self._set_user_version(version)
 
         self.schema_version = version
 

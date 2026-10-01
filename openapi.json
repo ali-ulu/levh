@@ -8337,6 +8337,42 @@
             "title": "Recall Count",
             "description": "Times this memory has been reinforced by recall.",
             "default": 0
+          },
+          "valid_from": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid From",
+            "description": "World time from which this fact was believed true (issue #335). Defaults to created_at at write; NULL only for a row that predates the column and has not been backfilled."
+          },
+          "valid_to": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid To",
+            "description": "World time at which this fact stopped being current. NULL means 'still believed'. Set when a newer, near-identical memory supersedes this one. A retired row is never deleted and is reachable through an as_of read."
+          },
+          "superseded_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Superseded By",
+            "description": "Id of the memory that replaced this one, if any (issue #335)."
           }
         },
         "type": "object",
@@ -8489,6 +8525,42 @@
             "title": "Recall Count",
             "description": "Times this memory has been reinforced by recall.",
             "default": 0
+          },
+          "valid_from": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid From",
+            "description": "World time from which this fact was believed true (issue #335). Defaults to created_at at write; NULL only for a row that predates the column and has not been backfilled."
+          },
+          "valid_to": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid To",
+            "description": "World time at which this fact stopped being current. NULL means 'still believed'. Set when a newer, near-identical memory supersedes this one. A retired row is never deleted and is reachable through an as_of read."
+          },
+          "superseded_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Superseded By",
+            "description": "Id of the memory that replaced this one, if any (issue #335)."
           },
           "attachments": {
             "items": {
@@ -9224,6 +9296,24 @@
             "title": "Reinforce",
             "description": "Whether this recall reinforces the returned memories (resets decay clock, bumps frequency). Set false for read-only dashboard/search previews so browsing doesn't inflate the signal.",
             "default": true
+          },
+          "as_of": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "As Of",
+            "description": "Point-in-time read (issue #335): return what the store believed on this ISO-8601 instant, including facts retired since. Always read-only \u2014 a question about the past never reinforces a current belief."
+          },
+          "include_superseded": {
+            "type": "boolean",
+            "title": "Include Superseded",
+            "description": "Opt retired facts back into the candidate set (issue #335). Off by default: a superseded fact is not current and must not surface in an ordinary read. Set true to audit what was replaced.",
+            "default": false
           }
         },
         "type": "object",

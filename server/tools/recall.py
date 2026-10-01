@@ -16,6 +16,8 @@ def register(mcp: FastMCP, engine: MemoryEngine) -> None:
         project: str = "",
         min_importance: float = 0.0,
         explain: bool = False,
+        as_of: str = "",
+        include_superseded: bool = False,
     ) -> str:
         """Recall relevant memories ranked by H(x,ψ) relevance score.
 
@@ -29,6 +31,11 @@ def register(mcp: FastMCP, engine: MemoryEngine) -> None:
                 it, where the candidate came from, and the four penalties.
                 Use when a memory you expected did not surface, or surfaced
                 low, and you need to know why.
+            as_of: Point-in-time read — an ISO-8601 instant; returns what the
+                store believed then, including facts retired since. Read-only.
+                Use to answer "what did we think before X changed".
+            include_superseded: Opt retired facts back in, so you can see what
+                a current fact replaced. Off by default.
         """
         result = await engine.recall(
             query=query,
@@ -37,6 +44,8 @@ def register(mcp: FastMCP, engine: MemoryEngine) -> None:
             project=project or None,
             min_importance=min_importance,
             explain=explain,
+            as_of=as_of or None,
+            include_superseded=include_superseded,
         )
 
         if not result.memories:

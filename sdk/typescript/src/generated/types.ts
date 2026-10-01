@@ -810,6 +810,9 @@ export type Memory = {
   decay_factor?: number;
   stability_hours?: number;
   recall_count?: number;
+  valid_from?: string | null;
+  valid_to?: string | null;
+  superseded_by?: string | null;
 };
 
 export type MemoryDeleteResponse = {
@@ -835,6 +838,9 @@ export type MemoryOut = {
   decay_factor?: number;
   stability_hours?: number;
   recall_count?: number;
+  valid_from?: string | null;
+  valid_to?: string | null;
+  superseded_by?: string | null;
   attachments?: AttachmentOut[];
 };
 
@@ -989,6 +995,8 @@ export type RecallRequest = {
   min_importance?: number;
   explain?: boolean;
   reinforce?: boolean;
+  as_of?: string | null;
+  include_superseded?: boolean;
 };
 
 export type RecallResponse = {

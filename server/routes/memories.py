@@ -214,6 +214,8 @@ async def recall_memories(req: RecallRequest, engine=Depends(get_engine)):
         # what everyone else sees.
         reinforce=False if public_demo() else req.reinforce,
         explain=req.explain,
+        as_of=req.as_of,
+        include_superseded=req.include_superseded,
     )
     attachments_by_memory = await engine.db.list_attachments_for_memories(
         [m.id for m in result.memories]

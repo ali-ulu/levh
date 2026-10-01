@@ -35,7 +35,7 @@ def default_db_path() -> str:
     return os.path.abspath(get_env("SQLITE_DB_PATH", DEFAULT_DB_FILENAME))
 
 
-CURRENT_SCHEMA_VERSION = 2
+CURRENT_SCHEMA_VERSION = 3
 
 
 _TABLES = """
@@ -57,7 +57,17 @@ CREATE TABLE IF NOT EXISTS memories (
     accessed_at TEXT NOT NULL,
     decay_factor REAL DEFAULT 1.0,
     stability_hours REAL DEFAULT 168.0,
-    recall_count INTEGER DEFAULT 0
+    recall_count INTEGER DEFAULT 0,
+    -- Bi-temporal validity (issue #335). ``created_at``/``accessed_at`` are
+    -- *system* time (when this row was written and read); these two are
+    -- *world* time — the interval over which the fact was believed true.
+    -- ``valid_from`` is set at write; ``valid_to`` is set when a newer,
+    -- near-identical memory supersedes this one. A NULL ``valid_to`` means
+    -- "still current". Retirement is a belief revision, not forgetting: the
+    -- row stays, stays auditable, and is reachable through an ``as_of`` read.
+    valid_from  TEXT,
+    valid_to    TEXT,
+    superseded_by TEXT
 );
 
 CREATE TABLE IF NOT EXISTS sessions (
@@ -346,6 +356,8 @@ CREATE INDEX IF NOT EXISTS idx_mem_project ON memories(project);
 CREATE INDEX IF NOT EXISTS idx_mem_source  ON memories(source);
 -- Matches the default list/search ordering (pinned DESC, created_at DESC).
 CREATE INDEX IF NOT EXISTS idx_mem_pinned_created ON memories(pinned, created_at);
+-- Point-in-time reads and the "what is still current" filter (valid_to IS NULL).
+CREATE INDEX IF NOT EXISTS idx_mem_validity ON memories(valid_to, valid_from);
 CREATE INDEX IF NOT EXISTS idx_ses_status  ON sessions(status);
 CREATE INDEX IF NOT EXISTS idx_ent_type     ON entities(type);
 CREATE INDEX IF NOT EXISTS idx_me_entity     ON memory_entities(entity_id);
@@ -371,6 +383,12 @@ _MIGRATIONS: list[tuple[str, str]] = [
     ("pinned", "ALTER TABLE memories ADD COLUMN pinned INTEGER DEFAULT 0"),
     ("stability_hours", "ALTER TABLE memories ADD COLUMN stability_hours REAL DEFAULT 168.0"),
     ("recall_count", "ALTER TABLE memories ADD COLUMN recall_count INTEGER DEFAULT 0"),
+    # Bi-temporal validity (#335). Additive and nullable, so an existing store
+    # keeps every row and simply reports NULL validity until the backfill
+    # below runs.
+    ("valid_from", "ALTER TABLE memories ADD COLUMN valid_from TEXT"),
+    ("valid_to", "ALTER TABLE memories ADD COLUMN valid_to TEXT"),
+    ("superseded_by", "ALTER TABLE memories ADD COLUMN superseded_by TEXT"),
 ]
 
 

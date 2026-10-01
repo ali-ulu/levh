@@ -55,11 +55,13 @@ class MemoryQueries:
             INSERT OR REPLACE INTO memories
                 (id, content, memory_type, embedding, importance, frequency,
                  tags, session_id, project, source, pinned, metadata, hscore,
-                 created_at, accessed_at, decay_factor, stability_hours, recall_count)
+                 created_at, accessed_at, decay_factor, stability_hours, recall_count,
+                 valid_from, valid_to, superseded_by)
             VALUES
                 (:id, :content, :memory_type, :embedding, :importance, :frequency,
                  :tags, :session_id, :project, :source, :pinned, :metadata, :hscore,
-                 :created_at, :accessed_at, :decay_factor, :stability_hours, :recall_count)
+                 :created_at, :accessed_at, :decay_factor, :stability_hours, :recall_count,
+                 :valid_from, :valid_to, :superseded_by)
             """,
             {
                 **memory,
@@ -67,6 +69,11 @@ class MemoryQueries:
                 "tags": json.dumps(memory.get("tags", [])),
                 "metadata": json.dumps(memory.get("metadata", {})),
                 "pinned": 1 if memory.get("pinned") else 0,
+                # A fresh write is current as of its own creation unless the
+                # caller states otherwise — the world-time clock starts here.
+                "valid_from": memory.get("valid_from") or memory.get("created_at"),
+                "valid_to": memory.get("valid_to"),
+                "superseded_by": memory.get("superseded_by"),
             },
         )
         await self._db.commit()
@@ -96,6 +103,8 @@ class MemoryQueries:
         min_importance: Optional[float] = None,
         content_like: Optional[str] = None,
         include_global: bool = False,
+        as_of: Optional[str] = None,
+        include_superseded: bool = False,
         limit: int = 50,
         offset: int = 0,
     ) -> list[dict]:
@@ -147,6 +156,26 @@ class MemoryQueries:
             else:
                 query += " AND memories.content LIKE ?"
                 params.append(f"%{content_like}%")
+
+        # Bi-temporal filter (#335). A retired fact stays in the store and
+        # stays auditable, but it is not *current*, so it must not surface in
+        # an ordinary read. The filter runs in SQL, before LIMIT, for the same
+        # reason ``include_global`` does: a retired row that is filtered in
+        # Python still consumed a slot the page would have given a live one.
+        #
+        # ``as_of`` asks a different question — "what did the store believe on
+        # date D" — so it selects the rows whose validity interval *contains*
+        # D, retired or not. A row with a NULL ``valid_from`` (never
+        # backfilled) is treated as valid from the beginning of time so it is
+        # never silently hidden from a point-in-time read.
+        if as_of:
+            query += (
+                " AND (memories.valid_from IS NULL OR memories.valid_from <= ?)"
+                " AND (memories.valid_to IS NULL OR memories.valid_to > ?)"
+            )
+            params.extend([as_of, as_of])
+        elif not include_superseded:
+            query += " AND memories.valid_to IS NULL"
 
         if use_fts:
             query += (
@@ -296,6 +325,15 @@ class MemoryQueries:
                 await self._db.conn.execute(
                     "UPDATE memories SET metadata = json_remove(metadata, '$.superseded_by', '$.superseded_at') "
                     "WHERE json_extract(metadata, '$.superseded_by') = ?",
+                    (memory_id,),
+                )
+                # The bi-temporal columns mirror the metadata pointer (#335),
+                # so deleting a replacement has to reopen its predecessor's
+                # validity window — otherwise the fact would stay retired in
+                # every ordinary read even though nothing replaced it now.
+                await self._db.conn.execute(
+                    "UPDATE memories SET superseded_by = NULL, valid_to = NULL "
+                    "WHERE superseded_by = ?",
                     (memory_id,),
                 )
             except sqlite3.OperationalError:
