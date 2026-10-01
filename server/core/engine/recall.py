@@ -24,6 +24,7 @@ from ..types import (
     RecallDiagnosis,
     RecallResult,
     ScoreBreakdown,
+    normalize_as_of,
 )
 
 logger = logging.getLogger("levh.recall_log")
@@ -178,6 +179,10 @@ class MemoryRecallMixin:
         not; it is the auditable-history read and is therefore also read-only
         (a point-in-time question must not reinforce a current belief).
         """
+        # Canonicalise once at the boundary so the predicate and every
+        # downstream comparison see the same UTC-normalized shape. A malformed
+        # value raises here rather than silently degrading to a current read.
+        as_of = normalize_as_of(as_of)
         await self._sync_with_external_writes()
         query_embedding = await self.embedder.embed(query)
         # The hash embedder's cosine is positional, not semantic (see
@@ -599,7 +604,7 @@ class MemoryRecallMixin:
             pinned=pinned,
             min_importance=min_importance,
             content_like=content_like,
-            as_of=as_of,
+            as_of=normalize_as_of(as_of),
             include_superseded=include_superseded,
             limit=limit,
             offset=offset,

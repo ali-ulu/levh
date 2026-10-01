@@ -373,21 +373,26 @@ class MemoryWriteMixin:
 
         ``delete_memory_cascade`` clears it in SQLite, but recall ranks the
         vector store's cached ``Memory`` objects, so a cached predecessor would
-        stay demoted until the next process restart (#78).
+        stay demoted until the next process restart (#78). The temporal fields
+        (#335) need the same treatment: recall's validity predicate reads the
+        cached copy, so a predecessor left with ``valid_to`` set would stay
+        retired even though nothing replaced it any more.
         """
+
+        def _clear(memory: Memory) -> None:
+            metadata = getattr(memory, "metadata", None)
+            if metadata and metadata.get("superseded_by") == replacement_id:
+                memory.metadata = dict(metadata)
+                memory.metadata.pop("superseded_by", None)
+                memory.metadata.pop("superseded_at", None)
+            if getattr(memory, "superseded_by", None) == replacement_id:
+                memory.superseded_by = None
+                memory.valid_to = None
+
         for memory in self.vector_store.memories():
-            metadata = getattr(memory, "metadata", None)
-            if metadata and metadata.get("superseded_by") == replacement_id:
-                memory.metadata = dict(metadata)
-                memory.metadata.pop("superseded_by", None)
-                memory.metadata.pop("superseded_at", None)
-        st = self.short_term.get_all()
-        for memory in st:
-            metadata = getattr(memory, "metadata", None)
-            if metadata and metadata.get("superseded_by") == replacement_id:
-                memory.metadata = dict(metadata)
-                memory.metadata.pop("superseded_by", None)
-                memory.metadata.pop("superseded_at", None)
+            _clear(memory)
+        for memory in self.short_term.get_all():
+            _clear(memory)
 
     def _refresh_memory_caches(self, memory: Memory) -> None:
         """Keep the in-memory layers in sync with a memory that was just

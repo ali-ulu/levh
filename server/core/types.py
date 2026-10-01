@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 # Tag carried by every rule the mistake guard records. It lives here rather
 # than in `guard.py` because both the guard and the context-file builder in
@@ -16,6 +16,46 @@ from pydantic import BaseModel, Field
 RULE_TAG = "levh-rule"
 DECISION_TAG = "levh-decision"
 BLOCKER_TAG = "levh-blocker"
+
+
+def parse_iso(value: str | None) -> datetime | None:
+    """Parse an ISO-8601 timestamp to an aware UTC datetime, or ``None``.
+
+    Accepts the ``Z`` suffix, treats a naive value as UTC, and converts any
+    offset to UTC — so a caller can pass any well-formed instant and get a
+    comparable one back. Raises ``ValueError`` on a malformed value.
+    """
+    if not value:
+        return None
+    text = value.strip()
+    if not text:
+        return None
+    if text.endswith(("Z", "z")):
+        text = text[:-1] + "+00:00"
+    parsed = datetime.fromisoformat(text)
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
+def normalize_as_of(value: str | None) -> str | None:
+    """Canonicalise a point-in-time read parameter (#335).
+
+    Returns fixed-precision UTC ISO-8601 so every temporal comparison sees the
+    same shape regardless of what offset or precision the caller used, or
+    ``None`` for an absent/empty value. A malformed value raises ``ValueError``
+    so the caller rejects it instead of silently falling back to the current
+    view — "I asked about the past and got today" is the one answer a
+    point-in-time read must never give by accident.
+    """
+    parsed = parse_iso(value)
+    if parsed is None:
+        return None
+    # ``isoformat()`` rather than an explicit strftime format: it is exactly
+    # what the writers use for ``created_at``/``valid_from``/``valid_to``
+    # (``datetime.now(timezone.utc).isoformat()``), so the string comparison
+    # in the SQL and predicate paths stays consistent on both sides.
+    return parsed.isoformat()
 
 
 # `Enum.__str__`/`__format__` print "ClassName.MEMBER" even for a `(str, Enum)`
@@ -176,6 +216,13 @@ class RecallRequest(BaseModel):
             "in an ordinary read. Set true to audit what was replaced."
         ),
     )
+
+    @field_validator("as_of")
+    @classmethod
+    def _normalize_as_of(cls, value: Optional[str]) -> Optional[str]:
+        # Canonicalise at the request boundary so a malformed instant is a
+        # 422 the caller sees, not a silent fallback to the current view.
+        return normalize_as_of(value)
 
 
 class ScoreBreakdown(BaseModel):

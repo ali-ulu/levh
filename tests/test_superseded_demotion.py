@@ -323,3 +323,43 @@ async def test_valid_from_is_set_on_write(engine):
     stored = await engine.get_memory(mem.id)
     assert stored.valid_from == mem.created_at
 
+
+@pytest.mark.asyncio
+async def test_deleting_replacement_reopens_the_cached_predecessor(engine):
+    """The SQLite column and the cached copy must agree (#335 review).
+
+    recall's validity predicate reads the vector store's cached ``Memory``, so
+    clearing ``valid_to`` only in SQLite would leave the predecessor retired
+    in-process until a restart.
+    """
+    old, new = await _supersede(engine)
+    cached = engine.vector_store.get(old.id)
+    assert cached is not None and cached.valid_to is not None
+
+    assert await engine.forget(new.id) is True
+
+    cached = engine.vector_store.get(old.id)
+    assert cached.valid_to is None
+    assert cached.superseded_by is None
+
+
+@pytest.mark.asyncio
+async def test_malformed_as_of_is_rejected(engine):
+    """A bad instant must not silently fall back to the current view: the
+    caller asked about the past, and "here is today" is the wrong answer."""
+    with pytest.raises(ValueError):
+        await engine.recall(QUESTION, top_k=5, as_of="not-a-date")
+
+
+@pytest.mark.asyncio
+async def test_as_of_accepts_offsets_and_z_suffix(engine):
+    """Any well-formed instant is accepted and normalised to UTC."""
+    old, _new = await _supersede(engine)
+    valid_from = (await engine.get_memory(old.id)).valid_from
+
+    # The same instant written with a Z suffix and with an explicit offset.
+    z_form = valid_from.replace("+00:00", "Z")
+    for candidate in (valid_from, z_form, "2020-01-01T00:00:00+03:00"):
+        result = await engine.recall(QUESTION, top_k=5, reinforce=False, as_of=candidate)
+        assert isinstance(result.memories, list)
+

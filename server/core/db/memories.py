@@ -327,21 +327,23 @@ class MemoryQueries:
                     "WHERE json_extract(metadata, '$.superseded_by') = ?",
                     (memory_id,),
                 )
-                # The bi-temporal columns mirror the metadata pointer (#335),
-                # so deleting a replacement has to reopen its predecessor's
-                # validity window — otherwise the fact would stay retired in
-                # every ordinary read even though nothing replaced it now.
-                await self._db.conn.execute(
-                    "UPDATE memories SET superseded_by = NULL, valid_to = NULL "
-                    "WHERE superseded_by = ?",
-                    (memory_id,),
-                )
             except sqlite3.OperationalError:
                 logger.warning(
                     "supersession pointer cleanup skipped while deleting %s: "
                     "JSON functions unavailable",
                     memory_id,
                 )
+            # The bi-temporal columns mirror the metadata pointer (#335), so
+            # deleting a replacement has to reopen its predecessor's validity
+            # window — otherwise the fact would stay retired in every ordinary
+            # read even though nothing replaced it now. This is a plain column
+            # UPDATE, not JSON, so it stays outside the fallback above: it must
+            # run even where the JSON functions are unavailable.
+            await self._db.conn.execute(
+                "UPDATE memories SET superseded_by = NULL, valid_to = NULL "
+                "WHERE superseded_by = ?",
+                (memory_id,),
+            )
             await self._db.conn.execute(
                 "DELETE FROM entities WHERE id NOT IN "
                 "(SELECT DISTINCT entity_id FROM memory_entities)"
