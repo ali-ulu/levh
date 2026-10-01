@@ -160,3 +160,114 @@ async def test_an_empty_store_reports_an_empty_log(engine):
     assert report["recalls"] == 0
     assert report["log_total"] == 0
     assert report["results"]["precision_at_k"] == 0.0
+
+
+# ── the command itself ───────────────────────────────────────────────
+#
+# The rendering is a thin layer, but it is where "empty is not zero" becomes
+# user-visible and where --output/--json decide what an operator can diff
+# between two runs. The command opens the store through ``engine_provider``,
+# so these seed the pinned store from ``conftest`` and let the command find it
+# the same way a user's CLI would.
+
+
+def _seed_pinned_store(recall: bool, extra_recalls: int = 0) -> None:
+    """Write into the store ``conftest`` pinned for this test, then let the
+    command open it independently."""
+    import asyncio
+
+    path = os.environ["SQLITE_DB_PATH"]
+
+    async def _run() -> None:
+        eng = MemoryEngine(db_path=path, embedder_mode="hash")
+        await eng.initialize()
+        try:
+            await eng.store(content="The production deploy branch is prod, not main")
+            if recall:
+                await eng.recall("which branch do we deploy to production from", top_k=2)
+            for i in range(extra_recalls):
+                await eng.recall(f"an extra question {i}", top_k=2)
+        finally:
+            await eng.shutdown()
+
+    asyncio.run(_run())
+
+
+def _recall_report_args(argv: list[str]):
+    from server.cli_parsers import build_parser
+
+    parser, _ = build_parser("levh")
+    return parser.parse_args(argv)
+
+
+def test_the_command_reports_an_empty_log_as_empty(monkeypatch, capsys):
+    from server.commands.quality import cmd_recall_report
+
+    _seed_pinned_store(recall=False)
+
+    assert cmd_recall_report(_recall_report_args(["recall-report"])) == 0
+    out = capsys.readouterr().out
+    assert "No recalls logged" in out
+    assert "precision@k" not in out
+
+
+def test_the_command_renders_the_human_table(monkeypatch, capsys):
+    from server.commands.quality import cmd_recall_report
+
+    monkeypatch.setenv("LEVH_RECALL_LOG", "1")
+    _seed_pinned_store(recall=True)
+
+    assert cmd_recall_report(_recall_report_args(["recall-report"])) == 0
+    out = capsys.readouterr().out
+    assert "precision@k" in out
+    assert "hit rate" in out
+    assert "recalls" in out
+
+
+def test_the_command_prints_json_and_writes_it(monkeypatch, capsys, tmp_path):
+    from server.commands.quality import cmd_recall_report
+
+    monkeypatch.setenv("LEVH_RECALL_LOG", "1")
+    _seed_pinned_store(recall=True)
+
+    target = tmp_path / "recall.json"
+    args = _recall_report_args(["recall-report", "--json", "-o", str(target)])
+    assert cmd_recall_report(args) == 0
+
+    out = capsys.readouterr().out
+    assert "report →" in out
+    assert '"report_version"' in out
+    assert '"precision_at_k"' in out
+    written = target.read_text(encoding="utf-8")
+    assert '"recall-quality-v1"' in written
+    assert '"precision_at_k"' in written
+
+
+def test_the_subcommand_is_wired_through_main(monkeypatch, capsys):
+    """Typing ``levh recall-report`` must reach the command, not just exist in
+    the parser — the dispatch chain is the part a user actually touches."""
+    import sys
+
+    import server.cli as cli
+
+    monkeypatch.setenv("LEVH_RECALL_LOG", "1")
+    _seed_pinned_store(recall=True)
+    monkeypatch.setattr(sys, "argv", ["levh", "recall-report"])
+
+    assert cli.main() == 0
+    assert "recall quality" in capsys.readouterr().out
+
+
+def test_a_truncated_window_is_flagged(monkeypatch, capsys):
+    """A log longer than the window must say so; otherwise a slice reads as
+    the whole store's quality."""
+    from server.commands.quality import cmd_recall_report
+
+    monkeypatch.setenv("LEVH_RECALL_LOG", "1")
+    _seed_pinned_store(recall=True, extra_recalls=2)
+
+    assert cmd_recall_report(_recall_report_args(["recall-report", "--limit", "1"])) == 0
+    out = capsys.readouterr().out
+    assert "NOTE:" in out
+    assert "rows on disk" in out
+
