@@ -300,3 +300,40 @@ async def test_strict_project_scope_can_exclude_global_rules(guard):
 
     assert rules == []
 
+
+@pytest.mark.asyncio
+async def test_unrelated_pinned_memories_cannot_starve_the_global_rule(guard):
+    """The scope filter has to run before the query's LIMIT.
+
+    ``search_memories`` returns a page of at most ``limit`` rows, and the guard
+    only keeps the ones carrying ``RULE_TAG``. If the global merge were applied
+    to that page in Python instead of in the query, a flood of pinned memories
+    from other projects — which are not rules — would fill the page and the one
+    global rule that applies would never reach ``check_action``, which would
+    then return ``allow`` for a mistake recorded everywhere.
+
+    Pinned rows sort first, so without SQL-level scoping these 200 crowd the
+    global rule out of every page the default limit can afford.
+    """
+    await _record(
+        guard,
+        task="push the release branch",
+        wrong_action="used git push --force origin main",
+        project=None,
+    )
+    for i in range(200):
+        await guard.engine.store(
+            f"pinned note from another project {i}",
+            memory_type="episodic",
+            project="other-project",
+            pinned=True,
+            importance=0.9,
+        )
+
+    verdict = await guard.check_action(
+        "Bash", "git push --force origin main", project="levh"
+    )
+
+    assert verdict["decision"] == "warn"
+    assert verdict["checked_rules"] == 1
+

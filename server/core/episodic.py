@@ -74,6 +74,7 @@ class EpisodicMemory:
         pinned: bool | None = None,
         min_importance: float | None = None,
         content_like: str | None = None,
+        include_global: bool = False,
         limit: int = 50,
         offset: int = 0,
     ) -> list[Memory]:
@@ -86,6 +87,7 @@ class EpisodicMemory:
             pinned=pinned,
             min_importance=min_importance,
             content_like=content_like,
+            include_global=include_global,
             limit=limit,
             offset=offset,
         )

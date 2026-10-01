@@ -9,10 +9,16 @@
   project was invisible to a project-scoped `check_action`, and the gate could
   return `allow` for the one mistake that applies everywhere. A global rule is
   the most general kind, not the least.
-- `list_rules` now merges the global rules into a project-scoped list, with
-  `include_global=False` for a strict single-project view. Exact project
-  filtering is untouched for every other memory search; the merge lives in the
-  guard, where the scoping decision is made.
+- The merge is done **in the query**, not on the results. `search_memories` now
+  takes `include_global` and widens `project = ?` to
+  `(project = ? OR project IS NULL)` inside the same `WHERE`; `episodic.search`
+  forwards it; `list_rules` sets it. Filtering a fetched page in Python would
+  have been wrong: the query applies a `LIMIT`, so a page of pinned memories
+  from other projects — none of which carry `RULE_TAG` — would have filled it
+  and the applicable global rule would never have reached `check_action`.
+- The flag defaults to `False`, so exact project filtering is untouched for
+  every other memory search; the guard is the one caller that opts in.
+  `include_global=False` still gives a strict single-project view.
 
 ### Feature: pre-action judgment gate — check a proposed action against recorded rules (#337)
 

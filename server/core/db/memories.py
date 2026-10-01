@@ -95,6 +95,7 @@ class MemoryQueries:
         pinned: Optional[bool] = None,
         min_importance: Optional[float] = None,
         content_like: Optional[str] = None,
+        include_global: bool = False,
         limit: int = 50,
         offset: int = 0,
     ) -> list[dict]:
@@ -115,7 +116,17 @@ class MemoryQueries:
             query += " AND memories.session_id = ?"
             params.append(session_id)
         if project:
-            query += " AND memories.project = ?"
+            # ``include_global`` folds in the rows recorded without a project.
+            # The widening has to happen *in* the query, not after it: the
+            # caller applies LIMIT here, so filtering a truncated page in
+            # Python would let unrelated pinned rows crowd out the global rule
+            # that actually applies. Off by default — every other caller wants
+            # exact project matching, and the guard is the one caller that does
+            # not.
+            if include_global:
+                query += " AND (memories.project = ? OR memories.project IS NULL)"
+            else:
+                query += " AND memories.project = ?"
             params.append(project)
         if source:
             query += " AND memories.source = ?"

@@ -163,28 +163,30 @@ class GuardService:
         caller — and a global rule is the *most* general kind, not the least.
         A mistake like force-pushing to ``main`` must warn everywhere.
 
+        The merge is pushed into the query (``include_global``) rather than
+        applied to the results, because the query applies a ``LIMIT``: a page
+        fetched first and filtered in Python can be filled entirely by pinned
+        memories that are not rules at all, and the global rule that applies
+        would never reach ``check_action``. A memory is a rule only when it
+        carries ``RULE_TAG``, which is a Python-side test, so the SQL filter
+        still admits non-rules — the ``limit * 4`` headroom is what covers
+        them, and the scoping above is what keeps the headroom from being spent
+        on other projects.
+
         Pass ``include_global=False`` for a strict single-project view. Exact
         project filtering is untouched for every other memory search; the merge
         lives here, in the guard.
         """
         pinned = await self.engine.episodic.search(
-            # A global rule is only reachable by asking for no project filter at
-            # all — ``project=None`` means "any project", and the null ones are
-            # then kept by the predicate below.
-            project=None if (project and include_global) else project,
+            project=project,
+            # The global rules are folded into the query itself, before its
+            # LIMIT, so unrelated pinned rows in other projects cannot crowd
+            # out the global rule that actually applies.
+            include_global=project is not None and include_global,
             pinned=True,
             limit=max(limit * 4, 100),
         )
-        rules = [
-            m
-            for m in pinned
-            if RULE_TAG in (m.tags or [])
-            and (
-                project is None
-                or not include_global
-                or m.project in (project, None)
-            )
-        ]
+        rules = [m for m in pinned if RULE_TAG in (m.tags or [])]
         rules.sort(key=lambda m: (m.importance, m.created_at), reverse=True)
         return rules[:limit]
 
