@@ -126,3 +126,57 @@ async def test_an_unknown_severity_filter_is_reported(engine):
 
     text = await _call(mcp, "list_mistakes", {"severity": "spicy"})
     assert "Unknown severity" in text
+
+
+# ── check_action — the pre-action gate (#337) ─────────────────────────
+
+
+def test_the_gate_tool_is_available_during_ordinary_work():
+    """The gate runs in front of a tool call, so it must be visible in the
+    default profile — an admin-only gate is consulted too late."""
+    assert TOOL_TIERS["check_action"] == "work"
+    assert "check_action" in tools_for_profile("work")
+
+
+@pytest.mark.asyncio
+async def test_gate_tool_registers(engine):
+    mcp = FastMCP("test")
+    register_all_tools(mcp, engine, profile="full")
+
+    assert "check_action" in {t.name for t in await mcp.list_tools()}
+
+
+@pytest.mark.asyncio
+async def test_gate_tool_warns_and_explains(engine):
+    mcp = FastMCP("test")
+    register_all_tools(mcp, engine, profile="full")
+    await _call(
+        mcp,
+        "record_mistake",
+        {
+            "task": "commit the README",
+            "wrong_action": "used git commit --no-verify",
+            "correct_action": "let the hooks run",
+        },
+    )
+
+    text = await _call(
+        mcp, "check_action", {"action_text": "git commit --no-verify -m wip"}
+    )
+
+    assert text.startswith("warn")
+    assert "Do not used git commit --no-verify" in text
+    # The advisory stance must reach the model, or it reads as a refusal.
+    assert "not a permission check" in text
+
+
+@pytest.mark.asyncio
+async def test_gate_tool_allows_and_says_it_looked(engine):
+    mcp = FastMCP("test")
+    register_all_tools(mcp, engine, profile="full")
+
+    text = await _call(mcp, "check_action", {"action_text": "pytest -q"})
+
+    assert text.startswith("allow")
+    assert "no rules recorded" in text
+

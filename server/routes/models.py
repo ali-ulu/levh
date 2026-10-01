@@ -875,6 +875,44 @@ class MeetingPrepResponse(BaseModel):
 # ── Response models: guard ────────────────────────────────────────────
 
 
+class CheckActionRequest(BaseModel):
+    """``POST /api/guard/check`` - a proposed action, before it runs."""
+
+    tool_name: str = Field(
+        default="",
+        description="Tool the action would run through ('Bash', 'Write', ...).",
+    )
+    action_text: str = Field(
+        description="What the action would do - the command, the edit, the call."
+    )
+    project: str = Field(
+        default="",
+        description="Scope the rules to one project. Empty = every project.",
+    )
+
+
+class GuardRuleMatch(BaseModel):
+    """One recorded rule a proposed action overlaps."""
+
+    rule_id: Optional[str] = None
+    statement: str
+    severity: str
+    score: float
+    matched_terms: list[str] = Field(default_factory=list)
+
+
+class GuardCheckResponse(BaseModel):
+    """The advisory verdict. ``decision`` is ``warn`` or ``allow`` - never
+    ``block``: the gate reports, the caller decides."""
+
+    decision: str
+    matched_rules: list[GuardRuleMatch] = Field(default_factory=list)
+    reason: str
+    checked_rules: int
+    tool_name: str = ""
+    project: Optional[str] = None
+
+
 class GuardViolationOut(BaseModel):
     """A ``violations`` row - one recorded mistake."""
 

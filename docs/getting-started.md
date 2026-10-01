@@ -47,7 +47,7 @@ recommended next action.
 
 ## MCP profiles
 
-Generated configs default to `work` rather than advertising all 73 tools.
+Generated configs default to `work` rather than advertising all 74 tools.
 
 ```bash
 levh setup --real --client cursor --profile minimal

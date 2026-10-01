@@ -11,6 +11,14 @@ a *proposed* action violates a rule is a different problem — it runs on the ho
 path in front of every tool call, so it needs a latency budget and a
 false-positive story that recorded data can inform but this layer cannot
 assume.
+
+That line was drawn in an earlier release; :meth:`GuardService.check_action`
+is the first thing to cross it, and it does so on the terms the paragraph
+above set. The matching itself lives in :mod:`server.core.action_gate` as a
+pure function — no model, no network — and the verdict it returns is
+*advisory*: ``warn`` or ``allow``, never ``block``. Whether a warning is an
+instruction stays the caller's policy, so this layer still does not decide
+what an agent is permitted to do.
 """
 
 from __future__ import annotations
@@ -18,6 +26,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timedelta, timezone
 
+from . import action_gate
 from .database import Database
 from .memory_engine import MemoryEngine
 from .types import RULE_TAG, Memory
@@ -147,3 +156,43 @@ class GuardService:
         rules = [m for m in pinned if RULE_TAG in (m.tags or [])]
         rules.sort(key=lambda m: (m.importance, m.created_at), reverse=True)
         return rules[:limit]
+
+    async def check_action(
+        self,
+        tool_name: str,
+        action_text: str,
+        project: str | None = None,
+        limit: int = 200,
+    ) -> dict:
+        """Judge a *proposed* action against the rules on record.
+
+        Read-only: it touches no counter, no decay clock and no violation row.
+        A gate that mutates the store would make the act of asking a question
+        change the answer, and it would run on every tool call.
+
+        ``project`` scopes the rules the same way :meth:`list_rules` does. A
+        rule recorded against one project still warns for another — a mistake
+        about force-pushing to ``main`` is not project-specific — but scoping
+        lets a caller narrow the gate when it wants to.
+
+        The verdict is advisory (see :mod:`server.core.action_gate`): ``warn``
+        when a rule overlaps the action, ``allow`` otherwise. Never ``block``.
+        """
+        rules = await self.list_rules(project=project, limit=limit)
+        verdict = action_gate.check_action(
+            tool_name,
+            action_text,
+            (
+                {
+                    "id": m.id,
+                    "statement": m.content,
+                    "task": (m.metadata or {}).get("task", ""),
+                    "wrong_action": (m.metadata or {}).get("wrong_action", ""),
+                    "severity": (m.metadata or {}).get("severity", DEFAULT_SEVERITY),
+                }
+                for m in rules
+            ),
+        )
+        verdict["tool_name"] = tool_name
+        verdict["project"] = project
+        return verdict

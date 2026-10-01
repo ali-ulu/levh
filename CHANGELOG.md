@@ -2,6 +2,34 @@
 
 ## Unreleased
 
+### Feature: pre-action judgment gate — check a proposed action against recorded rules (#337)
+
+- `guard.py` recorded a corrected mistake as a pinned rule plus a violation row,
+  and its docstring drew an explicit line: deciding whether a *proposed* action
+  violates a rule is a different problem, needing a latency budget and a
+  false-positive story. `check_action` is the first thing to cross that line,
+  on the terms the docstring set.
+- The matcher is **deterministic and model-free** — the same lexical,
+  stem-aware overlap `lexical.py` and `conflict.py` already use. No network, no
+  LLM, nothing on the hot path that can fail closed. It lives in
+  `server/core/action_gate.py` as a pure function, so the decision is testable
+  without a database.
+- The verdict is **advisory**: `warn` or `allow`, never `block`. A warning says
+  "this overlaps something you got wrong before"; whether that is an
+  instruction stays the caller's policy, so the gate does not become a
+  permission system.
+- Matching is narrow on purpose. A rule's `wrong_action` and its `task` are
+  scored **separately** and the stronger wins, so a terse sharp rule is not
+  diluted by a verbose task; a match needs at least two shared content words
+  and 60% coverage of one description. An unrelated action is silent, which is
+  the property that keeps the one warning that matters from being dismissed
+  with the rest.
+- Read-only: it touches no counter, decay clock or violation row, so asking a
+  question cannot change the answer it reads.
+- Surfaces: `POST /api/guard/check`, the `check_action` MCP tool (in the
+  `work` profile — a gate consulted only in admin sessions is consulted too
+  late), and `GuardService.check_action`.
+
 ### Feature: recall quality from the store's own recall log (#336)
 
 - `recall_log` has recorded every recall's ranked result ids since it landed,

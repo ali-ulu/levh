@@ -60,6 +60,10 @@ TOOL_TIERS: dict[str, str] = {
     # during ordinary work — hence "work" rather than "admin". Reading the log
     # back is a review activity, so it sits one tier up.
     "record_mistake": "work",
+    # The gate runs in front of a tool call, so it has to be available during
+    # ordinary work too; a rule that can only be consulted in an admin session
+    # is consulted too late.
+    "check_action": "work",
     # ── admin: maintenance / management ──────────────────────────────
     "unpin_memory": "admin",
     "update_memory": "admin",

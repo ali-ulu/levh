@@ -13,6 +13,8 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from server.routes.deps import get_engine
 from server.routes.models import (
+    CheckActionRequest,
+    GuardCheckResponse,
     GuardMistakeResponse,
     GuardRuleListResponse,
     GuardViolationListResponse,
@@ -66,6 +68,25 @@ async def list_guard_rules(
             for r in rules
         ]
     }
+
+
+@router.post("/api/guard/check", response_model=GuardCheckResponse)
+async def check_guard_action(
+    req: CheckActionRequest,
+    engine: "MemoryEngine" = Depends(get_engine),
+):
+    """Judge a proposed action against the recorded rules, before it runs.
+
+    Read-only and advisory: returns ``warn`` when a recorded rule overlaps the
+    action and ``allow`` otherwise. It never returns ``block`` — the caller
+    decides whether a warning is an instruction.
+    """
+    guard = _get_guard(engine)
+    return await guard.check_action(
+        tool_name=req.tool_name,
+        action_text=req.action_text,
+        project=req.project or None,
+    )
 
 
 @router.post("/api/guard/mistakes", response_model=GuardMistakeResponse)

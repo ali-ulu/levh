@@ -94,6 +94,7 @@ follow_imports = "silent"
 files = [
     "server/configs.py",
     "server/scaffold.py",
+    "server/core/action_gate.py",
     "server/core/agent_identity.py",
     "server/core/answerer.py",
     "server/core/attachment_store.py",

@@ -223,6 +223,12 @@ export type BriefingResponse = {
   briefing: BriefingBody;
 };
 
+export type CheckActionRequest = {
+  tool_name?: string;
+  action_text: string;
+  project?: string;
+};
+
 export type CheckpointCreateResponse = {
   checkpoint_id: string;
   agent_name: string;
@@ -602,6 +608,15 @@ export type ForgettingCurveResponse = {
   curve?: Record<string, unknown>[];
 };
 
+export type GuardCheckResponse = {
+  decision: string;
+  matched_rules?: GuardRuleMatch[];
+  reason: string;
+  checked_rules: number;
+  tool_name?: string;
+  project?: string | null;
+};
+
 export type GuardMistakeResponse = {
   rule_id: string;
   violation_id: string;
@@ -613,6 +628,14 @@ export type GuardMistakeResponse = {
 
 export type GuardRuleListResponse = {
   rules?: GuardRuleOut[];
+};
+
+export type GuardRuleMatch = {
+  rule_id?: string | null;
+  statement: string;
+  severity: string;
+  score: number;
+  matched_terms?: string[];
 };
 
 export type GuardRuleOut = {

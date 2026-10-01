@@ -58,6 +58,7 @@ export const OPERATIONS = {
   "report_finding_api_findings_post_v1": { method: "POST", path: "/api/v1/findings", pathParams: [], query: [], body: "FindingReportRequest" },
   "delete_finding_api_findings__finding_id__delete_v1": { method: "DELETE", path: "/api/v1/findings/{finding_id}", pathParams: ["finding_id"], query: [], body: "never" },
   "decide_finding_api_findings__finding_id__decide_post_v1": { method: "POST", path: "/api/v1/findings/{finding_id}/decide", pathParams: ["finding_id"], query: [], body: "FindingDecisionRequest" },
+  "check_guard_action_api_guard_check_post_v1": { method: "POST", path: "/api/v1/guard/check", pathParams: [], query: [], body: "CheckActionRequest" },
   "record_guard_mistake_api_guard_mistakes_post_v1": { method: "POST", path: "/api/v1/guard/mistakes", pathParams: [], query: [], body: "MistakeRequest" },
   "list_guard_rules_api_guard_rules_get_v1": { method: "GET", path: "/api/v1/guard/rules", pathParams: [], query: [{ name: "project", required: false, type: "string" }, { name: "limit", required: false, type: "number" }], body: "never" },
   "list_guard_violations_api_guard_violations_get_v1": { method: "GET", path: "/api/v1/guard/violations", pathParams: [], query: [{ name: "days", required: false, type: "number" }, { name: "severity", required: false, type: "string" }, { name: "limit", required: false, type: "number" }], body: "never" },

@@ -3828,6 +3828,45 @@
         }
       }
     },
+    "/api/v1/guard/check": {
+      "post": {
+        "summary": "Check Guard Action",
+        "description": "Judge a proposed action against the recorded rules, before it runs.\n\nRead-only and advisory: returns ``warn`` when a recorded rule overlaps the\naction and ``allow`` otherwise. It never returns ``block`` \u2014 the caller\ndecides whether a warning is an instruction.",
+        "operationId": "check_guard_action_api_guard_check_post_v1",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CheckActionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GuardCheckResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/guard/mistakes": {
       "post": {
         "summary": "Record Guard Mistake",
@@ -5386,6 +5425,33 @@
         ],
         "title": "BriefingResponse",
         "description": "``GET /api/briefing`` - the deterministic daily briefing."
+      },
+      "CheckActionRequest": {
+        "properties": {
+          "tool_name": {
+            "type": "string",
+            "title": "Tool Name",
+            "description": "Tool the action would run through ('Bash', 'Write', ...).",
+            "default": ""
+          },
+          "action_text": {
+            "type": "string",
+            "title": "Action Text",
+            "description": "What the action would do - the command, the edit, the call."
+          },
+          "project": {
+            "type": "string",
+            "title": "Project",
+            "description": "Scope the rules to one project. Empty = every project.",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "action_text"
+        ],
+        "title": "CheckActionRequest",
+        "description": "``POST /api/guard/check`` - a proposed action, before it runs."
       },
       "CheckpointCreateResponse": {
         "properties": {
@@ -7231,6 +7297,53 @@
         "title": "ForgettingCurveResponse",
         "description": "``GET /api/memories/{id}/forgetting-curve``."
       },
+      "GuardCheckResponse": {
+        "properties": {
+          "decision": {
+            "type": "string",
+            "title": "Decision"
+          },
+          "matched_rules": {
+            "items": {
+              "$ref": "#/components/schemas/GuardRuleMatch"
+            },
+            "type": "array",
+            "title": "Matched Rules"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          },
+          "checked_rules": {
+            "type": "integer",
+            "title": "Checked Rules"
+          },
+          "tool_name": {
+            "type": "string",
+            "title": "Tool Name",
+            "default": ""
+          },
+          "project": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project"
+          }
+        },
+        "type": "object",
+        "required": [
+          "decision",
+          "reason",
+          "checked_rules"
+        ],
+        "title": "GuardCheckResponse",
+        "description": "The advisory verdict. ``decision`` is ``warn`` or ``allow`` - never\n``block``: the gate reports, the caller decides."
+      },
       "GuardMistakeResponse": {
         "properties": {
           "rule_id": {
@@ -7282,6 +7395,48 @@
         },
         "type": "object",
         "title": "GuardRuleListResponse"
+      },
+      "GuardRuleMatch": {
+        "properties": {
+          "rule_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rule Id"
+          },
+          "statement": {
+            "type": "string",
+            "title": "Statement"
+          },
+          "severity": {
+            "type": "string",
+            "title": "Severity"
+          },
+          "score": {
+            "type": "number",
+            "title": "Score"
+          },
+          "matched_terms": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Matched Terms"
+          }
+        },
+        "type": "object",
+        "required": [
+          "statement",
+          "severity",
+          "score"
+        ],
+        "title": "GuardRuleMatch",
+        "description": "One recorded rule a proposed action overlaps."
       },
       "GuardRuleOut": {
         "properties": {

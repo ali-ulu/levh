@@ -52,10 +52,12 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 1
 
-    # The contract is committed with CRLF line endings (a Windows checkout
-    # wrote it), so match that byte-for-byte — the freeze test compares parsed
-    # JSON, but keeping the file stable stops the diff from churning every line.
-    text = json.dumps(current, indent=2).replace("\n", "\r\n") + "\r\n"
+    # The contract is committed with LF endings. It was briefly CRLF (a Windows
+    # checkout wrote it) and this script kept emitting CRLF for it long after,
+    # which turned every regeneration into a whole-file diff and hid the real
+    # schema change. The freeze test compares parsed JSON, so match the tree's
+    # actual ending to keep the diff readable.
+    text = json.dumps(current, indent=2) + "\n"
     CONTRACT.write_bytes(text.encode("utf-8"))
     print(f"openapi.json regenerated ({len(current['paths'])} paths).")
     return 0

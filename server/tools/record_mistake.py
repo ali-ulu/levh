@@ -12,6 +12,57 @@ def register(mcp: FastMCP, engine: MemoryEngine) -> None:
     guard = GuardService(engine.db, engine)
 
     @mcp.tool()
+    async def check_action(
+        action_text: str,
+        tool_name: str = "",
+        project: str = "",
+    ) -> str:
+        """Check a proposed action against the rules learned from mistakes.
+
+        Call this BEFORE a risky tool call — a force push, a destructive
+        command, an edit to a file that has bitten you before. It matches the
+        action's own words against the ``wrong_action`` and task of every rule
+        the guard recorded, with no model and no network.
+
+        The verdict is ADVISORY: it returns "allow" or "warn". It never blocks
+        and it never decides for you — a warning means "this overlaps something
+        you got wrong before", which you then judge in context. An empty inbox
+        means nothing matched, not that the action is safe.
+
+        Args:
+            action_text: What the action would do — the command, the edit, the call.
+            tool_name: Tool it would run through ("Bash", "Write"), when known.
+            project: Scope to one project. Empty = rules from every project.
+        """
+        verdict = await guard.check_action(
+            tool_name=tool_name,
+            action_text=action_text,
+            project=project or None,
+        )
+
+        if verdict["decision"] == "allow":
+            return (
+                f"allow — {verdict['reason']} "
+                f"({verdict['checked_rules']} rule(s) checked)."
+            )
+
+        lines = [
+            f"warn — {verdict['reason']}.",
+            "",
+        ]
+        for match in verdict["matched_rules"]:
+            lines.append(
+                f"- [{match['severity']}] {match['statement']}"
+                f"\n    match {match['score']:.2f} on: {', '.join(match['matched_terms'])}"
+            )
+        lines.append("")
+        lines.append(
+            "This is a signal from your own history, not a permission check — "
+            "review the rule above and decide whether it applies here."
+        )
+        return "\n".join(lines)
+
+    @mcp.tool()
     async def record_mistake(
         task: str,
         wrong_action: str,

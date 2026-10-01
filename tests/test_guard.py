@@ -180,3 +180,69 @@ async def test_a_project_scoped_rule_stays_in_its_project(guard, engine):
 
     assert "Do not used git commit" in await engine.generate_context_file(project="levh")
     assert "Do not used git commit" not in await engine.generate_context_file(project="other")
+
+
+# ── Pre-action gate (#337) ────────────────────────────────────────────
+#
+# The gate reads the same rules `record_mistake` writes, so these tests drive
+# the real service end to end: record a mistake, then judge an action against
+# it. The unit-level false-positive story lives in tests/test_action_gate.py;
+# what is checked here is that the wiring preserves it.
+
+
+@pytest.mark.asyncio
+async def test_a_recorded_mistake_warns_a_matching_action(guard):
+    await _record(guard, task="commit the README", wrong_action="used git commit --no-verify")
+
+    verdict = await guard.check_action("Bash", "git commit --no-verify -m 'wip'")
+
+    assert verdict["decision"] == "warn"
+    assert verdict["checked_rules"] == 1
+    assert verdict["matched_rules"][0]["severity"] == "medium"
+    assert "no-verify" in verdict["matched_rules"][0]["statement"]
+
+
+@pytest.mark.asyncio
+async def test_an_unrelated_action_is_allowed(guard):
+    await _record(guard, task="commit the README", wrong_action="used git commit --no-verify")
+
+    verdict = await guard.check_action("Bash", "pytest -q tests/")
+
+    assert verdict["decision"] == "allow"
+    assert verdict["matched_rules"] == []
+    # It still looked — "allow" means "checked and nothing matched".
+    assert verdict["checked_rules"] == 1
+
+
+@pytest.mark.asyncio
+async def test_the_gate_is_read_only(engine, guard):
+    """Asking must not change the answer. The gate runs in front of every tool
+    call, so a gate that mutated the store would corrupt the signal it reads."""
+    await _record(guard, task="commit the README", wrong_action="used git commit --no-verify")
+    before = await engine.get_stats()
+
+    await guard.check_action("Bash", "git commit --no-verify -m 'wip'")
+    await guard.check_action("Bash", "pytest -q")
+
+    after = await engine.get_stats()
+    assert after.total_memories == before.total_memories
+    assert after.pinned_count == before.pinned_count
+
+
+@pytest.mark.asyncio
+async def test_no_rules_yet_allows_with_a_reason_that_says_so(guard):
+    verdict = await guard.check_action("Bash", "git push --force origin main")
+
+    assert verdict["decision"] == "allow"
+    assert verdict["checked_rules"] == 0
+    assert "no rules recorded" in verdict["reason"]
+
+
+@pytest.mark.asyncio
+async def test_verdict_echoes_what_it_judged(guard):
+    await _record(guard)
+    verdict = await guard.check_action("Bash", "git commit --no-verify", project="levh")
+
+    assert verdict["tool_name"] == "Bash"
+    assert verdict["project"] == "levh"
+
