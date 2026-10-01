@@ -404,7 +404,7 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     # 14. Embedding compatibility. Mixed dimensions are safe (recall skips
     # incompatible vectors) but can silently hide old memories after a model
     # switch, so doctor makes the migration need explicit. Dimension counting
-    # lives in one place: AggregateQueries.embedding_dimension_counts.
+    # lives in one place: AggregateQueries.dimension_counts_from_rows.
     try:
         dimension_counts: dict[int, int] = {}
         if os.path.exists(db_path):
