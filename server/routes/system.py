@@ -9,13 +9,15 @@ from fastapi.responses import JSONResponse, PlainTextResponse
 from server.core import llm_policy, metrics
 from server.auth import unauthenticated_remote_access_enabled
 from server.core.runtime_config import configured_bind_host
+from server.core.types import MemoryStats
 from server.routes.deps import get_engine
 from server.routes.deps import APP_VERSION, api_token, logger
+from server.routes.models import HealthResponse
 
 router = APIRouter()
 
 
-@router.get("/api/stats")
+@router.get("/api/stats", response_model=MemoryStats)
 async def get_stats(engine=Depends(get_engine)):
     stats = await engine.get_stats()
     return stats.model_dump()
@@ -64,7 +66,7 @@ async def get_config(engine=Depends(get_engine)):
     }
 
 
-@router.get("/api/health")
+@router.get("/api/health", response_model=HealthResponse)
 async def health():
     # Unauthenticated (exempt from the token gate) so the dashboard can learn
     # up-front whether it must ask the user for a token before any /api/* call.

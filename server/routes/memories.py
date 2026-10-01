@@ -3,17 +3,32 @@
 from __future__ import annotations
 
 
+
 from fastapi import Depends, APIRouter, HTTPException
 
-from server.core.types import RecallRequest
+from server.core.types import Memory, RecallRequest
 from server.routes.deps import get_engine
-from server.routes.models import AdmissionEvalRequest, AdmitRequest, AskRequest, ConsolidateRequest, DedupeRequest, ImportRequest, RedactAllRequest, StoreRequest
+from server.routes.models import (
+    AdmissionEvalRequest,
+    AdmitRequest,
+    AskResponse,
+    AskRequest,
+    ConsolidateResponse,
+    ConsolidateRequest,
+    DedupeRequest,
+    FadingMemoryOut,
+    ImportRequest,
+    MemoryOut,
+    RedactAllRequest,
+    ReviewQueueResponse,
+    StoreRequest,
+)
 from server.routes.deps import public_demo
 
 router = APIRouter()
 
 
-@router.post("/api/memories")
+@router.post("/api/memories", response_model=Memory)
 async def store_memory(req: StoreRequest, engine=Depends(get_engine)):
     """Default product write path: admission gate before persistence.
 
@@ -44,7 +59,7 @@ async def store_memory(req: StoreRequest, engine=Depends(get_engine)):
     return result["memory"]
 
 
-@router.get("/api/memories")
+@router.get("/api/memories", response_model=list[MemoryOut])
 async def list_memories(
     memory_type: str = "",
     session_id: str = "",
@@ -75,7 +90,7 @@ async def list_memories(
     ]
 
 
-@router.get("/api/memories/fading")
+@router.get("/api/memories/fading", response_model=list[FadingMemoryOut])
 async def list_fading_memories(threshold: float = 0.35, project: str = "", limit: int = 20, engine=Depends(get_engine)):
     """Memories predicted to be nearly forgotten — the review queue."""
     fading = await engine.list_fading(
@@ -89,7 +104,7 @@ async def list_fading_memories(threshold: float = 0.35, project: str = "", limit
     ]
 
 
-@router.get("/api/memories/review")
+@router.get("/api/memories/review", response_model=ReviewQueueResponse)
 async def get_review_queue(threshold: float = 0.5, project: str = "", limit: int = 50, engine=Depends(get_engine)):
     """Spaced-repetition review queue — fading, unpinned, un-snoozed memories
     due for a keep/reinforce/weaken/pin/forget/snooze decision."""
@@ -203,7 +218,7 @@ async def recall_memories(req: RecallRequest, engine=Depends(get_engine)):
     }
 
 
-@router.post("/api/ask")
+@router.post("/api/ask", response_model=AskResponse)
 async def ask_memory(req: AskRequest, engine=Depends(get_engine)):
     """Ask your memory a question and get a synthesized, cited answer.
 
@@ -219,7 +234,7 @@ async def ask_memory(req: AskRequest, engine=Depends(get_engine)):
     )
 
 
-@router.post("/api/memories/consolidate")
+@router.post("/api/memories/consolidate", response_model=ConsolidateResponse)
 async def consolidate_memories(session_id: str = "", engine=Depends(get_engine)):
     count = await engine.consolidate(session_id=session_id or None)
     return {"consolidated": count}

@@ -5,13 +5,21 @@ from __future__ import annotations
 
 from fastapi import Depends, APIRouter, HTTPException
 
+from server.core.types import Memory
 from server.routes.deps import get_engine
-from server.routes.models import FeedbackRequest, PinRequest, ReviewRequest, UpdateRequest
+from server.routes.models import (
+    FeedbackRequest,
+    MemoryOut,
+    PinRequest,
+    ReviewMemoryResponse,
+    ReviewRequest,
+    UpdateRequest,
+)
 
 router = APIRouter()
 
 
-@router.post("/api/memories/{memory_id}/review")
+@router.post("/api/memories/{memory_id}/review", response_model=ReviewMemoryResponse)
 async def review_memory(memory_id: str, req: ReviewRequest, engine=Depends(get_engine)):
     """Apply a spaced-repetition review decision to a memory."""
     try:
@@ -25,7 +33,7 @@ async def review_memory(memory_id: str, req: ReviewRequest, engine=Depends(get_e
     return result
 
 
-@router.get("/api/memories/{memory_id}")
+@router.get("/api/memories/{memory_id}", response_model=MemoryOut)
 async def get_memory(memory_id: str, engine=Depends(get_engine)):
     mem = await engine.get_memory(memory_id)
     if not mem:
@@ -33,7 +41,7 @@ async def get_memory(memory_id: str, engine=Depends(get_engine)):
     return {**mem.model_dump(), "attachments": await engine.list_memory_attachments(memory_id)}
 
 
-@router.put("/api/memories/{memory_id}")
+@router.put("/api/memories/{memory_id}", response_model=Memory)
 async def update_memory(memory_id: str, req: UpdateRequest, engine=Depends(get_engine)):
     mem = await engine.update_memory(
         memory_id=memory_id,
@@ -48,7 +56,7 @@ async def update_memory(memory_id: str, req: UpdateRequest, engine=Depends(get_e
     return mem.model_dump()
 
 
-@router.patch("/api/memories/{memory_id}/pin")
+@router.patch("/api/memories/{memory_id}/pin", response_model=Memory)
 async def pin_memory(memory_id: str, req: PinRequest, engine=Depends(get_engine)):
     mem = await engine.set_pinned(memory_id, req.pinned)
     if not mem:
@@ -56,7 +64,7 @@ async def pin_memory(memory_id: str, req: PinRequest, engine=Depends(get_engine)
     return mem.model_dump(exclude={"embedding"})
 
 
-@router.post("/api/memories/{memory_id}/reinforce")
+@router.post("/api/memories/{memory_id}/reinforce", response_model=Memory)
 async def reinforce_memory(memory_id: str, engine=Depends(get_engine)):
     """Manually strengthen a memory — resets its decay clock and grows its
     stability, the same reinforcement that happens automatically on recall."""
@@ -66,7 +74,7 @@ async def reinforce_memory(memory_id: str, engine=Depends(get_engine)):
     return mem.model_dump(exclude={"embedding"})
 
 
-@router.post("/api/memories/{memory_id}/feedback")
+@router.post("/api/memories/{memory_id}/feedback", response_model=Memory)
 async def memory_feedback(memory_id: str, req: FeedbackRequest, engine=Depends(get_engine)):
     """Learn from recall outcomes: helpful=true reinforces the memory,
     helpful=false weakens it so wrong/stale information fades out fast."""

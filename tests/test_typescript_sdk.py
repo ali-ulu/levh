@@ -83,12 +83,19 @@ def test_the_generated_files_declare_that_they_are_generated():
         assert "GENERATED FILE" in head, f"{name} does not carry the generated-file header"
 
 
-def test_the_client_types_responses_as_unknown_until_the_contract_does_not():
-    """The contract publishes no response schemas today (every 200 is `{}`), so
-    the client returns `unknown`. If response models are ever added, this test
-    is the reminder that the client can now do better than `unknown`."""
+def test_the_client_types_responses_proportional_to_the_contract():
+    """Response typing must track the contract honestly, in both directions.
+
+    The contract declares 200 schemas for an initial set of operations; the
+    generated `types.ts` must contain a type for each one's response model,
+    and the client must return `unknown` for the rest rather than a guessed
+    interface. Hard-coding the expected count would let a route that loses its
+    response model pass silently, so both halves are derived from the live
+    contract here.
+    """
     contract = json.loads((ROOT / "openapi.json").read_text(encoding="utf-8"))
     typed_responses = 0
+    response_refs: set[str] = set()
     for operations in contract["paths"].values():
         for operation in operations.values():
             schema = (
@@ -100,15 +107,26 @@ def test_the_client_types_responses_as_unknown_until_the_contract_does_not():
             )
             if schema:
                 typed_responses += 1
+                if "$ref" in schema:
+                    response_refs.add(schema["$ref"].rsplit("/", 1)[-1])
 
+    generated = (SDK / "src" / "generated" / "types.ts").read_text(encoding="utf-8")
     client = (SDK / "src" / "client.ts").read_text(encoding="utf-8")
-    if typed_responses == 0:
-        assert "Promise<T>" in client and "T = unknown" in client
-    else:
-        assert False, (
-            f"{typed_responses} operations now declare a 200 response schema; "
-            "regenerate the SDK and give `call()` a real response type"
+
+    assert typed_responses > 0, (
+        "the contract no longer declares any response schema; the client's "
+        "typed convenience methods are now lying"
+    )
+    for name in sorted(response_refs):
+        assert f"export type {name} =" in generated, (
+            f"the contract references response model {name} but the generated "
+            "SDK does not carry it; regenerate with scripts/generate_sdk.py"
         )
+    # Untyped operations remain unknown-typed rather than guessed.
+    assert "T = unknown" in client, (
+        "`call()` must keep the honest `unknown` default for operations the "
+        "contract does not yet type"
+    )
 
 
 def test_no_generated_file_contains_a_smuggled_handwritten_block():

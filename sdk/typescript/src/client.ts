@@ -1,24 +1,31 @@
 /**
  * A typed client over the LEVH REST API.
  *
- * The operation table in `generated/endpoints.ts` is produced from the
- * committed `openapi.json`, which the server's own contract test keeps in sync
- * with the app. So `call()` can only be given an operation the API actually
- * publishes, and the request types come from the same source.
+ * The operation table in `generated/endpoints.ts` and the request/response
+ * types in `generated/types.ts` are produced from the committed
+ * `openapi.json`, which the server's own contract test keeps in sync with the
+ * app. So `call()` can only be given an operation the API actually publishes,
+ * and both halves of every signature come from the same source.
  *
- * Responses are typed as `unknown`. That is not laziness: the published
- * contract currently declares no response schemas at all — every 200 is an
- * empty object — so there is nothing to generate a response type from. When
- * the API grows response models, regenerate and this client can return them.
- * Until then an honest `unknown` beats a hand-written interface that silently
- * stops matching the server.
+ * Response typing is proportional to the contract: operations that declare a
+ * 200 schema get that generated type through the operation map, and the rest
+ * stay `unknown`. A hand-written interface would silently stop matching the
+ * server — an honest `unknown` beats one of those.
  *
  * Works in Node 18+, browsers, and edge runtimes: the only dependency is
  * `fetch`, which the caller can inject.
  */
 
 import { OPERATIONS, type OperationId } from "./generated/endpoints.ts";
-import type { AskRequest, RecallRequest, StoreRequest } from "./generated/types.ts";
+import type {
+  AskRequest,
+  AskResponse,
+  HealthResponse,
+  Memory,
+  MemoryStats,
+  RecallRequest,
+  StoreRequest,
+} from "./generated/types.ts";
 
 export interface LevhClientOptions {
   /** Origin of the LEVH server. Required outside the browser, where `fetch` has no origin to resolve against. */
@@ -104,7 +111,13 @@ export class LevhClient {
     return `${this.#baseUrl}${path}${query}`;
   }
 
-  /** Invoke a published operation. Throws `LevhApiError` on a non-2xx response. */
+  /** Invoke a published operation. Throws `LevhApiError` on a non-2xx response.
+   *
+   * `T` stays `unknown` by default: the contract declares response schemas
+   * for an initial set of operations only, and the generated `types.ts` is
+   * the source for anything you can safely assert. Prefer the convenience
+   * methods below, which carry the contract's own response types.
+   */
   async call<T = unknown>(operation: OperationId, options: CallOptions = {}): Promise<T> {
     const spec = OPERATIONS[operation];
     const headers: Record<string, string> = { Accept: "application/json" };
@@ -135,17 +148,17 @@ export class LevhClient {
 
   // ── the four operations almost every integration starts with ──────────
 
-  health(): Promise<unknown> {
+  health(): Promise<HealthResponse> {
     return this.call("health_api_health_get");
   }
 
   listMemories(
     query?: Record<string, string | number | boolean | undefined | null>,
-  ): Promise<unknown> {
+  ): Promise<Memory[]> {
     return this.call("list_memories_api_memories_get_v1", { query });
   }
 
-  storeMemory(body: StoreRequest): Promise<unknown> {
+  storeMemory(body: StoreRequest): Promise<Memory> {
     return this.call("store_memory_api_memories_post_v1", { body });
   }
 
@@ -153,8 +166,12 @@ export class LevhClient {
     return this.call("recall_memories_api_memories_recall_post_v1", { body });
   }
 
-  ask(body: AskRequest): Promise<unknown> {
+  ask(body: AskRequest): Promise<AskResponse> {
     return this.call("ask_memory_api_ask_post_v1", { body });
+  }
+
+  stats(): Promise<MemoryStats> {
+    return this.call("get_stats_api_stats_get_v1");
   }
 
   #fillPath(

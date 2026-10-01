@@ -24,23 +24,27 @@ tests would catch it first.
 Do not edit anything under `sdk/typescript/src/generated/` by hand. The next
 regeneration reverts it, and the drift test fails in the meantime.
 
-## Request types are exact; response types are `unknown`
+## Request types are exact; response types follow the contract
 
 The contract declares request bodies — so `StoreRequest`, `RecallRequest` and
-the other 31 schemas are generated as precise TypeScript types.
+the other request schemas are generated as precise TypeScript types.
 
-It declares **no** response schemas: across all 102 operations, every `200`
-response is an empty object. There is therefore nothing to generate a response
-type from, and the client returns `unknown`. This is deliberate. A hand-written
-`interface RecallResponse` would compile, satisfy callers, and then quietly stop
-matching the server the first time a field was renamed — a failure no test in
-this repo could see. `unknown` forces the caller to acknowledge the type is not
-known yet.
+Response schemas now exist for an initial set of operations (health, stats,
+memories list/store/get, fading, review queue, ask, consolidate, review
+decision): those are generated as `Memory`, `HealthResponse`, `AskResponse`
+and friends, and the client's convenience methods return them. The remaining
+operations still return `unknown` — the response models are added route by
+route, because each one needs its shape verified against what the handler
+actually returns, not guessed. A hand-written `interface RecallResponse`
+written ahead of the server would compile, satisfy callers, and then quietly
+stop matching the server the first time a field was renamed.
 
-When the API grows response models, regenerate and tighten the client's return
-type. `test_the_client_types_responses_as_unknown_until_the_contract_does_not`
-in `tests/test_typescript_sdk.py` fails as soon as a response schema appears,
-which is the reminder to do it.
+`test_the_client_types_responses_as_unknown_until_the_contract_does_not` in
+`tests/test_typescript_sdk.py` asserts the ratio honestly: every operation
+that declares a 200 schema must be reachable as a generated type, and the
+count of typed operations is asserted against the contract rather than
+hard-coded, so the next route that grows a response model fails the test
+until the client is regenerated.
 
 ## No dependencies, no build step
 
