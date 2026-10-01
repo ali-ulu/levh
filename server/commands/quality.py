@@ -158,6 +158,60 @@ def cmd_eval_run(args: argparse.Namespace) -> int:
     return 0 if passed == report["fixture_count"] else 1
 
 
+def cmd_recall_report(args: argparse.Namespace) -> int:
+    """Report recall quality from the store's own recall log.
+
+    The number ``recall_log`` was built to produce and never produced: of the
+    memories recall handed back, how many were worth having. Offline and
+    deterministic — see ``server/core/recall_quality.py`` for the definition
+    and its stated limits. An empty log is reported as empty, not as zero.
+    """
+    import asyncio
+    import json
+
+    from server.core import engine_provider
+    from server.core.recall_quality import gather_recall_report
+
+    async def _run() -> dict:
+        engine = engine_provider.get_engine()
+        await engine.initialize()
+        try:
+            return await gather_recall_report(engine, limit=args.limit)
+        finally:
+            await engine.shutdown()
+
+    report = asyncio.run(_run())
+    if args.output:
+        with open(args.output, "w", encoding="utf-8") as fh:
+            json.dump(report, fh, indent=2, ensure_ascii=False)
+        print(f"  report → {args.output}")
+
+    if args.json:
+        print(json.dumps(report, indent=2, ensure_ascii=False))
+        return 0
+
+    r = report["results"]
+    print("\n  LEVH recall quality (from the recall log)")
+    print("  " + "=" * 46)
+    if not report["recalls"]:
+        print("  No recalls logged. Set LEVH_RECALL_LOG=1 to start recording.")
+        print("  " + "=" * 46 + "\n")
+        return 0
+    print(f"  recalls          {report['recalls']}"
+          f"  (distinct queries {report['distinct_queries']})")
+    print(f"  window           {report['window']['oldest']} → {report['window']['newest']}")
+    print(f"  store size       {report['store_size']} memories")
+    print(f"  precision@k      {r['precision_at_k']}   (lower bound; relevance inferred)")
+    print(f"  hit rate         {r['hit_rate']}")
+    print(f"  returned         {r['returned']}  resolved {r['resolved']}  churned {r['churned']}")
+    print(f"  empty recalls    {r['empty_recalls']}")
+    if report.get("truncated"):
+        print(f"  NOTE: {report['log_total']} rows on disk; report covers the newest "
+              f"{report['log_window_cap']} (--limit to widen).")
+    print("  " + "=" * 46 + "\n")
+    return 0
+
+
 def cmd_eval_report(args: argparse.Namespace) -> int:
     """Print the last written evaluation report."""
     import json

@@ -19,6 +19,7 @@ Run `levh <command> --help` for the flags of any one of them.
 | `levh context` | Generate CLAUDE.md / .cursorrules from memories |
 | `levh summarize` | Distill a session into one summary memory |
 | `levh benchmark` | Run the recall-quality benchmark (hit@k / MRR); `--check` gates on the quality floors |
+| `levh recall-report` | Recall quality from your own recall log: precision@k, hit rate, churn (`--json`, `--limit`) |
 | `levh tune` | Fit H(x,psi) weights to the labelled query set (offline) |
 | `levh reembed` | Re-derive stored vectors from content after changing embedder mode |
 | `levh hook <sub>` | Auto-capture and session-start hooks |

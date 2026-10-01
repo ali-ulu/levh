@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+### Feature: recall quality from the store's own recall log (#336)
+
+- `recall_log` has recorded every recall's ranked result ids since it landed,
+  with a docstring saying the number it exists to produce is *"of the memories
+  I was handed, how many were worth having"* — and nothing computed it. The new
+  `levh recall-report` does, offline and deterministically.
+- Relevance is inferred, not labelled: a returned memory counts as worth having
+  when it still resolves in `memories` and its query has not since stopped
+  returning it. A memory a later recall of the same query churned is dropped
+  from the numerator, so the reported precision is a lower bound — the report
+  says so in its own `limits` field rather than implying a labelled score.
+- `server/core/recall_quality.py` is pure (`build_recall_report` takes rows and
+  an id set, no DB and no clock), so the report is byte-identical across runs;
+  the window is the log's own oldest/newest row, never the time it ran.
+- `--json` prints the full report; `--output` also writes it to disk. An empty
+  log prints "no recalls logged", not a precision of 0.0 — nothing was asked is
+  not everything failed.
+
 ### Feature: response schemas for the full REST surface (#307, #309)
 
 - The published contract declared request bodies precisely but left every `200`

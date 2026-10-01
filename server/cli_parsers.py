@@ -90,6 +90,20 @@ def _add_leaf_commands(sub: argparse._SubParsersAction) -> None:
     benchmark_p.add_argument("--top-k", type=int, default=5, help="Top-k for recall during the benchmark")
     benchmark_p.add_argument("--check", action="store_true", help="Exit non-zero if a gated metric is below its quality floor")
 
+    recall_report_p = sub.add_parser(
+        "recall-report",
+        help="Recall quality from the store's own recall log (offline, deterministic)",
+    )
+    recall_report_p.add_argument(
+        "--limit", type=int, default=1000, help="Newest N log rows to report over (max 1000)"
+    )
+    recall_report_p.add_argument(
+        "--json", action="store_true", help="Print the full report as JSON"
+    )
+    recall_report_p.add_argument(
+        "--output", "-o", type=str, default="", help="Also write the JSON report to this path"
+    )
+
     tune_p = sub.add_parser("tune", help="Fit H(x,psi) weights to the labelled query set (offline)")
     tune_p.add_argument("--embedder-mode", type=str, default="", help="Embedder mode (default: $EMBEDDER_MODE or hash)")
     tune_p.add_argument("--top-k", type=int, default=5, help="Top-k for recall during tuning")
