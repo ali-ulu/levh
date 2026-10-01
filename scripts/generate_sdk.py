@@ -100,10 +100,6 @@ def _ts_type(schema: dict | bool, schemas: dict) -> str:
     return primitives.get(node_type, "unknown")
 
 
-def _schema_name(path: str) -> str:
-    return path.rsplit("/", 1)[-1]
-
-
 def _generate_types(contract: dict) -> str:
     schemas = contract.get("components", {}).get("schemas", {})
     lines = [HEADER, ""]
