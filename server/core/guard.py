@@ -148,12 +148,43 @@ class GuardService:
             limit=max(1, min(limit, 500)),
         )
 
-    async def list_rules(self, project: str | None = None, limit: int = 50) -> list[Memory]:
-        """Return the pinned rules mistakes have produced, most important first."""
+    async def list_rules(
+        self,
+        project: str | None = None,
+        limit: int = 50,
+        include_global: bool = True,
+    ) -> list[Memory]:
+        """Return the pinned rules mistakes have produced, most important first.
+
+        ``project`` narrows the list to rules recorded against that project
+        **plus the global rules recorded without one**. The merge is the point:
+        ``search_memories`` filters ``project = ?`` exactly, so a rule recorded
+        without a project would otherwise be invisible to a project-scoped
+        caller — and a global rule is the *most* general kind, not the least.
+        A mistake like force-pushing to ``main`` must warn everywhere.
+
+        Pass ``include_global=False`` for a strict single-project view. Exact
+        project filtering is untouched for every other memory search; the merge
+        lives here, in the guard.
+        """
         pinned = await self.engine.episodic.search(
-            project=project, pinned=True, limit=max(limit * 4, 100)
+            # A global rule is only reachable by asking for no project filter at
+            # all — ``project=None`` means "any project", and the null ones are
+            # then kept by the predicate below.
+            project=None if (project and include_global) else project,
+            pinned=True,
+            limit=max(limit * 4, 100),
         )
-        rules = [m for m in pinned if RULE_TAG in (m.tags or [])]
+        rules = [
+            m
+            for m in pinned
+            if RULE_TAG in (m.tags or [])
+            and (
+                project is None
+                or not include_global
+                or m.project in (project, None)
+            )
+        ]
         rules.sort(key=lambda m: (m.importance, m.created_at), reverse=True)
         return rules[:limit]
 
@@ -170,10 +201,12 @@ class GuardService:
         A gate that mutates the store would make the act of asking a question
         change the answer, and it would run on every tool call.
 
-        ``project`` scopes the rules the same way :meth:`list_rules` does. A
-        rule recorded against one project still warns for another — a mistake
-        about force-pushing to ``main`` is not project-specific — but scoping
-        lets a caller narrow the gate when it wants to.
+        ``project`` scopes the rules the way :meth:`list_rules` does: rules
+        recorded against that project **plus the global ones recorded without
+        a project**. A rule with no project is the most general kind — a
+        mistake about force-pushing to ``main`` must warn everywhere — so
+        scoping narrows the gate without hiding it from the rules that apply
+        to everyone.
 
         The verdict is advisory (see :mod:`server.core.action_gate`): ``warn``
         when a rule overlaps the action, ``allow`` otherwise. Never ``block``.

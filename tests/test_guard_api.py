@@ -86,6 +86,18 @@ def test_rules_can_be_scoped_to_a_project(client):
     assert client.get("/api/guard/rules", params={"project": "other"}).json()["rules"] == []
 
 
+def test_a_global_rule_is_listed_for_every_project(client):
+    """A rule recorded without a project applies everywhere, so scoping the
+    list must not hide it from a project-scoped caller."""
+    _record(client, project=None)
+
+    levh = client.get("/api/guard/rules", params={"project": "levh"}).json()["rules"]
+    other = client.get("/api/guard/rules", params={"project": "other"}).json()["rules"]
+
+    assert len(levh) == 1 and levh[0]["project"] is None
+    assert len(other) == 1
+
+
 def test_an_incomplete_mistake_is_rejected(client):
     res = _record(client, correct_action="")
     assert res.status_code == 422

@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+### Fix: a global guard rule reaches a project-scoped check (#337)
+
+- `list_rules` passed `project` straight through to `search_memories`, which
+  filters `memories.project = ?` exactly — so a rule recorded *without* a
+  project was invisible to a project-scoped `check_action`, and the gate could
+  return `allow` for the one mistake that applies everywhere. A global rule is
+  the most general kind, not the least.
+- `list_rules` now merges the global rules into a project-scoped list, with
+  `include_global=False` for a strict single-project view. Exact project
+  filtering is untouched for every other memory search; the merge lives in the
+  guard, where the scoping decision is made.
+
 ### Feature: pre-action judgment gate — check a proposed action against recorded rules (#337)
 
 - `guard.py` recorded a corrected mistake as a pinned rule plus a violation row,

@@ -246,3 +246,57 @@ async def test_verdict_echoes_what_it_judged(guard):
     assert verdict["tool_name"] == "Bash"
     assert verdict["project"] == "levh"
 
+
+@pytest.mark.asyncio
+async def test_a_global_rule_warns_a_project_scoped_check(guard):
+    """A rule recorded without a project is the *most* general kind, so it must
+    reach a project-scoped caller. `search_memories` filters `project = ?`
+    exactly, so without the merge a global rule would be invisible here — the
+    gate would return `allow` for the one mistake that applies everywhere."""
+    await _record(
+        guard,
+        task="push the release branch",
+        wrong_action="used git push --force origin main",
+        project=None,
+    )
+
+    verdict = await guard.check_action(
+        "Bash", "git push --force origin main", project="levh"
+    )
+
+    assert verdict["decision"] == "warn"
+    assert verdict["checked_rules"] == 1
+
+
+@pytest.mark.asyncio
+async def test_a_rule_from_another_project_is_not_merged_in(guard):
+    """Merging global rules must not merge *every* rule: a rule recorded for a
+    different project stays out of a project-scoped check."""
+    await _record(
+        guard,
+        task="push the release branch",
+        wrong_action="used git push --force origin main",
+        project="other-project",
+    )
+
+    verdict = await guard.check_action(
+        "Bash", "git push --force origin main", project="levh"
+    )
+
+    assert verdict["decision"] == "allow"
+    assert verdict["checked_rules"] == 0
+
+
+@pytest.mark.asyncio
+async def test_strict_project_scope_can_exclude_global_rules(guard):
+    await _record(
+        guard,
+        task="push the release branch",
+        wrong_action="used git push --force origin main",
+        project=None,
+    )
+
+    rules = await guard.list_rules(project="levh", include_global=False)
+
+    assert rules == []
+
