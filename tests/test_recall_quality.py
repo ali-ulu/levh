@@ -8,11 +8,14 @@ each is a decision that could quietly invert:
 2. Order decides precision. The log stores ids in rank order precisely so that
    gold-at-1 and gold-at-10 are distinguishable; a test over an unordered set
    would pass on an implementation that sorted the ids first.
-3. A memory that no longer exists is not a good answer, and a memory a later
-   recall of the same query churned is treated as stale — so the number is a
-   lower bound and never a flattering one.
+3. A memory that no longer exists is not a hit, and a memory a later recall of
+   the same question churned is treated as stale. This is a proxy for relevance,
+   not labelled precision and not a bound in either direction — these tests pin
+   the proxy's behaviour, not an accuracy claim.
 4. Two runs agree byte for byte. The report is a measurement; a timestamp in it
    would make every comparison of two runs a diff of when they ran.
+5. A churn is scoped to the question that produced it — same text, same project,
+   same top_k. A different project asking the same text is a different question.
 """
 
 from __future__ import annotations
@@ -90,6 +93,25 @@ def test_a_churn_only_counts_within_the_same_question():
 
     assert report["results"]["churned"] == 0
     assert report["results"]["precision_at_k"] == 1.0
+
+
+def test_the_same_text_under_a_different_project_is_a_different_question():
+    """A narrower project returning fewer rows is not the store going stale."""
+    rows = [
+        _row(["a", "b"], sha="q1", project="wide"),
+        _row(["a"], sha="q1", project="narrow"),
+    ]
+    report = build_recall_report(rows, existing_ids={"a", "b"}, store_size=2)
+
+    assert report["results"]["churned"] == 0
+    assert report["results"]["precision_at_k"] == 1.0
+
+
+def test_the_same_text_under_a_different_top_k_is_a_different_question():
+    rows = [_row(["a", "b"], sha="q1", top_k=2), _row(["a"], sha="q1", top_k=1)]
+    report = build_recall_report(rows, existing_ids={"a", "b"}, store_size=2)
+
+    assert report["results"]["churned"] == 0
 
 
 def test_an_empty_result_row_is_counted_as_an_empty_recall():
@@ -225,6 +247,9 @@ def test_the_command_renders_the_human_table(monkeypatch, capsys):
 
 
 def test_the_command_prints_json_and_writes_it(monkeypatch, capsys, tmp_path):
+    """stdout must stay parseable JSON even when a file is also written."""
+    import json as _json
+
     from server.commands.quality import cmd_recall_report
 
     monkeypatch.setenv("LEVH_RECALL_LOG", "1")
@@ -234,13 +259,18 @@ def test_the_command_prints_json_and_writes_it(monkeypatch, capsys, tmp_path):
     args = _recall_report_args(["recall-report", "--json", "-o", str(target)])
     assert cmd_recall_report(args) == 0
 
-    out = capsys.readouterr().out
-    assert "report →" in out
-    assert '"report_version"' in out
-    assert '"precision_at_k"' in out
+    captured = capsys.readouterr()
+    # The status line goes to stderr, so stdout is exactly the document.
+    assert "report →" in captured.err
+    assert "report →" not in captured.out
+    parsed = _json.loads(captured.out)
+    assert parsed["report_version"] == "recall-quality-v1"
+    assert "precision_at_k" in parsed["results"]
+
     written = target.read_text(encoding="utf-8")
     assert '"recall-quality-v1"' in written
-    assert '"precision_at_k"' in written
+    assert _json.loads(written)["results"]["precision_at_k"] == parsed["results"]["precision_at_k"]
+
 
 
 def test_the_subcommand_is_wired_through_main(monkeypatch, capsys):
@@ -270,4 +300,3 @@ def test_a_truncated_window_is_flagged(monkeypatch, capsys):
     out = capsys.readouterr().out
     assert "NOTE:" in out
     assert "rows on disk" in out
-

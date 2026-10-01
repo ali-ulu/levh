@@ -162,9 +162,10 @@ def cmd_recall_report(args: argparse.Namespace) -> int:
     """Report recall quality from the store's own recall log.
 
     The number ``recall_log`` was built to produce and never produced: of the
-    memories recall handed back, how many were worth having. Offline and
-    deterministic — see ``server/core/recall_quality.py`` for the definition
-    and its stated limits. An empty log is reported as empty, not as zero.
+    memories recall handed back, how many were still there and still being
+    returned. Offline and deterministic — see ``server/core/recall_quality.py``
+    for the definition and its stated limits. It is a proxy, not labelled
+    precision. An empty log is reported as empty, not as zero.
     """
     import asyncio
     import json
@@ -184,7 +185,9 @@ def cmd_recall_report(args: argparse.Namespace) -> int:
     if args.output:
         with open(args.output, "w", encoding="utf-8") as fh:
             json.dump(report, fh, indent=2, ensure_ascii=False)
-        print(f"  report → {args.output}")
+        # stderr: with --json this must not precede the document on stdout, or
+        # `levh recall-report --json -o f | jq` chokes on the status line.
+        print(f"  report → {args.output}", file=sys.stderr)
 
     if args.json:
         print(json.dumps(report, indent=2, ensure_ascii=False))
@@ -201,7 +204,7 @@ def cmd_recall_report(args: argparse.Namespace) -> int:
           f"  (distinct queries {report['distinct_queries']})")
     print(f"  window           {report['window']['oldest']} → {report['window']['newest']}")
     print(f"  store size       {report['store_size']} memories")
-    print(f"  precision@k      {r['precision_at_k']}   (lower bound; relevance inferred)")
+    print(f"  precision@k      {r['precision_at_k']}   (proxy, not labelled precision)")
     print(f"  hit rate         {r['hit_rate']}")
     print(f"  returned         {r['returned']}  resolved {r['resolved']}  churned {r['churned']}")
     print(f"  empty recalls    {r['empty_recalls']}")

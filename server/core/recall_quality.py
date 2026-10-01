@@ -12,20 +12,30 @@ still worth having *now*:
 
 - it still exists (a forgotten or redacted memory is not preserved in the log
   by accident, and it is not a good answer either), and
-- the same question has not since stopped returning it. When a query is asked
-  twice and a memory is handed back the first time but not the second, the
-  store has changed its mind about that memory. That is the closest the log
-  gets to a staleness signal, and it is deliberately conservative: the churned
-  id is dropped from the numerator rather than counted as a hit.
+- the same question, asked the same way, has not since stopped returning it.
+  When a query is asked twice and a memory is handed back the first time but
+  not the second, the store has changed its mind about that memory. That is the
+  closest the log gets to a staleness signal, and it is deliberately
+  conservative: the churned id is dropped from the numerator rather than
+  counted as a hit.
 
 Everything else is arithmetic over ids the store itself produced. No LLM, no
 network, no labels.
 
-WHAT THIS IS NOT. Precision computed this way is a *lower bound*, and the
-report says so in its own ``limits`` field. A memory can be returned, still
-exist, never churn, and still be a bad answer; a memory can churn because it
-was re-ranked, not because it went stale. The number is a signal to look at,
-not a verdict — the same stance ``conflict.py`` and the admission gate take.
+WHAT THIS IS NOT — AND WHY IT IS NOT A BOUND. The resulting score is an
+*existence-and-retention proxy*, not precision against labelled relevance, and
+it has no guaranteed relationship to one in either direction:
+
+- It can read **too high**: a memory can be returned, still exist, never churn,
+  and still be a bad answer. One irrelevant-but-live result scores 1.0.
+- It can read **too low**: a memory can churn because it was re-ranked, not
+  because it went stale.
+
+So it is neither an upper nor a lower bound — it is a proxy, and the report
+says so in its own ``limits`` field rather than letting a reader assume the
+label precision the name suggests. The value is in the trend across runs on one
+store, not in the absolute number, which is the same stance ``conflict.py`` and
+the admission gate take on their own inferred signals.
 
 DETERMINISM. Two runs over the same log produce byte-identical output. Nothing
 time- or random-dependent is generated here; the window is the log's own
@@ -67,19 +77,39 @@ def _empty_stats() -> dict:
     }
 
 
-def _churned_by_query(rows: list[dict]) -> dict[str, set[str]]:
+def _churn_key(row: dict) -> tuple:
+    """What has to be equal for two recalls to be answering the same question.
+
+    ``query_sha256`` alone is not enough: ``project`` and ``top_k`` change what
+    a recall returns, so the same text under a different project or window is a
+    different question and its results must not contaminate this one's churn.
+
+    ``session_id`` is deliberately *not* in the key. The store is shared across
+    sessions, so "this question stopped returning this memory" is a store-level
+    fact; scoping churn to a session would hide exactly the drift the log
+    exists to surface. ``min_importance`` is not persisted in ``recall_log``,
+    so it cannot be part of the key without a schema change — a deliberate
+    deferral, noted in the report's limits.
+    """
+    return (
+        row.get("query_sha256") or "",
+        row.get("project"),
+        int(row.get("top_k") or 0),
+    )
+
+
+def _churned_by_query(rows: list[dict]) -> dict[tuple, set[str]]:
     """Ids each question was once given but no longer gets.
 
-    Compared against the *most recent* recall of that query: a memory the store
-    handed back and then stopped handing back for the same question is the
-    closest thing the log has to a staleness signal. Retroactive on purpose —
-    the stale id is not a hit in the earlier row either, which is what makes the
-    resulting precision a lower bound.
+    Compared against the *most recent* recall of that question: a memory the
+    store handed back and then stopped handing back is the closest thing the
+    log has to a staleness signal. Retroactive on purpose — the stale id is not
+    a hit in the earlier row either.
     """
-    ever: dict[str, set[str]] = defaultdict(set)
-    latest: dict[str, set[str]] = {}
+    ever: dict[tuple, set[str]] = defaultdict(set)
+    latest: dict[tuple, set[str]] = {}
     for row in rows:
-        key = row.get("query_sha256") or ""
+        key = _churn_key(row)
         ids = set(row.get("result_ids") or [])
         ever[key] |= ids
         latest[key] = ids
@@ -97,7 +127,7 @@ def _score(rows: list[dict], existing_ids: set[str]) -> dict:
     top_k_total = 0
     for row in rows:
         result_ids = row.get("result_ids") or []
-        churned = churned_by_query.get(row.get("query_sha256") or "", set())
+        churned = churned_by_query.get(_churn_key(row), set())
 
         top_k = int(row.get("top_k") or 0)
         in_top_k = result_ids[:top_k] if top_k > 0 else result_ids
@@ -149,12 +179,18 @@ def build_recall_report(
             for name, group in sorted(projects.items())
         ],
         "limits": [
+            "This is an existence-and-retention proxy, not precision against "
+            "labelled relevance, and it is not a bound in either direction: an "
+            "irrelevant memory that still exists and never churns scores as a "
+            "hit, and a memory re-ranked away counts as churn.",
             "Relevance is inferred, not labelled: a memory counts as worth "
             "having when it still exists and its question still returns it.",
-            "A memory re-ranked away by a later recall is treated as churned "
-            "and dropped from the numerator, so precision is a lower bound.",
+            "Churn is keyed on query text, project and top_k. min_importance is "
+            "not stored in the recall log, so two recalls differing only in "
+            "that filter share a key.",
             "Recall logging is off by default (LEVH_RECALL_LOG); an empty "
             "report usually means nothing was recorded, not that recall failed.",
+            "Read the trend across runs on one store, not the absolute number.",
         ],
     }
 
