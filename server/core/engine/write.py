@@ -203,11 +203,17 @@ class MemoryWriteMixin:
             # window at the moment it was replaced. Gated behind the flag —
             # a wide interference hit is a weakened neighbour, not a retired
             # fact, and must stay current so dedupe/consolidation can see it.
-            if retire_enabled:
-                old.valid_to = old.metadata["superseded_at"]
-                old.superseded_by = new_memory.id
-                updates["valid_to"] = old.valid_to
-                updates["superseded_by"] = old.superseded_by
+            #
+            # A candidate may already be retired by an earlier memory: the
+            # candidate set is not filtered on validity, so storing C can select
+            # A again after B retired it. Overwriting A's interval would erase
+            # the A->B edge (an as_of read between B and C would wrongly return
+            # A) and make deleting C reopen A as well. The first retirement
+            # wins; only a still-current memory is retired here.
+            retiring = retire_enabled and old.valid_to is None
+            if retiring:
+                updates["valid_to"] = old.metadata["superseded_at"]
+                updates["superseded_by"] = new_memory.id
             try:
                 await self.db.update_memory(old.id, updates)
             except sqlite3.OperationalError:
@@ -217,6 +223,12 @@ class MemoryWriteMixin:
                 )
                 continue
             old.stability_hours = weakened
+            # Apply the temporal fields to the cached copy only once the row is
+            # persisted, so a failed UPDATE cannot leave the in-process view
+            # claiming a retirement the database never recorded.
+            if retiring:
+                old.valid_to = updates["valid_to"]
+                old.superseded_by = updates["superseded_by"]
             interfered.append(old.id)
 
         if interfered:

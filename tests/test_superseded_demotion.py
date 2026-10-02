@@ -363,3 +363,30 @@ async def test_as_of_accepts_offsets_and_z_suffix(engine):
         result = await engine.recall(QUESTION, top_k=5, reinforce=False, as_of=candidate)
         assert isinstance(result.memories, list)
 
+
+@pytest.mark.asyncio
+async def test_a_second_replacement_does_not_rewrite_the_first_retirement(engine):
+    """Storing C after B retired A must not move A's retirement to C.
+
+    The candidate set is not filtered on validity, so C can select A again. If
+    the interval were overwritten, an as_of read between B and C would wrongly
+    return A, and deleting C would reopen a window that B had closed.
+    """
+    old, mid = await _supersede(engine)
+    first = await engine.get_memory(old.id)
+    assert first.superseded_by == mid.id
+
+    # A third near-identical write, which selects the already-retired OLD again.
+    newest = await engine.store(content=NEW, memory_type="episodic")
+
+    after = await engine.get_memory(old.id)
+    assert after.superseded_by == mid.id
+    assert after.valid_to == first.valid_to
+
+    # Deleting the *second* replacement must not reopen OLD: MID still
+    # supersedes it, and the intervening as_of read must still hide OLD.
+    assert await engine.forget(newest.id) is True
+    assert (await engine.get_memory(old.id)).valid_to == first.valid_to
+    between = await engine.recall(QUESTION, top_k=5, reinforce=False, as_of=first.valid_from)
+    assert old.id in [m.id for m in between.memories]
+
