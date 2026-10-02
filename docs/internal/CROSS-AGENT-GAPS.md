@@ -168,23 +168,31 @@ merge ediyorsa bu tekrar olur.
 
 Her satır **çalıştırılabilir** bir iş; "araştır" maddesi yok.
 
-| # | İş | Neden bu sırada | Boyut |
-| --- | --- | --- | --- |
-| 1 | **git connector'ı çalıştır** (`/api/connectors/sync`, `repo_path` ile) ve commit geçmişini bir projeye bas | Araç hazır; tek eksik çalıştırmak. Bu, **2. maddenin "hafıza besleniyor" kısmını gerçekten kapatır** ve trust/conflict katmanını devreye sokar | Küçük |
-| 2 | **`github` connector'ını çalıştır** (token + repo) | Kurulu ama hiç koşmamış; PR/issue beslemesi 2. maddenin diğer yarısı | Küçük |
-| 3 | **Dynamic windowing'e grafik-farkındalık ekle** — `recall`'ın kullandığı entity-graph aday kaynağını `_rank_context_candidates`'a bağla | 3. maddenin kalan asıl eksiği; mevcut desen kopyalanabilir | Orta |
-| 4 | **Adaptif bütçe** — `max_tokens` çağırana bağlı olmaktan çıksın | 3. maddenin ikinci eksiği | Orta |
-| 5 | **`recall_log`'u besle** ve Faz 2 denetim yüzeyini buna dayandır | Alttaki önkoşul; zemin zaten var | Orta |
-| 6 | **Continuity ölçümü** (ROADMAP Faz A) | Tenancy'e bağlı değil, "bugün başlanabilir" | Orta |
-| 7 | **Roller + workspace paylaşımı** (Faz 2) ve ardından Team Memory | **Sahibin kararına bağlı** — blokaj teknik değil | Büyük |
+| # | İş | Neden bu sırada | Boyut | Issue |
+| --- | --- | --- | --- | --- |
+| 1 | **git connector'ı çalıştır** (`/api/connectors/sync`, `repo_path` ile) ve commit geçmişini bir projeye bas | Araç hazır; tek eksik çalıştırmak. Bu, **2. maddenin "hafıza besleniyor" kısmını gerçekten kapatır** ve trust/conflict katmanını devreye sokar | Küçük | [#374](https://github.com/ali-ulu/levh/issues/374) |
+| 2 | **`github` connector'ını çalıştır** (token + repo) | Kurulu ama hiç koşmamış; PR/issue beslemesi 2. maddenin diğer yarısı | Küçük | [#374](https://github.com/ali-ulu/levh/issues/374) |
+| 3 | **Dynamic windowing'e grafik-farkındalık ekle** — `recall`'ın kullandığı entity-graph aday kaynağını `_rank_context_candidates`'a bağla | 3. maddenin kalan asıl eksiği; mevcut desen kopyalanabilir | Orta | [#375](https://github.com/ali-ulu/levh/issues/375) |
+| 4 | **Adaptif bütçe** — `max_tokens` çağırana bağlı olmaktan çıksın | 3. maddenin ikinci eksiği | Orta | [#375](https://github.com/ali-ulu/levh/issues/375) |
+| 5 | **`recall_log`'u besle** ve Faz 2 denetim yüzeyini buna dayandır | Alttaki önkoşul; zemin zaten var | Orta | [#376](https://github.com/ali-ulu/levh/issues/376) |
+| 6 | **Continuity ölçümü** (ROADMAP Faz A) | Tenancy'e bağlı değil, "bugün başlanabilir" | Orta | [#378](https://github.com/ali-ulu/levh/issues/378) |
+| 7 | **Roller + workspace paylaşımı** (Faz 2) ve ardından Team Memory | **Sahibin kararına bağlı** — blokaj teknik değil | Büyük | [#377](https://github.com/ali-ulu/levh/issues/377) |
+
+Ayrıca bu dosyanın kaydettiği iki kusur kendi issue'larına sahip:
+[#379](https://github.com/ali-ulu/levh/issues/379) (sıra-bağımlı test suite) ve
+[#380](https://github.com/ali-ulu/levh/issues/380) (kilitli `uv` ortamı ve üç tuzağı).
 
 **1 ve 2 bugün yapılabilir ve ölçülebilir sonuç üretir.** 3 ve 4, 3. maddeyi
 istenen cümleye tamamlar. 7, `SHARED-MEMORY-DESIGN.md`'nin dört sorusu
 yanıtlanmadan başlamamalı — kimlik, depolamadan önce tasarlanmalı.
 
 > **Bu listenin nerede yaşadığı.** Bu dosya ve `ROADMAP.md` işi *kaydeder*, ama
-> kimseye *atamaz*: ikisi de bir sıra numarası olan bir kuyruk değil. Başka bir
-> ajan ya da geliştirici "sıradaki iş ne?" sorusunu buradan okuyabilir, ancak
-> üstlenilecek bir birim (assignee, durum, yorum) yok. Bu depo `CONTRIBUTING.md`
-> ile zaten issue-önce çalışıyor; bu yedi maddeyi **issue** olarak açmak, işi
-> hem keşfedilebilir hem de devredilebilir yapar.
+> kimseye *atamaz*: ikisi de bir sıra numarası olan bir kuyruk değil. Bir okuyucu
+> "sıradaki iş ne?" sorusunu buradan öğrenebilir, ancak üstlenilecek bir birim
+> (assignee, durum, yorum) yoktur.
+>
+> Bu yüzden yukarıdaki maddeler **issue olarak açıldı** — keşfedilebilir ve
+> devredilebilir olsunlar diye. Kuyruk artık
+> [açık issue'lar](https://github.com/ali-ulu/levh/issues). Bu dosya *neden*
+> olduğunu ve kanıtını tutar; issue'lar *ne yapılacağını* ve durumunu tutar.
+> Biri diğerinin yerine geçmez.
