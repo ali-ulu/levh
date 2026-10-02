@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import * as React from "react";
 
@@ -17,21 +18,24 @@ const DialogOverlay = React.forwardRef<HTMLDivElement, React.ComponentPropsWitho
 DialogOverlay.displayName = "DialogOverlay";
 
 const DialogContent = React.forwardRef<HTMLDivElement, React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>>(
-  ({ className, children, ...props }, ref) => (
+  ({ className, children, ...props }, ref) => {
+    const t = useT();
+    return (
     <DialogPortal>
       <DialogOverlay />
       <DialogPrimitive.Content ref={ref} className={cn("fixed left-1/2 top-1/2 z-50 grid w-full max-w-lg -translate-x-1/2 -translate-y-1/2 gap-4 border bg-background p-6 shadow-lg", className)} {...props}>
         {children}
         <DialogPrimitive.Close
-          aria-label="Close dialog"
+          aria-label={t("ui.dialog.closeLabel")}
           className="absolute right-4 top-4 rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus:ring-1"
         >
           <span aria-hidden="true">x</span>
-          <span className="sr-only">Close</span>
+          <span className="sr-only">{t("ui.dialog.close")}</span>
         </DialogPrimitive.Close>
       </DialogPrimitive.Content>
     </DialogPortal>
-  )
+    );
+  }
 );
 DialogContent.displayName = "DialogContent";
 

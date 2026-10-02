@@ -1,0 +1,17 @@
+{
+  "app.settings.title": "Settings",
+  "app.settings.subtitle": "Server configuration, AI client setup, imports, and data management.",
+
+  "settings.accessToken.title": "Server access token",
+  "settings.accessToken.status": "Status",
+  "settings.accessToken.statusSet": "•••• set",
+  "settings.accessToken.statusNone": "none",
+  "settings.accessToken.label": "Access token",
+  "settings.accessToken.placeholder": "Paste the server token",
+  "settings.accessToken.save": "Save token",
+  "settings.accessToken.clear": "Clear token",
+  "settings.accessToken.help": "Only needed when this server was started with LEVH_TOKEN. Legacy STACKMEMORY_TOKEN is still accepted. Stored locally in your browser.",
+
+  "ui.dialog.close": "Close",
+  "ui.dialog.closeLabel": "Close dialog"
+}

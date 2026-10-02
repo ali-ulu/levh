@@ -2,6 +2,30 @@
 
 ## Unreleased
 
+### Feature: frontend i18n extraction mechanism + drift gate (#308)
+
+- The design issue asked for the extraction mechanism before any page was
+  converted, because the choice decides how much of the ~20 pages has to be
+  touched twice. It is now settled: a flat, key-addressed catalogue
+  (`frontend/src/lib/i18n/en.json`) behind a `useT()` hook, with no runtime
+  library and no ICU message format. Locale is a client value stored in
+  `localStorage`, **not** a route segment, so the static export under
+  `server/dashboard` is unchanged and does not multiply per locale. The
+  decision and its trade-offs are recorded in
+  `docs/internal/I18N-DESIGN.md`.
+- A proof conversion lands the mechanism on one page (`settings`), one section
+  (`access-token`) and one shared primitive (`ui/dialog`, whose close-button
+  `aria-label` and screen-reader text were hardcoded). Its strings moved into
+  the catalogue; nothing else was converted.
+- `frontend/scripts/check-ui-strings.mjs` is the drift gate the issue called
+  for: an AST scan that fails when a user-visible literal appears outside the
+  catalogue. Because the tree is not converted yet, the gate is a *ratchet* —
+  per-file counts in `frontend/scripts/ui-string-baseline.json` may only go
+  down, so a new hardcoded string fails CI and a conversion must tighten its own
+  entry. It runs in `npm test`, which the `frontend` CI job already runs.
+- Only `en` ships. No second locale is promised; the mechanism makes adding one
+  a data change rather than a refactor.
+
 ### Feature: retrieval-only external benchmark (LoCoMo) for the self-authored harness (#340)
 
 - `levh benchmark-locomo` measures LEVH against the public LoCoMo benchmark

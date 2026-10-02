@@ -18,3 +18,8 @@ scorecards age quickly and read as product claims when seen from outside.
   technical-debt inventory (Turkish). **Archived**: it is a 2026-09-13 snapshot
   and is no longer maintained; completed items are struck through and the file
   says so at the top. Read it for history, not for the current debt state.
+- [`I18N-DESIGN.md`](I18N-DESIGN.md) — the settled frontend i18n decisions for
+  #308: the extraction mechanism (a key-addressed catalogue behind `useT()`, no
+  runtime library), where strings live, how the locale is stored, why the static
+  export is unchanged, and the ratchet that stops a hardcoded string from
+  slipping back in.

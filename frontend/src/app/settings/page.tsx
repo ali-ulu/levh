@@ -14,12 +14,14 @@ import { PrivacyRedaction } from "./_sections/privacy-redaction";
 import { RecallQuality } from "./_sections/recall-quality";
 import { ServerConfiguration } from "./_sections/server-configuration";
 import { TrustProvenance } from "./_sections/trust-provenance";
+import { useT } from "@/lib/i18n";
 
 export default function SettingsPage() {
   // Only what more than one section needs lives here. Everything else — the
   // connector list, the audit results, the benchmark — is loaded by the
   // section that shows it, so a section cannot render empty because some
   // other component forgot to fetch on its behalf.
+  const t = useT();
   const [config, setConfig] = useState<ServerConfig | null>(null);
   const [client, setClient] = useState("claude_desktop");
 
@@ -33,9 +35,9 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Settings</h1>
+        <h1 className="text-2xl font-bold">{t("app.settings.title")}</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Server configuration, AI client setup, imports, and data management.
+          {t("app.settings.subtitle")}
         </p>
       </div>
 

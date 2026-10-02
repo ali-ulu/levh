@@ -20,7 +20,7 @@ quietly dropped. Adding a row without a next step is what that test refuses.
 
 | Item | Topic | State | Next step | Reference |
 | --- | --- | --- | --- | --- |
-| 4 | Frontend i18n (more than one UI language) | deferred | Design issue #308 is open; the extraction mechanism must be settled there before any page is converted. | #308 |
+| 4 | Frontend i18n (more than one UI language) | in-progress | Extraction mechanism settled in #308 (key-addressed catalogue + `useT()`, no runtime library; see `docs/internal/I18N-DESIGN.md`), with one page and the dialog primitive converted and a ratchet gate in `npm test`. Remaining: convert the ~20 pages one PR at a time, each lowering its own `frontend/scripts/ui-string-baseline.json` entry. | #308 |
 | 5 | End-to-end tests over a real server and browser | done | — | #299 |
 | 6 | Page-level accessibility coverage (axe over each route) | done | — | #299 |
 | 8 | Not recorded at decision time | skipped | — | |
