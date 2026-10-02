@@ -15,6 +15,16 @@ describe("translate", () => {
     expect(translate("ui.dialog.close", { ignored: "x" })).toBe("Close");
     expect(translate("missing.{name}", { name: "value" })).toBe("missing.value");
     expect(translate("missing.{name}")).toBe("missing.{name}");
+    // The app chrome uses the same path for its composed labels.
+    expect(translate("theme.switcher.switchTo", { theme: "Deep Space" })).toBe(
+      "Switch to Deep Space theme"
+    );
+  });
+
+  it("resolves the app chrome keys the layout converts to", () => {
+    expect(translate("sidebar.nav.overview")).toBe("Overview");
+    expect(translate("header.action.quickCapture")).toBe("Quick capture");
+    expect(translate("header.help.page.overview.desc")).toContain("Dashboard");
   });
 
   it("falls back to the key when it is not in the catalogue", () => {

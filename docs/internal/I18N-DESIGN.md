@@ -69,6 +69,23 @@ Three files were converted to land the mechanism end to end:
   translation pass that misses an `aria-label` ships a half-translated page to a
   screen reader.
 
+The first follow-on conversion is the **app chrome**, which every page renders:
+
+- `src/components/layout/theme-switcher.tsx` — fully converted (6 → 0); its
+  labels are composed with `{theme}` interpolation.
+- `src/components/layout/sidebar.tsx` — 27 → 2. The nav model now carries
+  `labelKey` instead of English copy; the 2 remaining hits are the brand name
+  `LEVH` and the version badge, which `scripts/release.py` matches by regex and
+  must stay literal.
+- `src/components/layout/header.tsx` — 30 → 3. The 3 remaining hits are the DOM
+  tag names in the keyboard-shortcut guard (`INPUT`/`TEXTAREA`/`SELECT`), which
+  are compared against `event.target.tagName`, not rendered.
+
+`src/app/layout.tsx` (4 hits) is **not** converted on purpose: its strings live
+in the Next.js `Metadata` export, which is evaluated at build time, outside any
+React client component. The catalogue hook cannot reach them, so they need a
+separate mechanism — a change to decide, not to sneak in here.
+
 Nothing else was converted. The remaining files keep their literals and their
 ratchet entries.
 
@@ -79,7 +96,14 @@ ratchet entries.
 JSX text nodes and the `aria-label` / `aria-description` / `placeholder` /
 `title` / `alt` attributes. It deliberately ignores module specifiers, Tailwind
 class lists, `cn(...)` arguments, translation-call arguments (`t("…")`),
-`displayName` assignments and `aria-hidden="true"` decorative subtrees.
+`displayName` assignments and `aria-hidden="true"` decorative subtrees. A
+literal that is **exactly** a key in `en.json` is also skipped: the sidebar
+holds its keys in a data model rather than inline in `t(...)`, and counting
+those would make a fully-converted file look unconverted. That exception is not
+heuristic — the string has to exist in the catalogue to qualify — so it cannot
+swallow arbitrary copy. It deliberately does **not** reach the user-facing
+attributes: `aria-label="header.action.help"` renders the key to a screen
+reader, so it is still counted.
 
 Because the tree is not converted yet, the check is a **ratchet**, the same
 shape as the mypy `files` list in `pyproject.toml`: per-file counts live in

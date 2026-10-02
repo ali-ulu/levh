@@ -10,6 +10,11 @@
 // Heuristic on purpose. It over-counts (a string that is really a message key
 // still counts) rather than under-counts, because a missed literal is a
 // half-translated page while a surplus count is a one-line baseline bump.
+//
+// One exception is not heuristic: a literal that is *exactly* a key in the
+// catalogue is never copy. A page can hold its keys in a data model (the
+// sidebar's nav list) rather than inline in a `t(...)` call, and counting those
+// would make a fully-converted file look unconverted.
 import { readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -19,6 +24,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const FRONTEND = join(HERE, "..");
 const SRC = join(FRONTEND, "src");
 const BASELINE_PATH = join(HERE, "ui-string-baseline.json");
+const CATALOGUE_PATH = join(FRONTEND, "src", "lib", "i18n", "en.json");
 
 const USER_FACING_ATTRS = new Set(["aria-label", "aria-description", "placeholder", "title", "alt"]);
 const NON_UI_ATTRS = new Set([
@@ -36,6 +42,16 @@ const NON_UI_PROPS = new Set([
 const CLASS_HELPERS = new Set(["cn", "clsx", "cva", "twMerge", "classNames", "tv"]);
 // `t("settings.title")` / `translate("...")` — the string is a catalogue key.
 const TRANSLATION_CALLS = new Set(["t", "translate", "tRich"]);
+
+// Catalogue keys, so a key held in a data model is not mistaken for copy.
+function catalogueKeys() {
+  try {
+    return new Set(Object.keys(JSON.parse(readFileSync(CATALOGUE_PATH, "utf8"))));
+  } catch {
+    return new Set();
+  }
+}
+const CATALOGUE_KEYS = catalogueKeys();
 
 function isUrlLike(text) {
   return (
@@ -137,11 +153,21 @@ export function scanFile(filePath) {
       if (/[A-Za-z]/.test(text)) hits.push(text);
     }
     if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) {
+      const name = enclosingName(node);
+      // A catalogue key is not copy — but only where it is *addressed* as a key
+      // (a `t(...)` argument, or a key held in a data model). A key literal in a
+      // user-facing attribute is the opposite: `aria-label="header.action.help"`
+      // renders the key to a screen reader, which is exactly the half-translated
+      // page the gate exists to catch, so the exemption must not reach there.
+      const inUserFacingAttr = !!(name && name.jsx && USER_FACING_ATTRS.has(name.jsx));
+      if (!inUserFacingAttr && CATALOGUE_KEYS.has(node.text)) {
+        ts.forEachChild(node, visit);
+        return;
+      }
       if (isDisplayNameAssignment(node)) {
         ts.forEachChild(node, visit);
         return;
       }
-      const name = enclosingName(node);
       if (name && name.jsx) {
         if (USER_FACING_ATTRS.has(name.jsx)) hits.push(node.text);
         else if (!NON_UI_ATTRS.has(name.jsx) && looksUserFacing(node.text)) hits.push(node.text);
