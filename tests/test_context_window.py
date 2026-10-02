@@ -247,3 +247,123 @@ async def test_query_path_does_not_raise_on_an_empty_store(engine):
     packing = await engine.get_context_packing(max_tokens=500, query="anything")
     assert packing.text == ""
     assert packing.included == []
+
+
+# ── regressions found in review (PR #370) ──────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_layered_included_names_every_admitted_memory(engine):
+    """`included` must describe the window, not just its pinned entries.
+
+    Review finding: the layered path reported only pinned ids while short-term
+    and episodic memories were also in the text, so a caller asking for the
+    packing metadata got a list that did not match what it received.
+    """
+    short = await engine.store(content="A recent short-term note", memory_type="short_term")
+    pin = await engine.store(
+        content="A pinned rule", memory_type="episodic", pinned=True, importance=0.5
+    )
+    important = await engine.store(
+        content="An important episodic fact", memory_type="episodic", importance=0.9
+    )
+
+    packing = await engine.get_context_packing(max_tokens=2000)
+    assert packing.mode == "layered"
+    # Every id reported must actually appear in the text's sources.
+    for memory_id in (short.id, pin.id, important.id):
+        assert memory_id in packing.included
+    assert packing.included[0] == short.id, "included should follow admission order"
+
+
+@pytest.mark.asyncio
+async def test_capped_memory_is_admitted_at_the_size_it_is_charged(engine):
+    """The per-memory cap must not let one outlier smuggle in its whole length.
+
+    Review finding: `memory_tokens` capped the *cost* at MAX_MEMORY_TOKENS while
+    the whole `content` was appended, so a memory far larger than the cap was
+    charged 2000 tokens but contributed all of its 45,000 characters to the
+    window — the cap hid the real cost instead of bounding it.
+
+    The budget here is deliberately *above* the cap (2500 > 2000) so the
+    oversized memories are admitted: the assertion is about the size of what was
+    admitted, not about whether it fits.
+    """
+    await engine.store(content="oversized " * 4500, memory_type="episodic", importance=0.9)
+    await engine.store(content="oversized " * 4500, memory_type="episodic", importance=0.9)
+
+    packing = await engine.get_context_packing(max_tokens=2500, query="oversized")
+    assert packing.included, "both memories should be admitted at the cap"
+    # 2500 tokens is ~10,000 characters. Without truncation the two full
+    # memories alone would be 45,000 characters.
+    assert len(packing.text) <= packing.max_tokens * 4 * 2
+
+
+@pytest.mark.asyncio
+async def test_retired_memory_never_enters_the_window(monkeypatch):
+    """A superseded fact must not reach the window.
+
+    Review finding: the ranked predicate omitted the current-row check that
+    `recall` applies through `_valid_at`, so a retired row could enter from the
+    short-term deque or the vector store.
+
+    Retirement (#335) is opt-in, so the flag is turned on here rather than
+    inheriting the off-by-default value.
+    """
+    monkeypatch.setenv("LEVH_SUPERSESSION", "1")
+    db_fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(db_fd)
+    eng = MemoryEngine(db_path=db_path, embedder_mode="hash", short_term_max=50)
+    await eng.initialize()
+    try:
+        old = await eng.store(
+            content="The production deploy branch is main",
+            memory_type="episodic",
+            importance=0.9,
+        )
+        await eng.store(
+            content="The production deploy branch is main",
+            memory_type="episodic",
+            importance=0.9,
+        )
+        retired = await eng.get_memory(old.id)
+        assert retired.valid_to is not None, (
+            "the fixture must actually retire the first row or it proves nothing"
+        )
+
+        packing = await eng.get_context_packing(
+            max_tokens=1000, query="production deploy branch"
+        )
+        assert old.id not in packing.included
+    finally:
+        await eng.shutdown()
+        if os.path.exists(db_path):
+            os.unlink(db_path)
+
+
+@pytest.mark.asyncio
+async def test_ranked_pool_reaches_an_old_low_importance_match(engine):
+    """Pool breadth is the feature: relevance must beat recency *and* importance.
+
+    Review finding: the ranked pool was only the 50 most recent short-term
+    memories plus episodic rows with `min_importance >= 0.5`, so an older,
+    low-importance memory could never be admitted however well it matched.
+    """
+    await engine.store(
+        content="The staging rollback command is levh rollback --to staging-copy.",
+        memory_type="episodic",
+        importance=0.05,
+        project="ops",
+    )
+    # Push it well outside the recent window and above it in importance.
+    for i in range(60):
+        await engine.store(
+            content=f"Recent high-importance note {i} about unrelated topics",
+            memory_type="episodic",
+            importance=0.95,
+        )
+
+    packing = await engine.get_context_packing(
+        max_tokens=4000, query="staging rollback command", project="ops"
+    )
+    assert "levh rollback --to staging-copy" in packing.text

@@ -74,3 +74,37 @@ def memory_tokens(content: str) -> int:
     only ever binds on an outlier.
     """
     return min(estimate_tokens(content), MAX_MEMORY_TOKENS)
+
+
+def truncate_to_tokens(text: str, max_tokens: int) -> str:
+    """Truncate ``text`` so its estimate fits ``max_tokens``.
+
+    Pairs with :func:`memory_tokens`: the cap decides what a memory *costs*, so
+    the text that gets admitted has to fit that cost. Truncation happens in
+    token space rather than by a ``max_tokens * chars_per_token`` guess — the
+    estimate is not a constant multiple of the length, so a character formula
+    can cut a short memory that was already under the cap.
+
+    Returns ``text`` unchanged when it already fits, and ``""`` for a
+    non-positive budget. Chunks on a line boundary when one is available, so a
+    truncated memory does not end mid-word.
+    """
+    if max_tokens <= 0:
+        return ""
+    if estimate_tokens(text) <= max_tokens:
+        return text
+
+    suffix = "…"
+    lo, hi = 0, len(text)
+    while lo < hi:
+        mid = (lo + hi + 1) // 2
+        if estimate_tokens(text[:mid] + suffix) <= max_tokens:
+            lo = mid
+        else:
+            hi = mid - 1
+
+    cut = text[:lo]
+    newline = cut.rfind("\n")
+    if newline > lo // 2:
+        cut = cut[:newline]
+    return cut.rstrip() + suffix
