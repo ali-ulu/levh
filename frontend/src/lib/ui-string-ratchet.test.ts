@@ -42,6 +42,16 @@ describe("the UI string detector", () => {
     expect(scanSource(`export const A = () => <h1>{t("app.settings.title")}</h1>;`)).toEqual([]);
   });
 
+  it("ignores a catalogue key held in a data model, not a t() call", () => {
+    // The sidebar keeps its nav keys in an array; counting those would make a
+    // fully-converted file look unconverted. The key must exist in the
+    // catalogue to qualify, so this cannot swallow arbitrary strings.
+    expect(
+      scanSource(`const groups = [{ labelKey: "sidebar.group.memory" }];`)
+    ).toEqual([]);
+    expect(scanSource(`const x = "not.a.catalogued.key";`)).toContain("not.a.catalogued.key");
+  });
+
   it("ignores Tailwind classes and module specifiers", () => {
     const source = `import { cn } from "@/lib/utils";
 export const A = () => <div className={cn("flex flex-col gap-2", "text-sm")} />;`;

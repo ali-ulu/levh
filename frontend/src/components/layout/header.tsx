@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { ThemeSwitcher } from "@/components/layout/theme-switcher";
 import { CommandPalette } from "@/components/command-palette";
+import { useT } from "@/lib/i18n";
 import {
   Dialog,
   DialogContent,
@@ -24,6 +25,7 @@ export function Header() {
   const [notifOpen, setNotifOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const router = useRouter();
+  const t = useT();
 
   useEffect(() => {
     const check = () => api.health().then(() => setOnline(true)).catch(() => setOnline(false));
@@ -92,26 +94,26 @@ export function Header() {
         className="premium-search relative hidden h-10 w-full max-w-xl items-center gap-2 rounded-xl border pl-10 pr-16 text-left text-sm text-muted-foreground transition focus:ring-2 focus:ring-primary/20 md:flex"
       >
         <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2" />
-        <span>Search memories, people, projects…</span>
-        <span className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md border bg-background/60 px-1.5 py-0.5 text-[10px]">⌘ K</span>
+        <span>{t("header.search.placeholder")}</span>
+        <span className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md border bg-background/60 px-1.5 py-0.5 text-[10px]">{t("header.search.shortcut")}</span>
       </button>
 
       <div className="ml-auto flex items-center gap-2 sm:gap-3">
         {online !== null && (
           <div className={`status-pill hidden sm:flex ${online ? "is-online" : "is-offline"}`}>
             {online ? <Wifi className="h-3.5 w-3.5" /> : <WifiOff className="h-3.5 w-3.5" />}
-            {online ? "Local core online" : "Core offline"}
+            {online ? t("header.status.online") : t("header.status.offline")}
           </div>
         )}
         <ThemeSwitcher />
-        <button className="icon-button hidden sm:grid" aria-label="Help" onClick={() => setHelpOpen(true)}><CircleHelp className="h-4 w-4" /></button>
-        <button className="icon-button relative hidden sm:grid" aria-label="Notifications" onClick={() => setNotifOpen(true)}>
+        <button className="icon-button hidden sm:grid" aria-label={t("header.action.help")} onClick={() => setHelpOpen(true)}><CircleHelp className="h-4 w-4" /></button>
+        <button className="icon-button relative hidden sm:grid" aria-label={t("header.action.notifications")} onClick={() => setNotifOpen(true)}>
           <Bell className="h-4 w-4" />
           <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-primary" />
         </button>
         <Link href="/#quick-capture" className="capture-button">
           <Plus className="h-4 w-4" />
-          <span className="hidden sm:inline">Quick capture</span>
+          <span className="hidden sm:inline">{t("header.action.quickCapture")}</span>
         </Link>
       </div>
     </header>
@@ -121,30 +123,30 @@ export function Header() {
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <CircleHelp className="h-5 w-5" /> Quick Help
+            <CircleHelp className="h-5 w-5" /> {t("header.help.title")}
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-3 text-sm">
           <div className="space-y-2">
-            <p className="font-medium">Keyboard shortcuts</p>
+            <p className="font-medium">{t("header.help.shortcuts")}</p>
             <div className="grid grid-cols-2 gap-1 text-muted-foreground">
-              <kbd className="bg-muted rounded px-1.5 py-0.5 text-xs">⌘ K</kbd><span>Search memories</span>
-              <kbd className="bg-muted rounded px-1.5 py-0.5 text-xs">⌘ ⇧ A</kbd><span>Quick capture</span>
+              <kbd className="bg-muted rounded px-1.5 py-0.5 text-xs">{t("header.search.shortcut")}</kbd><span>{t("header.help.searchMemories")}</span>
+              <kbd className="bg-muted rounded px-1.5 py-0.5 text-xs">{t("header.help.captureShortcut")}</kbd><span>{t("header.action.quickCapture")}</span>
             </div>
           </div>
           <div className="space-y-2">
-            <p className="font-medium">Pages</p>
+            <p className="font-medium">{t("header.help.pages")}</p>
             <ul className="text-muted-foreground space-y-1">
-              <li><strong>Overview</strong> — Dashboard with stats, recent memories, knowledge graph</li>
-              <li><strong>Memories</strong> — Search and browse all stored memories</li>
-              <li><strong>Projects</strong> — Create projects to group related memories</li>
-              <li><strong>Settings</strong> — Connect AI clients, connectors, backup</li>
+              <li><strong>{t("header.help.page.overview.name")}</strong> — {t("header.help.page.overview.desc")}</li>
+              <li><strong>{t("header.help.page.memories.name")}</strong> — {t("header.help.page.memories.desc")}</li>
+              <li><strong>{t("header.help.page.projects.name")}</strong> — {t("header.help.page.projects.desc")}</li>
+              <li><strong>{t("header.help.page.settings.name")}</strong> — {t("header.help.page.settings.desc")}</li>
             </ul>
           </div>
           <div className="space-y-2">
-            <p className="font-medium">Learn more</p>
+            <p className="font-medium">{t("header.help.learnMore")}</p>
             <a href="https://github.com/ali-ulu/levh" target="_blank" rel="noopener" className="flex items-center gap-1 text-primary hover:underline">
-              GitHub Repository <ExternalLink className="h-3 w-3" />
+              {t("header.help.github")} <ExternalLink className="h-3 w-3" />
             </a>
           </div>
         </div>
@@ -156,14 +158,14 @@ export function Header() {
       <DialogContent className="max-w-sm">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Bell className="h-5 w-5" /> Notifications
+            <Bell className="h-5 w-5" /> {t("header.notifications.title")}
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
           <div className="text-center py-8 text-sm text-muted-foreground">
             <Bell className="h-8 w-8 mx-auto mb-2 opacity-30" />
-            <p>No notifications yet.</p>
-            <p className="text-xs mt-1">Memories stored or recalled by connected AI clients will appear here.</p>
+            <p>{t("header.notifications.empty")}</p>
+            <p className="text-xs mt-1">{t("header.notifications.emptyHint")}</p>
           </div>
         </div>
       </DialogContent>

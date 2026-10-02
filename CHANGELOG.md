@@ -66,6 +66,22 @@
 - Only `en` ships. No second locale is promised; the mechanism makes adding one
   a data change rather than a refactor.
 
+### Refactor: convert the app chrome to the i18n catalogue (#308)
+
+- The chrome every page renders is now catalogue-driven: `theme-switcher`
+  (6 → 0, labels composed with `{theme}` interpolation), `sidebar` (27 → 2) and
+  `header` (30 → 3). The nav model carries `labelKey` instead of English copy.
+- The residual hits are deliberate, not missed: the sidebar's `LEVH` brand and
+  version badge are matched by `scripts/release.py` and must stay literal, and
+  the header's `INPUT`/`TEXTAREA`/`SELECT` are DOM tag names compared against
+  `event.target.tagName`, not copy.
+- `src/app/layout.tsx` is left unconverted: its strings live in the Next.js
+  `Metadata` export, evaluated at build time outside any client component, so it
+  needs its own mechanism rather than the `useT()` hook.
+- The drift gate now skips a literal that is exactly a catalogue key, so keys
+  held in a data model are not counted as copy; the exception is non-heuristic
+  (the string must exist in `en.json`) and is pinned by a detector test.
+
 ### Feature: retrieval-only external benchmark (LoCoMo) for the self-authored harness (#340)
 
 - `levh benchmark-locomo` measures LEVH against the public LoCoMo benchmark
