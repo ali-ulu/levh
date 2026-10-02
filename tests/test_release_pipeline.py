@@ -81,6 +81,13 @@ def _write_min_tree(root, version, minor, dashboard_badge):
     (root / "sdk" / "typescript" / "package.json").write_text(
         f'{{\n  "version": "{version}"\n}}\n', encoding="utf-8"
     )
+    (root / "tests" / "fixtures" / "external_benchmark").mkdir(
+        parents=True, exist_ok=True
+    )
+    (root / "tests" / "fixtures" / "external_benchmark" / "locomo10_retrieval_hash.json").write_text(
+        f'{{\n  "benchmark": "locomo10",\n  "levh_version": "{version}"\n}}\n',
+        encoding="utf-8",
+    )
     (root / "frontend" / "src" / "components" / "layout" / "sidebar.tsx").write_text(
         f"LEVH Engine v{minor}\n", encoding="utf-8"
     )
@@ -98,6 +105,25 @@ def test_assert_catches_stale_packaged_dashboard(tmp_path, monkeypatch):
         release.assert_consistent()
     assert "packaged" in str(exc.value)
     assert "2.22" in str(exc.value)
+
+
+def test_assert_catches_stale_benchmark_artifact_version(tmp_path, monkeypatch):
+    """The committed benchmark artifact must carry the released version, or the
+    docs' byte-identical claim goes stale without any test noticing (#361)."""
+    monkeypatch.setattr(release, "REPO_ROOT", tmp_path)
+    _write_min_tree(tmp_path, version="2.23.0", minor="2.23", dashboard_badge="2.23")
+    artifact = (
+        tmp_path / "tests" / "fixtures" / "external_benchmark"
+        / "locomo10_retrieval_hash.json"
+    )
+    artifact.write_text(
+        '{\n  "benchmark": "locomo10",\n  "levh_version": "2.22.0"\n}\n',
+        encoding="utf-8",
+    )
+    with pytest.raises(release.ReleaseError) as exc:
+        release.assert_consistent()
+    assert "locomo10_retrieval_hash.json" in str(exc.value)
+    assert "2.22.0" in str(exc.value)
 
 
 def test_assert_passes_when_everything_matches(tmp_path, monkeypatch):

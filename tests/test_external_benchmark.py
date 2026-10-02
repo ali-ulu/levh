@@ -20,6 +20,7 @@ from server.core.external_benchmark import (
     run_locomo,
     turns_of,
 )
+from scripts import release
 
 ARTIFACT = (
     Path(__file__).resolve().parent
@@ -175,6 +176,10 @@ def test_committed_artifact_is_well_formed_and_content_free():
     report = json.loads(ARTIFACT.read_text(encoding="utf-8"))
     assert report["adapter_version"] == ADAPTER_VERSION
     assert report["benchmark"] == "locomo10"
+    # The docs claim the artifact is byte-identical to a fresh run, so its
+    # recorded package version must track the release (issue #361). Without
+    # this, a version bump leaves a stale `levh_version` behind silently.
+    assert report["levh_version"] == release._pyproject_version()
     assert report["samples"] == report["samples_total"] == 10
     assert report["retrieval"]["questions"] > 0
     assert report["adversarial"]["metric_kind"] == "evidence_retrieval_proxy"

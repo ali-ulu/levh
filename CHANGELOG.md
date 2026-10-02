@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+### Fix: keep the committed LoCoMo artifact version in sync with releases (#361)
+
+- `tests/fixtures/external_benchmark/locomo10_retrieval_hash.json` records the
+  package version it was produced by, but `scripts/release.py` did not treat it
+  as a version site and no test compared it. Once `pyproject.toml` was bumped,
+  the artifact's `levh_version` silently went stale while
+  `docs/memory-evaluation.md` still promised a byte-identical fresh run.
+- The fixture is now a `VERSION_SITES` entry, so a release bump rewrites it;
+  `assert_consistent` and
+  `test_committed_artifact_is_well_formed_and_content_free` assert it matches
+  the current package version, and a focused release-pipeline test reproduces
+  the stale-artifact failure.
+
 ### Feature: frontend i18n extraction mechanism + drift gate (#308)
 
 - The design issue asked for the extraction mechanism before any page was
