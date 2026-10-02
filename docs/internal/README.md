@@ -28,3 +28,8 @@ scorecards age quickly and read as product claims when seen from outside.
   storage boundary, OIDC only in server mode, and Postgres deferred behind an
   explicit trigger. A proposal for the maintainer to accept or reject, not a
   decision record; the states live in `ROADMAP.md`.
+- [`COMMERCIAL-SURFACES-DESIGN.md`](COMMERCIAL-SURFACES-DESIGN.md) — the
+  decision rule #298 asked for: a surface is decided now only if it needs no
+  second principal. Adopt support/SLA/signed build now, approve single-user
+  hosted sync in principle (zero-knowledge, published-but-not-operated), and
+  route the team workspace and SSO/metering to #302's phase triggers.

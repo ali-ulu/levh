@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+### Docs: record the commercial-surfaces decision rule (#298)
+
+- Design issue #298 left the boundary between the four candidate commercial
+  surfaces open. It is now settled by one test — does the surface need a second
+  principal? — and recorded in `docs/internal/COMMERCIAL-SURFACES-DESIGN.md` so
+  the decision is a fact in the tree rather than an issue thread.
+- Adopt support/SLA/signed build now (no engine change); approve single-user
+  hosted sync in principle as zero-knowledge and published-but-not-operated;
+  route the team workspace and SSO/metering to the phase 2–4 triggers in
+  `SHARED-MEMORY-DESIGN.md` now that #302's phase 1 landed. No runtime code
+  changes.
+
 ### Feature: tenancy boundary as the degenerate single-user case (#302)
 
 - The shared/team memory design landed in #362 with four open questions; they

@@ -27,7 +27,7 @@ quietly dropped. Adding a row without a next step is what that test refuses.
 | 9 | Not recorded at decision time | cancelled | — | |
 | 10 | Not recorded at decision time | ignored | — | |
 | 11 | Not recorded at decision time | skipped | — | |
-| B | Commercial surfaces and a shared/team memory server | proposed | Concrete revenue paths and the features each requires are proposed in #309, on top of the #298/#302 design decisions. The tenancy shape #302 asked for is now written in [`SHARED-MEMORY-DESIGN.md`](SHARED-MEMORY-DESIGN.md); the maintainer needs to accept or reject it, and the four open questions in it, before any code. | #298, #302, #309 |
+| B | Commercial surfaces and a shared/team memory server | proposed | The decision rule #298 asked for is recorded in [`COMMERCIAL-SURFACES-DESIGN.md`](COMMERCIAL-SURFACES-DESIGN.md): adopt support/SLA/signed build now, approve single-user hosted sync in principle, and route the team workspace and SSO/metering to the phase 2–4 triggers in [`SHARED-MEMORY-DESIGN.md`](SHARED-MEMORY-DESIGN.md) (#302, phase 1 landed). Concrete feature lists per revenue path are in #309. No funded surface is implemented yet; the next step is whichever one the owner funds. | #298, #302, #309 |
 
 ## Backlog workstreams
 
