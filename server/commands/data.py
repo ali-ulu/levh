@@ -52,6 +52,13 @@ def cmd_export_full(args: argparse.Namespace) -> int:
     from server.core import engine_provider
 
     fmt = args.format
+    sign = getattr(args, "sign", False)
+    if sign and fmt != "json":
+        print(
+            "  --sign applies to the JSON bundle only; use --format json.",
+            file=sys.stderr,
+        )
+        return 1
     # As with `levh context -o`, the operator names the destination; the export
     # is meant to land wherever they point it.
     out_path = args.out or f"levh-full-export.{fmt}"
@@ -71,9 +78,11 @@ def cmd_export_full(args: argparse.Namespace) -> int:
                 import json
 
                 export = await build_full_export(engine)
+                if sign:
+                    export = _sign_bundle(export, args)
                 with open(out_path, "w") as f:
                     json.dump(export, f, indent=2, default=str)
-                return export["counts"]
+                return export["bundle"]["counts"] if sign else export["counts"]
             elif fmt == "sqlite":
                 blob = await export_full_sqlite(engine)
                 with open(out_path, "wb") as f:
@@ -96,7 +105,104 @@ def cmd_export_full(args: argparse.Namespace) -> int:
     if counts is None and fmt == "pdf":
         return 1
     print(f"  Wrote {out_path}" + (f" — {counts}" if counts else ""))
+    if sign:
+        print("  Signed envelope: verify it on the receiver with `levh import-full`.")
     return 0
+
+
+def _sign_bundle(bundle: dict, args: argparse.Namespace) -> dict:
+    """Wrap a full-export bundle in a signed federation envelope (issue #338).
+
+    The key is the operator's: either a shared secret (``--secret``) or an
+    Ed25519 private key read from ``--key`` / ``$LEVH_FEDERATION_KEY``.
+    """
+    import socket
+    from pathlib import Path
+
+    from server.core.federation import (
+        ED25519,
+        HMAC_SHA256,
+        sign_envelope,
+    )
+
+    node_id = (getattr(args, "node_id", "") or "").strip() or socket.gethostname()
+    secret = getattr(args, "secret", "") or ""
+    if secret:
+        return sign_envelope(
+            bundle, node_id=node_id, algorithm=HMAC_SHA256, secret=secret
+        )
+
+    key_path = (getattr(args, "key", "") or "").strip() or get_env("LEVH_FEDERATION_KEY")
+    if not key_path:
+        raise SystemExit(
+            "  --sign needs a key: pass --key <pem> or --secret <shared>, "
+            "or set LEVH_FEDERATION_KEY."
+        )
+    private_key = Path(key_path).read_text(encoding="utf-8")
+    return sign_envelope(
+        bundle, node_id=node_id, algorithm=ED25519, private_key=private_key
+    )
+
+
+def cmd_import_full(args: argparse.Namespace) -> int:
+    """Verify a signed federation envelope, then import its bundle through the
+    real admission gate. Nothing is imported unless verification succeeds."""
+    import asyncio
+    import json
+    from pathlib import Path
+
+    from server.core import engine_provider
+    from server.core.federation import (
+        ED25519,
+        EnvelopeError,
+        key_fingerprint,
+        read_envelope,
+        verify_envelope,
+    )
+
+    raw = sys.stdin.read() if args.path == "-" else Path(args.path).read_text(encoding="utf-8")
+    try:
+        envelope = read_envelope(raw)
+    except EnvelopeError as exc:
+        print(f"  Rejected: {exc}", file=sys.stderr)
+        return 1
+
+    public_key = secret = None
+    key_path = (getattr(args, "key", "") or "").strip() or get_env("LEVH_FEDERATION_KEY")
+    if key_path:
+        public_key = Path(key_path).read_text(encoding="utf-8")
+    secret = getattr(args, "secret", "") or ""
+    try:
+        bundle = verify_envelope(
+            envelope,
+            public_key=public_key,
+            secret=secret,
+            allow_embedded_key=getattr(args, "trust_embedded_key", False),
+        )
+    except EnvelopeError as exc:
+        print(f"  Rejected: {exc}", file=sys.stderr)
+        return 1
+
+    if envelope["algorithm"] == ED25519 and public_key:
+        print(f"  Verified: node {envelope['node_id']} (key {key_fingerprint(public_key)})")
+
+    memories = bundle.get("memories")
+    if not isinstance(memories, list):
+        print("  Rejected: envelope bundle carries no memories array", file=sys.stderr)
+        return 1
+
+    async def _run() -> dict:
+        engine = engine_provider.get_engine()
+        await engine.initialize()
+        try:
+            return await engine.import_memories_gated(memories)
+        finally:
+            await engine.shutdown()
+
+    result = asyncio.run(_run())
+    print("  " + json.dumps(result))
+    return 0
+
 
 
 def cmd_remove_demo(_args: argparse.Namespace) -> int:

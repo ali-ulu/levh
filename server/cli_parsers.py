@@ -312,6 +312,52 @@ def _add_continuation_commands(sub: argparse._SubParsersAction) -> None:
         help="Output format (default: json)",
     )
     export_full_p.add_argument("--out", help="Output file path (default: levh-full-export.<format>)")
+    export_full_p.add_argument(
+        "--sign",
+        action="store_true",
+        help="Wrap the JSON bundle in a signed federation envelope (issue #338)",
+    )
+    export_full_p.add_argument(
+        "--node-id",
+        type=str,
+        default="",
+        help="Origin node id recorded in a signed envelope (default: hostname)",
+    )
+    export_full_p.add_argument(
+        "--key",
+        type=str,
+        default="",
+        help="Ed25519 private key PEM path (default: $LEVH_FEDERATION_KEY)",
+    )
+    export_full_p.add_argument(
+        "--secret",
+        type=str,
+        default="",
+        help="Shared secret for hmac-sha256 signing instead of Ed25519",
+    )
+
+    import_full_p = sub.add_parser(
+        "import-full",
+        help="Verify a federation envelope and import its memories through the gate",
+    )
+    import_full_p.add_argument("path", help="Envelope file path, or - for stdin")
+    import_full_p.add_argument(
+        "--key",
+        type=str,
+        default="",
+        help="Ed25519 public key PEM path to verify against",
+    )
+    import_full_p.add_argument(
+        "--secret",
+        type=str,
+        default="",
+        help="Shared secret for hmac-sha256 verification",
+    )
+    import_full_p.add_argument(
+        "--trust-embedded-key",
+        action="store_true",
+        help="Accept the sender's embedded public key (trust-on-first-use)",
+    )
 
 
 def _add_entities_parser(sub: argparse._SubParsersAction) -> argparse.ArgumentParser:

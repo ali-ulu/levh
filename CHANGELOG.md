@@ -2,6 +2,27 @@
 
 ## Unreleased
 
+### Feature: signed memory federation envelope — provenance-verified transfer (#338)
+
+- `levh export-full --sign` wraps the JSON bundle in a signed envelope, and
+  `levh import-full` verifies it before a single memory reaches the store. The
+  envelope carries the origin node id and a signature over every other field,
+  so a peer cannot rewrite the claimed origin either. This is Phase B0 of
+  `docs/internal/PLAN-CONTINUITY-AND-FEDERATION.md`: the offline format first,
+  no transport.
+- `server/core/federation.py` is the whole mechanism. Ed25519 is the default
+  (the operator holds the key, `--key` or `$LEVH_FEDERATION_KEY`); a
+  shared-secret `hmac-sha256` mode exists for operators who cannot manage key
+  pairs. `--trust-embedded-key` opts in to the sender's self-declared public
+  key on first use; the strict default is an explicit key.
+- Fail closed: a tampered or unverifiable envelope raises before the bundle is
+  returned, so nothing is imported. A verified envelope still re-enters through
+  `import_memories_gated`, so admitted, rejected and review-held entries each
+  get their real outcome — verification proves origin, not safety.
+- `SECURITY.md` gains a federation section stating the widened threat model:
+  importing from a peer means accepting untrusted input, and the admission gate
+  remains the boundary.
+
 ### Fix: drop the test-only `_count_quarantined_rows` wrapper (#354)
 
 - `server/commands/doctor.py` no longer carries `_count_quarantined_rows`: it

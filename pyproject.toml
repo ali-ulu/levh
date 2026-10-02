@@ -105,6 +105,7 @@ files = [
     "server/core/dogfood.py",
     "server/core/entities.py",
     "server/core/env.py",
+    "server/core/federation.py",
     "server/core/file_import.py",
     "server/core/full_export.py",
     "server/core/guard.py",

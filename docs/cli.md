@@ -45,7 +45,8 @@ Run `levh <command> --help` for the flags of any one of them.
 | `levh seed-demo` | Load a deterministic demo corpus so a first run has data to explore |
 | `levh remove-demo` | Remove demo-tagged memories, leaving real data untouched |
 | `levh continue` | Show context to resume work (session DNA) |
-| `levh export-full` | Export memories, entity graph, trust scores, and conflicts to one file |
+| `levh export-full` | Export memories, entity graph, trust scores, and conflicts to one file; `--sign` wraps the JSON bundle in a signed federation envelope |
+| `levh import-full` | Verify a signed federation envelope and import its memories through the admission gate |
 | `levh entities <sub>` | Persistent entity knowledge graph |
 | `levh entities reindex` | Rebuild the entity graph from all memories |
 | `levh entities list` | List entities |

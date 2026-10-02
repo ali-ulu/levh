@@ -47,6 +47,29 @@ smallest reproduction you can manage.
 - Use `EMBEDDER_MODE=hash` only for tests and smoke demos; use `local`,
   `ollama`, or `openai` for real semantic quality.
 
+## Federation envelopes
+
+`levh export-full --sign` wraps a full-export bundle in a signed envelope and
+`levh import-full` verifies it before anything reaches the store. This is a
+deliberate widening of the threat model: `SECURITY.md` otherwise assumes a
+single trusted local file, and importing from a peer means accepting untrusted
+input.
+
+- **The admission gate is the boundary.** A verified envelope proves *who*
+  produced the bundle, not that its contents are safe. Every imported memory
+  still re-enters through `import_memories_gated` — dedupe, secret redaction,
+  review-holding — exactly like a local write. Verification happens first, so a
+  tampered or unverifiable bundle imports nothing at all.
+- **Verify with an explicit key.** `levh import-full --key <public.pem>` is the
+  default contract. `--trust-embedded-key` accepts the sender's self-declared
+  public key on first use; use it only when you have another channel to confirm
+  the fingerprint.
+- **The private key never leaves the sender.** Ed25519 signing is the default;
+  `--secret` offers symmetric HMAC for operators who cannot manage key pairs,
+  at the cost of shared trust. Prefer Ed25519.
+- **No transport is implied.** An envelope is a file. Moving it is the
+  operator's choice; LEVH opens no socket for it.
+
 ## Legacy environment names
 
 `STACKMEMORY_*` variables (for example `STACKMEMORY_TOKEN`) are accepted for
