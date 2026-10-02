@@ -90,6 +90,34 @@ def _add_leaf_commands(sub: argparse._SubParsersAction) -> None:
     benchmark_p.add_argument("--top-k", type=int, default=5, help="Top-k for recall during the benchmark")
     benchmark_p.add_argument("--check", action="store_true", help="Exit non-zero if a gated metric is below its quality floor")
 
+    locomo_p = sub.add_parser(
+        "benchmark-locomo",
+        help="Retrieval-only LoCoMo benchmark (offline, no LLM judge)",
+    )
+    locomo_p.add_argument(
+        "--data",
+        type=str,
+        required=True,
+        help="Path to the LoCoMo release (locomo10.json)",
+    )
+    locomo_p.add_argument(
+        "--embedder-mode",
+        type=str,
+        default="",
+        help="Embedder mode (default: $EMBEDDER_MODE or hash)",
+    )
+    locomo_p.add_argument("--top-k", type=int, default=10, help="Retrieval depth (default: 10)")
+    locomo_p.add_argument(
+        "--limit",
+        type=int,
+        default=0,
+        help="Run only the first N conversations (0 = the whole release)",
+    )
+    locomo_p.add_argument("--json", action="store_true", help="Print the full report as JSON")
+    locomo_p.add_argument(
+        "--output", "-o", type=str, default="", help="Also write the JSON report to this path"
+    )
+
     recall_report_p = sub.add_parser(
         "recall-report",
         help="Recall quality from the store's own recall log (offline, deterministic)",

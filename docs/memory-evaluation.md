@@ -66,6 +66,61 @@ that actually produced it. There are no fabricated or hard-coded numbers in
 this codebase's docs — quote a metric only from a real `levh eval
 run` against a known fixture set.
 
+## External benchmark: LoCoMo, retrieval-only
+
+The golden-fixture evaluator above is *self-authored*: it answers "did this
+change regress ranking on our own scenarios". It cannot answer "how good is
+LEVH at long-term memory compared to anything else". `server/core/external_benchmark.py`
+adds one external yardstick for the honest subset that needs **no LLM judge** —
+retrieval-side metrics on the public **LoCoMo** benchmark
+([snap-research/locomo](https://github.com/snap-research/locomo)).
+
+Run it with `levh benchmark-locomo --data /path/to/locomo10.json
+[--embedder-mode MODE] [--top-k K] [--limit N] [--json] [-o FILE]`. The dataset
+is **not vendored and never downloaded** — it is a research release, so point
+`--data` at a checkout. With `--embedder-mode hash` the run is deterministic:
+the committed artifact
+`tests/fixtures/external_benchmark/locomo10_retrieval_hash.json` is
+byte-identical to a fresh run.
+
+### Protocol
+
+Each conversation is fed through the real pipeline — `admit_memory` (the
+admission gate) into a per-sample throwaway store, then `recall` — one memory
+per dialogue turn, content `"speaker: text"`, tagged with its `dia_id`. A
+question counts as a **hit** when any turn LoCoMo labels as evidence is
+retrieved within top-k. Turns are pinned so wall-clock decay cannot flip
+near-ties; that keeps retrieval, which is what this measures, separate from the
+decay simulation.
+
+### What it reports, and what it does not
+
+- `retrieval` — recall@1/3/5/10 and MRR over categories 1–4 (the ones with an
+  evidence label), plus a per-category breakdown.
+- `adversarial` — category 5, reported as an **evidence-retrieval proxy**, not
+  an abstention rate. LoCoMo does not label an adversarial question as absent
+  from the conversation, and a boolean `recall` cannot decline to answer.
+  Answer abstention needs an LLM judge and is deliberately out of scope.
+- `admission` — the gate's action distribution over the ingested turns.
+
+### Measured (hash embedder, `top_k=10`, full release)
+
+The committed artifact records one real run:
+
+| Metric | Value |
+|---|---|
+| conversations / turns | 10 / 5882 |
+| scored questions | 1536 |
+| hit@1 / hit@3 / hit@5 / hit@10 | 0.3581 / 0.5072 / 0.5671 / 0.6471 |
+| MRR | 0.4486 |
+| adversarial evidence-retrieval (proxy) | 0.5628 |
+
+These are a **lexical floor**, not a semantic result: the hash embedder is
+positional, not semantic. A semantic embedder (`local`/`openai`) is expected to
+move these numbers and must be measured on a machine that has the model. The
+report is a reproducible artifact, not a CI gate — it needs the dataset and a
+full run is long, so it gates nothing and is run on demand.
+
 ## Dogfood journal
 
 `server/core/dogfood.py` is a local, append-only JSONL journal of coarse

@@ -19,6 +19,7 @@ Run `levh <command> --help` for the flags of any one of them.
 | `levh context` | Generate CLAUDE.md / .cursorrules from memories |
 | `levh summarize` | Distill a session into one summary memory |
 | `levh benchmark` | Run the recall-quality benchmark (hit@k / MRR); `--check` gates on the quality floors |
+| `levh benchmark-locomo` | Retrieval-only LoCoMo benchmark on a local `locomo10.json` (`--data`, `--limit`, `--json`, `-o`); offline, no LLM judge |
 | `levh recall-report` | Recall quality from your own recall log: precision@k, hit rate, churn (existence/retention proxy, not labelled precision; `--json`, `--limit`) |
 | `levh tune` | Fit H(x,psi) weights to the labelled query set (offline) |
 | `levh reembed` | Re-derive stored vectors from content after changing embedder mode |

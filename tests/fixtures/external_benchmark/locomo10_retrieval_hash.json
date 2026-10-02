@@ -1,0 +1,80 @@
+{
+  "benchmark": "locomo10",
+  "adapter_version": "levh-locomo-retrieval-v1",
+  "levh_version": "2.32.0",
+  "embedder_mode": "hash",
+  "top_k": 10,
+  "samples": 10,
+  "samples_total": 10,
+  "turns": 5882,
+  "stored": 5880,
+  "admission": {
+    "actions": {
+      "admit": 5880,
+      "reject": 2
+    },
+    "accept_rate": 0.9997
+  },
+  "retrieval": {
+    "questions": 1536,
+    "hit_at_1": 0.3581,
+    "hit_at_3": 0.5072,
+    "hit_at_5": 0.5671,
+    "hit_at_10": 0.6471,
+    "mrr": 0.4486
+  },
+  "retrieval_by_category": {
+    "1": {
+      "questions": 282,
+      "hit_at_1": 0.2376,
+      "hit_at_3": 0.4184,
+      "hit_at_5": 0.5213,
+      "hit_at_10": 0.6525,
+      "mrr": 0.3589
+    },
+    "2": {
+      "questions": 321,
+      "hit_at_1": 0.4704,
+      "hit_at_3": 0.595,
+      "hit_at_5": 0.6449,
+      "hit_at_10": 0.6947,
+      "mrr": 0.5458
+    },
+    "3": {
+      "questions": 92,
+      "hit_at_1": 0.1739,
+      "hit_at_3": 0.2935,
+      "hit_at_5": 0.3261,
+      "hit_at_10": 0.4022,
+      "mrr": 0.2439
+    },
+    "4": {
+      "questions": 841,
+      "hit_at_1": 0.3757,
+      "hit_at_3": 0.5268,
+      "hit_at_5": 0.5791,
+      "hit_at_10": 0.654,
+      "mrr": 0.464
+    }
+  },
+  "adversarial": {
+    "questions": 446,
+    "evidence_retrieval_rate": 0.5628,
+    "metric_kind": "evidence_retrieval_proxy",
+    "note": "Not an abstention rate. LoCoMo does not label an adversarial question as absent from the conversation, and boolean recall cannot decline; answer abstention needs an LLM judge."
+  },
+  "protocol": {
+    "unit": "one memory per dialogue turn, content 'speaker: text'",
+    "ingest": "engine.admit_memory (real admission gate, per-sample store)",
+    "recall": "engine.recall(top_k=10, reinforce=False)",
+    "hit": "a question is a hit when any labelled evidence turn is retrieved",
+    "judge": "none \u2014 retrieval-side only",
+    "determinism": "byte-identical reports with embedder_mode=hash: turns are pinned (decay=1.0) and the dataset is fixed",
+    "deviations": [
+      "Answers are not generated or scored; this measures retrieval.",
+      "Adversarial questions are scored on evidence retrieval, not abstention.",
+      "No session-date metadata is used for temporal questions (system-time only).",
+      "Turns are pinned, so time decay does not affect the ranking."
+    ]
+  }
+}

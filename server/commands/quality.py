@@ -50,6 +50,45 @@ def cmd_benchmark(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_benchmark_locomo(args: argparse.Namespace) -> int:
+    """Run the retrieval-only LoCoMo benchmark (issue #340).
+
+    The dataset is supplied by the caller; nothing is downloaded. The report is
+    a reproducible artifact, not a CI gate — it needs the dataset and a full run
+    is long, so it runs on demand and gates nothing.
+    """
+    import asyncio
+    import json
+
+    from server.core.external_benchmark import render_report, run_locomo
+
+    mode = args.embedder_mode or resolve_runtime_config().embedder_mode
+    try:
+        report = asyncio.run(
+            run_locomo(
+                args.data,
+                embedder_mode=mode,
+                top_k=args.top_k,
+                limit=args.limit or None,
+            )
+        )
+    except (FileNotFoundError, ValueError) as exc:
+        print(f"  {exc}", file=sys.stderr)
+        return 1
+
+    if getattr(args, "json", False):
+        print(json.dumps(report, indent=2))
+    else:
+        print(render_report(report))
+
+    if args.output:
+        from pathlib import Path
+
+        Path(args.output).write_text(json.dumps(report, indent=2), encoding="utf-8")
+        print(f"  Wrote {args.output}")
+    return 0
+
+
 def cmd_tune(args: argparse.Namespace) -> int:
     """Fit the H(x,ψ) weights to the labelled query set and report the gain.
 

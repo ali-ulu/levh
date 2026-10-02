@@ -164,6 +164,7 @@ from server.commands.context import cmd_context, cmd_continue, cmd_summarize
 from server.commands.hooks import cmd_hook
 from server.commands.quality import (
     cmd_benchmark,
+    cmd_benchmark_locomo,
     cmd_eval_report,
     cmd_eval_run,
     cmd_recall_report,
@@ -237,6 +238,8 @@ def main() -> int:
         return cmd_summarize(args)
     elif args.command == "benchmark":
         return cmd_benchmark(args)
+    elif args.command == "benchmark-locomo":
+        return cmd_benchmark_locomo(args)
     elif args.command == "recall-report":
         return cmd_recall_report(args)
     elif args.command == "tune":

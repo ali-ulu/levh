@@ -2,6 +2,27 @@
 
 ## Unreleased
 
+### Feature: retrieval-only external benchmark (LoCoMo) for the self-authored harness (#340)
+
+- `levh benchmark-locomo` measures LEVH against the public LoCoMo benchmark
+  using retrieval-side metrics only — no LLM judge, so it stays offline and
+  deterministic. The self-authored golden-fixture evaluator can only tell you
+  whether a change regressed *our* scenarios; this is the external yardstick
+  the issue asked for.
+- `server/core/external_benchmark.py` feeds each conversation through the real
+  admission gate and `recall`, one memory per turn, and scores recall@k / MRR
+  against the turns LoCoMo labels as evidence. The dataset is not vendored and
+  never downloaded — `--data` points at a checkout.
+- The adversarial category is reported as an **evidence-retrieval proxy**, not
+  an abstention rate: LoCoMo does not label an adversarial question as absent
+  from the conversation and boolean recall cannot decline. Answer abstention
+  needs an LLM judge and is deliberately out of scope.
+- Turns are pinned so wall-clock decay cannot flip near-ties, which makes a
+  hash-embedder run byte-identical; the committed artifact
+  `tests/fixtures/external_benchmark/locomo10_retrieval_hash.json` is
+  reproducible. It records a lexical floor (hit@1 0.3581, MRR 0.4486 over 1536
+  questions), not a semantic result.
+
 ### Fix: ed25519 envelope verification from a private key file (#338)
 
 - `server/core/federation.py::_load_ed25519_public` now calls
