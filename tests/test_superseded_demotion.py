@@ -390,3 +390,38 @@ async def test_a_second_replacement_does_not_rewrite_the_first_retirement(engine
     between = await engine.recall(QUESTION, top_k=5, reinforce=False, as_of=first.valid_from)
     assert old.id in [m.id for m in between.memories]
 
+
+@pytest.mark.asyncio
+async def test_retire_if_current_is_compare_and_set(engine):
+    """The primitive's contract: only the first caller closes the window."""
+    old = await engine.store(content=OLD, memory_type="episodic")
+
+    assert await engine.db.retire_if_current(old.id, "2026-01-01T00:00:00+00:00", "repl-a")
+    # Second caller loses and must not overwrite the first interval.
+    assert not await engine.db.retire_if_current(old.id, "2026-06-01T00:00:00+00:00", "repl-b")
+
+    stored = await engine.get_memory(old.id)
+    assert stored.valid_to == "2026-01-01T00:00:00+00:00"
+    assert stored.superseded_by == "repl-a"
+
+
+@pytest.mark.asyncio
+async def test_a_stale_cache_cannot_overwrite_a_retirement_made_elsewhere(engine):
+    """Simulates a second process: our cache still shows OLD current, but the
+    database already retired it. The store path's ``valid_to is None`` check is
+    satisfied by the stale cache, so the compare-and-set is what actually stops
+    this writer from erasing the first retirement."""
+    old = await _supersede(engine)
+    retired = await engine.get_memory(old[0].id)
+
+    # Another writer retires OLD; our in-memory copy has not seen it.
+    cached = engine.vector_store.get(old[0].id)
+    cached.valid_to = None
+    cached.superseded_by = None
+
+    await engine.store(content=NEW, memory_type="episodic")
+
+    stored = await engine.get_memory(old[0].id)
+    assert stored.valid_to == retired.valid_to
+    assert stored.superseded_by == retired.superseded_by
+

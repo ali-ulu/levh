@@ -198,24 +198,10 @@ class MemoryWriteMixin:
             old.metadata = dict(old.metadata or {})
             old.metadata["superseded_by"] = new_memory.id
             old.metadata["superseded_at"] = datetime.now(timezone.utc).isoformat()
-            updates: dict = {"stability_hours": weakened, "metadata": old.metadata}
-            # Retirement is the belief revision: close the old fact's validity
-            # window at the moment it was replaced. Gated behind the flag —
-            # a wide interference hit is a weakened neighbour, not a retired
-            # fact, and must stay current so dedupe/consolidation can see it.
-            #
-            # A candidate may already be retired by an earlier memory: the
-            # candidate set is not filtered on validity, so storing C can select
-            # A again after B retired it. Overwriting A's interval would erase
-            # the A->B edge (an as_of read between B and C would wrongly return
-            # A) and make deleting C reopen A as well. The first retirement
-            # wins; only a still-current memory is retired here.
-            retiring = retire_enabled and old.valid_to is None
-            if retiring:
-                updates["valid_to"] = old.metadata["superseded_at"]
-                updates["superseded_by"] = new_memory.id
             try:
-                await self.db.update_memory(old.id, updates)
+                await self.db.update_memory(
+                    old.id, {"stability_hours": weakened, "metadata": old.metadata}
+                )
             except sqlite3.OperationalError:
                 logger.warning(
                     "interference weaken skipped for %s: transient SQLite error",
@@ -223,12 +209,32 @@ class MemoryWriteMixin:
                 )
                 continue
             old.stability_hours = weakened
-            # Apply the temporal fields to the cached copy only once the row is
-            # persisted, so a failed UPDATE cannot leave the in-process view
-            # claiming a retirement the database never recorded.
-            if retiring:
-                old.valid_to = updates["valid_to"]
-                old.superseded_by = updates["superseded_by"]
+            # Retirement is the belief revision: close the old fact's validity
+            # window at the moment it was replaced. Gated behind the flag —
+            # a wide interference hit is a weakened neighbour, not a retired
+            # fact, and must stay current so dedupe/consolidation can see it.
+            #
+            # The candidate set is not filtered on validity, so storing C can
+            # select A again after B retired it. The compare-and-set closes the
+            # window only while it is still open: the first retirement wins even
+            # when two concurrent stores both select the same predecessor, so a
+            # loser cannot overwrite the winner's interval (which would erase
+            # the A->B edge and let a later delete reopen a closed window). The
+            # cached copy is updated only when this call is the one that won.
+            if retire_enabled and old.valid_to is None:
+                try:
+                    won = await self.db.retire_if_current(
+                        old.id, old.metadata["superseded_at"], new_memory.id
+                    )
+                except sqlite3.OperationalError:
+                    logger.warning(
+                        "retirement skipped for %s: transient SQLite error",
+                        old.id,
+                    )
+                    won = False
+                if won:
+                    old.valid_to = old.metadata["superseded_at"]
+                    old.superseded_by = new_memory.id
             interfered.append(old.id)
 
         if interfered:

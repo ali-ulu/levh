@@ -287,6 +287,29 @@ class MemoryQueries:
         await self._db.commit()
         return cursor.rowcount > 0
 
+    async def retire_if_current(
+        self, memory_id: str, valid_to: str, superseded_by: str
+    ) -> bool:
+        """Close a memory's validity window, but only while it is still open.
+
+        A compare-and-set in one statement (#335). The write path runs it as a
+        separate step from the weakening update because the candidate set is
+        not filtered on validity: two concurrent stores can both select the
+        same predecessor, and a plain UPDATE would let the loser overwrite the
+        winner's ``valid_to``/``superseded_by`` — erasing the first retirement
+        edge and letting a later delete reopen a window that was already
+        closed. ``valid_to IS NULL`` in the WHERE makes the first retirement
+        win atomically; ``rowcount`` tells the caller whether it was the one
+        that closed the window, so only that caller updates its cached copy.
+        """
+        cursor = await self._db.conn.execute(
+            "UPDATE memories SET valid_to = ?, superseded_by = ? "
+            "WHERE id = ? AND valid_to IS NULL",
+            (valid_to, superseded_by, memory_id),
+        )
+        await self._db.commit()
+        return cursor.rowcount > 0
+
     async def delete_memory(self, memory_id: str) -> bool:
         cursor = await self._db.conn.execute("DELETE FROM memories WHERE id = ?", (memory_id,))
         await self._db.commit()
