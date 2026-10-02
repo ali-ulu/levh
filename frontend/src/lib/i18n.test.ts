@@ -27,6 +27,16 @@ describe("translate", () => {
     expect(translate("header.help.page.overview.desc")).toContain("Dashboard");
   });
 
+  it("resolves the page keys the follow-on conversions use", () => {
+    expect(translate("app.error.title")).toBe("Something went wrong");
+    expect(translate("auth.gate.unlock")).toBe("Unlock");
+    expect(translate("memoryResultCard.viewDetails")).toBe("View details");
+    // The timeline count is composed, so the plural forms are checked with a
+    // real count rather than by the key alone.
+    expect(translate("app.timeline.count.one", { count: 1 })).toBe("1 memory");
+    expect(translate("app.timeline.count.other", { count: 3 })).toBe("3 memories");
+  });
+
   it("falls back to the key when it is not in the catalogue", () => {
     // A silent empty string hides a typo'd key; returning the key makes the
     // mistake visible in the rendered page and in a snapshot.

@@ -7,6 +7,7 @@ import { getToken, setToken, onTokenChange } from "@/lib/token";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { useT } from "@/lib/i18n";
 
 type GateState = "checking" | "open" | "locked";
 
@@ -22,6 +23,7 @@ type GateState = "checking" | "open" | "locked";
  *  - auth_required === true + no token → render the token-entry card.
  */
 export function AuthGate({ children }: { children: React.ReactNode }) {
+  const t = useT();
   const [state, setState] = useState<GateState>("checking");
   const [value, setValue] = useState("");
 
@@ -59,7 +61,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center text-sm text-muted-foreground">
         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-        Loading…
+        {t("auth.gate.loading")}
       </div>
     );
   }
@@ -71,13 +73,12 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <Lock className="h-4 w-4" />
-              This LEVH server requires a token
+              {t("auth.gate.title")}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              Ask the server operator for the access token, or check the
-              LEVH_TOKEN value on the server.
+              {t("auth.gate.help")}
             </p>
             <form
               className="flex items-center gap-2"
@@ -89,12 +90,12 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
               <Input
                 type="password"
                 autoFocus
-                placeholder="Access token"
+                placeholder={t("auth.gate.placeholder")}
                 value={value}
                 onChange={(e) => setValue(e.target.value)}
               />
               <Button type="submit" disabled={!value.trim()}>
-                Unlock
+                {t("auth.gate.unlock")}
               </Button>
             </form>
           </CardContent>

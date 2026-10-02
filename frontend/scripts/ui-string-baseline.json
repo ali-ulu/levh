@@ -3,7 +3,6 @@
   "src/app/briefing/page.tsx": 12,
   "src/app/conflicts/page.tsx": 17,
   "src/app/decisions/page.tsx": 10,
-  "src/app/error.tsx": 3,
   "src/app/findings/page.tsx": 19,
   "src/app/graph/page.tsx": 17,
   "src/app/guard/page.tsx": 20,
@@ -26,10 +25,9 @@
   "src/app/settings/_sections/recall-quality.tsx": 12,
   "src/app/settings/_sections/server-configuration.tsx": 17,
   "src/app/settings/_sections/trust-provenance.tsx": 9,
-  "src/app/timeline/page.tsx": 7,
+  "src/app/timeline/page.tsx": 3,
   "src/app/visualize/page.tsx": 39,
   "src/components/ask-panel.tsx": 10,
-  "src/components/auth-gate.tsx": 5,
   "src/components/command-palette.tsx": 10,
   "src/components/fading-memories.tsx": 8,
   "src/components/knowledge-constellation.tsx": 8,
@@ -38,6 +36,5 @@
   "src/components/live-feed.tsx": 8,
   "src/components/memory-detail-drawer.tsx": 75,
   "src/components/memory-quick-add.tsx": 30,
-  "src/components/memory-result-card.tsx": 4,
   "src/components/onboarding-empty-state.tsx": 44
 }

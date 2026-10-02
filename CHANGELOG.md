@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+### Refactor: convert the error boundary, token gate, result card and timeline to the i18n catalogue (#308)
+
+- Four user-visible surfaces join the catalogue as follow-on conversions of
+  #308: `src/app/error.tsx` (3 → 0), `src/components/auth-gate.tsx` (5 → 0),
+  `src/components/memory-result-card.tsx` (4 → 0) and `src/app/timeline/page.tsx`
+  (7 → 3). Each lowers its own ratchet entry in
+  `frontend/scripts/ui-string-baseline.json`; the gate now stands at 38 files
+  and 693 literals, down from 41 and 709.
+- The timeline count is composed through `app.timeline.count.one` /
+  `app.timeline.count.other` with a `{count}` placeholder rather than two
+  literals, matching the interpolation-only message format the mechanism chose.
+- The 3 residual hits on the timeline page are deliberate: `en-GB` and `2-digit`
+  are `Intl.DateTimeFormat` option values and `connector:` is a source-id prefix
+  stripped from `item.source` before display, not copy. A comment records why so
+  a later pass does not "convert" them.
+
 ### Docs: record the commercial-surfaces decision rule (#298)
 
 - Design issue #298 left the boundary between the four candidate commercial

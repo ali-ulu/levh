@@ -2,6 +2,7 @@
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useT } from "@/lib/i18n";
 import type { Memory } from "@/types";
 import { Eye, FolderGit2, Pin, Sparkles } from "lucide-react";
 
@@ -21,12 +22,14 @@ export function MemoryResultCard({
   score?: number;
   onView?: () => void;
 }) {
+  const t = useT();
+
   return (
     <div className="border rounded-lg p-3 bg-card hover:bg-accent/40 transition-colors">
       <div className="flex items-start justify-between gap-3">
         <p className="text-sm leading-relaxed line-clamp-3 flex-1">{memory.content}</p>
         {onView && (
-          <Button variant="ghost" size="icon" className="shrink-0 h-7 w-7" onClick={onView} aria-label="View details">
+          <Button variant="ghost" size="icon" className="shrink-0 h-7 w-7" onClick={onView} aria-label={t("memoryResultCard.viewDetails")}>
             <Eye className="h-3.5 w-3.5" />
           </Button>
         )}
@@ -34,19 +37,19 @@ export function MemoryResultCard({
       <div className="flex flex-wrap items-center gap-1.5 mt-2">
         {score !== undefined && (
           <Badge variant="outline" className={`text-[11px] font-mono ${scoreColor(score)}`}>
-            H {score.toFixed(3)}
+            {t("memoryResultCard.hScore", { score: score.toFixed(3) })}
           </Badge>
         )}
         {memory.pinned && (
           <Badge variant="secondary" className="text-[11px]">
             <Pin className="h-2.5 w-2.5 mr-1" />
-            pinned
+            {t("memoryResultCard.pinned")}
           </Badge>
         )}
         {memory.metadata?.demo === true && (
           <Badge variant="outline" className="text-[11px] border-primary/40 text-primary">
             <Sparkles className="h-2.5 w-2.5 mr-1" />
-            Demo data
+            {t("memoryResultCard.demo")}
           </Badge>
         )}
         <Badge variant={memory.memory_type === "episodic" ? "default" : "secondary"} className="text-[11px]">
