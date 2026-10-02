@@ -25,6 +25,8 @@ from pathlib import Path
 
 import pytest
 
+from server.core.env import accepted_env_var_names
+
 DOCS = Path(__file__).resolve().parent.parent / "docs"
 SERVER = Path(__file__).resolve().parent.parent / "server"
 
@@ -325,20 +327,58 @@ ENV_EXAMPLE = DOCS.parent / ".env.example"
 _ENV_NAME_RE = re.compile(r"^LEVH_[A-Z0-9_]+$")
 
 
-def _referenced_env_names() -> set[str]:
-    """Canonical LEVH_* names named as string literals anywhere in `server/`.
+def _module_string_constants(tree: ast.Module) -> dict[str, str]:
+    """Top-level ``NAME = "literal"`` bindings, for resolving env constants."""
+    constants: dict[str, str] = {}
+    for node in tree.body:
+        if not isinstance(node, ast.Assign):
+            continue
+        if not (isinstance(node.value, ast.Constant) and isinstance(node.value.value, str)):
+            continue
+        for target in node.targets:
+            if isinstance(target, ast.Name):
+                constants[target.id] = node.value.value
+    return constants
 
-    Reading string constants rather than `get_env(...)` call sites catches the
-    names held in module constants (``ENABLED_ENV = "LEVH_DOGFOOD_ENABLED"``,
-    ``CONFIG_PATH_ENV``), which is where several of the variables that were
-    missing from the template actually live.
+
+def _referenced_env_names() -> set[str]:
+    """Canonical LEVH_* names ``server/`` reads, normalized to the LEVH_* form.
+
+    Two sources, because the canonical name is spelled two ways in the code:
+
+    * String literals matching ``LEVH_*`` — this catches names held in module
+      constants (``ENABLED_ENV = "LEVH_DOGFOOD_ENABLED"``, ``CONFIG_PATH_ENV``),
+      which is where several of the variables that were missing from the
+      template actually live.
+    * ``get_env(...)`` call sites, resolving a literal or a module-level string
+      constant and normalizing it through ``accepted_env_var_names``. Without
+      this the gate was blind to names read under a bare spelling — the code
+      reads ``get_env("SQLITE_DB_PATH")`` and ``get_env(SYNONYMS_ENV)`` where
+      ``SYNONYMS_ENV = "SYNONYMS_PATH"``, so ``LEVH_SQLITE_DB_PATH`` and
+      ``LEVH_SYNONYMS_PATH`` were never compared against the template (issue
+      #351). Normalizing with ``accepted_env_var_names`` rather than prefixing
+      by hand keeps the gate and ``get_env`` from drifting apart.
     """
     names: set[str] = set()
     for path in SERVER_PY_FILES:
         tree = ast.parse(path.read_text(encoding="utf-8"))
+        constants = _module_string_constants(tree)
         for node in ast.walk(tree):
             if isinstance(node, ast.Constant) and isinstance(node.value, str) and _ENV_NAME_RE.match(node.value):
                 names.add(node.value)
+                continue
+            if not isinstance(node, ast.Call):
+                continue
+            func = node.func
+            called = func.id if isinstance(func, ast.Name) else getattr(func, "attr", None)
+            if called != "get_env" or not node.args:
+                continue
+            arg = node.args[0]
+            literal = arg.value if isinstance(arg, ast.Constant) and isinstance(arg.value, str) else None
+            if literal is None and isinstance(arg, ast.Name):
+                literal = constants.get(arg.id)
+            if literal:
+                names.add(accepted_env_var_names(literal)[0])
     return names
 
 
@@ -359,6 +399,24 @@ def test_the_env_template_lists_no_variable_the_code_never_reads():
     assert not stale, (
         f".env.example lists variables the code never reads: {stale}; "
         "the template would teach a setting that does nothing"
+    )
+
+
+def test_the_gate_sees_variables_read_under_a_bare_get_env_name():
+    """A bare ``get_env("SQLITE_DB_PATH")`` is the ``LEVH_SQLITE_DB_PATH`` setting.
+
+    The gate used to read only ``LEVH_*`` string literals, so a variable read
+    exclusively under its bare spelling never reached the comparison — the
+    template could omit it while the gate stayed green (issue #351).
+    """
+    referenced = _referenced_env_names()
+    assert "LEVH_SQLITE_DB_PATH" in referenced, (
+        "get_env('SQLITE_DB_PATH') should normalize to LEVH_SQLITE_DB_PATH; "
+        "without this the template gate is blind to bare-spelled reads"
+    )
+    assert "LEVH_SYNONYMS_PATH" in referenced, (
+        "get_env(SYNONYMS_ENV) with SYNONYMS_ENV = 'SYNONYMS_PATH' should "
+        "resolve through the module constant to LEVH_SYNONYMS_PATH"
     )
 
 

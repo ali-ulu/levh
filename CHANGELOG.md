@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+### Fix: the env template gate reads `get_env`, and the template lists what it finds (#351)
+
+- `tests/test_docs_match_code.py::_referenced_env_names` now also resolves
+  `get_env(...)` call sites — a literal or a module-level string constant —
+  and normalizes each through `accepted_env_var_names`, so a variable read
+  only under its bare spelling still reaches the comparison. The gate was
+  green while `.env.example` omitted `LEVH_SQLITE_DB_PATH` and
+  `LEVH_SYNONYMS_PATH` because it only looked for `LEVH_*` literals.
+- `.env.example` gains `LEVH_SQLITE_DB_PATH` (canonical alias of the bare
+  `SQLITE_DB_PATH` it already listed) and `LEVH_SYNONYMS_PATH`, which
+  `docs/configuration.md` and `docs/ARCHITECTURE.md` document but the template
+  never surfaced.
+
 ### Fix: mypy ratchet gap — `procedure.py` and `guard.py` (#350)
 
 - `MemoryEngine` now declares `db: Database` and `episodic: EpisodicMemory` at
