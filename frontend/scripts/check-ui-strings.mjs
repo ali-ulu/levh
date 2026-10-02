@@ -153,7 +153,14 @@ export function scanFile(filePath) {
       if (/[A-Za-z]/.test(text)) hits.push(text);
     }
     if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) {
-      if (CATALOGUE_KEYS.has(node.text)) {
+      const name = enclosingName(node);
+      // A catalogue key is not copy — but only where it is *addressed* as a key
+      // (a `t(...)` argument, or a key held in a data model). A key literal in a
+      // user-facing attribute is the opposite: `aria-label="header.action.help"`
+      // renders the key to a screen reader, which is exactly the half-translated
+      // page the gate exists to catch, so the exemption must not reach there.
+      const inUserFacingAttr = !!(name && name.jsx && USER_FACING_ATTRS.has(name.jsx));
+      if (!inUserFacingAttr && CATALOGUE_KEYS.has(node.text)) {
         ts.forEachChild(node, visit);
         return;
       }
@@ -161,7 +168,6 @@ export function scanFile(filePath) {
         ts.forEachChild(node, visit);
         return;
       }
-      const name = enclosingName(node);
       if (name && name.jsx) {
         if (USER_FACING_ATTRS.has(name.jsx)) hits.push(node.text);
         else if (!NON_UI_ATTRS.has(name.jsx) && looksUserFacing(node.text)) hits.push(node.text);

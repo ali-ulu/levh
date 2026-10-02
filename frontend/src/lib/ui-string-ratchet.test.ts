@@ -52,6 +52,15 @@ describe("the UI string detector", () => {
     expect(scanSource(`const x = "not.a.catalogued.key";`)).toContain("not.a.catalogued.key");
   });
 
+  it("still flags a catalogue key literal in a user-facing attribute", () => {
+    // `aria-label="header.action.help"` renders the key to a screen reader.
+    // The data-model exemption must not reach user-facing attributes, or the
+    // half-translated page the gate exists to catch slips through.
+    expect(scanSource(`<button aria-label="header.action.help">x</button>`)).toContain(
+      "header.action.help"
+    );
+  });
+
   it("ignores Tailwind classes and module specifiers", () => {
     const source = `import { cn } from "@/lib/utils";
 export const A = () => <div className={cn("flex flex-col gap-2", "text-sm")} />;`;

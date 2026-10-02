@@ -101,7 +101,9 @@ literal that is **exactly** a key in `en.json` is also skipped: the sidebar
 holds its keys in a data model rather than inline in `t(...)`, and counting
 those would make a fully-converted file look unconverted. That exception is not
 heuristic — the string has to exist in the catalogue to qualify — so it cannot
-swallow arbitrary copy.
+swallow arbitrary copy. It deliberately does **not** reach the user-facing
+attributes: `aria-label="header.action.help"` renders the key to a screen
+reader, so it is still counted.
 
 Because the tree is not converted yet, the check is a **ratchet**, the same
 shape as the mypy `files` list in `pyproject.toml`: per-file counts live in
