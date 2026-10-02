@@ -32,6 +32,7 @@ def _ensure_registry() -> dict[str, type[BaseConnector]]:
     from .transcript import TranscriptConnector
     from .jira import JiraConnector
     from .linear import LinearConnector
+    from .git import GitConnector
 
     _REGISTRY = {
         LocalFilesConnector.name: LocalFilesConnector,
@@ -43,6 +44,7 @@ def _ensure_registry() -> dict[str, type[BaseConnector]]:
         TranscriptConnector.name: TranscriptConnector,
         JiraConnector.name: JiraConnector,
         LinearConnector.name: LinearConnector,
+        GitConnector.name: GitConnector,
     }
     return _REGISTRY
 

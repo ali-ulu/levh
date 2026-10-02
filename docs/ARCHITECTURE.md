@@ -69,7 +69,7 @@ server/
 ├── tools/               One file per MCP tool; register.py wires them up and
 │                        profiles.py decides which ones a client is shown
 └── connectors/          Import sources: calendar / email / transcript /
-                         local_files / obsidian / notion / github
+                         local_files / obsidian / notion / github / git
 ```
 
 The engine and the database are split into mixins rather than services because

@@ -2,6 +2,44 @@
 
 ## Unreleased
 
+### Feature: git connector — local repository history as memories
+
+- New `git` connector (`server/connectors/git.py`) reads a local repository's own
+  history and turns each commit into one episodic memory led by
+  `<short-sha>: <subject>`, with the body, author, email and date in metadata. It
+  answers *"who changed this, when, and why?"* from the repository rather than
+  from a chat transcript. Distinct from the existing `github` connector, which
+  pulls a remote repository's README, issues and PRs over the API: this one reads
+  commit history from disk and never touches the network.
+- Read-only by construction — `fetch` only ever runs `git log`, so an import
+  cannot mutate a worktree, branch or index. No new dependency; it shells out to
+  the `git` binary that is already required to have the repository.
+- `repo_path` is required and must be the repository **root**. A subdirectory is
+  refused with the correct root named in the error: git walks upward from any
+  directory, so accepting a nested path would let a directory that merely sits
+  beneath some unrelated repository (a temp directory under a home directory that
+  is itself a repo, on this very machine) import that repository's entire
+  history. `ref`, `max_commits`, `since`/`since_days`, `author`, `include_body`,
+  `body_chars` and `timeout_seconds` are configurable; a ref that git would read
+  as an option is rejected in `connect()`.
+- Registered in the connector registry, so the existing REST routes, MCP tools
+  (`import_from_app`, `list_connectors`, `get_connector_help`) and CLI `sync`
+  pick it up with no route or tool changes — `openapi.json` is therefore
+  unchanged, which `tests/test_openapi_contract.py` confirms.
+- `tests/test_git_connector.py` — 21 tests: log parsing (including bodies with
+  newlines and malformed records), one memory per commit, newest-first ordering,
+  `max_commits`, `include_body`, `body_chars`, `author` filtering, the
+  root-only rule and its "sibling directory must not import the outer repo"
+  regression case, option-like ref rejection, a bad ref degrading to an empty
+  list rather than raising, an empty repository, and an end-to-end import
+  through `/api/connectors/import`.
+- `docs/connectors.md`, `README.md` and `docs/ARCHITECTURE.md` list the new
+  connector.
+- No issue number on this heading: the connector was not previously tracked, and
+  the maintainer explicitly waived the issue requirement for it rather than
+  delaying the change behind an issue describing work already done. The commit
+  message records the same.
+
 ### Refactor: convert the error boundary, token gate, result card and timeline to the i18n catalogue (#308)
 
 - Four user-visible surfaces join the catalogue as follow-on conversions of

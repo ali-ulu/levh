@@ -152,7 +152,7 @@ levh mcp init my-server --with-memory   # scaffold an MCP server on this databas
 - **Consolidation & review** — aged clusters collapse into durable summaries; the fading queue becomes a keep / reinforce / forget flow.
 - **74 MCP tools**, a REST API, a WebSocket feed, and a live Next.js dashboard served by the API itself — one process, one port.
 - **4 embedding modes** — OpenAI, local `all-MiniLM-L6-v2`, Ollama (fully offline), or a deterministic hash fallback. The system always works.
-- **Connectors** for Calendar, Email, transcripts, Notion, Obsidian, GitHub and local files — all routed through the admission gate. Calendar, mail and transcript files are uploaded from the dashboard; there is no filesystem path to type.
+- **Connectors** for Calendar, Email, transcripts, Notion, Obsidian, GitHub, local git history and local files — all routed through the admission gate. Calendar, mail and transcript files are uploaded from the dashboard; there is no filesystem path to type.
 - **Scaffold your own MCP server** — `levh mcp init my-server --with-memory` writes a working server that shares this database, optionally with a deploy config for Fly, Railway, Render or Docker.
 
 → [Full MCP tool list](docs/mcp-tools.md) · [REST API](docs/api-reference.md) · [CLI](docs/cli.md) · [Connectors](docs/connectors.md)

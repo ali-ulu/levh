@@ -10,6 +10,7 @@ import_from_app("transcript",  config={"transcript_path": "/path/to/meeting.vtt"
 import_from_app("notion",      config={"api_key": "ntn_xxx", "database_ids": ["..."]})
 import_from_app("obsidian",    config={"vault_path": "/path/to/vault"})
 import_from_app("github",      config={"token": "ghp_xxx", "repos": ["owner/repo"]})
+import_from_app("git",         config={"repo_path": "/path/to/repo"})   # local, read-only
 import_from_app("jira",        config={"base_url": "https://x.atlassian.net", "email": "me@x.com", "api_token": "..."})
 import_from_app("linear",      config={"api_key": "lin_api_xxx", "team_ids": ["..."]})
 import_from_app("local_files", config={"directory": "/path/to/project"})
@@ -51,3 +52,22 @@ Both run only when you call `import_from_app` (or the sync route) — there is n
 scheduler in LEVH, so "sync" means one fetch per invocation. Repeat calls are
 safe: the admission gate dedupes, and `/api/connectors/sync` records last-synced
 state per connector.
+
+**Git — why the code looks like this** (local, read-only, offline):
+
+- **Git** (`git`): reads a local repository's own history by shelling out to the
+  `git` binary. Each commit → a memory led by `<short-sha>: <subject>`, with the
+  body, the author and the date in metadata — so a later recall can answer *"who
+  changed this, when, and why?"*. Unlike the `github` connector (which pulls a
+  remote repository's README, issues and PRs over the API), this one reads commit
+  history from disk and never touches the network.
+- Requires `repo_path` — the repository **root**, the directory holding `.git`.
+  A subdirectory is refused with the correct root named in the error: git walks
+  upward from any directory, so accepting a nested path would let a directory
+  that merely sits beneath some unrelated repository import that repository's
+  entire history.
+- Options: `ref` (default `HEAD`, or a branch/tag/sha), `max_commits` (default
+  200), `since` / `since_days`, `author`, `include_body` (default True),
+  `body_chars` (default 2000), `timeout_seconds` (default 120).
+- Read-only by construction: `fetch` only ever runs `git log`, so importing a
+  repository cannot mutate a worktree, branch or index.
