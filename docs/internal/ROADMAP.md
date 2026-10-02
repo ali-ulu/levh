@@ -27,7 +27,7 @@ quietly dropped. Adding a row without a next step is what that test refuses.
 | 9 | Not recorded at decision time | cancelled | — | |
 | 10 | Not recorded at decision time | ignored | — | |
 | 11 | Not recorded at decision time | skipped | — | |
-| B | Commercial surfaces and a shared/team memory server | proposed | Concrete revenue paths and the features each requires are proposed in #309, on top of the #298/#302 design decisions; no code until the tenancy shape is agreed. | #298, #302, #309 |
+| B | Commercial surfaces and a shared/team memory server | proposed | Concrete revenue paths and the features each requires are proposed in #309, on top of the #298/#302 design decisions. The tenancy shape #302 asked for is now written in [`SHARED-MEMORY-DESIGN.md`](SHARED-MEMORY-DESIGN.md); the maintainer needs to accept or reject it, and the four open questions in it, before any code. | #298, #302, #309 |
 
 ## Backlog workstreams
 
@@ -41,7 +41,7 @@ numbered findings, and because each one is also a candidate revenue surface.
 | continuity-proof | Measure that the continuity brief is emitted and used, not just built to be emitted | proposed | Phase A of [`PLAN-CONTINUITY-AND-FEDERATION.md`](PLAN-CONTINUITY-AND-FEDERATION.md): add a continuity scenario to the golden-fixture evaluator plus emission/use counters, then decide the no-hook client story from that data. Not gated on tenancy or revenue — it instruments the single-process core and can start now. | — |
 | memory-federation | Peer memory exchange with provenance, signature and receiver-side decay | proposed | Phase B of [`PLAN-CONTINUITY-AND-FEDERATION.md`](PLAN-CONTINUITY-AND-FEDERATION.md): spec an offline envelope that re-enters through `import_memories_gated` before any transport; blocked on the tenancy decision. | #302, #309 |
 | typescript-sdk | TypeScript SDK over the REST and MCP surface | done | — | #307 |
-| multi-user-postgres | Multi-user auth, tenancy, and a Postgres backend | deferred | Blocked on the design issue; identity must be designed before storage or the schema encodes single-principal assumptions. | #302 |
+| multi-user-postgres | Multi-user auth, tenancy, and a Postgres backend | deferred | The tenancy shape is proposed in [`SHARED-MEMORY-DESIGN.md`](SHARED-MEMORY-DESIGN.md) (#302): implement tenancy as the degenerate single-user case on SQLite first, roles at the storage boundary second, OIDC only in server mode third, and Postgres last — behind the explicit trigger in that document. Blocked on the maintainer accepting the proposal and answering its four open questions; identity must be designed before storage or the schema encodes single-principal assumptions. | #302 |
 
 ## Why these are deferred rather than started
 

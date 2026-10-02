@@ -23,3 +23,8 @@ scorecards age quickly and read as product claims when seen from outside.
   runtime library), where strings live, how the locale is stored, why the static
   export is unchanged, and the ratchet that stops a hardcoded string from
   slipping back in.
+- [`SHARED-MEMORY-DESIGN.md`](SHARED-MEMORY-DESIGN.md) — the proposal #302 asked
+  for: a tenancy model as the degenerate single-user case, roles enforced at the
+  storage boundary, OIDC only in server mode, and Postgres deferred behind an
+  explicit trigger. A proposal for the maintainer to accept or reject, not a
+  decision record; the states live in `ROADMAP.md`.
