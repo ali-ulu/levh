@@ -9,6 +9,8 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
+from .tenancy import DEFAULT_WORKSPACE_ID
+
 # Tag carried by every rule the mistake guard records. It lives here rather
 # than in `guard.py` because both the guard and the context-file builder in
 # `memory_engine` need it, and the guard imports the engine — defining it in
@@ -97,6 +99,16 @@ class Memory(BaseModel):
     tags: list[str] = Field(default_factory=list)
     session_id: Optional[str] = None
     project: Optional[str] = None
+    workspace_id: str = Field(
+        default=DEFAULT_WORKSPACE_ID,
+        description=(
+            "The tenancy boundary this memory belongs to (issue #302). A "
+            "single-user install has exactly one, ``default``; the field exists "
+            "so a future shared/team server scopes storage by workspace rather "
+            "than bolting identity on afterwards. ``project`` stays a recall "
+            "label *inside* a workspace, not a security boundary."
+        ),
+    )
     source: Optional[str] = None
     pinned: bool = False
     metadata: dict[str, Any] = Field(default_factory=dict)

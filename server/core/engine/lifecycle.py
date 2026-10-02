@@ -61,8 +61,12 @@ class MemoryLifecycleMixin:
                 return
             await self.db.connect()
 
-            # Load all existing memories into the in-memory vector store
-            all_memories = await self.episodic.get_all()
+            # Load all existing memories into the in-memory vector store. The
+            # mirror spans every workspace on purpose (#302): separation for
+            # reads is enforced in recall's candidate predicate, and a partial
+            # mirror would make a memory stored by one workspace unrecallable
+            # from another request in this process.
+            all_memories = await self.episodic.get_all(across_workspaces=True)
             for m in all_memories:
                 if m.embedding:
                     self.vector_store.add(m)
@@ -104,7 +108,7 @@ class MemoryLifecycleMixin:
             version = await self.db.data_version()
             if self._known_data_version is not None and version == self._known_data_version:
                 return
-            all_memories = await self.episodic.get_all()
+            all_memories = await self.episodic.get_all(across_workspaces=True)
             self.vector_store.clear()
             self.short_term.clear()
             for m in all_memories:

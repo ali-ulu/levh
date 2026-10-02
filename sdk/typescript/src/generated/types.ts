@@ -801,6 +801,7 @@ export type Memory = {
   tags?: string[];
   session_id?: string | null;
   project?: string | null;
+  workspace_id?: string;
   source?: string | null;
   pinned?: boolean;
   metadata?: Record<string, unknown>;
@@ -829,6 +830,7 @@ export type MemoryOut = {
   tags?: string[];
   session_id?: string | null;
   project?: string | null;
+  workspace_id?: string;
   source?: string | null;
   pinned?: boolean;
   metadata?: Record<string, unknown>;

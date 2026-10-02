@@ -124,6 +124,7 @@ files = [
     "server/core/short_term.py",
     "server/core/summarizer.py",
     "server/core/synonyms.py",
+    "server/core/tenancy.py",
     "server/core/text_entities.py",
     "server/core/trust.py",
     "server/core/types.py",

@@ -288,7 +288,10 @@ async def remove_demo_data(engine) -> dict[str, Any]:
     Every deletion uses the existing purge+postcondition path. Real memories
     are untouched. Derived entity/trust/conflict state is rebuilt afterwards.
     """
-    memories = await engine.episodic.get_all(limit=1_000_000)
+    # Maintenance over the whole store (#302): demo rows are marked in
+    # metadata, not scoped to one workspace, and the seed is a single-tenant
+    # operation.
+    memories = await engine.episodic.get_all(limit=1_000_000, across_workspaces=True)
     demo_ids = [m.id for m in memories if bool((m.metadata or {}).get("demo"))]
     audits: list[dict[str, Any]] = []
     for memory_id in demo_ids:

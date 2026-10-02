@@ -1,14 +1,18 @@
 # Shared / team memory server: tenancy, auth, storage (#302)
 
-Tarih: 2026-10-02 · Durum: öneri — maintainer onayı bekliyor · Tür: tasarım önerisi
+Tarih: 2026-10-02 · Durum: kararlar alındı, faz 1 uygulandı · Tür: tasarım + karar kaydı
 
-This is the design issue #302 asked for. It **proposes a shape; it is not a
-request to start coding**. `CONTRIBUTING.md` requires a design issue before any
-cloud, auth, billing, or workspace feature; no code lands until the maintainer
-agrees the direction here. Per the issue's own scope note, a reasonable
-conclusion is "not now, and here is what would change that" — this document
-recommends exactly that for most of the layers and says which one has to be
-decided first.
+This is the design issue #302 asked for. It **proposes a shape**. The four
+questions it left open were delegated back to the agent and are now answered in
+"Open questions for the maintainer — answered" below; phase 1 of the recommended
+sequencing is implemented, and the rest stays a written decision until its
+trigger fires.
+
+`CONTRIBUTING.md` requires a design issue before any cloud, auth, billing, or
+workspace feature; no code lands until the maintainer agrees the direction here.
+Per the issue's own scope note, a reasonable conclusion is "not now, and here
+is what would change that" — this document recommends exactly that for most of
+the layers and says which one has to be decided first.
 
 ## What exists today (the boundary being extended)
 
@@ -176,19 +180,63 @@ should wait for an actual deployment that needs them.
   the actual request. (The federation envelope covers the read-only half of
   this without pretending to be sharing.)
 
-## Open questions for the maintainer
+## Open questions for the maintainer — answered
 
-1. **One deployment, many workspaces, or one workspace per deployment?** The
-   biggest fork; it decides whether the boundary is a column or a process.
-2. **Is `project` promoted to `workspace_id`, or kept as a label inside a
-   workspace?** Recommendation: kept as a label; workspace is the security
-   boundary and `project` stays a recall filter.
-3. **Does an agent principal belong to a user or to the workspace?** A shared
-   CI agent should probably belong to the workspace; a developer's local agent
-   to that developer.
-4. **Is phase 1 (the degenerate case) worth doing before any user has asked for
-   a shared server?** Recommendation: only if the maintainer expects the
-   trigger to fire; otherwise this stays a written decision and no code lands.
+These four were delegated to the agent; the answers below are now decisions and
+phase 1 is implemented against them.
+
+1. **One deployment, many workspaces.** The boundary is a column
+   (`memories.workspace_id`), not a process. This follows from the hard
+   constraint already in `AGENTS.md`: all transports share one
+   `MemoryEngine`, so one-workspace-per-deployment would have to become
+   one-engine-per-workspace, which the codebase forbids. A per-process boundary
+   would also make "add a workspace" a restart rather than a row. The local
+   product is the degenerate case: exactly one workspace, `default`.
+2. **`project` stays a label inside a workspace.** It is caller-supplied and
+   never checked against a right, so promoting it to the boundary would be the
+   "bolt identity onto a layer that has none" failure the issue warns about.
+   `workspace_id` is the security boundary; `project` remains a recall filter
+   *within* it.
+3. **An agent principal belongs to the workspace, not to a user.** The
+   non-browser clients — CLI, MCP stdio/SSE, connectors — authenticate as a
+   principal of type `agent` whose `workspace_id` is the workspace it was
+   configured for. A shared CI agent has no human owner to hang off, and tying
+   it to a person would break the moment that person leaves. A developer's
+   local agent is the degenerate case: workspace `default`, principal `local`.
+4. **Phase 1 is worth doing now.** *Yes*, because phase 1 is the only layer
+   that is invisible to local users and irreversible-if-skipped: once a
+   Postgres backend or a role system exists, a schema without `workspace_id`
+   encodes single-principal assumptions that are expensive to undo. Phases 2–4
+   still wait for their triggers. The counter-argument — no user has asked for
+   a shared server yet — is real, which is why nothing beyond the degenerate
+   case landed: no accounts, no roles enforced, no OIDC, no second backend.
+
+### Phase 1 as implemented
+
+- `server/core/tenancy.py` — `Principal`, `DEFAULT_WORKSPACE_ID`, and
+  `current_workspace_id()` over a `ContextVar`, the same mechanism
+  `request_context` already uses. Stdlib only: it is the storage layer's
+  dependency and must not import the engine.
+- `memories.workspace_id` (schema v4, additive, default `'default'`), indexed
+  because every read is scoped. A v3 store is migrated and every existing row
+  is backfilled into `default`; nothing is dropped.
+- Every read/write in `server/core/db/` resolves its workspace from the context
+  per call — not captured at construction, since one engine serves every
+  request in the process. The `COALESCE(workspace_id, 'default')` guard makes a
+  pre-backfill NULL read as the default workspace rather than vanish.
+- The in-process vector store and short-term deque mirror the *whole* store
+  (the alternative is a partial mirror that silently makes a row unrecallable);
+  separation for recall is enforced in the candidate predicate, the only place
+  a read from that mirror can be filtered.
+- `insert_memory` stamps the context's workspace and ignores any
+  `workspace_id` in the caller's payload, so a request cannot choose its own
+  boundary.
+- `RemoteAccessBoundaryMiddleware` binds the local principal per request, so
+  the transport that will later identify a user already has the seam.
+
+Tests: `tests/test_workspace_tenancy.py` pins the single-user round trip
+unchanged, the cross-workspace invisibility of reads/counts/updates/deletes,
+the recall filter over the shared mirror, and the v3→v4 migration.
 
 ## Surface
 

@@ -19,6 +19,7 @@ from ..lexical import similarity_expanded as lexical_similarity
 from ..lexical import terms as lexical_terms
 from ..hscore import SUPERSEDED_PENALTY
 from ..synonyms import SynonymTable
+from ..tenancy import current_workspace_id
 from ..types import (
     Memory,
     RecallDiagnosis,
@@ -229,6 +230,14 @@ class MemoryRecallMixin:
             return memory.valid_to is None
 
         def _predicate(memory: Memory) -> bool:
+            # The tenancy boundary (#302) is checked here, at candidate
+            # selection, so a cross-workspace row never enters the ranking at
+            # all. The in-process short-term deque and vector store hold rows
+            # from every workspace this engine has served, so this filter — not
+            # the SQL one — is what actually keeps them apart on the recall
+            # path.
+            if memory.workspace_id != current_workspace_id():
+                return False
             if not _valid_at(memory):
                 return False
             if min_importance and memory.importance < min_importance:
@@ -655,6 +664,8 @@ class MemoryRecallMixin:
         seen: set[str] = set()
 
         def _matches(m: Memory) -> bool:
+            if m.workspace_id != current_workspace_id():
+                return False
             if session_id and m.session_id != session_id:
                 return False
             if project and m.project != project:

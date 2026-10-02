@@ -2,6 +2,30 @@
 
 ## Unreleased
 
+### Feature: tenancy boundary as the degenerate single-user case (#302)
+
+- The shared/team memory design landed in #362 with four open questions; they
+  are now decided (one deployment with many workspaces, `project` stays a label
+  inside a workspace, an agent principal belongs to the workspace, and phase 1
+  is worth doing now) and phase 1 is implemented against them. Nothing
+  user-visible changes: a single-user install is the degenerate case of one
+  implicit workspace (`default`) and one implicit principal (`local`).
+- `server/core/tenancy.py` carries the principal and workspace in a
+  `ContextVar`, the same mechanism `request_context` already uses, so the
+  storage layer resolves its boundary without every signature growing a
+  parameter. `RemoteAccessBoundaryMiddleware` binds the local principal per
+  request — the seam a later account layer plugs into.
+- `memories` gains `workspace_id` (schema v4, additive, indexed) and every
+  read/write in `server/core/db/` is scoped to it. A v3 store is migrated and
+  every existing row is backfilled into `default`; nothing is dropped. The
+  store stamps the boundary on write and ignores a caller-supplied
+  `workspace_id`, so a request cannot choose its own workspace.
+- The in-process vector store and short-term deque still mirror the whole
+  store, and recall filters candidates by workspace — a partial mirror would
+  silently make a row unrecallable. `tests/test_workspace_tenancy.py` pins the
+  single-user round trip unchanged and the cross-workspace invisibility of
+  reads, counts, updates, deletes and recall.
+
 ### Fix: keep the committed LoCoMo artifact version in sync with releases (#361)
 
 - `tests/fixtures/external_benchmark/locomo10_retrieval_hash.json` records the

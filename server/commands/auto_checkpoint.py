@@ -152,7 +152,7 @@ async def create_delta_checkpoint(
     from server.core.summarizer import summarize_texts
 
     cutoff = _as_utc_dt(last_created)
-    all_memories = await engine.episodic.get_all(limit=10000)
+    all_memories = await engine.episodic.get_all(limit=10000, across_workspaces=True)
     delta = sorted(
         (m for m in all_memories if _mem_dt(m) > cutoff),
         key=_mem_dt,

@@ -108,7 +108,8 @@ class RestoreService:
         # untrusted snapshot objects.
         engine.short_term.clear()
         engine.vector_store.clear()
-        restored_all = await engine.episodic.get_all(limit=1_000_000)
+        # The mirror is rebuilt store-wide (#302), matching initialize/resync.
+        restored_all = await engine.episodic.get_all(limit=1_000_000, across_workspaces=True)
         for memory in restored_all:
             if memory.memory_type == MemoryType.SHORT_TERM:
                 engine.short_term.add(memory)

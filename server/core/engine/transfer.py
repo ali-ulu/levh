@@ -103,6 +103,8 @@ class MemoryTransferMixin:
                 )
 
                 # Persist first, then expose through process-local caches.
+                # The store stamps the request's workspace (#302), so an
+                # imported payload cannot place rows in another workspace.
                 await self.episodic.store(mem)
                 if mem.memory_type == MemoryType.SHORT_TERM:
                     self.short_term.add(mem)

@@ -11,6 +11,7 @@ from typing import Optional
 
 import aiosqlite
 
+from server.core.tenancy import current_workspace_id
 
 
 class SessionQueries:
@@ -18,6 +19,11 @@ class SessionQueries:
 
     def __init__(self, db) -> None:
         self._db = db
+
+    @staticmethod
+    def _workspace() -> str:
+        """The workspace these session-memory joins are scoped to (#302)."""
+        return current_workspace_id()
 
     async def delete_session(self, session_id: str) -> bool:
         """Delete one session row. Whatever referenced it is the caller's to
@@ -41,8 +47,9 @@ class SessionQueries:
         survives, only its provenance link is dropped.
         """
         cursor = await self._db.conn.execute(
-            "UPDATE memories SET session_id = NULL WHERE session_id = ?",
-            (session_id,),
+            "UPDATE memories SET session_id = NULL WHERE session_id = ? "
+            "AND COALESCE(workspace_id, 'default') = ?",
+            (session_id, self._workspace()),
         )
         changed = cursor.rowcount
         await cursor.close()
@@ -51,7 +58,9 @@ class SessionQueries:
 
     async def list_session_memory_ids(self, session_id: str) -> list[str]:
         cursor = await self._db.conn.execute(
-            "SELECT id FROM memories WHERE session_id = ?", (session_id,)
+            "SELECT id FROM memories WHERE session_id = ? "
+            "AND COALESCE(workspace_id, 'default') = ?",
+            (session_id, self._workspace()),
         )
         rows = await cursor.fetchall()
         await cursor.close()
@@ -85,7 +94,9 @@ class SessionQueries:
 
     async def count_session_memories(self, session_id: str) -> int:
         cursor = await self._db.conn.execute(
-            "SELECT COUNT(*) FROM memories WHERE session_id = ?", (session_id,)
+            "SELECT COUNT(*) FROM memories WHERE session_id = ? "
+            "AND COALESCE(workspace_id, 'default') = ?",
+            (session_id, self._workspace()),
         )
         row = await cursor.fetchone()
         await cursor.close()

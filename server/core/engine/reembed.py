@@ -53,7 +53,10 @@ class MemoryReembedMixin:
         workspace holds the unreachable memories).
         """
         identity = self.embedder.identity()
-        memories = await self.episodic.get_all()
+        # Maintenance pass over the whole store, not just the current workspace
+        # (#302): a re-embed is not a read any user is scoped to, and skipping
+        # other workspaces would leave their vectors stale forever.
+        memories = await self.episodic.get_all(across_workspaces=True)
         if project is not None:
             memories = [m for m in memories if m.project == project]
 

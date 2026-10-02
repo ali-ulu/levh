@@ -35,7 +35,7 @@ def default_db_path() -> str:
     return os.path.abspath(get_env("SQLITE_DB_PATH", DEFAULT_DB_FILENAME))
 
 
-CURRENT_SCHEMA_VERSION = 3
+CURRENT_SCHEMA_VERSION = 4
 
 
 _TABLES = """
@@ -67,7 +67,13 @@ CREATE TABLE IF NOT EXISTS memories (
     -- row stays, stays auditable, and is reachable through an ``as_of`` read.
     valid_from  TEXT,
     valid_to    TEXT,
-    superseded_by TEXT
+    superseded_by TEXT,
+    -- Tenancy boundary (#302). The one workspace a single-user install has is
+    -- ``default``; the column exists so a future server mode inherits a
+    -- boundary instead of bolting one on. NULL is only possible for a row that
+    -- predates this column and has not been through the backfill, so reads
+    -- treat NULL as the default workspace rather than as "visible everywhere".
+    workspace_id TEXT NOT NULL DEFAULT 'default'
 );
 
 CREATE TABLE IF NOT EXISTS sessions (
@@ -358,6 +364,11 @@ CREATE INDEX IF NOT EXISTS idx_mem_source  ON memories(source);
 CREATE INDEX IF NOT EXISTS idx_mem_pinned_created ON memories(pinned, created_at);
 -- Point-in-time reads and the "what is still current" filter (valid_to IS NULL).
 CREATE INDEX IF NOT EXISTS idx_mem_validity ON memories(valid_to, valid_from);
+-- Every read is scoped to one workspace (#302). The predicate is
+-- ``COALESCE(workspace_id, 'default') = ?`` so a pre-backfill NULL still reads
+-- as the default workspace; indexing the same expression (not the bare column)
+-- is what makes that predicate an index lookup instead of a full scan.
+CREATE INDEX IF NOT EXISTS idx_mem_workspace ON memories(COALESCE(workspace_id, 'default'));
 CREATE INDEX IF NOT EXISTS idx_ses_status  ON sessions(status);
 CREATE INDEX IF NOT EXISTS idx_ent_type     ON entities(type);
 CREATE INDEX IF NOT EXISTS idx_me_entity     ON memory_entities(entity_id);
@@ -389,6 +400,12 @@ _MIGRATIONS: list[tuple[str, str]] = [
     ("valid_from", "ALTER TABLE memories ADD COLUMN valid_from TEXT"),
     ("valid_to", "ALTER TABLE memories ADD COLUMN valid_to TEXT"),
     ("superseded_by", "ALTER TABLE memories ADD COLUMN superseded_by TEXT"),
+    # Tenancy boundary (#302). A pre-existing store is a single-user store, so
+    # its rows belong to the one implicit workspace; the backfill below stamps
+    # them. Added without NOT NULL because SQLite's ALTER TABLE cannot add a
+    # NOT NULL column to a table that already has rows without a default, and
+    # the read path treats NULL as the default workspace anyway.
+    ("workspace_id", "ALTER TABLE memories ADD COLUMN workspace_id TEXT"),
 ]
 
 

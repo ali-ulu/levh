@@ -10,7 +10,7 @@ import json
 import sqlite3
 from typing import Optional
 
-
+from server.core.tenancy import current_workspace_id
 
 
 class AggregateQueries:
@@ -18,6 +18,11 @@ class AggregateQueries:
 
     def __init__(self, db) -> None:
         self._db = db
+
+    @staticmethod
+    def _workspace() -> str:
+        """The workspace these aggregates are scoped to (#302)."""
+        return current_workspace_id()
 
     @staticmethod
     def dimension_counts_from_rows(rows) -> dict[int, int]:
@@ -39,9 +44,16 @@ class AggregateQueries:
 
     async def count_memories(self, memory_type: Optional[str] = None) -> int:
         if memory_type:
-            cursor = await self._db.conn.execute("SELECT COUNT(*) FROM memories WHERE memory_type = ?", (memory_type,))
+            cursor = await self._db.conn.execute(
+                "SELECT COUNT(*) FROM memories WHERE memory_type = ? "
+                "AND COALESCE(workspace_id, 'default') = ?",
+                (memory_type, self._workspace()),
+            )
         else:
-            cursor = await self._db.conn.execute("SELECT COUNT(*) FROM memories")
+            cursor = await self._db.conn.execute(
+                "SELECT COUNT(*) FROM memories WHERE COALESCE(workspace_id, 'default') = ?",
+                (self._workspace(),),
+            )
         row = await cursor.fetchone()
         await cursor.close()
         return row[0]
@@ -65,11 +77,13 @@ class AggregateQueries:
             cursor = await self._db.conn.execute(
                 """
                 SELECT COUNT(*) FROM memories
-                 WHERE metadata IS NOT NULL
+                 WHERE COALESCE(workspace_id, 'default') = ?
+                   AND metadata IS NOT NULL
                    AND json_valid(metadata)
                    AND json_extract(metadata, '$.demo') IS NOT NULL
                    AND json_extract(metadata, '$.demo') NOT IN (0, '', '[]', '{}')
-                """
+                """,
+                (self._workspace(),),
             )
         except sqlite3.OperationalError:
             # SQLite built without the JSON1 extension. Nothing else in the
@@ -88,7 +102,9 @@ class AggregateQueries:
         objects are built.
         """
         cursor = await self._db.conn.execute(
-            "SELECT metadata FROM memories WHERE metadata IS NOT NULL"
+            "SELECT metadata FROM memories WHERE metadata IS NOT NULL "
+            "AND COALESCE(workspace_id, 'default') = ?",
+            (self._workspace(),),
         )
         rows = await cursor.fetchall()
         await cursor.close()
@@ -103,7 +119,11 @@ class AggregateQueries:
         return total
 
     async def count_pinned(self) -> int:
-        cursor = await self._db.conn.execute("SELECT COUNT(*) FROM memories WHERE pinned = 1")
+        cursor = await self._db.conn.execute(
+            "SELECT COUNT(*) FROM memories WHERE pinned = 1 "
+            "AND COALESCE(workspace_id, 'default') = ?",
+            (self._workspace(),),
+        )
         row = await cursor.fetchone()
         await cursor.close()
         return row[0]
@@ -111,7 +131,9 @@ class AggregateQueries:
     async def memory_aggregates(self) -> dict:
         """Aggregate stats over all persisted memories in one query."""
         cursor = await self._db.conn.execute(
-            "SELECT COUNT(*), AVG(importance), AVG(hscore) FROM memories"
+            "SELECT COUNT(*), AVG(importance), AVG(hscore) FROM memories "
+            "WHERE COALESCE(workspace_id, 'default') = ?",
+            (self._workspace(),),
         )
         row = await cursor.fetchone()
         await cursor.close()
@@ -128,9 +150,11 @@ class AggregateQueries:
             SELECT project, COUNT(*) as count, MAX(created_at) as last_used
             FROM memories
             WHERE project IS NOT NULL AND project != ''
+              AND COALESCE(workspace_id, 'default') = ?
             GROUP BY project
             ORDER BY last_used DESC
-            """
+            """,
+            (self._workspace(),),
         )
         rows = await cursor.fetchall()
         await cursor.close()
@@ -145,9 +169,11 @@ class AggregateQueries:
             SELECT source, COUNT(*) as count, MAX(created_at) as last_used
             FROM memories
             WHERE source IS NOT NULL AND source != ''
+              AND COALESCE(workspace_id, 'default') = ?
             GROUP BY source
             ORDER BY count DESC
-            """
+            """,
+            (self._workspace(),),
         )
         rows = await cursor.fetchall()
         await cursor.close()
@@ -158,7 +184,9 @@ class AggregateQueries:
     async def list_tags(self) -> list[dict]:
         """All tags with usage counts (tags are stored as JSON arrays)."""
         cursor = await self._db.conn.execute(
-            "SELECT tags FROM memories WHERE tags IS NOT NULL AND tags != '[]'"
+            "SELECT tags FROM memories WHERE tags IS NOT NULL AND tags != '[]' "
+            "AND COALESCE(workspace_id, 'default') = ?",
+            (self._workspace(),),
         )
         rows = await cursor.fetchall()
         await cursor.close()
@@ -188,8 +216,9 @@ class AggregateQueries:
         clauses = " OR ".join("lower(content) LIKE ?" for _ in terms)
         params = [f"%{term.lower()}%" for term in terms]
         cursor = await self._db.conn.execute(
-            f"SELECT COUNT(*) FROM memories WHERE {clauses}",  # nosec B608 - clause count is the term count, values bound
-            params,
+            f"SELECT COUNT(*) FROM memories WHERE ({clauses}) "  # nosec B608 - clause count is the term count, values bound
+            "AND COALESCE(workspace_id, 'default') = ?",
+            (*params, self._workspace()),
         )
         row = await cursor.fetchone()
         await cursor.close()
@@ -210,7 +239,9 @@ class AggregateQueries:
         to name the filter that emptied the recall, not to partition the table.
         """
         cursor = await self._db.conn.execute(
-            "SELECT session_id, project, importance FROM memories"
+            "SELECT session_id, project, importance FROM memories "
+            "WHERE COALESCE(workspace_id, 'default') = ?",
+            (self._workspace(),),
         )
         rows = await cursor.fetchall()
         await cursor.close()

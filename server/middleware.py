@@ -14,6 +14,7 @@ from starlette.requests import ClientDisconnect
 
 from server.core.env import get_env
 from server.core import request_context
+from server.core.tenancy import LOCAL_PRINCIPAL, bind_principal, reset_principal
 from server.routes import deps
 from server.routes.deps import constant_time_token_matches, public_demo
 
@@ -240,10 +241,17 @@ def install(app: FastAPI) -> None:
         supplied = (request.headers.get(request_context.REQUEST_ID_HEADER) or "").strip()
         request_id = supplied if _plausible_request_id(supplied) else request_context.new_request_id()
         token = request_context.set_request_id(request_id)
+        # Bind the tenancy boundary for the whole request (#302). Phase 1 has
+        # one implicit workspace and no account layer, so this is always the
+        # local principal — but every storage read/write below already resolves
+        # its workspace from here, so adding real accounts later changes this
+        # one line instead of every query.
+        principal_token = bind_principal(LOCAL_PRINCIPAL)
         try:
             response = await call_next(request)
         finally:
             request_context.reset_request_id(token)
+            reset_principal(principal_token)
         response.headers[request_context.REQUEST_ID_HEADER] = request_id
         return response
 

@@ -144,6 +144,18 @@ class Database:
             "UPDATE memories SET valid_from = created_at WHERE valid_from IS NULL"
         )
 
+    async def _backfill_workspace(self) -> None:
+        """Put every pre-existing row in the one implicit workspace (#302).
+
+        A store written before tenancy existed is a single-user store; the
+        honest reading is that all of it belongs to ``default``. Idempotent:
+        guarded on ``workspace_id IS NULL``, so a second connect is a no-op and
+        a row deliberately written to another workspace is never moved.
+        """
+        await self._connection.execute(
+            "UPDATE memories SET workspace_id = 'default' WHERE workspace_id IS NULL"
+        )
+
     async def _set_user_version(self, version: int) -> None:
         await self._connection.execute(f"PRAGMA user_version = {int(version)}")
         self.schema_version = int(version)
@@ -210,6 +222,19 @@ class Database:
             await self._migrate_legacy_columns()
             await self._backfill_validity()
             version = 3
+            await self._set_user_version(version)
+
+        if version < 4:
+            # Tenancy boundary (#302). A v3 store predates the column, so this
+            # adds it and stamps every existing row into the implicit
+            # ``default`` workspace — the single-user install's one workspace.
+            # ``_backfill_validity`` runs too: it is idempotent and repairs a v3
+            # store whose rows were written directly with NULL validity (the
+            # schema permits it), so the v4 step leaves no row un-backfilled.
+            await self._migrate_legacy_columns()
+            await self._backfill_validity()
+            await self._backfill_workspace()
+            version = 4
             await self._set_user_version(version)
 
         self.schema_version = version

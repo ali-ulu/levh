@@ -13,6 +13,7 @@ from pathlib import Path
 import aiosqlite
 
 from ..env import get_env
+from ..tenancy import current_workspace_id
 
 
 
@@ -71,16 +72,26 @@ class SnapshotQueries:
         destructive clear occurs until all validation has succeeded.
         """
         attachments = attachments or []
+        workspace = current_workspace_id()
         await self._db.conn.execute("BEGIN IMMEDIATE")
         try:
             memory_ids = [str(m["id"]) for m in memories]
             if replace:
+                # A snapshot restore is a whole-store operation; in a
+                # multi-workspace store only this workspace's memories are
+                # cleared here (#302). The derived tables below are rebuilt from
+                # ``memories`` and are reset store-wide, which is correct while
+                # there is one workspace and must be revisited before a second
+                # one is admitted.
                 await self._db.conn.execute("DELETE FROM memory_conflict_candidates")
                 await self._db.conn.execute("DELETE FROM memory_trust_scores")
                 await self._db.conn.execute("DELETE FROM memory_entities")
                 await self._db.conn.execute("DELETE FROM entities")
                 # attachments cascades from memories via ON DELETE CASCADE
-                await self._db.conn.execute("DELETE FROM memories")
+                await self._db.conn.execute(
+                    "DELETE FROM memories WHERE COALESCE(workspace_id, 'default') = ?",
+                    (workspace,),
+                )
                 await self._db.conn.execute("DELETE FROM sessions")
             elif memory_ids:
                 placeholders = ",".join("?" for _ in memory_ids)
@@ -121,9 +132,9 @@ class SnapshotQueries:
                     """
                     INSERT OR REPLACE INTO memories
                         (id, content, memory_type, embedding, importance, frequency,
-                         tags, session_id, project, source, pinned, metadata, hscore,
+                         tags, session_id, project, workspace_id, source, pinned, metadata, hscore,
                          created_at, accessed_at, decay_factor, stability_hours, recall_count)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         memory["id"],
@@ -135,6 +146,7 @@ class SnapshotQueries:
                         json.dumps(memory.get("tags", []) or []),
                         memory.get("session_id"),
                         memory.get("project"),
+                        workspace,
                         memory.get("source"),
                         1 if memory.get("pinned") else 0,
                         json.dumps(memory.get("metadata", {}) or {}),

@@ -8297,6 +8297,12 @@
             ],
             "title": "Project"
           },
+          "workspace_id": {
+            "type": "string",
+            "title": "Workspace Id",
+            "description": "The tenancy boundary this memory belongs to (issue #302). A single-user install has exactly one, ``default``; the field exists so a future shared/team server scopes storage by workspace rather than bolting identity on afterwards. ``project`` stays a recall label *inside* a workspace, not a security boundary.",
+            "default": "default"
+          },
           "source": {
             "anyOf": [
               {
@@ -8484,6 +8490,12 @@
               }
             ],
             "title": "Project"
+          },
+          "workspace_id": {
+            "type": "string",
+            "title": "Workspace Id",
+            "description": "The tenancy boundary this memory belongs to (issue #302). A single-user install has exactly one, ``default``; the field exists so a future shared/team server scopes storage by workspace rather than bolting identity on afterwards. ``project`` stays a recall label *inside* a workspace, not a security boundary.",
+            "default": "default"
           },
           "source": {
             "anyOf": [

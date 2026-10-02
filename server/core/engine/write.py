@@ -16,6 +16,7 @@ from .helpers import logger
 from .. import metrics
 from ..env import get_env
 from ..lexical import mutual_similarity
+from ..tenancy import current_workspace_id
 from ..types import (
     Memory,
     MemoryType,
@@ -141,6 +142,11 @@ class MemoryWriteMixin:
         # is the model's own system-time default, so the returned object and
         # the row agree without a second read.
         mem.valid_from = mem.created_at
+        # Stamp the tenancy boundary on the in-memory object too, so the copy
+        # the vector store holds carries the same workspace as the row (#302).
+        # ``insert_memory`` sets the stored value from the context regardless;
+        # this keeps the two from disagreeing.
+        mem.workspace_id = current_workspace_id()
 
         await self.episodic.store(mem)
         if mem.memory_type == MemoryType.SHORT_TERM:
@@ -178,6 +184,7 @@ class MemoryWriteMixin:
             return (
                 m.id != new_memory.id
                 and not m.pinned
+                and m.workspace_id == new_memory.workspace_id
                 and m.project == new_memory.project
             )
 

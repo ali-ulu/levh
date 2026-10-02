@@ -60,8 +60,8 @@ class EpisodicMemory:
         row = await self.db.get_memory(memory_id)
         return _row_to_memory(row) if row else None
 
-    async def get_all(self, limit: int = 10000) -> list[Memory]:
-        rows = await self.db.get_all_memories(limit)
+    async def get_all(self, limit: int = 10000, across_workspaces: bool = False) -> list[Memory]:
+        rows = await self.db.get_all_memories(limit, across_workspaces=across_workspaces)
         return [m for m in (_row_to_memory(r) for r in rows) if m]
 
     async def search(

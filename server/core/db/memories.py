@@ -14,6 +14,7 @@ from typing import Optional
 import aiosqlite
 
 from server.core.lexical import terms as lexical_terms
+from server.core.tenancy import DEFAULT_WORKSPACE_ID, current_workspace_id
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +41,12 @@ def row_to_memory_dict(row) -> dict:
         else:
             d[field] = [] if field == "tags" else ({} if field == "metadata" else None)
     d["pinned"] = bool(d.get("pinned"))
+    # A pre-tenancy row can still be NULL here if it has not been through the
+    # backfill; the read path treats NULL as the default workspace (#302), so
+    # the model must see the same value the queries match on — otherwise a row
+    # the COALESCE guard deliberately keeps visible would be quarantined.
+    if not d.get("workspace_id"):
+        d["workspace_id"] = DEFAULT_WORKSPACE_ID
     return d
 
 
@@ -49,22 +56,38 @@ class MemoryQueries:
     def __init__(self, db) -> None:
         self._db = db
 
+    @staticmethod
+    def _workspace() -> str:
+        """The workspace this access is scoped to (#302).
+
+        Read at call time from the per-request context, not captured at
+        construction: one engine serves every request in the process, so a
+        workspace frozen on the query group would be the first caller's
+        workspace forever.
+        """
+        return current_workspace_id()
+
     async def insert_memory(self, memory: dict) -> None:
+        # The tenancy boundary is set by the store, never by the caller's dict
+        # (#302): a caller cannot write a row into a workspace other than the
+        # one its request is scoped to. The context default (``default``) keeps
+        # single-user writes byte-identical to before this column existed.
+        row = {**memory, "workspace_id": self._workspace()}
         await self._db.conn.execute(
             """
             INSERT OR REPLACE INTO memories
                 (id, content, memory_type, embedding, importance, frequency,
-                 tags, session_id, project, source, pinned, metadata, hscore,
+                 tags, session_id, project, workspace_id, source, pinned, metadata, hscore,
                  created_at, accessed_at, decay_factor, stability_hours, recall_count,
                  valid_from, valid_to, superseded_by)
             VALUES
                 (:id, :content, :memory_type, :embedding, :importance, :frequency,
-                 :tags, :session_id, :project, :source, :pinned, :metadata, :hscore,
+                 :tags, :session_id, :project, :workspace_id, :source, :pinned, :metadata, :hscore,
                  :created_at, :accessed_at, :decay_factor, :stability_hours, :recall_count,
                  :valid_from, :valid_to, :superseded_by)
             """,
             {
-                **memory,
+                **row,
                 "embedding": json.dumps(memory.get("embedding")) if memory.get("embedding") else None,
                 "tags": json.dumps(memory.get("tags", [])),
                 "metadata": json.dumps(memory.get("metadata", {})),
@@ -79,15 +102,37 @@ class MemoryQueries:
         await self._db.commit()
 
     async def get_memory(self, memory_id: str) -> Optional[dict]:
-        cursor = await self._db.conn.execute("SELECT * FROM memories WHERE id = ?", (memory_id,))
+        cursor = await self._db.conn.execute(
+            "SELECT * FROM memories WHERE id = ? AND COALESCE(workspace_id, 'default') = ?",
+            (memory_id, self._workspace()),
+        )
         row = await cursor.fetchone()
         await cursor.close()
         return self._row_to_memory(row) if row else None
 
-    async def get_all_memories(self, limit: int = 10000) -> list[dict]:
-        cursor = await self._db.conn.execute(
-            "SELECT * FROM memories ORDER BY created_at DESC LIMIT ?", (limit,)
-        )
+    async def get_all_memories(
+        self, limit: int = 10000, across_workspaces: bool = False
+    ) -> list[dict]:
+        """Rows ordered by recency.
+
+        Scoped to the current workspace by default. ``across_workspaces`` is
+        the explicit opt-in the cache-mirroring and maintenance callers need
+        (#302): the process-local vector store and short-term deque mirror the
+        *whole* store, and workspace separation for reads from that mirror is
+        enforced in recall's candidate predicate — not by loading a partial
+        mirror. A caller that lists memories for a user must use
+        ``search_memories``, which is always scoped.
+        """
+        if across_workspaces:
+            cursor = await self._db.conn.execute(
+                "SELECT * FROM memories ORDER BY created_at DESC LIMIT ?", (limit,)
+            )
+        else:
+            cursor = await self._db.conn.execute(
+                "SELECT * FROM memories WHERE COALESCE(workspace_id, 'default') = ? "
+                "ORDER BY created_at DESC LIMIT ?",
+                (self._workspace(), limit),
+            )
         rows = await cursor.fetchall()
         await cursor.close()
         return [self._row_to_memory(r) for r in rows]
@@ -117,6 +162,12 @@ class MemoryQueries:
             else "SELECT memories.* FROM memories WHERE 1=1"
         )
         params: list = []
+
+        # Tenancy boundary (#302) first, so no other filter can widen past it.
+        # ``COALESCE`` reads a pre-backfill NULL as the default workspace rather
+        # than letting the row vanish from every read.
+        query += " AND COALESCE(memories.workspace_id, 'default') = ?"
+        params.append(self._workspace())
 
         if memory_type:
             query += " AND memories.memory_type = ?"
@@ -211,10 +262,15 @@ class MemoryQueries:
         fts_query = self._fts_or_query(query)
         if not fts_query or not self._db.fts5_available:
             return []
+        # The FTS table carries no workspace column, so the boundary is joined
+        # back to ``memories`` here (#302): a candidate fetch must not reach
+        # across workspaces any more than a content read may.
         cursor = await self._db.conn.execute(
-            "SELECT memory_id FROM memories_fts WHERE memories_fts MATCH ? "
+            "SELECT memories_fts.memory_id FROM memories_fts "
+            "JOIN memories ON memories.id = memories_fts.memory_id "
+            "WHERE memories_fts MATCH ? AND COALESCE(memories.workspace_id, 'default') = ? "
             "ORDER BY bm25(memories_fts) LIMIT ?",
-            (fts_query, limit),
+            (fts_query, self._workspace(), limit),
         )
         rows = await cursor.fetchall()
         await cursor.close()
@@ -240,8 +296,9 @@ class MemoryQueries:
             return []
         placeholders = ",".join("?" for _ in memory_ids)
         cursor = await self._db.conn.execute(
-            f"SELECT * FROM memories WHERE id IN ({placeholders})",  # nosec B608 - placeholders are `?`, values bound
-            tuple(memory_ids),
+            f"SELECT * FROM memories WHERE id IN ({placeholders}) "  # nosec B608 - placeholders are `?`, values bound
+            "AND COALESCE(workspace_id, 'default') = ?",
+            (*memory_ids, self._workspace()),
         )
         rows = await cursor.fetchall()
         await cursor.close()
@@ -257,8 +314,8 @@ class MemoryQueries:
         ``Embedder.is_semantic``). Filtered by ``project`` so a literal re-store
         in one workspace does not shadow the same text in another.
         """
-        query = "SELECT 1 FROM memories WHERE content = ?"
-        params: list = [content]
+        query = "SELECT 1 FROM memories WHERE content = ? AND COALESCE(workspace_id, 'default') = ?"
+        params: list = [content, self._workspace()]
         if project is not None:
             query += " AND project = ?"
             params.append(project)
@@ -280,9 +337,15 @@ class MemoryQueries:
             params.append(val)
         if not sets:
             return False
+        # ``id`` alone identifies a row across workspaces, so the boundary has
+        # to be in the WHERE as well: an update addressed by an id from another
+        # workspace must not touch it (#302).
         params.append(memory_id)
+        params.append(self._workspace())
         cursor = await self._db.conn.execute(
-            f"UPDATE memories SET {', '.join(sets)} WHERE id = ?", params  # nosec B608 - column names come from fixed callers, values bound
+            f"UPDATE memories SET {', '.join(sets)} "  # nosec B608 - column names come from fixed callers, values bound
+            "WHERE id = ? AND COALESCE(workspace_id, 'default') = ?",
+            params,
         )
         await self._db.commit()
         return cursor.rowcount > 0
@@ -304,14 +367,18 @@ class MemoryQueries:
         """
         cursor = await self._db.conn.execute(
             "UPDATE memories SET valid_to = ?, superseded_by = ? "
-            "WHERE id = ? AND valid_to IS NULL",
-            (valid_to, superseded_by, memory_id),
+            "WHERE id = ? AND valid_to IS NULL "
+            "AND COALESCE(workspace_id, 'default') = ?",
+            (valid_to, superseded_by, memory_id, self._workspace()),
         )
         await self._db.commit()
         return cursor.rowcount > 0
 
     async def delete_memory(self, memory_id: str) -> bool:
-        cursor = await self._db.conn.execute("DELETE FROM memories WHERE id = ?", (memory_id,))
+        cursor = await self._db.conn.execute(
+            "DELETE FROM memories WHERE id = ? AND COALESCE(workspace_id, 'default') = ?",
+            (memory_id, self._workspace()),
+        )
         await self._db.commit()
         return cursor.rowcount > 0
 
@@ -322,6 +389,19 @@ class MemoryQueries:
         report success while entity, trust or conflict residues survive.
         Orphan entity rows are pruned after their final link disappears.
         """
+        workspace = self._workspace()
+        # Refuse before touching anything when the id is not in this workspace
+        # (#302): the derived-row deletes below are keyed by memory id alone, so
+        # without this guard a cross-workspace id would strip a peer's trust,
+        # conflict and entity links before the memory DELETE reported no match.
+        cursor = await self._db.conn.execute(
+            "SELECT 1 FROM memories WHERE id = ? AND COALESCE(workspace_id, 'default') = ?",
+            (memory_id, workspace),
+        )
+        if await cursor.fetchone() is None:
+            await cursor.close()
+            return False
+        await cursor.close()
         await self._db.conn.execute("BEGIN IMMEDIATE")
         try:
             await self._db.conn.execute(
@@ -338,7 +418,8 @@ class MemoryQueries:
                 (memory_id,),
             )
             cursor = await self._db.conn.execute(
-                "DELETE FROM memories WHERE id = ?", (memory_id,)
+                "DELETE FROM memories WHERE id = ? AND COALESCE(workspace_id, 'default') = ?",
+                (memory_id, workspace),
             )
             # Clear the supersession pointer on any memory this one replaced,
             # so a deleted replacement cannot leave its predecessor demoted in
