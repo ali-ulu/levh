@@ -82,7 +82,7 @@ because it is a read that has to POST to carry its query.
 | GET | `/api/v1/briefing` | Deterministic Daily Briefing — what's on today, open commitments from recent memories, and memories that are fading… |
 | GET | `/api/v1/meeting-prep` | Proactive pre-meeting brief — the next upcoming meeting (or a matched one), each attendee's recent context, and… |
 | GET | `/api/v1/decisions` | Deterministic decision detection — statements like "we decided" / "agreed to" / "karar verdik" in recent episodic… |
-| GET | `/api/v1/context` | The current context window — short-term, pinned and important memories |
+| GET | `/api/v1/context` | The current context window — short-term, pinned and important memories; pass `query` to rank candidates by relevance and pack them into the `max_tokens` budget |
 | POST | `/api/v1/ask` | Ask your memory a question and get a synthesized, cited answer |
 | POST | `/api/v1/attachments/upload` | Store an uploaded file locally and return the path to attach from |
 | POST | `/api/v1/memories/{memory_id}/attachments` | Attach a local file to a memory by reference (path + sha256), with optional derived text (OCR/transcript/caption)… |

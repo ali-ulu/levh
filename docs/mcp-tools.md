@@ -16,7 +16,7 @@ The complete MCP tool surface. See the [README](../README.md) for an overview.
 | 1 | `store_memory` | Store a memory with importance, tags, project, source, pin |
 | 2 | `recall_memory` | Recall memories ranked by H(x,ψ) score (filter by session/project; `explain=true` adds the per-result score breakdown; an empty result says why it was empty) |
 | 3 | `search_memory` | Semantic search with detailed results |
-| 4 | `get_context` | Build context window (short-term + pinned + important) |
+| 4 | `get_context` | Build context window (short-term + pinned + important); pass `query` to rank by H(x,ψ) relevance and pack into the `max_tokens` budget |
 | 5 | `get_memory_stats` | System statistics and metrics |
 | 6 | `get_continuity_brief` | Get continuity brief — call at session start to load context from previous work |
 | 7 | `list_memories` | List with type/tag/session/project/source/pinned filters |

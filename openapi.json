@@ -3056,6 +3056,16 @@
               "default": 4000,
               "title": "Max Tokens"
             }
+          },
+          {
+            "name": "query",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Query"
+            }
           }
         ],
         "responses": {

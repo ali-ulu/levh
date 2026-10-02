@@ -292,3 +292,22 @@ class RecallResult(BaseModel):
     scores: list[float]
     breakdowns: list[ScoreBreakdown] = Field(default_factory=list)
     diagnosis: Optional[RecallDiagnosis] = None
+
+
+class ContextPacking(BaseModel):
+    """A compiled context window plus what the budget did to it.
+
+    ``get_context`` returns only ``text``; this model exists so a caller can see
+    which memories the budget admitted and which it displaced. Ranking quality is
+    otherwise unobservable — the text alone cannot show what it crowded out.
+
+    ``mode`` is ``"layered"`` for the original recency/pin/importance ordering
+    (no query) and ``"ranked"`` when a query drove the selection.
+    """
+
+    text: str = ""
+    included: list[str] = Field(default_factory=list)
+    omitted: list[str] = Field(default_factory=list)
+    max_tokens: int = 0
+    used_tokens: int = 0
+    mode: str = "layered"

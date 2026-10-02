@@ -142,7 +142,7 @@ Once connected, the following tools are available to the AI client:
 - **consolidate** — Move short-term memories to episodic storage
 - **clear_short_term** — Clear all short-term memories
 - **set_importance** — Change importance score of a memory
-- **get_context** — Get full context for a session
+- **get_context** — Build the context window for a session; pass `query` to focus it on a topic within the token budget
 - **session_management** — Create/end/list sessions
 - **export_import** — Export or import memory data
 

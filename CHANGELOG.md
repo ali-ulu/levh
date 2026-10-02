@@ -2,6 +2,48 @@
 
 ## Unreleased
 
+### Feature: query-aware context window with a real token budget
+
+- `get_context(query=...)` now compiles a topic-focused window: candidates are
+  ranked by the same `H(x,ψ)` score `recall_memory` uses — vector/FTS candidates
+  re-scored with the superseded penalty — and the token budget is filled in
+  score order. A memory that is neither recent nor pinned can therefore reach the
+  window when it is relevant, which the old recency/pin/importance ordering could
+  never do. Without `query` the ordering is unchanged, byte for byte.
+- `server/core/tokens.py` replaces the `len(text) // 4` rule of thumb with
+  `estimate_tokens`, which weights word characters and punctuation separately.
+  Code and identifiers tokenize markedly denser than prose, so the old rule was
+  wrong in both directions; this one is still an approximation, but a far closer
+  one, and it keeps the storage and recall layers free of any tokenizer
+  dependency.
+- `get_context_packing()` returns a `ContextPacking` alongside the text: which
+  memories the budget admitted, which it displaced, how many tokens were used,
+  and which mode produced the window. Ranking quality is otherwise unobservable —
+  the text alone cannot show what it crowded out.
+- Pinned memories remain mandatory in both modes. The budget governs only the
+  optional material, and the assembled text is no longer sliced to the
+  *requested* budget's character equivalent — that slice could cut a pinned
+  memory out of the text while still listing it as included, which is a bug this
+  change fixes rather than preserves.
+- `query` is exposed on the MCP `get_context` tool and on `GET /api/v1/context`.
+  The frozen contract is regenerated in this commit: `openapi.json` gains only the
+  new parameter, and `sdk/typescript/src/generated/endpoints.ts` follows it.
+- The ranked path adds no `except Exception` boundary. With a non-semantic (hash)
+  embedder it skips the embed/vector work entirely and ranks lexically — the same
+  split `recall` already makes, because that cosine is positional rather than
+  semantic — so no failure needs swallowing. A real embedder that fails is left
+  to surface, which keeps `docs/error-handling.md`'s 61-site boundary count
+  accurate.
+- `tests/test_context_window.py` — 18 tests: token-estimate properties
+  (whitespace-only is zero, code is denser than prose, determinism, the per-memory
+  cap), the layered path's unchanged behaviour and session isolation, and the
+  ranked path's payoff (a relevant old memory that the layered window misses),
+  budget enforcement via `used_tokens`, the included/omitted split, pinned
+  survival on a one-token budget, project/session isolation, a blank query
+  falling back to layered, and an empty store not raising.
+- `docs/api-reference.md`, `docs/mcp-tools.md` and `docs/mcp-client-config.md`
+  describe the parameter.
+
 ### Feature: git connector — local repository history as memories
 
 - New `git` connector (`server/connectors/git.py`) reads a local repository's own

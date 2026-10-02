@@ -12,11 +12,18 @@ router = APIRouter()
 
 
 @router.get("/api/context", response_model=ContextResponse)
-async def get_context(session_id: str = "", project: str = "", max_tokens: int = 4000, engine=Depends(get_engine)):
+async def get_context(
+    session_id: str = "",
+    project: str = "",
+    max_tokens: int = 4000,
+    query: str = "",
+    engine=Depends(get_engine),
+):
     context = await engine.get_context(
         session_id=session_id or None,
         project=project or None,
         max_tokens=max_tokens,
+        query=query or None,
     )
     return {"context": context, "chars": len(context)}
 

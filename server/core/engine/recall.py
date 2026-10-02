@@ -20,7 +20,9 @@ from ..lexical import terms as lexical_terms
 from ..hscore import SUPERSEDED_PENALTY
 from ..synonyms import SynonymTable
 from ..tenancy import current_workspace_id
+from ..tokens import memory_tokens
 from ..types import (
+    ContextPacking,
     Memory,
     RecallDiagnosis,
     RecallResult,
@@ -654,14 +656,44 @@ class MemoryRecallMixin:
         session_id: str | None = None,
         project: str | None = None,
         max_tokens: int = 4000,
+        query: str | None = None,
     ) -> str:
-        """Build a context window: recent short-term + pinned + important episodic.
+        """Build a context window within an approximate token budget.
 
-        max_tokens is approximate (1 token ≈ 4 chars).
+        Without ``query`` this is the original layered window: recent
+        short-term, then pinned, then important episodic memories, truncated to
+        the budget. Every existing caller relies on that ordering, so it is
+        preserved byte-for-byte.
+
+        With ``query`` the window becomes topic-focused: candidates are ranked
+        by the same ``H(x,ψ)`` score the recall path uses, and the budget is
+        filled in score order. A query lets a memory that is neither recent nor
+        pinned reach the window — which is the whole point, because the old
+        ordering could never surface it no matter how relevant it was.
+
+        Pinned memories stay mandatory in both modes; the budget decides only
+        how much of the *optional* material fits.
+        """
+        packing = await self.get_context_packing(
+            session_id=session_id, project=project, max_tokens=max_tokens, query=query
+        )
+        return packing.text
+
+    async def get_context_packing(
+        self,
+        session_id: str | None = None,
+        project: str | None = None,
+        max_tokens: int = 4000,
+        query: str | None = None,
+    ) -> ContextPacking:
+        """``get_context`` plus an account of what the budget excluded.
+
+        Returns a :class:`ContextPacking` whose ``included`` and ``omitted``
+        lists name the memories on each side of the cutoff. Ranking quality is
+        otherwise invisible: a caller can see the text but not what it displaced.
         """
         max_chars = max_tokens * 4
-        parts: list[str] = []
-        seen: set[str] = set()
+        budget = max(0, int(max_tokens))
 
         def _matches(m: Memory) -> bool:
             if m.workspace_id != current_workspace_id():
@@ -672,6 +704,35 @@ class MemoryRecallMixin:
                 return False
             return True
 
+        # Pinned memories are mandatory context. They are gathered first, in
+        # both modes, so a small budget can never silently drop a rule the user
+        # explicitly pinned.
+        pinned = [
+            m
+            for m in await self.episodic.search(
+                project=project, session_id=session_id, pinned=True, limit=20
+            )
+            if _matches(m)
+        ]
+
+        if query and query.strip():
+            ranked = await self._rank_context_candidates(
+                query=query,
+                session_id=session_id,
+                project=project,
+                matches=_matches,
+            )
+            return self._pack_context(
+                pinned=pinned,
+                ranked=ranked,
+                budget=budget,
+                max_chars=max_chars,
+            )
+
+        # ── Original static path, unchanged ──────────────────────────────
+        parts: list[str] = []
+        seen: set[str] = set()
+
         # 1. Short-term first (most recent live context)
         for m in self.short_term.get_recent(10):
             if _matches(m) and m.id not in seen:
@@ -679,9 +740,6 @@ class MemoryRecallMixin:
                 seen.add(m.id)
 
         # 2. Pinned memories (always-on context)
-        pinned = await self.episodic.search(
-            project=project, session_id=session_id, pinned=True, limit=20
-        )
         for m in pinned:
             if m.id not in seen:
                 parts.append(m.content)
@@ -700,6 +758,180 @@ class MemoryRecallMixin:
                 parts.append(m.content)
                 seen.add(m.id)
 
-        if not parts:
-            return ""
-        return "\n".join(parts)[:max_chars]
+        text = "\n".join(parts)[:max_chars] if parts else ""
+        # The layered path concatenates everything it gathered and truncates, so
+        # its "used" figure describes the gathered set rather than a packed
+        # budget — reported as such instead of implying the ranked path's
+        # discipline.
+        used = sum(memory_tokens(content) for content in parts)
+        return ContextPacking(
+            text=text,
+            included=[m.id for m in pinned],
+            omitted=[],
+            max_tokens=budget,
+            used_tokens=used,
+            mode="layered",
+        )
+
+    async def _rank_context_candidates(
+        self,
+        *,
+        query: str,
+        session_id: str | None,
+        project: str | None,
+        matches,
+    ) -> list[tuple[Memory, float]]:
+        """Score every in-scope candidate for a topic-focused window.
+
+        Mirrors the recall path's ranking — vector/FTS candidates re-scored with
+        ``H(x,ψ)`` and the superseded penalty — but over the whole in-scope pool
+        rather than the recent/pinned slices the layered path looks at. Pinned
+        memories are excluded: they are always included, so ranking them would
+        only let them consume the budget twice.
+        """
+        # Recent short-term memories are candidates too: they are the live
+        # working set, and a query should not push them out merely because it
+        # was supplied.
+        by_id: dict[str, Memory] = {}
+        for m in self.short_term.get_recent(50):
+            if matches(m) and not m.pinned:
+                by_id.setdefault(m.id, m)
+
+        # Similarity-ranked candidates.
+        #
+        # With a non-semantic (hash) embedder the cosine is positional, not
+        # semantic, so it is never consulted — ranking falls through to lexical
+        # coverage below. Skipping the embed/vector work entirely there is not a
+        # shortcut: the vector store holds every row already, but its ordering
+        # would rank on noise, and `recall` makes exactly this split for exactly
+        # this reason.
+        #
+        # No broad `except` guards this: a real embedder that fails is a real
+        # failure, and silently degrading to a different ranking would hide it.
+        # `docs/error-handling.md` reserves `except Exception` for boundaries
+        # where the failure must not escape; this is not one.
+        cosine_by_id: dict[str, float] = {}
+        is_semantic = bool(getattr(self.embedder, "is_semantic", False))
+
+        if is_semantic:
+            query_embedding = await self.embedder.embed(query)
+            neighbours = self.vector_store.search(
+                query_embedding, top_k=100, predicate=matches
+            )
+            cosine_by_id = {m.id: sim for m, sim in neighbours}
+            for m, _sim in neighbours:
+                if not m.pinned:
+                    by_id.setdefault(m.id, m)
+
+        synonym_table = SynonymTable.load()
+        expansions = synonym_table.expand(query)
+        lexical_terms_set = (
+            expand_terms(query, expansions) if not is_semantic else set()
+        )
+
+        # The vector store only holds rows it has embedded; a pinned-only or
+        # freshly-imported row may be absent, so the important-episodic slice is
+        # folded in as a fallback pool rather than relying on the store alone.
+        for m in await self.episodic.search(
+            memory_type="episodic",
+            project=project,
+            session_id=session_id,
+            min_importance=0.5,
+            limit=100,
+        ):
+            if matches(m) and not m.pinned:
+                by_id.setdefault(m.id, m)
+
+        scored: list[tuple[Memory, float]] = []
+        for memory_id, memory in by_id.items():
+            decay = (
+                1.0
+                if memory.pinned
+                else self.scorer.compute_decay(
+                    memory.accessed_at, half_life_hours=memory.stability_hours
+                )
+            )
+            if lexical_terms_set:
+                similarity = lexical_similarity(query, memory.content, expansions)
+            else:
+                similarity = cosine_by_id.get(memory_id) or lexical_similarity(
+                    query, memory.content, expansions
+                )
+            score = self.scorer.compute(
+                similarity=similarity,
+                decay_factor=decay,
+                importance=memory.importance,
+                frequency=memory.frequency,
+            )
+            # Lower H(x,ψ) is more relevant (see hscore.py), so ranking is
+            # ascending. The superseded penalty keeps a replaced fact below its
+            # replacement, exactly as the recall path does.
+            if getattr(memory, "metadata", {}).get("superseded_by"):
+                score = min(1.0, score + SUPERSEDED_PENALTY)
+            memory.hscore = score
+            scored.append((memory, score))
+
+        scored.sort(key=lambda pair: pair[1])
+        return scored
+
+    def _pack_context(
+        self,
+        *,
+        pinned: list[Memory],
+        ranked: list[tuple[Memory, float]],
+        budget: int,
+        max_chars: int,
+    ) -> ContextPacking:
+        """Fill the token budget greedily, pinned memories first.
+
+        Greedy in rank order rather than optimal packing: the ranking is the
+        product, and a candidate that does not fit is passed over so a smaller
+        lower-ranked memory can use the remaining room instead of the window
+        ending early.
+        """
+        parts: list[str] = []
+        included: list[str] = []
+        omitted: list[str] = []
+        seen: set[str] = set()
+        used = 0
+        # Character allowance, tracked alongside the token budget. The final
+        # slice is a belt-and-braces cap on the assembled string, not the
+        # budgeting mechanism — so it must grow to cover whatever was actually
+        # admitted. Slicing to the *requested* budget's character equivalent
+        # would silently cut a pinned memory out of the text while still
+        # listing it in `included`, which is the failure this tracks.
+        char_allowance = max(max_chars, 0)
+
+        def _try_add(memory: Memory, mandatory: bool) -> bool:
+            nonlocal used, char_allowance
+            if memory.id in seen:
+                return False
+            cost = memory_tokens(memory.content)
+            # A mandatory (pinned) memory is admitted even when it overflows the
+            # budget: dropping a rule the user pinned would defeat the point of
+            # pinning it. The budget governs only the *optional* material.
+            if not mandatory and used + cost > budget:
+                return False
+            seen.add(memory.id)
+            parts.append(memory.content)
+            included.append(memory.id)
+            used += cost
+            char_allowance += max(len(memory.content), cost * 4)
+            return True
+
+        for memory in pinned:
+            _try_add(memory, mandatory=True)
+
+        for memory, _score in ranked:
+            if not _try_add(memory, mandatory=False):
+                omitted.append(memory.id)
+
+        text = "\n".join(parts)[:char_allowance]
+        return ContextPacking(
+            text=text,
+            included=included,
+            omitted=omitted,
+            max_tokens=budget,
+            used_tokens=used,
+            mode="ranked",
+        )
