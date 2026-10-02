@@ -370,3 +370,25 @@ async def test_replace_restore_refuses_once_two_workspaces_exist(engine):
     assert await engine.episodic.count() == 1
     with workspace(OTHER):
         assert await engine.episodic.count() == 1
+
+
+@pytest.mark.asyncio
+async def test_delete_does_not_clear_a_peer_workspaces_supersession_pointer(db):
+    """Supersession is a within-workspace relation (#302).
+
+    A row in another workspace that names this id — an import that preserved
+    the pointer, say — must keep it when the id is deleted here.
+    """
+    await db.insert_memory(_row("m1", "the default workspace fact"))
+    with workspace(OTHER):
+        peer = _row("peer", "a team fact that mentions m1")
+        peer["superseded_by"] = "m1"
+        peer["metadata"] = {"superseded_by": "m1"}
+        await db.insert_memory(peer)
+
+    assert await db.delete_memory_cascade("m1") is True
+
+    with workspace(OTHER):
+        row = await db.get_memory("peer")
+    assert row["superseded_by"] == "m1"
+    assert row["metadata"]["superseded_by"] == "m1"

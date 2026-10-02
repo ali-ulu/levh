@@ -78,13 +78,16 @@ class SnapshotQueries:
             memory_ids = [str(m["id"]) for m in memories]
             if replace:
                 # A snapshot restore is a whole-store operation and cannot be
-                # scoped to one workspace: sessions carry no workspace column,
-                # and the derived tables below are rebuilt from ``memories``
-                # store-wide. In the degenerate single-workspace case that is
-                # exactly right. Refuse loudly once a second workspace exists
-                # (#302) rather than silently delete a peer's sessions and
-                # derived state — the alternative (scoping the deletes) needs a
-                # session→workspace ownership model that does not exist yet.
+                # scoped to one workspace: sessions carry no workspace column
+                # yet (phase 2 adds ownership), and the derived tables below are
+                # rebuilt from ``memories`` store-wide. In the degenerate
+                # single-workspace case that is exactly right. Refuse loudly
+                # once a second workspace exists (#302) rather than silently
+                # delete a peer's sessions and derived state. The guard keys on
+                # the memories that can carry a workspace: a session has no
+                # owner to compare against until phase 2, so there is nothing
+                # finer to check — this rejects every store where the
+                # distinction could matter.
                 cursor = await self._db.conn.execute(
                     "SELECT COUNT(DISTINCT COALESCE(workspace_id, 'default')) FROM memories"
                 )

@@ -234,6 +234,12 @@ phase 1 is implemented against them.
 - `request_id_middleware` (in `server/middleware.py`, beside the existing
   correlation-id binding) binds the local principal per request, so the
   transport that will later identify a user already has the seam.
+- Store-wide maintenance passes (re-embed, demo purge) keep their whole-store
+  scan but bind each row's own workspace around the write, because the scan
+  spans workspaces while `update_memory`/`purge_memory` are scoped. A replace
+  restore has no workspace dimension to scope to (sessions carry no owner until
+  phase 2), so it refuses outright once a second workspace exists rather than
+  delete a peer's sessions and derived state.
 
 Tests: `tests/test_workspace_tenancy.py` pins the single-user round trip
 unchanged, the cross-workspace invisibility of reads/counts/updates/deletes,

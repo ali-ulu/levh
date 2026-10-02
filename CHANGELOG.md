@@ -22,9 +22,12 @@
   `workspace_id`, so a request cannot choose its own workspace.
 - The in-process vector store and short-term deque still mirror the whole
   store, and recall filters candidates by workspace — a partial mirror would
-  silently make a row unrecallable. `tests/test_workspace_tenancy.py` pins the
-  single-user round trip unchanged and the cross-workspace invisibility of
-  reads, counts, updates, deletes and recall.
+  silently make a row unrecallable. The store-wide maintenance passes (re-embed,
+  demo purge) bind each row's own workspace around their write, since the scan
+  spans workspaces while the write is scoped. `tests/test_workspace_tenancy.py`
+  pins the single-user round trip unchanged and the cross-workspace
+  invisibility of reads, counts, updates, deletes, recall and supersession
+  cleanup.
 
 ### Fix: keep the committed LoCoMo artifact version in sync with releases (#361)
 

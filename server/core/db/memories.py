@@ -425,11 +425,15 @@ class MemoryQueries:
             # so a deleted replacement cannot leave its predecessor demoted in
             # recall forever. Custom-registered JSON functions make this safe
             # where json_extract is unavailable; the fallback is a no-op scan.
+            # Scoped to this workspace (#302): supersession is a within-workspace
+            # relation, so a cross-workspace row that happens to name this id
+            # (an import that preserved the pointer) must not be touched.
             try:
                 await self._db.conn.execute(
                     "UPDATE memories SET metadata = json_remove(metadata, '$.superseded_by', '$.superseded_at') "
-                    "WHERE json_extract(metadata, '$.superseded_by') = ?",
-                    (memory_id,),
+                    "WHERE json_extract(metadata, '$.superseded_by') = ? "
+                    "AND COALESCE(workspace_id, 'default') = ?",
+                    (memory_id, workspace),
                 )
             except sqlite3.OperationalError:
                 logger.warning(
@@ -445,8 +449,8 @@ class MemoryQueries:
             # run even where the JSON functions are unavailable.
             await self._db.conn.execute(
                 "UPDATE memories SET superseded_by = NULL, valid_to = NULL "
-                "WHERE superseded_by = ?",
-                (memory_id,),
+                "WHERE superseded_by = ? AND COALESCE(workspace_id, 'default') = ?",
+                (memory_id, workspace),
             )
             await self._db.conn.execute(
                 "DELETE FROM entities WHERE id NOT IN "
