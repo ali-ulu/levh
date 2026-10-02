@@ -34,13 +34,32 @@
   semantic — so no failure needs swallowing. A real embedder that fails is left
   to surface, which keeps `docs/error-handling.md`'s 61-site boundary count
   accurate.
-- `tests/test_context_window.py` — 18 tests: token-estimate properties
+- `tests/test_context_window.py` — 22 tests: token-estimate properties
   (whitespace-only is zero, code is denser than prose, determinism, the per-memory
   cap), the layered path's unchanged behaviour and session isolation, and the
   ranked path's payoff (a relevant old memory that the layered window misses),
   budget enforcement via `used_tokens`, the included/omitted split, pinned
   survival on a one-token budget, project/session isolation, a blank query
   falling back to layered, and an empty store not raising.
+- Four issues found in review of this change, all fixed here:
+  - The layered path reported only *pinned* ids in `included` while short-term and
+    episodic memories were also in the text, so the packing metadata misdescribed
+    the window. It now records admission order for every memory admitted.
+  - The ranked candidate pool was only the 50 most recent short-term memories plus
+    episodic rows at `min_importance >= 0.5`, so an older or lower-importance
+    memory could never be admitted however well it matched — which is the case
+    the feature exists to fix. The pool now also takes a lexical scan over the
+    in-memory store and the FTS candidates (widened with synonyms), matching
+    `recall`'s sources.
+  - The ranked predicate omitted the current-row check `recall` applies through
+    `_valid_at`, so a retired (superseded) row could enter the window from the
+    short-term deque or the vector store. It is now rejected.
+  - The per-memory cap charged `MAX_MEMORY_TOKENS` while appending the *whole*
+    content, so a memory of ~10,000 tokens was charged 2,000 and contributed all
+    of its 45,000 characters: the cap hid the real cost instead of bounding it,
+    and `used_tokens` under-reported. The admitted text is now truncated to the
+    size the cap represents, in token space (`tokens.truncate_to_tokens`), and the
+    assembled string is no longer sliced afterwards.
 - `docs/api-reference.md`, `docs/mcp-tools.md` and `docs/mcp-client-config.md`
   describe the parameter.
 
