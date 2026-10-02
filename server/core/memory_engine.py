@@ -10,8 +10,10 @@ Emits events ("stored", "updated", "deleted", "recalled", "consolidated",
 
 from __future__ import annotations
 
+from .database import Database
 from .embedder import Embedder
 from .engine_factory import EngineConfig, wire_engine
+from .episodic import EpisodicMemory
 from .engine.helpers import _COMMITMENT_PATTERN, _event_date, _event_when, _first_marker_sentence, logger  # noqa: F401
 from .engine.lifecycle import MemoryLifecycleMixin
 from .engine.write import MemoryWriteMixin
@@ -75,6 +77,14 @@ class MemoryEngine(
     The engine's own code only coordinates them (lifecycle, events,
     derived-state scheduling).
     """
+
+    # Declared here, assigned in ``wire_engine`` (see engine_factory). Naming
+    # the two storage collaborators at the class level is what lets a module
+    # typed against ``MemoryEngine`` — procedure.py, guard.py — resolve
+    # ``engine.db`` and ``engine.episodic`` without mypy's
+    # ``follow_imports = "silent"`` hiding the mixins that hold them (#350).
+    db: Database
+    episodic: EpisodicMemory
 
     def __init__(
         self,

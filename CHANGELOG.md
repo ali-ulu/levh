@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+### Fix: mypy ratchet gap — `procedure.py` and `guard.py` (#350)
+
+- `MemoryEngine` now declares `db: Database` and `episodic: EpisodicMemory` at
+  class level. Both are assigned in `wire_engine`, but the mixins that hold
+  them are hidden from mypy by `follow_imports = "silent"`, so a module typed
+  against `MemoryEngine` could not see `engine.db` or `engine.episodic`.
+  Naming the two storage collaborators at the class level lets the type
+  checker resolve them without changing how the engine is wired.
+- `server/core/procedure.py` and `server/core/guard.py` join the
+  `[tool.mypy].files` ratchet, so the three previously-invisible
+  `attr-defined` errors now fail CI if they return. The ratchet only grows.
+
 ### Fix: a global guard rule reaches a project-scoped check (#337)
 
 - `list_rules` passed `project` straight through to `search_memories`, which
