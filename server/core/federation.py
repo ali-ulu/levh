@@ -119,10 +119,10 @@ def _load_ed25519_public(path: str):
         raise EnvelopeError(
             f"{path!r} is neither an unencrypted PEM public nor private key"
         ) from exc
-    public = getattr(private, "public_key", None)
-    if public is None:
+    public_method = getattr(private, "public_key", None)
+    if public_method is None:
         raise EnvelopeError(f"{path!r} does not carry an ed25519 public key")
-    return public
+    return public_method()
 
 
 def _ensure_crypto() -> None:

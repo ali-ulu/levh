@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Fix: ed25519 envelope verification from a private key file (#338)
+
+- `server/core/federation.py::_load_ed25519_public` now calls
+  `private_key.public_key()` to derive the public half from a private PEM.
+  Returning the bound method itself made `verify_envelope` raise
+  `AttributeError` when the receiver held the sender's own key file — the
+  documented single-file case — instead of verifying the envelope.
+
 ### Feature: signed federation envelope — provenance-verified export/import (#338)
 
 - New `server/core/federation.py` signs a `full_export` bundle into a

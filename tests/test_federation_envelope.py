@@ -196,6 +196,27 @@ def test_ed25519_tamper_is_rejected():
         os.unlink(pub)
 
 
+def test_ed25519_verification_accepts_the_sender_private_key():
+    """A receiver holding the sender's own key file must verify too.
+
+    ``_load_ed25519_public`` falls back to deriving the public half from a
+    private PEM so the same file the sender signed with can verify. Returning
+    the bound ``public_key`` method instead of calling it raised
+    ``AttributeError`` here rather than verifying.
+    """
+    pytest.importorskip("cryptography")
+    priv_pem, _ = _ed25519_keypair()
+    priv = _write_key(priv_pem)
+    try:
+        envelope = sign_envelope(
+            _bundle(), node_id="workstation", key_path=priv, algorithm="ed25519"
+        )
+        bundle = verify_envelope(envelope, key_path=priv)
+        assert bundle["counts"]["memories"] == 2
+    finally:
+        os.unlink(priv)
+
+
 class TestFederationCli:
     """The CLI pair is what an operator actually runs; exercise it end to end.
 
