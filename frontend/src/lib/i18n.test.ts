@@ -37,6 +37,19 @@ describe("translate", () => {
     expect(translate("app.timeline.count.other", { count: 3 })).toBe("3 memories");
   });
 
+  it("resolves the dashboard widget keys the latest batch converts to", () => {
+    expect(translate("fadingMemories.title")).toBe("Fading Memories");
+    expect(translate("fadingMemories.needReview", { count: 2 })).toBe("2 need review");
+    expect(translate("liveFeed.event.sessionCreated")).toBe("session started");
+    expect(translate("liveFeed.detail.recalled", { query: "sqlite", count: 1 })).toBe(
+      '"sqlite" → 1 results'
+    );
+    expect(translate("liveFeed.detail.summarized", { count: 5 })).toBe(
+      "session distilled from 5 memories"
+    );
+    expect(translate("knowledgeConstellation.records", { count: "1,204" })).toBe("1,204 records");
+  });
+
   it("falls back to the key when it is not in the catalogue", () => {
     // A silent empty string hides a typo'd key; returning the key makes the
     // mistake visible in the rendered page and in a snapshot.

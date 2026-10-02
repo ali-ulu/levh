@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,6 +12,7 @@ import { BatteryCharging, HeartCrack, Loader2, Trash2 } from "lucide-react";
 type FadingMemory = Memory & { retention: number };
 
 export function FadingMemories({ onChanged }: { onChanged?: () => void }) {
+  const t = useT();
   const [fading, setFading] = useState<FadingMemory[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -40,7 +42,7 @@ export function FadingMemories({ onChanged }: { onChanged?: () => void }) {
   };
 
   const letGo = async (m: FadingMemory) => {
-    if (!confirm(`Forget this memory permanently?\n\n"${m.content.slice(0, 80)}"`)) return;
+    if (!confirm(`${t("fadingMemories.forgetConfirm")}\n\n"${m.content.slice(0, 80)}"`)) return;
     setBusyId(m.id);
     try {
       await api.deleteMemory(m.id);
@@ -55,10 +57,10 @@ export function FadingMemories({ onChanged }: { onChanged?: () => void }) {
       <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center gap-2">
           <HeartCrack className="h-4 w-4 text-muted-foreground" />
-          Fading Memories
+          {t("fadingMemories.title")}
           {fading.length > 0 && (
             <Badge variant="secondary" className="text-[11px] ml-auto">
-              {fading.length} need review
+              {t("fadingMemories.needReview", { count: fading.length })}
             </Badge>
           )}
         </CardTitle>
@@ -70,8 +72,7 @@ export function FadingMemories({ onChanged }: { onChanged?: () => void }) {
           </div>
         ) : fading.length === 0 ? (
           <p className="text-sm text-muted-foreground py-4 text-center">
-            Nothing is fading — your memory is healthy. Memories appear here when
-            their predicted retention drops below 35%.
+            {t("fadingMemories.empty")}
           </p>
         ) : (
           <div className="space-y-2">
@@ -90,8 +91,8 @@ export function FadingMemories({ onChanged }: { onChanged?: () => void }) {
                   className="h-7 w-7 shrink-0"
                   onClick={() => rescue(m.id)}
                   disabled={busyId === m.id}
-                  aria-label="Reinforce — keep this memory"
-                  title="Reinforce — keep this memory"
+                  aria-label={t("fadingMemories.reinforce")}
+                  title={t("fadingMemories.reinforce")}
                 >
                   {busyId === m.id ? (
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -105,16 +106,15 @@ export function FadingMemories({ onChanged }: { onChanged?: () => void }) {
                   className="h-7 w-7 shrink-0"
                   onClick={() => letGo(m)}
                   disabled={busyId === m.id}
-                  aria-label="Forget permanently"
-                  title="Forget permanently"
+                  aria-label={t("fadingMemories.forget")}
+                  title={t("fadingMemories.forget")}
                 >
                   <Trash2 className="h-3.5 w-3.5 text-destructive" />
                 </Button>
               </div>
             ))}
             <p className="text-[11px] text-muted-foreground pt-1">
-              Rescue what still matters; let the rest fade. This is your memory
-              curating itself.
+              {t("fadingMemories.footer")}
             </p>
           </div>
         )}
