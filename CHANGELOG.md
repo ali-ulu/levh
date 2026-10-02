@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Fix: drop the test-only `_count_quarantined_rows` wrapper (#354)
+
+- `server/commands/doctor.py` no longer carries `_count_quarantined_rows`: it
+  was never called in production, which counts quarantined rows through
+  `_quarantined_rowids` directly. The test that used it now calls the same
+  function production does, so the two cannot drift.
+
 ### Fix: the env template gate reads `get_env`, and the template lists what it finds (#351)
 
 - `tests/test_docs_match_code.py::_referenced_env_names` now also resolves

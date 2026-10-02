@@ -109,11 +109,6 @@ def _quarantined_rowids(db_path: str) -> list[int]:
     return rowids
 
 
-def _count_quarantined_rows(db_path: str) -> int:
-    """How many stored rows the current model cannot accept."""
-    return len(_quarantined_rowids(db_path))
-
-
 def _quarantine_detail(db_path: str, rowids: list[int]) -> str:
     """One line naming the quarantined rows, and how to repair what can be.
 

@@ -51,9 +51,9 @@ def _insert_invalid_row(db_path, row_id):
 
 def _count_quarantined(db_path):
     """The store-side check doctor uses: rows Memory(**dict) rejects."""
-    from server.commands.doctor import _count_quarantined_rows
+    from server.commands.doctor import _quarantined_rowids
 
-    return _count_quarantined_rows(str(db_path))
+    return len(_quarantined_rowids(str(db_path)))
 
 
 async def _read_path_quarantined_ids(db_path, caplog):
