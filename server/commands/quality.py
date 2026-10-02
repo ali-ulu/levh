@@ -238,7 +238,8 @@ def cmd_recall_report(args: argparse.Namespace) -> int:
     print("\n  LEVH recall quality (from the recall log)")
     print("  " + "=" * 46)
     if not report["recalls"]:
-        print("  No recalls logged. Set LEVH_RECALL_LOG=1 to start recording.")
+        print("  No recalls logged. Recording is on by default; check that")
+        print("  LEVH_RECALL_LOG=0 has not disabled it, and run a recall first.")
         print("  " + "=" * 46 + "\n")
         return 0
     print(f"  recalls          {report['recalls']}"

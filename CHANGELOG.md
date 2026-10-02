@@ -2,6 +2,26 @@
 
 ## Unreleased
 
+### Fix: recall logging is on by default, so `recall_log` is populated (#376)
+
+- `LEVH_RECALL_LOG` now defaults to on. `recall_log` is the audit substrate
+  Phase 2 of `docs/internal/SHARED-MEMORY-DESIGN.md` builds on ("who read this
+  memory, and when"), and as an opt-in it held zero rows on a live store: the
+  question Phase 2 asks had nothing to answer it from. The privacy cost stays
+  bounded — the query is secret-redacted and truncated at 1000 characters, no
+  memory content or scores are stored, and retention is capped by
+  `LEVH_RECALL_LOG_DAYS` (30 days). An operator who considers typed queries too
+  sensitive opts out with `LEVH_RECALL_LOG=0`; `/api/health` and
+  `levh recall-report` report whether logging is on.
+- `tests/test_recall_log.py` adds `test_a_recall_records_a_row_by_default`,
+  `test_the_flag_turns_logging_off`, and
+  `test_the_configured_retention_window_reaches_the_recall_path`, which proves
+  `LEVH_RECALL_LOG_DAYS` prunes through the recall path rather than only in the
+  docs.
+- `tests/conftest.py`, `docs/testing.md` and the CI `hostile-env` job plant the
+  opposite decoy now (`LEVH_RECALL_LOG=0`), so the behaviour-flag guard still
+  fails on an unscrubbed variable instead of planting the new default.
+
 ### Feature: query-aware context window with a real token budget
 
 - `get_context(query=...)` now compiles a topic-focused window: candidates are

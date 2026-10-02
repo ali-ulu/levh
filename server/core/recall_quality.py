@@ -188,8 +188,9 @@ def build_recall_report(
             "Churn is keyed on query text, project and top_k. min_importance is "
             "not stored in the recall log, so two recalls differing only in "
             "that filter share a key.",
-            "Recall logging is off by default (LEVH_RECALL_LOG); an empty "
-            "report usually means nothing was recorded, not that recall failed.",
+            "Recall logging is on by default (LEVH_RECALL_LOG=0 disables it); "
+            "an empty report means this store has logged no recalls yet, not "
+            "that recall failed.",
             "Read the trend across runs on one store, not the absolute number.",
         ],
     }

@@ -41,6 +41,18 @@ MAX_QUERY_CHARS = 1000
 #: make deliberately, not inherit.
 DEFAULT_RECALL_LOG_RETENTION_DAYS = 30
 
+#: Whether a recall is logged when the operator has said nothing (issue #376).
+#:
+#: On. The table is the audit substrate Phase 2 of
+#: ``docs/internal/SHARED-MEMORY-DESIGN.md`` is built on, and as an opt-in it
+#: stayed empty on every store — "who read this memory, and when" was not
+#: answerable because there was never a row to answer from. The privacy cost is
+#: bounded rather than waived: the query has secrets redacted and is truncated,
+#: memory content and scores are never stored, and retention is capped. Consent
+#: is preserved by an explicit opt-out (``LEVH_RECALL_LOG=0``) instead of an
+#: opt-in nobody discovers.
+DEFAULT_RECALL_LOG_ENABLED = True
+
 
 def _truthy(value: str) -> bool:
     return value.strip().lower() in {"1", "true", "yes", "on"}
@@ -93,7 +105,9 @@ class MemoryRecallMixin:
         flag a test cannot flip without reloading the module is a flag no test
         will bother flipping.
         """
-        enabled = _truthy(get_env("LEVH_RECALL_LOG", "0"))
+        enabled = _truthy(
+            get_env("LEVH_RECALL_LOG", "1" if DEFAULT_RECALL_LOG_ENABLED else "0")
+        )
         try:
             days = int(get_env("LEVH_RECALL_LOG_DAYS", str(DEFAULT_RECALL_LOG_RETENTION_DAYS)))
         except ValueError:

@@ -100,8 +100,8 @@ the suite — `LEVH_SQLITE_DB_PATH`, `SQLITE_DB_PATH`,
 same way it neutralises the LLM variables. Behaviour flags that steer the
 suite without naming a path are scrubbed too: `LEVH_RECALL_LOG` and
 `LEVH_RECALL_LOG_DAYS` decide whether recalls are recorded, so a developer who
-exports them to exercise the recall log would otherwise redden
-`tests/test_recall_log.py` while CI stayed green.
+exports them to exercise the recall log — now usually to turn it *off* — would
+otherwise redden `tests/test_recall_log.py` while CI stayed green.
 
 This is not paranoia: on 2026-09-13 a developer-level `LEVH_SQLITE_DB_PATH`
 made 28 subprocess tests write fixture rows into the *real* memory database

@@ -39,8 +39,10 @@ flag rather than a path, so the store pin does not cover it, and a developer
 who exported it to exercise the recall log locally reddened
 ``tests/test_recall_log.py`` — the one file they were most likely to be
 working on. Like the LLM variables, the flag and its retention window are
-scrubbed so the default is silence; a test that wants logging on sets the
-variable with monkeypatch, which runs after this fixture and wins.
+scrubbed so the code's own default applies. Since issue #376 that default is
+to record, so the hostile export is the one that turns logging *off*; either
+way a test that wants a value sets it with monkeypatch, which runs after this
+fixture and wins.
 """
 
 from __future__ import annotations
@@ -110,7 +112,7 @@ def _neutral_flag_environment(monkeypatch: pytest.MonkeyPatch) -> None:
     ``LEVH_RECALL_LOG`` decides whether recalls are recorded, so a developer
     who exported it reddens the recall-log tests while CI stays green — the
     same invisible failure mode the LLM and store scrubs exist to kill. A test
-    that wants the flag on sets it with monkeypatch, which runs after this
+    that wants either value sets it with monkeypatch, which runs after this
     fixture and wins.
     """
     for name in _FLAG_ENV:

@@ -2,9 +2,13 @@
 
 Four properties are load-bearing and each is pinned here:
 
-1. It is off unless someone asks. The rows are queries a person typed. A log
-   that records them by default is a surveillance decision dressed as a
-   default, so the default is silence and the flag is the consent.
+1. It records by default. The rows are the audit substrate Phase 2 of
+   ``docs/internal/SHARED-MEMORY-DESIGN.md`` builds on, and a log that stays
+   empty on every store that never learned the flag answers nothing — the
+   issue #376 state was zero rows on a live store. The flag is still the
+   consent, but it now opts *out* (``LEVH_RECALL_LOG=0``): one variable for
+   the operator who considers typed queries too sensitive to keep, instead of
+   a substrate that nobody populates.
 2. Order survives. The number this table exists to produce is precision at
    rank; a set of ids cannot distinguish gold-at-1 from gold-at-10, so a test
    that does not compare against the *returned* order proves nothing.
@@ -50,8 +54,28 @@ async def engine():
 
 
 @pytest.mark.asyncio
-async def test_nothing_is_recorded_until_the_flag_is_set(engine):
-    """The default is silence, and only the flag has to be proven to change it."""
+async def test_a_recall_records_a_row_by_default(engine):
+    """A store that never learned the flag must still populate the table.
+
+    Issue #376: ``recall_log`` was documented as the audit substrate and held
+    zero rows, because the only store that logs is one whose operator opted in.
+    The conftest scrub keeps this test's environment free of ``LEVH_RECALL_LOG``,
+    so what it exercises is the default itself.
+    """
+    result = await engine.recall("which branch do we deploy to production from", top_k=2)
+
+    rows = await engine.db.list_recall_log(limit=5)
+
+    assert len(rows) == 1, "a recall with logging on by default must leave a row"
+    assert rows[0]["result_ids"] == [m.id for m in result.memories]
+    assert rows[0]["result_count"] == len(result.memories)
+
+
+@pytest.mark.asyncio
+async def test_the_flag_turns_logging_off(engine, monkeypatch):
+    """The default is a default, not a mandate: the operator can still say no."""
+    monkeypatch.setenv("LEVH_RECALL_LOG", "0")
+
     await engine.recall("which branch do we deploy to", top_k=3)
 
     assert (await engine.db.recall_log_stats())["total"] == 0
@@ -190,6 +214,49 @@ async def test_retention_removes_old_rows_and_leaves_recent_ones(engine):
 
     assert removed == 1
     assert [r["query"] for r in remaining] == ["a recent question"]
+
+
+@pytest.mark.asyncio
+async def test_the_configured_retention_window_reaches_the_recall_path(engine, monkeypatch):
+    """``LEVH_RECALL_LOG_DAYS`` must bound the table from the recall path.
+
+    The variable is only real if a recall enforces it: setting it here to one
+    day has to remove a row from 2000 on the next logged recall while the row
+    that recall just wrote survives. Reading the config and dropping it on the
+    floor would leave an unbounded table that the docs say is bounded.
+    """
+    monkeypatch.setenv("LEVH_RECALL_LOG", "1")
+    monkeypatch.setenv("LEVH_RECALL_LOG_DAYS", "1")
+
+    await engine.db.recall_log.record_recall(
+        {
+            "query": "an ancient question",
+            "query_sha256": "e" * 64,
+            "result_ids": [],
+            "result_count": 0,
+            "top_k": 3,
+            "project": None,
+            "session_id": None,
+            "reinforced": False,
+            "logged_at": "2000-01-01T00:00:00+00:00",
+        }
+    )
+    assert any(
+        r["query"] == "an ancient question"
+        for r in await engine.db.list_recall_log(limit=5)
+    ), "the fixture row must exist before the recall prunes"
+    # The fixture above writes without a retention window, so this recall is the
+    # store's first prune attempt; the throttle must not defuse the assertion.
+    engine.db.recall_log._last_prune_at = None
+
+    await engine.recall("which branch do we deploy to", top_k=3)
+
+    remaining = [r["query"] for r in await engine.db.list_recall_log(limit=5)]
+
+    assert "an ancient question" not in remaining, (
+        "LEVH_RECALL_LOG_DAYS=1 did not reach the prune; the row from 2000 survived"
+    )
+    assert any("which branch" in q for q in remaining)
 
 
 @pytest.mark.asyncio

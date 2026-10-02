@@ -63,6 +63,8 @@ the process that launches it when environment overrides are required.
 | `LEVH_VERSION` | `unknown` | Version reported when package metadata is unavailable |
 | `LEVH_DOGFOOD_ENABLED` | `false` | Append whitelisted aggregate dogfood events to a local JSONL file; no content leaves the process |
 | `LEVH_ONBOARDING_RECEIPT_PATH` | `.stackmemory/onboarding-receipt.json` | Where the local, privacy-safe onboarding receipt is written |
+| `LEVH_RECALL_LOG` | `true` | Record every recall in `recall_log`: the query (secrets redacted, truncated at 1000 characters) and the ranked result ids the recall returned. This is the substrate `levh recall-report` measures; `0`/`false`/`off` opts out. Memory content, scores and embeddings are never stored |
+| `LEVH_RECALL_LOG_DAYS` | `30` | Days of recall history to keep. Retention runs on the recall path at most once every ten minutes, so an active store bounds itself without a scheduler. `0` disables pruning |
 
 ---
 

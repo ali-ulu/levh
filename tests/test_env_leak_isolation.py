@@ -22,9 +22,10 @@ On a hostile machine (the CI ``hostile-env`` job plants one) the scrub is what
 keeps both true.
 
 The same trap exists without a path. ``LEVH_RECALL_LOG`` is read at call time
-and decides whether recalls are recorded, so a developer who exports it to
-exercise the log reddens ``tests/test_recall_log.py`` while CI stays green.
-conftest scrubs it too; the behaviour-flag guard below holds that in place.
+and decides whether recalls are recorded, so a developer who exports ``0`` to
+turn the now-default-on log off reddens ``tests/test_recall_log.py`` while CI
+stays green. conftest scrubs it too; the behaviour-flag guard below holds that
+in place.
 """
 
 from __future__ import annotations
@@ -154,12 +155,14 @@ def test_the_suite_scrubs_the_behaviour_flags():
 def test_a_subprocess_with_the_flag_exported_still_sees_the_default():
     """A machine exporting ``LEVH_RECALL_LOG`` must not redden the suite.
 
-    Reproduces the 2026-10-01 report: with the flag exported, the recall-log
-    default test failed because nothing scrubbed it. The child inherits the
-    planted flag, so conftest's scrub is the only thing that can make it pass.
+    Reproduces the 2026-10-01 report, from the other side of the default:
+    logging is now on unless the flag says otherwise, so the hostile value is
+    ``0`` and the test it would flip is the one asserting a recall leaves a
+    row. The child inherits the planted flag; conftest's scrub is the only
+    thing that can make it pass.
     """
     env = dict(os.environ)
-    env["LEVH_RECALL_LOG"] = "1"
+    env["LEVH_RECALL_LOG"] = "0"
     env["EMBEDDER_MODE"] = "hash"
 
     result = subprocess.run(
@@ -168,7 +171,7 @@ def test_a_subprocess_with_the_flag_exported_still_sees_the_default():
             "-m",
             "pytest",
             "-q",
-            "tests/test_recall_log.py::test_nothing_is_recorded_until_the_flag_is_set",
+            "tests/test_recall_log.py::test_a_recall_records_a_row_by_default",
         ],
         cwd=str(REPO_ROOT),
         env=env,
