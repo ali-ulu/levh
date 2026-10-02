@@ -317,3 +317,56 @@ def test_workspace_is_not_caller_supplied(tmp_path):
     import asyncio
 
     asyncio.run(_run())
+
+
+# ── Maintenance passes span workspaces and still write the right row ─
+
+
+@pytest.mark.asyncio
+async def test_reembed_updates_a_memory_in_another_workspace(engine):
+    """The scan is store-wide, so the write must target each row's workspace."""
+    with workspace(OTHER):
+        mem = await engine.store("the build cache lives in /var/tmp")
+        # Force staleness so the maintenance pass selects it.
+        stale = mem.model_dump()
+        stale["metadata"] = {"embedding_provenance": {"provider": "gone"}}
+        await engine.db.update_memory(mem.id, stale)
+
+    summary = await engine.reembed_memories()
+    assert summary["stale"] == 1
+
+    with workspace(OTHER):
+        row = await engine.episodic.get(mem.id)
+    assert row is not None
+    assert row.metadata["embedding_provenance"] != {"provider": "gone"}
+
+
+@pytest.mark.asyncio
+async def test_demo_purge_removes_a_memory_in_another_workspace(engine):
+    from server.core.onboarding import remove_demo_data
+
+    with workspace(OTHER):
+        mem = await engine.store("seeded demo memory", metadata={"demo": True})
+
+    result = await remove_demo_data(engine)
+    assert result["removed"] == 1
+
+    with workspace(OTHER):
+        assert await engine.episodic.get(mem.id) is None
+
+
+@pytest.mark.asyncio
+async def test_replace_restore_refuses_once_two_workspaces_exist(engine):
+    """A whole-store replace cannot be scoped, so it fails loudly (#302)."""
+    await engine.store("default workspace memory")
+    with workspace(OTHER):
+        await engine.store("team workspace memory")
+
+    snapshot = await engine.backup()
+    with pytest.raises(ValueError, match="more than one workspace"):
+        await engine.restore(snapshot, replace=True)
+
+    # Fail-closed: nothing was deleted.
+    assert await engine.episodic.count() == 1
+    with workspace(OTHER):
+        assert await engine.episodic.count() == 1

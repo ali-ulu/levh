@@ -231,8 +231,9 @@ phase 1 is implemented against them.
 - `insert_memory` stamps the context's workspace and ignores any
   `workspace_id` in the caller's payload, so a request cannot choose its own
   boundary.
-- `RemoteAccessBoundaryMiddleware` binds the local principal per request, so
-  the transport that will later identify a user already has the seam.
+- `request_id_middleware` (in `server/middleware.py`, beside the existing
+  correlation-id binding) binds the local principal per request, so the
+  transport that will later identify a user already has the seam.
 
 Tests: `tests/test_workspace_tenancy.py` pins the single-user round trip
 unchanged, the cross-workspace invisibility of reads/counts/updates/deletes,

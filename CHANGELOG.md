@@ -13,8 +13,8 @@
 - `server/core/tenancy.py` carries the principal and workspace in a
   `ContextVar`, the same mechanism `request_context` already uses, so the
   storage layer resolves its boundary without every signature growing a
-  parameter. `RemoteAccessBoundaryMiddleware` binds the local principal per
-  request — the seam a later account layer plugs into.
+  parameter. `request_id_middleware` (in `server/middleware.py`) binds the
+  local principal per request — the seam a later account layer plugs into.
 - `memories` gains `workspace_id` (schema v4, additive, indexed) and every
   read/write in `server/core/db/` is scoped to it. A v3 store is migrated and
   every existing row is backfilled into `default`; nothing is dropped. The

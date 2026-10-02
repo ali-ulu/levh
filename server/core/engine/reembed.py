@@ -23,6 +23,7 @@ from __future__ import annotations
 from typing import Callable, Optional
 
 from ..types import Memory
+from ..tenancy import Principal, bind_principal, reset_principal
 
 # Re-embedding is network/model-bound, so the unit of work is one memory; the
 # batch size only decides how often progress is reported and the event loop is
@@ -106,12 +107,21 @@ class MemoryReembedMixin:
         same step as the row or a running server would keep serving the old
         vector until its next reload. The two calls mirror ``update_memory``/
         the write path so the stored shape cannot drift from a normal store.
+
+        The scan spans every workspace (#302) while ``episodic.update`` is
+        scoped to the current one, so the memory's own workspace is bound for
+        the write and restored afterwards — including when the embedder raises,
+        or a later call would run in the wrong workspace.
         """
         memory.embedding = await self.embedder.embed(memory.content)
         metadata = dict(memory.metadata or {})
         metadata["embedding_provenance"] = identity
         memory.metadata = metadata
-        await self.episodic.update(memory)
+        token = bind_principal(Principal(workspace_id=memory.workspace_id))
+        try:
+            await self.episodic.update(memory)
+        finally:
+            reset_principal(token)
         self.vector_store.add(memory)  # keyed by id → replaces the stale copy
 
     @staticmethod

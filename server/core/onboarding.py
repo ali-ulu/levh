@@ -16,6 +16,7 @@ from typing import Any
 
 from server.configs import PLATFORM_ALIASES, PLATFORMS
 from server.core.env import get_env
+from server.core.tenancy import Principal, bind_principal, reset_principal
 from server.tools.profiles import DEFAULT_PROFILE, profile_counts
 
 ONBOARDING_VERSION = "onboarding-v1"
@@ -290,12 +291,18 @@ async def remove_demo_data(engine) -> dict[str, Any]:
     """
     # Maintenance over the whole store (#302): demo rows are marked in
     # metadata, not scoped to one workspace, and the seed is a single-tenant
-    # operation.
+    # operation. ``purge_memory`` is workspace-scoped, so each memory's own
+    # workspace is bound for its purge and restored afterwards.
     memories = await engine.episodic.get_all(limit=1_000_000, across_workspaces=True)
-    demo_ids = [m.id for m in memories if bool((m.metadata or {}).get("demo"))]
+    demo = [m for m in memories if bool((m.metadata or {}).get("demo"))]
+    demo_ids = [m.id for m in demo]
     audits: list[dict[str, Any]] = []
-    for memory_id in demo_ids:
-        audits.append(await engine.purge_memory(memory_id))
+    for memory in demo:
+        token = bind_principal(Principal(workspace_id=memory.workspace_id))
+        try:
+            audits.append(await engine.purge_memory(memory.id))
+        finally:
+            reset_principal(token)
 
     if demo_ids:
         await engine.db.delete_conflicts_for_memory_ids(demo_ids)
