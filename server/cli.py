@@ -175,7 +175,15 @@ from server.commands.knowledge import cmd_conflicts, cmd_entities, cmd_trust
 from server.commands.privacy import cmd_audit_secrets, cmd_purge, cmd_redact
 from server.commands.checkpoint import cmd_checkpoint
 from server.commands.auto_checkpoint import cmd_auto_checkpoint
-from server.commands.data import cmd_dogfood_export, cmd_dogfood_status, cmd_export_full, cmd_remove_demo, cmd_seed_demo
+from server.commands.data import (
+    cmd_dogfood_export,
+    cmd_dogfood_status,
+    cmd_export_full,
+    cmd_federation_export,
+    cmd_federation_import,
+    cmd_remove_demo,
+    cmd_seed_demo,
+)
 from server.commands.mcp import cmd_mcp_config, cmd_mcp_init, cmd_mcp_profiles, cmd_mcp_stdio
 
 
@@ -254,6 +262,10 @@ def main() -> int:
         return cmd_continue(args)
     elif args.command == "export-full":
         return cmd_export_full(args)
+    elif args.command == "federation-export":
+        return cmd_federation_export(args)
+    elif args.command == "federation-import":
+        return cmd_federation_import(args)
     elif args.command == "entities":
         if args.entities_command in ("reindex", "list", "about"):
             return cmd_entities(args)

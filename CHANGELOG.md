@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+### Feature: signed federation envelope — provenance-verified export/import (#338)
+
+- New `server/core/federation.py` signs a `full_export` bundle into a
+  self-describing envelope (node id + algorithm + signature) with
+  `hmac-sha256` (shared secret) or `ed25519` (operator-held PEM key). Any
+  tampering invalidates the signature and `verify_envelope` rejects the whole
+  envelope rather than importing part of it.
+- New CLI pair `levh federation-export` / `levh federation-import`. Import
+  verifies the signature first and only then feeds the bundle's memories
+  through `import_memories_gated`, so the admission gate stays the boundary
+  for untrusted peer input. Offline only — no transport in this slice.
+
 ### Fix: drop the test-only `_count_quarantined_rows` wrapper (#354)
 
 - `server/commands/doctor.py` no longer carries `_count_quarantined_rows`: it

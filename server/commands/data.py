@@ -99,6 +99,98 @@ def cmd_export_full(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_federation_export(args: argparse.Namespace) -> int:
+    """Sign a full export bundle into a federation envelope (offline)."""
+    import asyncio
+    import json
+
+    from server.core import engine_provider
+
+    async def _run() -> int:
+        from server.core.crypto import CryptoUnavailableError
+        from server.core.federation import EnvelopeError, sign_envelope
+        from server.core.full_export import build_full_export
+
+        engine = engine_provider.get_engine()
+        await engine.initialize()
+        try:
+            bundle = await build_full_export(engine)
+        finally:
+            await engine.shutdown()
+
+        try:
+            envelope = sign_envelope(
+                bundle,
+                node_id=args.node_id,
+                key_path=args.key,
+                algorithm=args.algorithm,
+            )
+        except (EnvelopeError, CryptoUnavailableError) as exc:
+            print(f"  {exc}", file=sys.stderr)
+            return 1
+
+        with open(args.out, "w", encoding="utf-8") as f:
+            json.dump(envelope, f, indent=2, ensure_ascii=False)
+        print(
+            f"  Wrote {args.out} — node {args.node_id}, "
+            f"{bundle['counts']['memories']} memories, signed with {args.algorithm}."
+        )
+        return 0
+
+    return asyncio.run(_run())
+
+
+def cmd_federation_import(args: argparse.Namespace) -> int:
+    """Verify a federation envelope and import its memories through the gate."""
+    import asyncio
+    import json
+
+    from server.core import engine_provider
+
+    async def _run() -> int:
+        from server.core.crypto import CryptoUnavailableError
+        from server.core.federation import EnvelopeError, verify_envelope
+
+        try:
+            with open(args.envelope, encoding="utf-8") as f:
+                envelope = json.load(f)
+        except (OSError, json.JSONDecodeError) as exc:
+            print(f"  cannot read envelope {args.envelope!r}: {exc}", file=sys.stderr)
+            return 1
+
+        try:
+            bundle = verify_envelope(
+                envelope,
+                key_path=args.key,
+                expected_node_id=args.from_node or None,
+            )
+        except (EnvelopeError, CryptoUnavailableError) as exc:
+            print(f"  rejected envelope: {exc}", file=sys.stderr)
+            return 1
+
+        memories = bundle.get("memories")
+        if not isinstance(memories, list):
+            print("  rejected envelope: bundle carries no memories array", file=sys.stderr)
+            return 1
+
+        engine = engine_provider.get_engine()
+        await engine.initialize()
+        try:
+            result = await engine.import_memories_gated(memories)
+        finally:
+            await engine.shutdown()
+
+        print(
+            f"  Verified node {envelope.get('node_id')} ({envelope.get('algorithm')}). "
+            f"Imported {result['imported']} memories through the admission gate "
+            f"(redacted={result['redacted']}, duplicates={result['duplicates']}, "
+            f"held={result['held']}, errors={result['errors']})."
+        )
+        return 0
+
+    return asyncio.run(_run())
+
+
 def cmd_remove_demo(_args: argparse.Namespace) -> int:
     """Remove all demo-tagged memories, leaving real data untouched."""
     import asyncio

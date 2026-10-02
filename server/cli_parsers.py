@@ -313,6 +313,32 @@ def _add_continuation_commands(sub: argparse._SubParsersAction) -> None:
     )
     export_full_p.add_argument("--out", help="Output file path (default: levh-full-export.<format>)")
 
+    fed_export_p = sub.add_parser(
+        "federation-export",
+        help="Sign a full export bundle into a provenance-verified federation envelope",
+    )
+    fed_export_p.add_argument("--node-id", required=True, help="This node's identity (recorded in the envelope)")
+    fed_export_p.add_argument("--key", required=True, help="HMAC secret file or ed25519 PEM private key")
+    fed_export_p.add_argument(
+        "--algorithm",
+        choices=["hmac-sha256", "ed25519"],
+        default="hmac-sha256",
+        help="Signature algorithm (default: hmac-sha256)",
+    )
+    fed_export_p.add_argument("--out", required=True, help="Output envelope path (JSON)")
+
+    fed_import_p = sub.add_parser(
+        "federation-import",
+        help="Verify a signed federation envelope and import its bundle through the admission gate",
+    )
+    fed_import_p.add_argument("envelope", help="Path to the signed envelope JSON")
+    fed_import_p.add_argument("--key", required=True, help="HMAC secret file or ed25519 PEM public key")
+    fed_import_p.add_argument(
+        "--from-node",
+        default="",
+        help="Require the envelope to be signed by this node id (default: accept any verified node)",
+    )
+
 
 def _add_entities_parser(sub: argparse._SubParsersAction) -> argparse.ArgumentParser:
     """Persistent entity knowledge graph subcommand group."""
