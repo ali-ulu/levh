@@ -11,9 +11,10 @@ scorecards age quickly and read as product claims when seen from outside.
 - [`CROSS-AGENT-GAPS.md`](CROSS-AGENT-GAPS.md) — the measured state of three
   requested capabilities (cross-agent team memory, git/GitHub enrichment,
   dynamic windowing) against commit `6f86231`: what exists, what is missing, and
-  the evidence for each claim. Also records four unlisted defects found while
-  measuring. A state record, not a proposal; the actionable rows it names are
-  ordered in the same file.
+  the evidence for each claim. Also records three unlisted defects found while
+  measuring, and one earlier claim it retracts because reproduction disproved it.
+  A state record, not a proposal; the actionable rows it names are ordered in the
+  same file.
 - [`PLAN-CONTINUITY-AND-FEDERATION.md`](PLAN-CONTINUITY-AND-FEDERATION.md) —
   proposal for the two next workstreams: measure that the continuity brief is
   emitted and used — emission being a producer-side proxy, since whether the

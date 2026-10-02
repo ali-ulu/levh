@@ -125,10 +125,34 @@ doğrulandı ve ayrı iş olarak duruyor.
 
 | # | Bulgu | Kanıt | Etki |
 | --- | --- | --- | --- |
-| 1 | **`scripts/export_openapi.py` yanlış ağacı ölçüyor** | Dosya olarak çalıştırılınca kurulu `levh` paketini import ediyor, worktree'yi değil; `--check` "up to date" derken worktree şeması farklıydı | **Yanlış sinyal üretir.** Bu turda yanılttı: `openapi.json` elle üretilmek zorunda kaldı. `tests/test_openapi_contract.py` doğruyu yakaladı. |
-| 2 | **`recall_log` beslenmiyor** | Canlı DB'de **0 satır** | "Kim neyi okudu" denetim zemini var, veri yok. `SHARED-MEMORY-DESIGN.md` Faz 2'yi buna dayandırıyor. |
-| 3 | **Test suite flaky** | Temiz `main` checkout'unda `pytest tests/test_auto_checkpoint.py` izole olarak 3 koşudan 1'inde kırıldı | Kırmızı sinyal güvenilmez; "changed lines" kapısı yanlış yere bakar. |
-| 4 | **Bu makinede global Python bozuk** | `pydantic 2.13.5` ↔ `pydantic_core 2.41.5` (2.46.5 gerekli) | Global python ile test koşmak rastgele `SystemError` verir. Doğru yol: `uv sync --frozen --extra dev` **sonra** `uv run --frozen`. `--frozen` tek başına `dev` extra'sını kurmaz. |
+| 1 | **`recall_log` beslenmiyor** | Canlı DB'de **0 satır** | "Kim neyi okudu" denetim zemini var, veri yok. `SHARED-MEMORY-DESIGN.md` Faz 2'yi buna dayandırıyor. |
+| 2 | **Test suite flaky** | Temiz `main` checkout'unda `pytest tests/test_auto_checkpoint.py` izole olarak 3 koşudan 1'inde kırıldı | Kırmızı sinyal güvenilmez; "changed lines" kapısı yanlış yere bakar. |
+| 3 | **Bu makinede global Python bozuk** | `pydantic 2.13.5` ↔ `pydantic_core 2.41.5` (2.46.5 gerekli) | Global python ile test koşmak rastgele `SystemError` verir. Doğru yol: `.venv\Scripts\python.exe` (yani `uv sync --frozen --extra dev` sonrası), çünkü `uv run --frozen` **tek başına** `dev` extra'sını kurmaz ve `pytest` bulunamaz. |
+
+### Geri alınan bir bulgu: `scripts/export_openapi.py`
+
+Bu dosyanın ilk sürümü buraya dördüncü bir kusur yazmıştı: script'in dosya olarak
+çalıştırıldığında kurulu `levh` paketini import ettiği ve bu yüzden `--check`'in
+yanlış ağaca karşı "up to date" dediği iddiası.
+
+**Bu iddia yanlıştı ve kayıttan çıkarıldı.** Yeniden üretildi ve script doğru
+çalışıyor:
+
+- `.venv` içinde `server` modülü worktree'ye çözülüyor
+  (`__editable__.levh-2.32.0.pth` → `MAPPING = {'server': '...\\levh-gitconnector\\server'}`).
+- Canlı şemaya gerçek bir parametre eklendiğinde `--check` **doğru şekilde stale
+  döndürdü** (`rc=1`) ve `tests/test_openapi_contract.py` aynı anda kırıldı — yani
+  ikisi tutarlı.
+- `openapi.json` yeniden üretildiğinde `git diff` **boş**: script çıktıyı byte-sadık
+  yazıyor, BOM eklemiyor (ilk baytlar `7B 0A 20`).
+- Farklı bir çalışma dizininden, mutlak yolla çalıştırıldığında da aynı sonucu veriyor.
+
+İlk turda görülen tutarsızlık, iddia edilen import kusurundan değil, birbirini izleyen
+koşuların farklı şema durumlarını ölçmesinden kaynaklandı. `ROADMAP.md`'deki
+`openapi-export-tree` satırı bu yüzden kaldırıldı.
+
+**Ders:** "script yanlış ağacı ölçüyor" gibi bir teşhis, ancak yeniden üretilerek
+kayda geçmeli. Bu turda önce yazıldı, sonra test edildi; sırası tersti.
 
 ### Bir süreç kusuru (kod değil)
 
@@ -148,13 +172,19 @@ Her satır **çalıştırılabilir** bir iş; "araştır" maddesi yok.
 | --- | --- | --- | --- |
 | 1 | **git connector'ı çalıştır** (`/api/connectors/sync`, `repo_path` ile) ve commit geçmişini bir projeye bas | Araç hazır; tek eksik çalıştırmak. Bu, **2. maddenin "hafıza besleniyor" kısmını gerçekten kapatır** ve trust/conflict katmanını devreye sokar | Küçük |
 | 2 | **`github` connector'ını çalıştır** (token + repo) | Kurulu ama hiç koşmamış; PR/issue beslemesi 2. maddenin diğer yarısı | Küçük |
-| 3 | **`export_openapi.py`'yi düzelt** — worktree'yi ölçsün | Yanlış sinyal üretiyor ve bu turda yanılttı; izole, düşük riskli | Küçük |
-| 4 | **Dynamic windowing'e grafik-farkındalık ekle** — `recall`'ın kullandığı entity-graph aday kaynağını `_rank_context_candidates`'a bağla | 3. maddenin kalan asıl eksiği; mevcut desen kopyalanabilir | Orta |
-| 5 | **Adaptif bütçe** — `max_tokens` çağırana bağlı olmaktan çıksın | 3. maddenin ikinci eksiği | Orta |
-| 6 | **`recall_log`'u besle** ve Faz 2 denetim yüzeyini buna dayandır | 4. satırın önkoşulu; zemin zaten var | Orta |
-| 7 | **Continuity ölçümü** (ROADMAP Faz A) | Tenancy'e bağlı değil, "bugün başlanabilir" | Orta |
-| 8 | **Roller + workspace paylaşımı** (Faz 2) ve ardından Team Memory | **Sahibin kararına bağlı** — blokaj teknik değil | Büyük |
+| 3 | **Dynamic windowing'e grafik-farkındalık ekle** — `recall`'ın kullandığı entity-graph aday kaynağını `_rank_context_candidates`'a bağla | 3. maddenin kalan asıl eksiği; mevcut desen kopyalanabilir | Orta |
+| 4 | **Adaptif bütçe** — `max_tokens` çağırana bağlı olmaktan çıksın | 3. maddenin ikinci eksiği | Orta |
+| 5 | **`recall_log`'u besle** ve Faz 2 denetim yüzeyini buna dayandır | Alttaki önkoşul; zemin zaten var | Orta |
+| 6 | **Continuity ölçümü** (ROADMAP Faz A) | Tenancy'e bağlı değil, "bugün başlanabilir" | Orta |
+| 7 | **Roller + workspace paylaşımı** (Faz 2) ve ardından Team Memory | **Sahibin kararına bağlı** — blokaj teknik değil | Büyük |
 
-**1 ve 2 bugün yapılabilir ve ölçülebilir sonuç üretir.** 4 ve 5, 3. maddeyi
-istenen cümleye tamamlar. 8, `SHARED-MEMORY-DESIGN.md`'nin dört sorusu
+**1 ve 2 bugün yapılabilir ve ölçülebilir sonuç üretir.** 3 ve 4, 3. maddeyi
+istenen cümleye tamamlar. 7, `SHARED-MEMORY-DESIGN.md`'nin dört sorusu
 yanıtlanmadan başlamamalı — kimlik, depolamadan önce tasarlanmalı.
+
+> **Bu listenin nerede yaşadığı.** Bu dosya ve `ROADMAP.md` işi *kaydeder*, ama
+> kimseye *atamaz*: ikisi de bir sıra numarası olan bir kuyruk değil. Başka bir
+> ajan ya da geliştirici "sıradaki iş ne?" sorusunu buradan okuyabilir, ancak
+> üstlenilecek bir birim (assignee, durum, yorum) yok. Bu depo `CONTRIBUTING.md`
+> ile zaten issue-önce çalışıyor; bu yedi maddeyi **issue** olarak açmak, işi
+> hem keşfedilebilir hem de devredilebilir yapar.
