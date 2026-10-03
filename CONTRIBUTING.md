@@ -44,6 +44,13 @@ uv lock          # update uv.lock
 uv sync --frozen --extra dev
 ```
 
+Running the suite — and the three environment traps that make a broken
+environment look like a broken change — is documented in
+[Testing → the development environment](docs/testing.md#the-development-environment).
+The short version: `--extra dev` is not optional, `uv` has to be invoked from
+the repository root, and a bare `python` is not a supported way to run the
+tests.
+
 `uv` also provides the dev tools (pytest, ruff, mypy); prefix local commands
 with `uv run --frozen` or activate the environment. If you prefer plain pip,
 `python -m pip install -e ".[dev]"` still works, but it installs from
