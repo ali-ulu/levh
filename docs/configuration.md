@@ -12,6 +12,13 @@ Relative database paths in that file are resolved from the working directory.
 LEVH does not load `.env` implicitly; export environment variables in
 the process that launches it when environment overrides are required.
 
+These are the process's runtime settings. The environment a *developer* runs the
+suite in is a separate contract, and the only supported one is the locked `uv`
+environment documented in
+[Testing → the development environment](testing.md#the-development-environment).
+Testing through a `python` outside that environment can fail at import in a way
+that reads like a broken change.
+
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `SQLITE_DB_PATH` | `./stackmemory.db` | SQLite database path (canonical alias `LEVH_SQLITE_DB_PATH` also accepted) |

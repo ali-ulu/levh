@@ -1,14 +1,113 @@
 # Testing
 
+## The development environment
+
+The suite is known to run in exactly one environment: the one `uv` builds from
+`uv.lock`, from the repository root. Two commands, in this order:
+
 ```bash
 uv sync --frozen --extra dev
 EMBEDDER_MODE=hash uv run --frozen python -m pytest -q
 ```
 
+The order is the part that gets missed. `--extra dev` is not optional: `pytest`
+is a *dev* dependency, so an environment synced without the extra has no test
+runner in it at all. `--frozen` refuses to re-resolve, so the graph you test is
+the graph CI tests. On Windows the interpreter can be run directly, which also
+removes any doubt about which `python` on `PATH` is being used:
+
+```powershell
+$env:EMBEDDER_MODE = "hash"
+.venv\Scripts\python.exe -m pytest -q
+```
+
+`EMBEDDER_MODE=hash` is the POSIX shell form of the same setting; set it in
+whatever way your shell exports a variable.
+
 The Python graph is locked in `uv.lock` (issue #146); CI installs from it in
 every job with `uv sync --frozen --extra dev`. Plain
 `pip install -e ".[dev]"` still runs the suite but installs from pyproject's
 floor pins instead of the locked graph.
+
+### Three traps that look like code failures
+
+Each of the three below is an environment problem, and each one surfaces in a
+shape that gets read as "the change broke something". Check the environment
+before reading a diff.
+
+#### 1. An interpreter outside the lock
+
+**Symptom.** The run dies before collecting anything, at import time, with an
+error about the two halves of pydantic disagreeing:
+
+```text
+SystemError: The installed pydantic-core version is incompatible with the
+installed pydantic version
+```
+
+It reads as flaky because it is not reproducible from the repository's point of
+view: the same commit imports cleanly on one machine and raises on another, and
+a run that passed can fail on the next invocation with no source change between
+the two.
+
+**Cause.** A `python` that is not the environment `uv` built. Its site-packages
+pair a `pydantic` release with a `pydantic_core` built for a different one
+(`pydantic` 2.13.5 needs `pydantic-core` 2.46.5, not 2.41.5), and the mismatch
+is raised during import — before a line of this project runs. Nothing in the
+checkout can explain it, which is exactly why it is misread as a code failure.
+
+**Fix.** Test through `.venv` or `uv run`, never through a bare `python`. When a
+failure appears with no cause in the diff, ask which interpreter produced it:
+
+```bash
+python -c "import sys; print(sys.executable)"
+```
+
+#### 2. `uv` synced without the `dev` extra
+
+**Symptom.**
+
+```text
+No module named pytest
+```
+
+**Cause.** `--frozen` selects the locked graph; it does not select extras. A
+`uv sync --frozen` without `--extra dev` installs the runtime dependencies and
+removes the dev tools, so `.venv\Scripts\python.exe -m pytest` and
+`uv run --frozen python -m pytest` then fail identically, and re-running
+`uv run --frozen` does not repair it — it syncs the same extra-less environment
+again.
+
+**Fix.** Name the extra on the sync, and on any `uv run` that starts from a
+fresh environment:
+
+```bash
+uv sync --frozen --extra dev
+uv run --frozen --extra dev python -m pytest -q
+```
+
+#### 3. `uv` invoked from outside the project
+
+**Symptom.** Two different messages, one cause. `uv sync` from a directory that
+is not inside the checkout stops with:
+
+```text
+error: No `pyproject.toml` found in current directory or any parent directory
+```
+
+`uv run --frozen python -m pytest` from the same directory does not stop: it
+finds no project, warns that `--extra dev` "has no effect when used outside of a
+project", and runs a *managed* interpreter instead — so the failure is reported
+as `No module named pytest` and looks like trap 2.
+
+**Cause.** `uv` resolves the project from the working directory. Called from a
+script directory, a home directory, or a second checkout, it either stops or —
+worse, for `uv run` — quietly tests an environment that is not this project's.
+
+**Fix.** Run from the repository root, or name the project explicitly with
+`uv run --frozen --project <path-to-repo>`.
+
+## What the suite covers
 
 The suite covers memory lifecycle, H(x,ψ) scoring, adaptive decay/reinforcement,
 outcome feedback, retroactive interference, fading review queue, forgetting curves,
