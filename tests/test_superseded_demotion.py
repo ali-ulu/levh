@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import os
 import tempfile
+from datetime import datetime
 
 import pytest
 import pytest_asyncio
@@ -424,4 +425,60 @@ async def test_a_stale_cache_cannot_overwrite_a_retirement_made_elsewhere(engine
     stored = await engine.get_memory(old[0].id)
     assert stored.valid_to == retired.valid_to
     assert stored.superseded_by == retired.superseded_by
+
+
+# ── Wall-clock resolution (#379) ──────────────────────────────────────
+# The retirement window is half-open, ``[valid_from, valid_to)``. If the
+# replacement is written inside the same clock tick as the fact it replaces,
+# ``valid_to`` comes out equal to ``valid_from`` and the window is empty: the
+# fact is retired into an interval no point-in-time read can land in. That is a
+# data-correctness bug — the audit trail loses the fact entirely — that Linux's
+# microsecond clock hid.
+
+
+def test_the_retirement_instant_is_strictly_after_the_window_it_closes():
+    """The boundary rule itself, with the clock injected (#379)."""
+    from server.core.engine.write import _retirement_instant
+
+    start = "2026-10-03T01:12:16.953125+00:00"
+    same_instant = datetime.fromisoformat(start)
+
+    # The failing case: datetime.now() reports the very same instant.
+    assert _retirement_instant(start, now=same_instant) > start
+    # A later clock is used verbatim — the window is not widened for free.
+    later = datetime.fromisoformat("2026-10-03T01:12:17+00:00")
+    assert _retirement_instant(start, now=later) == later.isoformat()
+    # A NULL valid_from predates the column and needs no floor.
+    assert _retirement_instant(None, now=same_instant) == same_instant.isoformat()
+
+
+@pytest.mark.asyncio
+async def test_retirement_window_is_never_empty_under_a_coarse_clock(engine, frozen_clock):
+    """A retired fact stays reachable at the instant its window opened.
+
+    With both writes in one tick, ``valid_to`` used to equal ``valid_from``; the
+    SQL filter (``valid_to > ?``) and recall's predicate (``end <= as_of``) then
+    both exclude the row from an ``as_of`` read, so the retirement erased the
+    fact from the point-in-time view. The window must contain at least one
+    instant.
+    """
+    old, _new = await _supersede(engine)
+
+    stored = await engine.get_memory(old.id)
+    assert stored.valid_from == stored.created_at
+    assert stored.valid_to > stored.valid_from
+    assert stored.valid_to == stored.metadata["superseded_at"]
+
+    # Both read surfaces must find the fact at the instant it became current.
+    recalled = await engine.recall(
+        QUESTION, top_k=5, reinforce=False, as_of=stored.valid_from
+    )
+    assert old.id in [m.id for m in recalled.memories]
+
+    listed = await engine.list_memories(limit=50, as_of=stored.valid_from)
+    assert old.id in [m.id for m in listed]
+
+    # ...and it is still out of a current read, so the window really closed.
+    current = await engine.recall(QUESTION, top_k=5, reinforce=False)
+    assert old.id not in [m.id for m in current.memories]
 

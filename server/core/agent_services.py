@@ -298,8 +298,15 @@ class AgentCheckpointService:
         where = " WHERE " + " AND ".join(conditions) if conditions else ""
         params.append(limit)
 
+        # ``rowid DESC`` is the tie-break, not decoration (#379). Two
+        # checkpoints written inside one wall-clock tick carry the same
+        # ``created_at``, and ``ORDER BY created_at DESC LIMIT 1`` then returns
+        # whichever row SQLite happens to visit first — typically the *older*
+        # one. "Latest checkpoint" would silently mean "oldest in the tick".
+        # ``rowid`` is the insert sequence, so it is exact at any clock
+        # resolution.
         cursor = await self.db.conn.execute(
-            f"SELECT * FROM agent_checkpoints{where} ORDER BY created_at DESC LIMIT ?",  # nosec B608 - `where` is built from literal clauses, values bound
+            f"SELECT * FROM agent_checkpoints{where} ORDER BY created_at DESC, rowid DESC LIMIT ?",  # nosec B608 - `where` is built from literal clauses, values bound
             params,
         )
         return [dict(r) for r in await cursor.fetchall()]
@@ -457,7 +464,7 @@ class AgentUsageService:
             """SELECT agent_name, title, created_at
                FROM agent_checkpoints
                WHERE project = ?
-               ORDER BY created_at DESC
+               ORDER BY created_at DESC, rowid DESC
                LIMIT 10""",
             (project,),
         )

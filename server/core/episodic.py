@@ -64,6 +64,22 @@ class EpisodicMemory:
         rows = await self.db.get_all_memories(limit, across_workspaces=across_workspaces)
         return [m for m in (_row_to_memory(r) for r in rows) if m]
 
+    async def get_after_rowid(
+        self, rowid: int, limit: int = 10000
+    ) -> tuple[list[Memory], int]:
+        """Memories inserted after ``rowid``, oldest first, plus the watermark.
+
+        The insertion-ordered counterpart of :meth:`get_all` for callers that
+        need "what arrived since", not "what is recent" (#379). See
+        :meth:`server.core.db.memories.MemoryQueries.memories_after_rowid` for
+        why the cursor is a ``rowid`` and not a ``created_at``. A row the model
+        cannot read back is quarantined here exactly as it is everywhere else,
+        and the watermark still advances past it so a corrupt row cannot wedge
+        the cursor.
+        """
+        rows, watermark = await self.db.memories_after_rowid(rowid, limit)
+        return [m for m in (_row_to_memory(r) for r in rows) if m], watermark
+
     async def search(
         self,
         memory_type: str | None = None,

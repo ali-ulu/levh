@@ -2,6 +2,51 @@
 
 ## Unreleased
 
+### Fix: stop treating wall-clock strings as exact ordering keys (#379)
+
+- The suite was recorded as "order-dependent"; it is not. There is no shared
+  state leaking between tests, and a single file fails in isolation. The real
+  cause is wall-clock resolution, and it exposed a genuine data-correctness bug.
+  Windows CPython builds `datetime.now()` on `GetSystemTimeAsFileTime()`, whose
+  granularity is 15.625 ms — measured on a stock Windows interpreter: 4000
+  consecutive `now()` calls return only 2 distinct values. `created_at`,
+  `valid_from` and `superseded_at` are that string, and three places used them
+  as *exact* ordering or boundary keys. Linux CI hands out microsecond
+  timestamps, so the whole class stayed invisible exactly where the suite is
+  trusted most.
+- `auto_checkpoint`'s delta cursor is a rowid watermark now, not a timestamp:
+  `memories_after_rowid` (`server/core/db/memories.py`, exposed as
+  `EpisodicMemory.get_after_rowid`) pages on `rowid`, the store's own insertion
+  sequence. Insertion order is exact on every platform and needs no clock at
+  all. The old `created_at > cutoff` comparison dropped the second write of a
+  tick, so the pass reported "nothing new" while a memory sat unsummarized.
+- Checkpoint reads order by `created_at DESC, rowid DESC`, so a tie is broken
+  by insertion order instead of by luck: two checkpoints written inside one
+  tick carry the same `created_at`, and `ORDER BY created_at DESC LIMIT 1`
+  returned whichever row SQLite happened to visit first — typically the
+  *older* one, so "latest checkpoint" silently meant "oldest in the tick".
+- A retirement can no longer close an empty validity window:
+  `_retirement_instant` (`server/core/engine/write.py`) guarantees `valid_to`
+  is strictly after `valid_from`, nudging the close one microsecond past the
+  open when the clock cannot separate them. The window is half-open
+  (`[valid_from, valid_to)`), so an equal pair was an *empty* interval: every
+  read — the SQL `valid_to > ?` filter and recall's `end <= as_of` predicate —
+  hid a row that was retired into a window no point-in-time read can land in.
+  That is data loss, not a flaky assertion.
+- `tests/plugins/coarse_clock.py` is a pytest plugin that quantises
+  `datetime.now()` to the Windows tick, so this failure class is exercised on
+  every interpreter. `lock` mode (`--coarse-clock=lock`) pins one tick per
+  test and is deterministic and strictly stronger than a real Windows
+  interpreter; `floor` mode is faithful to the machine. It is loaded
+  explicitly, not into the default suite, and the CI `coarse-clock` job runs
+  the suite under it in lock mode.
+- Covered by new tests in `test_auto_checkpoint.py` and
+  `test_superseded_demotion.py` — the two-writes-in-one-tick delta, the
+  latest-checkpoint tie-break, the boundary rule with the clock injected, and
+  the empty-window case proving both read surfaces still find a retired fact
+  at the instant its window opened — plus a `frozen_clock` fixture for tests
+  that must not depend on the clock advancing.
+
 ### Perf: model-free ingest tokenizes each text once, not once per comparison
 
 - The model-free interference scan compares a new memory's words with *every*
