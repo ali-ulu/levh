@@ -149,6 +149,34 @@ jobs:
         run: uv run --frozen python -m pytest -q
 
 
+  # The suite quietly trusts the wall clock as an ordering key (issue #379).
+  # Windows CPython stamps datetime.now() from GetSystemTimeAsFileTime(), whose
+  # granularity is 15.625 ms, so two writes that land in one tick share a single
+  # created_at/valid_from string. Linux CI hands out microsecond timestamps, so
+  # the plain suite is green exactly where that failure class is invisible.
+  # This job replays the suite under tests/plugins/coarse_clock.py in lock mode:
+  # the first now() in a test pins its tick, so every co-tick write resolves
+  # deterministically by write order — a strictly stronger gate than a stock
+  # Windows interpreter, and one that reddens on any change that reintroduces
+  # tie-breaking by luck. Floor mode is deliberately not a gate: it is
+  # probabilistic on a fast runner, so a green floor run would prove nothing.
+  coarse-clock:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.2.0
+        with:
+          python-version: "3.12"
+          enable-cache: true
+      - name: Install locked dev environment
+        run: uv sync --frozen --extra dev
+      - name: Test under the coarse wall clock (lock mode)
+        env:
+          EMBEDDER_MODE: hash
+        run: |
+          uv run --frozen python -m pytest -q -p tests.plugins.coarse_clock --coarse-clock=lock
+
+
   # Backend counterpart of the frontend npm-audit step (issue #146).
   #
   # Previously this froze the *installed* environment, which CI had just built

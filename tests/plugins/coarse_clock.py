@@ -76,7 +76,7 @@ class _Clock:
     locked: _datetime.datetime | None = None
 
 
-def pytest_addoption(parser) -> None:  # noqa: ANN001 - pytest hook signature
+def pytest_addoption(parser) -> None:
     group = parser.getgroup("coarse-clock")
     group.addoption(
         "--coarse-clock",
@@ -96,7 +96,7 @@ class CoarseDatetime(_datetime.datetime):
     """``datetime`` whose ``now()`` is floored to the Windows tick."""
 
     @classmethod
-    def now(cls, tz=None):  # noqa: ANN001, ANN206 - mirrors datetime.now
+    def now(cls, tz=None):
         # ``_datetime.datetime.now`` explicitly, not ``super()``: the base
         # classmethod is what actually reads the clock, and calling it by name
         # keeps this a plain override rather than infinite recursion.
@@ -109,7 +109,7 @@ class CoarseDatetime(_datetime.datetime):
         return tick
 
 
-def pytest_runtest_setup(item) -> None:  # noqa: ANN001 - pytest hook signature
+def pytest_runtest_setup(item) -> None:
     """Start every test on a fresh tick in lock mode."""
     _Clock.locked = None
 
@@ -128,13 +128,13 @@ def frozen_datetime(
 
     class _Frozen(_datetime.datetime):
         @classmethod
-        def now(cls, tz=None):  # noqa: ANN001, ANN206 - mirrors datetime.now
+        def now(cls, tz=None):
             return pinned if tz is not None else pinned.replace(tzinfo=None)
 
     return _Frozen
 
 
-def patch_clock(monkeypatch, datetime_class) -> None:  # noqa: ANN001 - pytest fixture
+def patch_clock(monkeypatch, datetime_class) -> None:
     """Point every patch target's module-level ``datetime`` at ``datetime_class``.
 
     ``monkeypatch.setattr(module, "datetime", ...)`` — the class, not the
@@ -145,7 +145,7 @@ def patch_clock(monkeypatch, datetime_class) -> None:  # noqa: ANN001 - pytest f
         monkeypatch.setattr(importlib.import_module(name), "datetime", datetime_class)
 
 
-def pytest_configure(config) -> None:  # noqa: ANN001 - pytest hook signature
+def pytest_configure(config) -> None:
     """Swap in the coarse clock before test modules are collected.
 
     ``pytest_configure`` runs after the entry-point plugins are registered and
