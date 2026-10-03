@@ -53,6 +53,21 @@ DEFAULT_RECALL_LOG_RETENTION_DAYS = 30
 #: opt-in nobody discovers.
 DEFAULT_RECALL_LOG_ENABLED = True
 
+#: Token budget the *layered* window uses when the caller supplies none.
+#:
+#: It is the historical default and stays exactly that. Without a query the
+#: window is a byte-for-byte compatibility contract (recent short-term, then
+#: pinned, then important episodic, truncated at ``max_chars``), and there is no
+#: ranked pool whose pressure could size it — so an omitted budget on that path
+#: means 4000, not something measured.
+DEFAULT_CONTEXT_MAX_TOKENS = 4000
+
+#: Bounds for the adaptive budget on the ranked path. The floor keeps a tiny or
+#: empty store from reporting a zero-token window; the ceiling bounds how much
+#: of the caller's real context a single topic may claim.
+MIN_CONTEXT_MAX_TOKENS = 256
+MAX_CONTEXT_MAX_TOKENS = 16000
+
 
 def _truthy(value: str) -> bool:
     return value.strip().lower() in {"1", "true", "yes", "on"}
@@ -669,7 +684,7 @@ class MemoryRecallMixin:
         self,
         session_id: str | None = None,
         project: str | None = None,
-        max_tokens: int = 4000,
+        max_tokens: int | None = None,
         query: str | None = None,
     ) -> str:
         """Build a context window within an approximate token budget.
@@ -685,6 +700,11 @@ class MemoryRecallMixin:
         pinned reach the window — which is the whole point, because the old
         ordering could never surface it no matter how relevant it was.
 
+        ``max_tokens`` is honoured exactly when the caller passes it. When it is
+        omitted the ranked window sizes itself from the store's own pressure —
+        see ``_adaptive_context_budget`` — while the layered path keeps its
+        historical 4000-token default.
+
         Pinned memories stay mandatory in both modes; the budget decides only
         how much of the *optional* material fits.
         """
@@ -697,7 +717,7 @@ class MemoryRecallMixin:
         self,
         session_id: str | None = None,
         project: str | None = None,
-        max_tokens: int = 4000,
+        max_tokens: int | None = None,
         query: str | None = None,
     ) -> ContextPacking:
         """``get_context`` plus an account of what the budget excluded.
@@ -705,9 +725,16 @@ class MemoryRecallMixin:
         Returns a :class:`ContextPacking` whose ``included`` and ``omitted``
         lists name the memories on each side of the cutoff. Ranking quality is
         otherwise invisible: a caller can see the text but not what it displaced.
+
+        ``max_tokens=None`` (the caller expressed no budget) is not the same as
+        ``max_tokens=4000``: the former lets a query-driven window adapt to the
+        pressure the store puts on it, the latter is obeyed to the token.
         """
-        max_chars = max_tokens * 4
-        budget = max(0, int(max_tokens))
+        # An explicit budget is obeyed exactly — that is the backward-compat
+        # contract, and every pre-existing caller passes one. Only an omitted
+        # budget may adapt, and only on the ranked path: the layered path has no
+        # measured pressure to adapt to and is byte-for-byte frozen.
+        explicit_budget = max_tokens is not None
 
         def _matches(m: Memory) -> bool:
             if m.workspace_id != current_workspace_id():
@@ -740,6 +767,11 @@ class MemoryRecallMixin:
                 query=query,
                 matches=_matches,
             )
+            budget = (
+                max(0, int(max_tokens))
+                if explicit_budget
+                else self._adaptive_context_budget(pinned=pinned, ranked=ranked)
+            )
             return self._pack_context(
                 pinned=pinned,
                 ranked=ranked,
@@ -747,6 +779,11 @@ class MemoryRecallMixin:
             )
 
         # ── Original static path, unchanged ──────────────────────────────
+        effective_budget = (
+            max_tokens if explicit_budget else DEFAULT_CONTEXT_MAX_TOKENS
+        )
+        max_chars = effective_budget * 4
+        budget = max(0, int(effective_budget))
         parts: list[str] = []
         seen: set[str] = set()
         # Admission order, so `included` names every memory that reached the
@@ -798,6 +835,37 @@ class MemoryRecallMixin:
             mode="layered",
         )
 
+    def _adaptive_context_budget(
+        self,
+        *,
+        pinned: list[Memory],
+        ranked: list[tuple[Memory, float]],
+    ) -> int:
+        """Size a topic-focused window from the pressure the store puts on it.
+
+        Used only when the caller expressed no budget. The number is not a
+        guess about the caller's model — the engine cannot see it — but a
+        measurement of the window's own demand: what the store has to say about
+        the topic, in the same token units the packer charges, mandatory pinned
+        rules included. That measured demand is then bounded on both sides: a
+        floor so a tiny store does not report a zero-token window, and a ceiling
+        so one topic cannot claim an unbounded share of the caller's real
+        context.
+
+        So a store with a handful of short memories about the topic gets a tight
+        window (it would otherwise claim 4000 tokens of room it does not have),
+        and a store with a large relevant corpus grows the window up to
+        ``MAX_CONTEXT_MAX_TOKENS``. The result is never reported below the
+        mandatory material: a pinned rule must not be described as fitting a
+        budget it overflows.
+        """
+        mandatory = sum(memory_tokens(m.content) for m in pinned)
+        demand = mandatory + sum(memory_tokens(m.content) for m, _ in ranked)
+        budget = min(
+            MAX_CONTEXT_MAX_TOKENS, max(MIN_CONTEXT_MAX_TOKENS, demand)
+        )
+        return max(budget, mandatory)
+
     async def _rank_context_candidates(
         self,
         *,
@@ -807,7 +875,7 @@ class MemoryRecallMixin:
         """Score every in-scope candidate for a topic-focused window.
 
         Mirrors the recall path's candidate sources and ranking — short-term,
-        vector/FTS/lexical candidates re-scored with ``H(x,ψ)`` and the
+        vector/FTS/lexical/entity candidates re-scored with ``H(x,ψ)`` and the
         superseded penalty. Pinned memories are excluded: they are always
         included, so ranking them would only let them consume the budget twice.
 
@@ -879,6 +947,24 @@ class MemoryRecallMixin:
             if matches(memory) and not memory.pinned:
                 by_id.setdefault(memory.id, memory)
 
+        # Entity bridge — the knowledge graph as a candidate source, the same
+        # one `_recall` uses. A query term that names something in the graph
+        # ("Zephyr") reaches every memory the graph links to it, including rows
+        # whose content never spells the name: an entity is extracted from
+        # metadata (an event title, a document path) as well as from prose, so
+        # word overlap is not a superset of the graph's answer. Without this the
+        # window could only see what the vectors, the lexical scan and FTS
+        # already found, and the graph would stay a feature of `recall` alone.
+        entity_ids: set[str] = set()
+        for memory in await self._entity_linked_memories(
+            lexical_terms_set, lexical_terms(query)
+        ):
+            if memory.pinned or not matches(memory):
+                continue
+            if memory.id not in by_id:
+                by_id[memory.id] = memory
+            entity_ids.add(memory.id)
+
         scored: list[tuple[Memory, float]] = []
         for memory_id, memory in by_id.items():
             decay = (
@@ -888,7 +974,12 @@ class MemoryRecallMixin:
                     memory.accessed_at, half_life_hours=memory.stability_hours
                 )
             )
-            if lexical_terms_set:
+            if lexical_terms_set or memory_id in entity_ids:
+                # Graph-reached candidates are scored on word coverage, exactly
+                # as `recall` scores them. An entity can link a memory that
+                # carries no vector the query could be compared against, and a
+                # cosine of 0 would bury a genuine graph hit; reporting lexical
+                # coverage instead says what was actually measured.
                 similarity = lexical_similarity(query, memory.content, expansions)
             else:
                 similarity = cosine_by_id.get(memory_id) or lexical_similarity(
