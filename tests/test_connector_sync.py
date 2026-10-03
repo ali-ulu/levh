@@ -78,7 +78,9 @@ async def test_ingest_items_reports_stage_timing(engine):
     timing = result["timing_ms"]
     assert set(timing) == {"items", "bookkeeping", "total"}
     assert all(v >= 0 for v in timing.values())
-    assert timing["total"] >= timing["items"] + timing["bookkeeping"]
+    # Rounded to 0.1 ms per stage, so the parts can exceed the rounded
+    # total by a rounding epsilon; the invariant is approximate, not exact.
+    assert timing["total"] + 0.2 >= timing["items"] + timing["bookkeeping"]
 
 
 @pytest.mark.asyncio
