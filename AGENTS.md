@@ -12,6 +12,26 @@ SQLite, exposed over REST, WebSocket, MCP stdio and MCP SSE. Python backend
 (`server/`) plus a Next.js static export (`frontend/`) shipped inside the wheel
 as `server/dashboard/`.
 
+## When the environment is unclear, ask first
+
+Two of this tree's costliest sessions were spent rediscovering environment
+facts one question would have settled in seconds: which repository a fresh
+session's working directory actually contains, and why every test errors at
+setup under a sandboxed session. A wrong guess recorded as a finding costs more
+than the ask. When the repo identity, the interpreter, or a blanket permission
+failure does not explain itself in one command, ask — or name the observation
+and stop. The environment traps themselves are in
+[`docs/testing.md`](docs/testing.md) ("Three traps that look like code
+failures", traps 4 and 5). Two agent-tooling traps worth knowing before they
+bite:
+
+- Editing a UTF-8 file through a PowerShell redirect or console tooling
+  corrupts the content (`â€”` mojibake); use the file-editing tool, not
+  shell redirection.
+- `gh pr merge` against a strict branch protection reports "not up to date"
+  even when the branch is current; merge `main` into the branch, and note that
+  auto-merge is off in this repository.
+
 ## Validate before opening a pull request
 
 ```bash

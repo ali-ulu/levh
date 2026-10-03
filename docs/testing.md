@@ -107,6 +107,62 @@ worse, for `uv run` — quietly tests an environment that is not this project's.
 **Fix.** Run from the repository root, or name the project explicitly with
 `uv run --frozen --project <path-to-repo>`.
 
+#### 4. `uv`'s cache under a restricted session
+
+**Symptom.** Every `uv` invocation dies before doing anything:
+
+```text
+error: Failed to initialize cache at `C:\Users\<user>\AppData\Local\uv\cache`
+  Caused by: failed to open file `...\sdists-v9\.git`: Erişim engellendi. (os error 5)
+```
+
+It reads as a broken cache and invites deleting it. The cache directory is
+outside what the session may write: an agent session running under a sandbox
+scoped to one workspace cannot touch `AppData`, and every `uv` command —
+including a read-only-looking `uv run` — initialises that cache first.
+
+**Fix.** Redirect the cache to a directory the session may write (a platform
+temp area is enough), and set it in the *same* invocation — a fresh process
+loses the variable, so a command that worked five minutes ago fails again for
+no code reason:
+
+```powershell
+$env:UV_CACHE_DIR = Join-Path $env:TEMP 'levh-uv-cache'; uv run --frozen ruff check .
+```
+
+`--frozen` needs no network to re-resolve, but `uv` itself still wants its
+cache; a redirected one is created fresh and reused from then on.
+
+#### 5. pytest's temp directories under a low-integrity session
+
+**Symptom.** Every test errors at setup — thousands of `ERROR` lines, zero
+failures — and the same `PermissionError` also surfaces at session finish:
+
+```text
+PermissionError: [WinError 5] Erişim engellendi: 'C:\...\pytest-of-<user>'
+```
+
+It reads as the suite being broken. It is not a test failure: not one test ran.
+
+**Cause.** pytest's tmp machinery creates every directory with
+`mkdir(mode=0o700)` (`_pytest/tmpdir.py`, `getbasetemp` and
+`make_numbered_dir`), and the session's token is low-integrity. On this setup a
+directory created that way denies *every* subsequent access — including to the
+process that created it and to `icacls` — so the next `scandir` inside the
+factory raises. The trap is expensive to isolate because the plain probes lie:
+`os.makedirs(p)` followed by `os.listdir(p)` works, so the sandbox looks
+innocent.
+
+**Fix.** Run the suite with the sandbox lifted (the session's full-access
+mode). A `--basetemp` in a writable directory does *not* help: the trigger is
+the `mode=0o700` mkdir itself, not the location. The two-line reproduction,
+when in doubt:
+
+```python
+os.mkdir(p, 0o700)   # then: os.scandir(p) -> WinError 5
+os.mkdir(p)          # default mode: works
+```
+
 ## What the suite covers
 
 The suite covers memory lifecycle, H(x,ψ) scoring, adaptive decay/reinforcement,
