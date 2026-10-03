@@ -25,6 +25,11 @@ os.environ["EMBEDDER_MODE"] = "hash"
 
 from server.core.memory_engine import MemoryEngine
 from server.core.tokens import MAX_MEMORY_TOKENS, estimate_tokens, memory_tokens
+from server.core.engine.recall import (
+    DEFAULT_CONTEXT_MAX_TOKENS,
+    MAX_CONTEXT_MAX_TOKENS,
+    MIN_CONTEXT_MAX_TOKENS,
+)
 
 
 @pytest_asyncio.fixture
@@ -367,3 +372,182 @@ async def test_ranked_pool_reaches_an_old_low_importance_match(engine):
         max_tokens=4000, query="staging rollback command", project="ops"
     )
     assert "levh rollback --to staging-copy" in packing.text
+
+
+# ── issue #375: the entity graph as a window candidate source ──────
+
+
+@pytest.mark.asyncio
+async def test_entity_graph_reaches_a_memory_the_words_cannot(engine):
+    """The knowledge graph is a candidate source for the window (#375).
+
+    The target names the entity only in its metadata — an event title — so its
+    content shares no word with the query. The vector store, the lexical scan
+    and FTS all therefore miss it; only the entity bridge can put it in the
+    window. That is the difference between "the knowledge graph prepares the
+    context package" and "recall happens to reuse a graph query".
+    """
+    target = await engine.store(
+        content="Kickoff covered the quarterly numbers and the next steps",
+        memory_type="episodic",
+        importance=0.5,
+        source="connector:notes",
+        metadata={"title": "Zephyr Q3 review", "captured_at": "2026-01-01"},
+    )
+    for i in range(5):
+        await engine.store(
+            content=f"Unrelated meeting note {i} about scheduling",
+            memory_type="episodic",
+        )
+    await engine.reindex_entities()
+
+    # The premise: no word of the query appears in the content, so a hit here
+    # cannot be word overlap wearing the graph's name.
+    assert "zephyr" not in target.content.lower()
+
+    packing = await engine.get_context_packing(max_tokens=4000, query="Zephyr")
+    assert target.id in packing.included
+    assert "quarterly numbers" in packing.text
+
+
+@pytest.mark.asyncio
+async def test_entity_graph_candidate_still_passes_the_scope_filters(engine):
+    """A graph hit is a candidate, not a bypass: the predicates still apply."""
+    target = await engine.store(
+        content="Kickoff covered the quarterly numbers and the next steps",
+        memory_type="episodic",
+        project="beta",
+        source="connector:notes",
+        metadata={"title": "Zephyr Q3 review", "captured_at": "2026-01-01"},
+    )
+    await engine.reindex_entities()
+
+    packing = await engine.get_context_packing(
+        max_tokens=4000, project="alpha", query="Zephyr"
+    )
+    assert target.id not in packing.included
+    assert "quarterly numbers" not in packing.text
+
+
+# ── issue #375: the adaptive budget ────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_omitted_budget_tightens_to_what_the_store_has(engine):
+    """No budget given ⇒ the ranked window sizes itself to the store.
+
+    The store has one small memory about the topic, so reporting a 4000-token
+    budget would claim room that does not exist. The window says what it
+    actually holds instead.
+    """
+    memory = await engine.store(
+        content="Deploy branch is release-42", memory_type="episodic", importance=0.5
+    )
+
+    packing = await engine.get_context_packing(query="deploy branch")
+
+    assert packing.mode == "ranked"
+    assert packing.max_tokens < DEFAULT_CONTEXT_MAX_TOKENS
+    assert packing.max_tokens >= MIN_CONTEXT_MAX_TOKENS
+    assert memory.id in packing.included
+
+
+@pytest.mark.asyncio
+async def test_omitted_budget_grows_under_pressure(engine):
+    """A large relevant corpus earns a larger window, up to the ceiling."""
+    for _ in range(10):
+        await engine.store(
+            content="deployment pipeline branch " * 400,
+            memory_type="episodic",
+            importance=0.9,
+        )
+
+    packing = await engine.get_context_packing(query="deployment pipeline")
+
+    assert packing.max_tokens == MAX_CONTEXT_MAX_TOKENS
+    assert packing.max_tokens > DEFAULT_CONTEXT_MAX_TOKENS
+
+
+@pytest.mark.asyncio
+async def test_explicit_budget_is_never_overridden(engine):
+    """The backward-compat half of the contract: an explicit budget is obeyed.
+
+    Same store, same query — the only difference is that one caller named a
+    budget. That caller gets exactly 300 tokens, not the adaptive figure.
+    """
+    for _ in range(10):
+        await engine.store(
+            content="deployment pipeline branch " * 400,
+            memory_type="episodic",
+            importance=0.9,
+        )
+
+    adaptive = await engine.get_context_packing(query="deployment pipeline")
+    explicit = await engine.get_context_packing(
+        max_tokens=300, query="deployment pipeline"
+    )
+
+    assert adaptive.max_tokens == MAX_CONTEXT_MAX_TOKENS
+    assert explicit.max_tokens == 300
+    assert explicit.used_tokens <= 300
+
+
+@pytest.mark.asyncio
+async def test_omitted_budget_keeps_the_layered_default(engine):
+    """Adaptivity is a ranked-path behaviour; the layered window is frozen."""
+    await engine.store(content="Recent note", memory_type="short_term")
+
+    packing = await engine.get_context_packing()
+
+    assert packing.mode == "layered"
+    assert packing.max_tokens == DEFAULT_CONTEXT_MAX_TOKENS
+
+
+@pytest.mark.asyncio
+async def test_layered_window_is_identical_whether_a_budget_is_given(engine):
+    """Backward compatibility, pinned as an equality rather than a shape.
+
+    ``get_context()`` with no budget must produce the same window as the old
+    ``get_context(max_tokens=4000)`` did — text, membership and cost alike.
+    """
+    for i in range(30):
+        await engine.store(content=f"Layered note {i} " * 20, memory_type="short_term")
+    await engine.store(
+        content="An important episodic fact", memory_type="episodic", importance=0.9
+    )
+
+    omitted = await engine.get_context_packing()
+    explicit = await engine.get_context_packing(
+        max_tokens=DEFAULT_CONTEXT_MAX_TOKENS
+    )
+
+    assert omitted.text == explicit.text
+    assert omitted.included == explicit.included
+    assert omitted.used_tokens == explicit.used_tokens
+    assert omitted.max_tokens == explicit.max_tokens
+
+
+@pytest.mark.asyncio
+async def test_adaptive_budget_never_undercuts_a_pinned_rule(engine):
+    """The mandatory floor beats the adaptive minimum.
+
+    The pinned rule alone costs more than ``MIN_CONTEXT_MAX_TOKENS``, and the
+    window must not describe it as fitting a budget it overflows.
+    """
+    pinned = await engine.store(
+        content="PINNED RULE: " + "never force-push to main. " * 60,
+        memory_type="episodic",
+        importance=0.5,
+        pinned=True,
+    )
+    mandatory = memory_tokens(pinned.content)
+    assert mandatory > MIN_CONTEXT_MAX_TOKENS, (
+        "the fixture must exceed the adaptive floor or it proves nothing"
+    )
+
+    packing = await engine.get_context_packing(query="an unrelated topic")
+
+    assert packing.max_tokens >= mandatory
+    assert pinned.id in packing.included
+    assert packing.used_tokens <= packing.max_tokens
+

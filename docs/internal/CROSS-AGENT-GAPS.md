@@ -125,9 +125,31 @@ doğrulandı ve ayrı iş olarak duruyor.
 
 | # | Bulgu | Kanıt | Etki |
 | --- | --- | --- | --- |
-| 1 | **`recall_log` beslenmiyor** | Canlı DB'de **0 satır** | "Kim neyi okudu" denetim zemini var, veri yok. `SHARED-MEMORY-DESIGN.md` Faz 2'yi buna dayandırıyor. |
-| 2 | **Test suite flaky** | Temiz `main` checkout'unda `pytest tests/test_auto_checkpoint.py` izole olarak 3 koşudan 1'inde kırıldı | Kırmızı sinyal güvenilmez; "changed lines" kapısı yanlış yere bakar. |
-| 3 | **Bu makinede global Python bozuk** | `pydantic 2.13.5` ↔ `pydantic_core 2.41.5` (2.46.5 gerekli) | Global python ile test koşmak rastgele `SystemError` verir. Doğru yol: `.venv\Scripts\python.exe` (yani `uv sync --frozen --extra dev` sonrası), çünkü `uv run --frozen` **tek başına** `dev` extra'sını kurmaz ve `pytest` bulunamaz. |
+| 1 | **`recall_log` beslenmiyor** | Canlı DB'de **0 satır** | "Kim neyi okudu" denetim zemini var, veri yok. `SHARED-MEMORY-DESIGN.md` Faz 2'yi buna dayandırıyor. → issue [#376](https://github.com/ali-ulu/levh/issues/376), **çözüldü**: varsayılan artık açık (#382). |
+| 2 | **Suite duvar-saati çözünürlüğüne bağımlı** (ilk kayıtta "sıra-bağımlı" yazıyordu — **yanlıştı**, aşağıya bak) | Global CPython 3.12'de `datetime.now()` çözünürlüğü **15.6 ms**; 4000 ardışık çağrıda yalnızca 2 farklı değer. venv 3.13'te **1e-07 s**. | Kırmızı sinyal güvenilmez; ayrıca **gerçek bir veri-doğruluk hatası** ortaya çıkardı (emeklilik boş geçerlilik penceresi üretebiliyor). → issue [#379](https://github.com/ali-ulu/levh/issues/379). |
+| 3 | **Kilitli olmayan yorumlayıcı** | Ortam kurulumuyla ilgili üç tuzak; en sinsi olanı, `uv.lock` dışı bir `python`'ın import anında hata vermesi ve bunun **kod hatası gibi okunması** | Doğru yol: `.venv\Scripts\python.exe` (`uv sync --frozen --extra dev` sonrası), çünkü `uv run --frozen` **tek başına** `dev` extra'sını kurmaz. → issue [#380](https://github.com/ali-ulu/levh/issues/380), **çözüldü**: `docs/testing.md` (#384). |
+
+### Düzeltme: "sıra-bağımlı suite" yanlış teşhisti
+
+Bu dosyanın ilk sürümü 2. maddeyi **"test suite sıra-bağımlı"** olarak kaydetmişti.
+Teşhis bunu çürüttü: **paylaşılan durum sızıntısı yok.** Tek bir test dosyası,
+izole koşulda, başka hiçbir test çalışmamışken de kırılıyor.
+
+Gerçek kök neden **duvar-saati çözünürlüğü**: `created_at` / `valid_from` /
+`superseded_at` alanları `datetime.now(timezone.utc).isoformat()` ile üretiliyor
+ve bu string'ler **katı (`>`) sıralama ve sınır anahtarı** olarak kullanılıyor.
+Global CPython 3.12'de saat 15.6 ms'lik tick'lerle ilerliyor, dolayısıyla ardışık
+iki yazma **aynı** zaman damgasını alabiliyor ve sıralamayı zaman değil tick
+rastlantısı belirliyor. CI Linux'ta saat mikrosaniye çözünürlükte olduğu için
+hata orada hiç görünmüyor.
+
+Tek kök nedenin üç yüzeyi: `auto_checkpoint` delta'sı boş kalıyor, `ORDER BY
+created_at DESC LIMIT 1` tie-break'siz olduğu için eski satırı döndürüyor, ve
+emeklilikte `valid_to == valid_from` olup yarım-açık aralık **boş** kalıyor — bu
+sonuncusu test meselesi değil, gerçek bir veri hatası.
+
+**Ders:** "flaky" bir gözlem, kök nedeni hakkında bir iddia değildir. İlk kayıt
+"hangi durum sızıyor?" diye sordu; doğru soru "bu sonucu ne belirliyor?" idi.
 
 ### Geri alınan bir bulgu: `scripts/export_openapi.py`
 
