@@ -72,6 +72,26 @@ async def test_ingest_items_gated_breakdown(engine):
 
 
 @pytest.mark.asyncio
+async def test_ingest_items_reports_stage_timing(engine):
+    result = await engine.ingest_items(_synthetic_items(), connector="test_source")
+
+    timing = result["timing_ms"]
+    assert set(timing) == {"items", "bookkeeping", "total"}
+    assert all(v >= 0 for v in timing.values())
+    assert timing["total"] >= timing["items"] + timing["bookkeeping"]
+
+
+@pytest.mark.asyncio
+async def test_ingest_items_timing_without_gate(engine):
+    result = await engine.ingest_items(
+        _synthetic_items(), connector="test_source", use_gate=False
+    )
+
+    assert result["timing_ms"]["items"] >= 0
+    assert result["timing_ms"]["total"] >= 0
+
+
+@pytest.mark.asyncio
 async def test_ingest_items_rerun_is_idempotent(engine):
     await engine.ingest_items(_synthetic_items(), connector="test_source")
     stats_before = await engine.get_stats()
@@ -175,6 +195,9 @@ async def test_api_connector_sync_local_files(api_client):
         assert body["connector"] == "local_files"
         assert body["stored"] >= 1
         assert body["fetched"] >= 1
+        timing = body["timing_ms"]
+        assert {"connect", "fetch", "route_total", "items"} <= set(timing)
+        assert all(v >= 0 for v in timing.values())
 
     resp = await api_client.get("/api/connectors/sync-state")
     assert resp.status_code == 200

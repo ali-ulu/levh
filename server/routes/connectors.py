@@ -5,6 +5,7 @@ from __future__ import annotations
 import base64
 import binascii
 import os
+import time
 import uuid
 import re
 from pathlib import Path, PurePosixPath
@@ -134,13 +135,17 @@ async def connector_sync(req: ConnectorRequest, engine=Depends(get_engine)):
     except KeyError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
+    route_start = time.perf_counter()
     try:
         await conn.connect(req.config)
     except (FileNotFoundError, ValueError, ConnectionError) as e:
         raise HTTPException(status_code=400, detail=f"Connection failed: {e}")
+    connect_ms = (time.perf_counter() - route_start) * 1000.0
 
     try:
+        fetch_start = time.perf_counter()
         items = await conn.fetch(**req.params)
+        fetch_ms = (time.perf_counter() - fetch_start) * 1000.0
     except Exception:  # noqa: BLE001 - logged server-side; the client gets a generic 502
         await conn.disconnect()
         logger.exception("connector '%s' fetch failed", req.connector)
@@ -153,6 +158,18 @@ async def connector_sync(req: ConnectorRequest, engine=Depends(get_engine)):
         items, connector=req.connector, project=req.project, use_gate=req.use_gate
     )
     await conn.disconnect()
+    timing = dict(result.get("timing_ms") or {})
+    timing["connect"] = round(connect_ms, 1)
+    timing["fetch"] = round(fetch_ms, 1)
+    timing["route_total"] = round((time.perf_counter() - route_start) * 1000.0, 1)
+    result["timing_ms"] = timing
+    logger.info(
+        "connector '%s' sync timing_ms=%s (fetched=%s stored=%s)",
+        req.connector,
+        timing,
+        result.get("fetched"),
+        result.get("stored"),
+    )
     return result
 
 

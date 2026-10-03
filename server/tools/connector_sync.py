@@ -63,10 +63,12 @@ def register(mcp: FastMCP, engine: MemoryEngine) -> None:
         )
         await conn.disconnect()
 
+        timing = result.get("timing_ms") or {}
         return (
             f"Synced '{connector}': fetched {result['fetched']}, stored {result['stored']} "
             f"({result['duplicates']} duplicates, {result['redacted']} redacted, "
-            f"{result['held']} held for review, {result['errors']} errors)."
+            f"{result['held']} held for review, {result['errors']} errors). "
+            f"Timing ms: {timing}."
         )
 
     @mcp.tool()

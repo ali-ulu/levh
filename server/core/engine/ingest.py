@@ -8,6 +8,7 @@ the split verifiable.
 
 from __future__ import annotations
 
+import time
 
 from .. import metrics
 from ..types import (
@@ -285,12 +286,16 @@ class MemoryIngestMixin:
 
         Returns a breakdown:
             fetched, stored, redacted, duplicates, held, errors, source_key,
-            last_synced_at.
+            last_synced_at, plus ``timing_ms`` (items loop, sync bookkeeping,
+            and method total in milliseconds). The timing is diagnostic: it
+            tells a slow sync apart by stage instead of by guessing.
         """
         from datetime import datetime, timezone
 
+        total_start = time.perf_counter()
         source = f"connector:{connector}"
         stored = redacted = duplicates = held = errors = 0
+        items_ms = 0.0
 
         for item in items:
             content = (item or {}).get("content", "")
@@ -300,6 +305,7 @@ class MemoryIngestMixin:
             metadata = dict(item.get("metadata", {}) or {})
             metadata["imported_via"] = connector
             importance = float(item.get("importance", 0.5))
+            item_start = time.perf_counter()
             try:
                 if use_gate:
                     result = await self.admit_memory(
@@ -337,9 +343,12 @@ class MemoryIngestMixin:
                 # Error isolation — a single malformed item never fails the run.
                 errors += 1
                 continue
+            finally:
+                items_ms += (time.perf_counter() - item_start) * 1000.0
 
         now_iso = datetime.now(timezone.utc).isoformat()
         source_key = f"{connector}:{project or ''}"
+        sync_start = time.perf_counter()
         await self.db.record_sync(
             source_key=source_key,
             connector=connector,
@@ -348,10 +357,12 @@ class MemoryIngestMixin:
             fetched=len(items),
             stored=stored,
         )
+        bookkeeping_ms = (time.perf_counter() - sync_start) * 1000.0
         self._emit(
             "connector_synced",
             {"connector": connector, "stored": stored, "duplicates": duplicates},
         )
+        total_ms = (time.perf_counter() - total_start) * 1000.0
         return {
             "connector": connector,
             "fetched": len(items),
@@ -362,6 +373,11 @@ class MemoryIngestMixin:
             "errors": errors,
             "source_key": source_key,
             "last_synced_at": now_iso,
+            "timing_ms": {
+                "items": round(items_ms, 1),
+                "bookkeeping": round(bookkeeping_ms, 1),
+                "total": round(total_ms, 1),
+            },
         }
 
     async def list_sync_state(self) -> list[dict]:

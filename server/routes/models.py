@@ -682,6 +682,7 @@ class ConnectorSyncResponse(BaseModel):
     errors: int
     source_key: str
     last_synced_at: str
+    timing_ms: dict[str, float] = Field(default_factory=dict)
 
 
 class ConnectorSyncStateOut(BaseModel):

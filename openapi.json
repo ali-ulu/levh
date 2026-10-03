@@ -5882,6 +5882,13 @@
           "last_synced_at": {
             "type": "string",
             "title": "Last Synced At"
+          },
+          "timing_ms": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Timing Ms"
           }
         },
         "type": "object",

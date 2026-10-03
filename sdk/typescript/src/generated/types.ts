@@ -321,6 +321,7 @@ export type ConnectorSyncResponse = {
   errors: number;
   source_key: string;
   last_synced_at: string;
+  timing_ms?: Record<string, unknown>;
 };
 
 export type ConnectorSyncStateOut = {
