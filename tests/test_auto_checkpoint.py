@@ -68,7 +68,7 @@ async def test_no_new_memories_skips_the_checkpoint(engine):
 
     # Nothing new since `last` -> must skip, never write a duplicate summary.
     _last2, count2, created2 = await create_delta_checkpoint(
-        engine, agent="test", project="sm", last_created=last
+        engine, agent="test", project="sm", since_rowid=last
     )
     assert created2 is False
     assert count2 == 0
@@ -84,7 +84,7 @@ async def test_summary_reflects_only_the_new_delta(engine):
 
     await _store(engine, "Switched the scheduler to cron instead of systemd timers")
     _last2, count2, created2 = await create_delta_checkpoint(
-        engine, agent="test", project="sm", last_created=last
+        engine, agent="test", project="sm", since_rowid=last
     )
     assert created2 is True
     assert count2 == 1
@@ -92,3 +92,64 @@ async def test_summary_reflects_only_the_new_delta(engine):
     cp = (await engine.agent_tracker.list_checkpoints(project="sm", limit=1))[0]
     # The summary mentions the NEW memory's content, not the stale first one.
     assert "cron" in cp["summary"] or "scheduler" in cp["summary"]
+
+
+# ── Wall-clock resolution (#379) ──────────────────────────────────────
+# The two tests below fail on a platform whose datetime.now() cannot separate
+# two consecutive writes (Windows: 15.625 ms) and pass on a microsecond clock.
+# `frozen_clock` makes that condition explicit instead of leaving it to the
+# runner: every write in the test carries the same created_at.
+
+
+@pytest.mark.asyncio
+async def test_delta_captures_two_writes_in_one_clock_tick(engine, frozen_clock):
+    """The delta cursor is insertion order, not a wall-clock cutoff.
+
+    With ``created_at > cutoff`` the second write is dropped whenever it lands
+    in the same tick as the first: the pass reports "nothing new" and the
+    memory never reaches a checkpoint. A rowid cursor cannot tie.
+    """
+    first = await engine.store(content="First memory", memory_type="episodic")
+    cursor, count, created = await create_delta_checkpoint(engine, agent="test", project="sm")
+    assert created is True
+    assert count == 1
+
+    second = await engine.store(content="Second memory", memory_type="episodic")
+    # The premise: a coarse clock gives the two writes one timestamp.
+    assert second.created_at == first.created_at
+
+    next_cursor, count2, created2 = await create_delta_checkpoint(
+        engine, agent="test", project="sm", since_rowid=cursor
+    )
+    assert created2 is True
+    assert count2 == 1
+    assert next_cursor > cursor
+
+    cp = (await engine.agent_tracker.list_checkpoints(project="sm", limit=1))[0]
+    assert "Second memory" in cp["summary"]
+
+
+@pytest.mark.asyncio
+async def test_latest_checkpoint_is_the_last_written_in_one_clock_tick(engine, frozen_clock):
+    """``ORDER BY created_at DESC LIMIT 1`` needs a tie-break to mean "latest".
+
+    Both checkpoints share ``created_at`` under a coarse clock, so without
+    ``rowid DESC`` SQLite returns the row it visits first — the *older*
+    checkpoint of the tick — and the newest delta is summarized back to front.
+    """
+    first = await engine.agent_tracker.create_checkpoint(
+        agent_name="test", title="First checkpoint", summary="alpha", project="sm"
+    )
+    second = await engine.agent_tracker.create_checkpoint(
+        agent_name="test", title="Second checkpoint", summary="beta", project="sm"
+    )
+    assert second["created_at"] == first["created_at"]
+
+    latest = await engine.agent_tracker.list_checkpoints(project="sm", limit=1)
+    assert latest[0]["id"] == second["checkpoint_id"]
+
+    listed = await engine.agent_tracker.list_checkpoints(project="sm", limit=5)
+    assert [c["id"] for c in listed] == [
+        second["checkpoint_id"],
+        first["checkpoint_id"],
+    ]

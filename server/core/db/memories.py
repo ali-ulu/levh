@@ -137,6 +137,40 @@ class MemoryQueries:
         await cursor.close()
         return [self._row_to_memory(r) for r in rows]
 
+    async def memories_after_rowid(
+        self, rowid: int, limit: int = 10000
+    ) -> tuple[list[dict], int]:
+        """Rows inserted after ``rowid``, oldest first, with the new watermark.
+
+        The auto-checkpoint delta cursor (#379). It deliberately orders on
+        ``rowid`` — the store's own insertion sequence — rather than on
+        ``created_at``: ``created_at`` is a wall-clock string whose resolution
+        is the operating system's (15.625 ms on Windows, where ``datetime.now``
+        is built on ``GetSystemTimeAsFileTime``). Two writes inside one tick
+        carry the *same* string, so ``created_at > cutoff`` silently drops the
+        newer one and ``created_at DESC`` cannot say which came last. Insertion
+        order is exact on every platform and needs no clock at all.
+
+        Returns ``(rows, watermark)`` where ``watermark`` is the ``rowid`` of
+        the last row returned (unchanged when the page is empty), so a caller
+        that pages with ``limit`` never skips a row. Not workspace-scoped: the
+        delta summarizes the whole mirror, like ``across_workspaces`` above.
+        """
+        cursor = await self._db.conn.execute(
+            "SELECT rowid AS _rowid, * FROM memories "
+            "WHERE rowid > ? ORDER BY rowid ASC LIMIT ?",
+            (rowid, limit),
+        )
+        raw = await cursor.fetchall()
+        await cursor.close()
+        rows: list[dict] = []
+        watermark = rowid
+        for record in raw:
+            stored = dict(record)
+            watermark = int(stored.pop("_rowid"))
+            rows.append(self._row_to_memory(stored))
+        return rows, watermark
+
     async def search_memories(
         self,
         memory_type: Optional[str] = None,

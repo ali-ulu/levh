@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import sqlite3
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from .helpers import logger
 from .. import metrics
@@ -20,6 +20,7 @@ from ..tenancy import current_workspace_id
 from ..types import (
     Memory,
     MemoryType,
+    parse_iso,
 )
 
 # Word-overlap share above which a new memory is treated as superseding an
@@ -58,6 +59,33 @@ def _retirement_enabled() -> bool:
     silent default, which is what the flag encodes.
     """
     return get_env("LEVH_SUPERSESSION", "0").strip().lower() in ("1", "true", "yes", "on")
+
+
+def _retirement_instant(valid_from: str | None, now: datetime | None = None) -> str:
+    """The instant a superseded fact stops being current (#379).
+
+    ``valid_to`` must be *strictly* after ``valid_from``: the window is
+    half-open (``[valid_from, valid_to)``), so an equal pair is an empty
+    interval and every read — the SQL ``valid_to > ?`` filter in
+    ``server/core/db/memories.py`` and recall's ``end <= as_of`` predicate —
+    hides a row that was never actually contradictable. That is a real
+    data-correctness bug, not a flaky assertion: the fact is retired with a
+    window no point-in-time read can ever land in.
+
+    It happens whenever the clock cannot separate the two writes, which is the
+    norm on a coarse clock: the predecessor's ``valid_from`` is its
+    ``created_at``, and ``datetime.now()`` here can be the very same tick
+    (15.625 ms on Windows). Retiring later than the replacement's creation is
+    not an option — the fact stopped being current when it was replaced — so
+    the close is nudged one microsecond past the open to the smallest window
+    that still contains an instant. ``now`` is injectable so the boundary is
+    testable without patching the clock.
+    """
+    moment = now or datetime.now(timezone.utc)
+    start = parse_iso(valid_from)
+    if start is not None and moment <= start:
+        moment = start + timedelta(microseconds=1)
+    return moment.isoformat()
 
 
 class MemoryWriteMixin:
@@ -204,7 +232,11 @@ class MemoryWriteMixin:
             # stability a little longer than ideal — not a correctness issue.
             old.metadata = dict(old.metadata or {})
             old.metadata["superseded_by"] = new_memory.id
-            old.metadata["superseded_at"] = datetime.now(timezone.utc).isoformat()
+            # ``superseded_at`` and ``valid_to`` are the same instant — the
+            # moment the old fact stopped being believed — so both go through
+            # the one helper that guarantees the window they close is not
+            # empty (#379).
+            old.metadata["superseded_at"] = _retirement_instant(old.valid_from)
             try:
                 await self.db.update_memory(
                     old.id, {"stability_hours": weakened, "metadata": old.metadata}

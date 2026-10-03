@@ -55,6 +55,7 @@ import pytest
 
 from server.core.env import accepted_env_var_names
 from server.core.runtime_config import CONFIG_PATH_ENV
+from tests.plugins.coarse_clock import frozen_datetime, patch_clock
 
 os.environ["LEVH_LIBRARIAN"] = "0"
 
@@ -117,6 +118,20 @@ def _neutral_flag_environment(monkeypatch: pytest.MonkeyPatch) -> None:
     """
     for name in _FLAG_ENV:
         monkeypatch.delenv(name, raising=False)
+
+
+@pytest.fixture
+def frozen_clock(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Pin the wall clock to one instant for the duration of a test (#379).
+
+    A test that asks for this does not depend on two writes being separable by
+    ``datetime.now()`` — the deterministic worst case of the Windows clock,
+    where ``datetime.now()`` only advances every 15.625 ms and every write in
+    the test therefore shares one ``created_at``. Only the modules that use a
+    timestamp as an ordering or interval key are patched
+    (``tests/plugins/coarse_clock.py``), and only for this test.
+    """
+    patch_clock(monkeypatch, frozen_datetime())
 
 
 @pytest.fixture(autouse=True)

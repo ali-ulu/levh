@@ -60,19 +60,19 @@ def cmd_auto_checkpoint(args: argparse.Namespace) -> int:
                 print("Error: Agent tracker not available", file=sys.stderr)
                 return 1
 
-            last_created: str | None = None
+            last_rowid = 0
             while _auto_checkpoint_running:
                 # Delta-based, non-repeating summary: only memories created
                 # since the last checkpoint are folded in, and the checkpoint
                 # is skipped entirely when nothing new arrived. This keeps
                 # consecutive auto summaries meaningful instead of a static
                 # boilerplate line repeated every interval.
-                last_created, count, created = await create_delta_checkpoint(
+                last_rowid, count, created = await create_delta_checkpoint(
                     engine,
                     agent=agent,
                     session_id=None,
                     project=project,
-                    last_created=last_created,
+                    since_rowid=last_rowid,
                 )
 
                 ts = datetime.now(timezone.utc).strftime("%H:%M:%S")
@@ -106,23 +106,6 @@ def _stop_auto_checkpoint() -> None:
 # task the MCP stdio server starts when LEVH_AUTO_CHECKPOINT is enabled.
 # Keeping one code path means the summary logic is tested once, offline.
 
-_EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
-
-
-def _as_utc_dt(value: str | None) -> datetime:
-    """Parse a stored created_at into a tz-aware datetime (UTC default)."""
-    if not value:
-        return _EPOCH
-    try:
-        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
-        return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
-    except (ValueError, TypeError):
-        return _EPOCH
-
-
-def _mem_dt(memory) -> datetime:
-    return _as_utc_dt(getattr(memory, "created_at", None))
-
 
 async def create_delta_checkpoint(
     engine,
@@ -130,16 +113,23 @@ async def create_delta_checkpoint(
     agent: str = "cli",
     session_id: str | None = None,
     project: str | None = None,
-    last_created: str | None = None,
-) -> tuple[str | None, int, bool]:
-    """Create one checkpoint summarizing memories newer than ``last_created``.
+    since_rowid: int = 0,
+) -> tuple[int, int, bool]:
+    """Create one checkpoint summarizing memories inserted after ``since_rowid``.
 
-    Returns ``(last_created, count, created)`` where the first element is the
-    newest ``created_at`` seen (feed it back as the next cutoff), ``count`` is
-    how many new memories this checkpoint captured, and ``created`` is True
-    when a checkpoint was actually written. When nothing is newer than the
-    cutoff it returns ``(last_created, 0, False)`` and writes nothing, so
-    consecutive auto-checkpoints never repeat the same boilerplate.
+    Returns ``(since_rowid, count, created)`` where the first element is the
+    insertion watermark to feed back as the next cursor, ``count`` is how many
+    new memories this checkpoint captured, and ``created`` is True when a
+    checkpoint was actually written. When nothing is newer than the cursor it
+    returns ``(since_rowid, 0, False)`` and writes nothing, so consecutive
+    auto-checkpoints never repeat the same boilerplate.
+
+    The cursor is a SQLite ``rowid``, not a ``created_at`` (#379). The original
+    version compared wall-clock strings with ``>``: ``created_at`` comes from
+    ``datetime.now()``, whose resolution is the platform's — 15.625 ms on
+    Windows — so two memories written inside one tick share a timestamp, the
+    strict comparison drops the newer one, and the pass reports "nothing new"
+    while a memory sits unsummarized. Insertion order cannot tie.
 
     The summary is produced through ``summarize_texts`` — a real aggregation of
     the delta's contents, not a timestamped placeholder — with an offline
@@ -147,20 +137,14 @@ async def create_delta_checkpoint(
     """
     tracker = getattr(engine, "agent_tracker", None)
     if not tracker:
-        return last_created, 0, False
+        return since_rowid, 0, False
 
     from server.core.summarizer import summarize_texts
 
-    cutoff = _as_utc_dt(last_created)
-    all_memories = await engine.episodic.get_all(limit=10000, across_workspaces=True)
-    delta = sorted(
-        (m for m in all_memories if _mem_dt(m) > cutoff),
-        key=_mem_dt,
-    )
+    delta, watermark = await engine.episodic.get_after_rowid(since_rowid)
     if not delta:
-        return last_created, 0, False
+        return since_rowid, 0, False
 
-    newest = delta[-1]
     memory_ids = [m.id for m in delta]
     texts = [m.content for m in delta if m.content]
 
@@ -177,7 +161,7 @@ async def create_delta_checkpoint(
         checkpoint_type="auto",
         memory_ids=memory_ids,
     )
-    return newest.created_at, len(delta), True
+    return watermark, len(delta), True
 
 
 async def _background_loop(
@@ -188,15 +172,15 @@ async def _background_loop(
     project: str | None,
     interval: int,
 ) -> None:
-    last_created: str | None = None
+    last_rowid = 0
     while True:
         try:
-            last_created, _count, _created = await create_delta_checkpoint(
+            last_rowid, _count, _created = await create_delta_checkpoint(
                 engine,
                 agent=agent,
                 session_id=session_id,
                 project=project,
-                last_created=last_created,
+                since_rowid=last_rowid,
             )
         except asyncio.CancelledError:
             raise
