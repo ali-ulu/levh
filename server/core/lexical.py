@@ -21,7 +21,8 @@ per-language rule table.
 from __future__ import annotations
 
 import re
-from collections.abc import Mapping
+from collections.abc import Mapping, Set
+from functools import lru_cache
 
 _WORD = re.compile(r"\w+", flags=re.UNICODE)
 
@@ -78,13 +79,53 @@ def _stem_matches(term: str, word: str) -> bool:
     return prefix >= min(len(term), len(word)) - _MAX_SUFFIX_LENGTH
 
 
-def terms(text: str) -> set[str]:
-    """Content words of ``text``: lowercased, length >= 3, stopwords removed."""
-    return {
+# The token cache is what keeps model-free ingestion linear instead of
+# quadratic. ``similarity`` tokenizes both of its arguments on every call, and
+# ``mutual_similarity`` calls it twice, so the interference scan — which
+# compares a new memory against *every* stored memory — used to re-tokenize the
+# same texts about four times per pair: a 4505-commit import is ~9 million
+# regex scans over ~4505 distinct texts (~4 * N per new row, N grows to 4505).
+# Tokenization is a pure function of the text: ``_WORD`` and ``_STOPWORDS`` are
+# module constants that nothing mutates, and ``str.lower`` is locale
+# independent. Caching it therefore changes no result, only how often it is
+# computed.
+#
+# Size: the working set is one text per memory of the store being written to,
+# re-read on every admit. 8192 covers the largest import observed so far (4505
+# rows) with headroom, while bounding retention to roughly 30 MB of token sets
+# in the worst case. An eviction only ever costs a re-tokenization; it can
+# never change a score.
+#
+# Retention note: an entry holds its source text as the cache key, so the last
+# 8192 distinct tokenized texts stay in process memory until evicted or the
+# process exits. Every caller that tokenizes stored content or a query passes
+# already-redacted text (``admission.evaluate`` and ``recall`` redact first);
+# ``action_gate.action_terms`` is the one path that tokenizes a raw proposed
+# action, which may carry a secret it is there to detect. That is a bounded
+# in-memory retention of a request payload the process already holds, not a new
+# durable copy, but it is a deliberate trade rather than an accident.
+_TERMS_CACHE_SIZE = 8192
+
+
+@lru_cache(maxsize=_TERMS_CACHE_SIZE)
+def _content_terms(text: str) -> frozenset[str]:
+    """The immutable token set of ``text``, computed once per distinct text."""
+    return frozenset(
         word
         for word in _WORD.findall((text or "").lower())
         if len(word) >= 3 and word not in _STOPWORDS
-    }
+    )
+
+
+def terms(text: str) -> set[str]:
+    """Content words of ``text``: lowercased, length >= 3, stopwords removed.
+
+    Returns a fresh set per call. The tokenized form itself is cached (see
+    :func:`_content_terms`), but handing the cached object out would let any
+    caller that mutates the result corrupt every later lookup, so the mutable
+    copy stays the caller's.
+    """
+    return set(_content_terms(text))
 
 
 def similarity(query: str, content: str) -> float:
@@ -115,10 +156,10 @@ def similarity_expanded(
     expansions broaden what matches without inflating the score of a memory
     that merely shares a thesaurus entry with everything else.
     """
-    query_terms = terms(query)
+    query_terms = _content_terms(query)
     if not query_terms:
         return 0.0
-    content_terms = terms(content)
+    content_terms = _content_terms(content)
     if not content_terms:
         return 0.0
     matched = sum(
@@ -130,7 +171,7 @@ def similarity_expanded(
 
 
 def _term_matches(
-    term: str, content_terms: set[str], expansions: Mapping[str, frozenset[str]] | None
+    term: str, content_terms: Set[str], expansions: Mapping[str, frozenset[str]] | None
 ) -> bool:
     if any(_stem_matches(term, word) for word in content_terms):
         return True
@@ -170,9 +211,9 @@ def expand_terms(
     flattening is right here — unlike the score, which needs to know *which*
     query term an equivalent answers for.
     """
-    query_terms = terms(query)
+    query_terms = _content_terms(query)
     if not expansions:
-        return query_terms
+        return set(query_terms)
     expanded = set(query_terms)
     for term in query_terms:
         expanded.update(expansions.get(term, frozenset()))

@@ -2,6 +2,33 @@
 
 ## Unreleased
 
+### Perf: model-free ingest tokenizes each text once, not once per comparison
+
+- The model-free interference scan compares a new memory's words with *every*
+  stored memory of the project, and it re-tokenized both sides of every pair:
+  `mutual_similarity` calls `similarity` in both directions and each direction
+  tokenizes its two arguments, so one admit into a store of N rows cost about 4N
+  regex scans. Measured with `scripts/benchmark_lexical_interference.py` on a
+  throwaway store: a 25-store batch at N=1000 performed 101,200 tokenizations
+  before and 1,025 after (98.7x fewer); one warm store at N=1000 performed 4,100
+  before and 1 after. At N=200 the batch went 21,200 to 225 (94x).
+- `lexical.terms` now memoizes tokenization (`_content_terms`, an `lru_cache` of
+  8192) and still returns a fresh set per call, so a caller that mutates the
+  result cannot poison the cache. Tokenization is a pure function of the text —
+  the word pattern and the stopword set are module constants nothing mutates —
+  so no token, and therefore no score, changes.
+- Wall time for the same batch fell from 5.12 s to 3.82 s at N=1000 and 0.71 s
+  to 0.54 s at N=200 on a machine concurrently running a large ingest, i.e.
+  about 1.3x. What is left is the scan's own comparison loop, and the batch is
+  still ~O(N) per item: the candidate scan itself is unchanged, so bulk ingest
+  stays quadratic in the number of comparisons. Cutting the asymptote needs a
+  lossless blocking index over term prefixes — a separate, larger change that
+  this PR deliberately does not make.
+- `tests/test_lexical_token_cache.py` — 13 tests: tokens and scores against an
+  independent reference implementation with the cache cold and warm, mutation
+  safety, the bound, the repeat lookup doing no regex work, and the write path
+  recording the same supersession decisions, retirement flag included.
+
 ### Fix: recall logging is on by default, so `recall_log` is populated (#376)
 
 - `LEVH_RECALL_LOG` now defaults to on. `recall_log` is the audit substrate
