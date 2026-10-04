@@ -148,5 +148,11 @@
   "settings.fileImport.chooseFiles": "Choose file(s) to import",
   "settings.fileImport.result.memory.one": "{count} memory",
   "settings.fileImport.result.memory.other": "{count} memories",
-  "settings.fileImport.result.failed": "{file}: failed — {error}"
+  "settings.fileImport.result.failed": "{file}: failed — {error}",
+  "settings.admissionGate.title": "Admission Gate (preview)",
+  "settings.admissionGate.description": "Preview how a candidate memory would be judged before storing: admitted, held for review (near-duplicate), redacted (secrets stripped), or rejected (too short / an exact duplicate). This is read-only — it does not store anything.",
+  "settings.admissionGate.placeholder": "Paste candidate memory text to evaluate…",
+  "settings.admissionGate.evaluate": "Evaluate",
+  "settings.admissionGate.errorFallback": "Evaluation failed",
+  "settings.admissionGate.redactedPreview": "Redacted preview:"
 }

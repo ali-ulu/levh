@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### i18n: move Admission Gate settings into the catalogue (#407)
+
+- Admission Gate title, help copy, input placeholder, action label, fallback error, and redacted-preview label now resolve through the existing `useT()` catalogue path.
+- The UI-string ratchet entry for `src/app/settings/_sections/admission-gate.tsx` drops from 6 to 0.
+
+
 ### i18n: move File Import settings into the catalogue (#405)
 
 - File Import headings, help text, project field copy, action copy, and runtime success/error messages now resolve through the existing `useT()` catalogue path.

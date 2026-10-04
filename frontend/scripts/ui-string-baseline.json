@@ -15,7 +15,6 @@
   "src/app/projects/page.tsx": 43,
   "src/app/review/page.tsx": 15,
   "src/app/sessions/page.tsx": 17,
-  "src/app/settings/_sections/admission-gate.tsx": 6,
   "src/app/settings/_sections/backup-restore.tsx": 11,
   "src/app/settings/_sections/connect-client.tsx": 15,
   "src/app/settings/_sections/connectors.tsx": 34,
