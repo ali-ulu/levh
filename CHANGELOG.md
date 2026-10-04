@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### i18n: move the Review page into the catalogue (#435)
+
+- Review heading/subtitle, refresh/empty states, retention and recall-review summaries, and all review action labels now resolve through `useT()`.
+- Review action enum values and dynamic memory/project/reason data remain runtime/technical data; the UI-string ratchet for `src/app/review/page.tsx` drops from 15 to 1, leaving only the technical `connector:` source prefix.
+
+
 ### i18n: move the Organizations page into the catalogue (#433)
 
 - Organizations list/detail headings, summaries, search, empty-state guidance, count copy, and last-seen copy now resolve through `useT()`.

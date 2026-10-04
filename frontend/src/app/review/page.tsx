@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -19,19 +20,20 @@ import {
 
 const ACTIONS: {
   action: ReviewAction;
-  label: string;
+  labelKey: string;
   icon: typeof ThumbsUp;
   variant?: "outline" | "destructive";
 }[] = [
-  { action: "keep", label: "Keep", icon: ThumbsUp, variant: "outline" },
-  { action: "reinforce", label: "Reinforce", icon: ArrowUpCircle, variant: "outline" },
-  { action: "weaken", label: "Weaken", icon: TrendingDown, variant: "outline" },
-  { action: "pin", label: "Pin", icon: Pin, variant: "outline" },
-  { action: "snooze", label: "Snooze", icon: Clock8, variant: "outline" },
-  { action: "forget", label: "Forget", icon: Trash2, variant: "destructive" },
+  { action: "keep", labelKey: "app.review.action.keep", icon: ThumbsUp, variant: "outline" },
+  { action: "reinforce", labelKey: "app.review.action.reinforce", icon: ArrowUpCircle, variant: "outline" },
+  { action: "weaken", labelKey: "app.review.action.weaken", icon: TrendingDown, variant: "outline" },
+  { action: "pin", labelKey: "app.review.action.pin", icon: Pin, variant: "outline" },
+  { action: "snooze", labelKey: "app.review.action.snooze", icon: Clock8, variant: "outline" },
+  { action: "forget", labelKey: "app.review.action.forget", icon: Trash2, variant: "destructive" },
 ];
 
 export default function ReviewPage() {
+  const t = useT();
   const [items, setItems] = useState<ReviewItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
@@ -66,16 +68,14 @@ export default function ReviewPage() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold">Review</h1>
+          <h1 className="text-2xl font-bold">{t("app.review.title")}</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Spaced-repetition review of fading memories — the last step of the
-            lifecycle. Decide what to keep, reinforce, weaken, pin, snooze, or
-            forget before they decay away.
+            {t("app.review.subtitle")}
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={load} disabled={loading}>
           <RefreshCw className={"h-4 w-4 mr-1.5 " + (loading ? "animate-spin" : "")} />
-          Refresh
+          {t("app.review.refresh")}
         </Button>
       </div>
 
@@ -87,8 +87,8 @@ export default function ReviewPage() {
         <Card>
           <CardContent className="py-12 text-center text-sm text-muted-foreground space-y-2">
             <ThumbsUp className="h-8 w-8 mx-auto opacity-40" />
-            <p>Nothing due for review — your memory is in good shape.</p>
-            <p>Memories appear here as their predicted retention drops below 50%.</p>
+            <p>{t("app.review.empty.title")}</p>
+            <p>{t("app.review.empty.hint")}</p>
           </CardContent>
         </Card>
       ) : (
@@ -100,7 +100,9 @@ export default function ReviewPage() {
                   <p className="text-sm">{it.content}</p>
                   <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
                     <Badge variant="secondary" className="text-[11px]">
-                      retention {(it.retention * 100).toFixed(0)}%
+                      {t("app.review.retention", {
+                        percent: (it.retention * 100).toFixed(0),
+                      })}
                     </Badge>
                     {it.project && (
                       <Badge variant="outline" className="text-[11px]">
@@ -113,7 +115,10 @@ export default function ReviewPage() {
                       </Badge>
                     )}
                     <span className="text-[11px] text-muted-foreground">
-                      {it.recall_count} recalls · reviewed {it.review_count}x
+                      {t("app.review.history", {
+                        recalls: it.recall_count,
+                        reviews: it.review_count,
+                      })}
                     </span>
                   </div>
                   <p className="text-[11px] text-muted-foreground mt-1">{it.reason}</p>
@@ -132,7 +137,7 @@ export default function ReviewPage() {
                       ) : (
                         <a.icon className="h-3.5 w-3.5 mr-1" />
                       )}
-                      {a.label}
+                      {t(a.labelKey)}
                     </Button>
                   ))}
                 </div>

@@ -250,5 +250,18 @@
   "app.organizations.empty.settings": "Settings",
   "app.organizations.empty.importSuffix": "— organizations are derived from people's email domains.",
   "app.organizations.personCount.one": "{count} person",
-  "app.organizations.personCount.other": "{count} people"
+  "app.organizations.personCount.other": "{count} people",
+  "app.review.title": "Review",
+  "app.review.subtitle": "Spaced-repetition review of fading memories — the last step of the lifecycle. Decide what to keep, reinforce, weaken, pin, snooze, or forget before they decay away.",
+  "app.review.refresh": "Refresh",
+  "app.review.empty.title": "Nothing due for review — your memory is in good shape.",
+  "app.review.empty.hint": "Memories appear here as their predicted retention drops below 50%.",
+  "app.review.retention": "retention {percent}%",
+  "app.review.history": "{recalls} recalls · reviewed {reviews}x",
+  "app.review.action.keep": "Keep",
+  "app.review.action.reinforce": "Reinforce",
+  "app.review.action.weaken": "Weaken",
+  "app.review.action.pin": "Pin",
+  "app.review.action.snooze": "Snooze",
+  "app.review.action.forget": "Forget"
 }
