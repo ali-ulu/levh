@@ -33,7 +33,7 @@ from __future__ import annotations
 import json
 from datetime import datetime, timedelta, timezone
 
-from server.core.tenancy import authorize, current_principal, current_workspace_id
+from server.core.tenancy import authorize, current_workspace_id
 
 #: How long the caller's prune signal stays valid, in seconds. One DELETE per
 #: ten minutes of traffic is invisible next to the recall it follows; one per
