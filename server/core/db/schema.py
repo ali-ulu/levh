@@ -458,6 +458,9 @@ CREATE INDEX IF NOT EXISTS idx_team_handoffs_target
     ON team_handoffs(workspace_id, to_agent, status, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_team_decisions_workspace_key
     ON team_decisions(workspace_id, project, decision_key, status, created_at DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_team_decisions_one_active
+    ON team_decisions(workspace_id, project, decision_key)
+    WHERE status = 'active';
 """
 
 
