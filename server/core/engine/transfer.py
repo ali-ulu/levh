@@ -48,6 +48,7 @@ class MemoryTransferMixin:
         lose the half of a file the gate declined to decide on.  Each item is
         isolated and the returned breakdown makes partial imports explicit.
         """
+        authorize("admit", current_workspace_id())
         imported = redacted = duplicates = held = errors = 0
 
         for item in data:
