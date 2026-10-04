@@ -14,6 +14,7 @@ That mirrors LEVH's existing conflict philosophy: signal, not verdict.
 from __future__ import annotations
 
 import json
+import sqlite3
 import uuid
 from datetime import datetime, timezone
 from typing import Callable
@@ -64,13 +65,14 @@ class TeamMemoryService:
         actor = authorize("store", self._workspace())
         project = (project or "").strip()
         title = (title or "").strip()
-        target = normalize_agent(to_agent)
+        raw_target = (to_agent or "").strip()
         if not project:
             raise ValueError("project is required")
         if not title:
             raise ValueError("title is required")
-        if not target:
+        if not raw_target:
             raise ValueError("to_agent is required")
+        target = normalize_agent(raw_target)
 
         row = {
             "id": uuid.uuid4().hex,
@@ -173,6 +175,7 @@ class TeamMemoryService:
         if cursor.rowcount != 1:
             raise ValueError("handoff state changed")
         result = await self._handoff(handoff_id)
+        assert result is not None
         self._emit("team_handoff_accepted", result)
         return result
 
@@ -199,6 +202,7 @@ class TeamMemoryService:
         if cursor.rowcount != 1:
             raise ValueError("handoff state changed")
         result = await self._handoff(handoff_id)
+        assert result is not None
         self._emit("team_handoff_completed", result)
         return result
 
@@ -279,20 +283,34 @@ class TeamMemoryService:
             "resolved_at": None,
             "resolved_by": None,
         }
-        await self.db.conn.execute(
-            """
-            INSERT INTO team_decisions
-                (id, workspace_id, project, decision_key, statement, rationale,
-                 status, created_by, created_agent, created_at, conflict_group_id,
-                 superseded_by, resolved_at, resolved_by)
-            VALUES
-                (:id, :workspace_id, :project, :decision_key, :statement, :rationale,
-                 :status, :created_by, :created_agent, :created_at, :conflict_group_id,
-                 :superseded_by, :resolved_at, :resolved_by)
-            """,
-            row,
-        )
-        await self.db.conn.commit()
+        try:
+            await self.db.conn.execute(
+                """
+                INSERT INTO team_decisions
+                    (id, workspace_id, project, decision_key, statement, rationale,
+                     status, created_by, created_agent, created_at, conflict_group_id,
+                     superseded_by, resolved_at, resolved_by)
+                VALUES
+                    (:id, :workspace_id, :project, :decision_key, :statement, :rationale,
+                     :status, :created_by, :created_agent, :created_at, :conflict_group_id,
+                     :superseded_by, :resolved_at, :resolved_by)
+                """,
+                row,
+            )
+            await self.db.conn.commit()
+        except sqlite3.IntegrityError:
+            if contested:
+                raise
+            # A peer may have won the one-active-decision race after our read.
+            # Roll back this failed insert and re-evaluate against its decision;
+            # the retry will either dedupe or create a contested proposal.
+            await self.db.conn.rollback()
+            return await self.create_decision(
+                project=project,
+                decision_key=key,
+                statement=statement,
+                rationale=rationale,
+            )
 
         if contested:
             conflicts = await self.list_decisions(
@@ -397,6 +415,8 @@ class TeamMemoryService:
             "SELECT * FROM team_decisions WHERE id = ? AND workspace_id = ?",
             (decision_id, actor.workspace_id),
         )
-        result = dict(await cursor.fetchone())
+        resolved_row = await cursor.fetchone()
+        assert resolved_row is not None
+        result = dict(resolved_row)
         self._emit("team_decision_resolved", result)
         return result
