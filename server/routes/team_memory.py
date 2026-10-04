@@ -6,6 +6,10 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from server.routes.deps import get_engine
 from server.routes.models import (
+    ConflictReviewRequest,
+    TeamDecisionConflictDetectResponse,
+    TeamDecisionConflictOut,
+    TeamDecisionConflictReviewResponse,
     TeamDecisionCreateRequest,
     TeamDecisionCreateResponse,
     TeamDecisionOut,
@@ -117,3 +121,57 @@ async def resolve_decision(decision_id: str, engine=Depends(get_engine)):
         raise HTTPException(status_code=404, detail="decision not found") from exc
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@router.post(
+    "/api/team/decision-conflicts/detect",
+    response_model=TeamDecisionConflictDetectResponse,
+)
+async def detect_decision_conflicts(
+    project: str = "",
+    engine=Depends(get_engine),
+):
+    """Detect review-worthy free-text conflicts between differently-keyed decisions."""
+    return await _tracker(engine).detect_team_decision_conflicts(
+        project=project or None
+    )
+
+
+@router.get(
+    "/api/team/decision-conflicts",
+    response_model=list[TeamDecisionConflictOut],
+)
+async def list_decision_conflicts(
+    project: str = "",
+    status: str = "open",
+    limit: int = 100,
+    engine=Depends(get_engine),
+):
+    """List semantic decision conflict candidates in the current workspace."""
+    return await _tracker(engine).list_team_decision_conflicts(
+        project=project or None,
+        status=status or None,
+        limit=limit,
+    )
+
+
+@router.post(
+    "/api/team/decision-conflicts/{conflict_id:path}/review",
+    response_model=TeamDecisionConflictReviewResponse,
+)
+async def review_decision_conflict(
+    conflict_id: str,
+    req: ConflictReviewRequest,
+    engine=Depends(get_engine),
+):
+    """Apply an explicit admin review; the candidate is never an auto-verdict."""
+    try:
+        conflict = await _tracker(engine).review_team_decision_conflict(
+            conflict_id,
+            req.action,
+        )
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="decision conflict not found") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return {"ok": True, "action": req.action, "conflict": conflict}
