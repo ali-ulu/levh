@@ -5,7 +5,7 @@
 ### i18n: move the Graph page into the catalogue (#442)
 
 - Graph list/detail headings, relationship-map accessibility/help copy, counts/status copy, reindex controls, and empty states now resolve through `useT()`.
-- Dynamic entity names/types/counts/dates and memory/source values remain runtime data; the UI-string ratchet entry for `src/app/graph/page.tsx` drops from 17 to 0.
+- Dynamic entity names/types/counts/dates and memory/source values remain runtime data; the UI-string ratchet entry for `src/app/graph/page.tsx` drops from 17 to 3, leaving only technical/class-name detector residuals.
 
 
 ### i18n: move the Conflicts page into the catalogue (#439)
