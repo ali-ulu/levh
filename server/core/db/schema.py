@@ -198,6 +198,7 @@ CREATE TABLE IF NOT EXISTS held_memories (
     tags_json          TEXT NOT NULL,
     session_id         TEXT,
     project            TEXT,
+    workspace_id       TEXT NOT NULL DEFAULT 'default',
     source             TEXT,
     memory_type        TEXT NOT NULL,
     pinned             INTEGER NOT NULL DEFAULT 0,
@@ -398,6 +399,8 @@ CREATE INDEX IF NOT EXISTS idx_viol_when     ON violations(occurred_at DESC);
 CREATE INDEX IF NOT EXISTS idx_attach_memory ON attachments(memory_id);
 -- The queue is read as "what is still waiting", newest first.
 CREATE INDEX IF NOT EXISTS idx_held_status ON held_memories(status, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_held_workspace_status
+    ON held_memories(workspace_id, status, created_at DESC);
 -- The inbox is read as "what is still open", most recently seen first.
 CREATE INDEX IF NOT EXISTS idx_find_status ON findings(status, last_seen_at DESC);
 -- The recall log is read two ways: "what did we just ask" (recency, and the
