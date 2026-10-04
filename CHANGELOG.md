@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### i18n: move the Meeting Prep page into the catalogue (#429)
+
+- Meeting Prep heading, explanatory copy, search controls, empty-state guidance, people interaction copy, and section headings now resolve through `useT()`.
+- API-provided meeting, person, commitment, decision, date, project, and reason values remain dynamic data; the UI-string ratchet entry for `src/app/meeting-prep/page.tsx` drops from 12 to 0.
+
+
 ### i18n: move the Command Palette into the catalogue (#427)
 
 - Command Palette title, accessible search label, placeholder, live-region search/result status, error copy, and empty states now resolve through `useT()`.

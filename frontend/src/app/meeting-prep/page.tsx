@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,6 +18,7 @@ import {
 } from "lucide-react";
 
 export default function MeetingPrepPage() {
+  const t = useT();
   const [prep, setPrep] = useState<MeetingPrep | null>(null);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
@@ -40,11 +42,9 @@ export default function MeetingPrepPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Meeting Prep</h1>
+        <h1 className="text-2xl font-bold">{t("app.meetingPrep.title")}</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Your proactive &ldquo;before you walk in&rdquo; brief — the next meeting,
-          who&apos;s attending, what you last discussed with each of them, and the
-          open commitments and decisions that matter. Deterministic, offline.
+          {t("app.meetingPrep.subtitle")}
         </p>
       </div>
 
@@ -59,13 +59,13 @@ export default function MeetingPrepPage() {
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             className="pl-8"
-            placeholder="Find a specific meeting, or leave blank for the next one…"
+            placeholder={t("app.meetingPrep.placeholder")}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
         </div>
         <Button type="submit" variant="outline">
-          Prep
+          {t("app.meetingPrep.prep")}
         </Button>
       </form>
 
@@ -77,13 +77,13 @@ export default function MeetingPrepPage() {
         <Card>
           <CardContent className="py-12 text-center text-sm text-muted-foreground space-y-2">
             <CalendarClock className="h-8 w-8 mx-auto opacity-40" />
-            <p>{prep?.reason ?? "No upcoming meeting found."}</p>
+            <p>{prep?.reason ?? t("app.meetingPrep.noUpcoming")}</p>
             <p>
-              Import a calendar (.ics) in{" "}
+              {t("app.meetingPrep.empty.importPrefix")}{" "}
               <a href="/settings/" className="underline">
-                Settings
+                {t("app.meetingPrep.empty.settings")}
               </a>{" "}
-              — upcoming events power this brief.
+              {t("app.meetingPrep.empty.importSuffix")}
             </p>
           </CardContent>
         </Card>
@@ -105,7 +105,9 @@ export default function MeetingPrepPage() {
                     {meeting.project}
                   </Badge>
                 )}
-                <span className="text-[11px]">· {prep?.reason}</span>
+                <span className="text-[11px]">
+                  {t("app.meetingPrep.reason", { reason: prep?.reason ?? "" })}
+                </span>
               </div>
               {meeting.attendees.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 pt-1">
@@ -125,7 +127,7 @@ export default function MeetingPrepPage() {
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
                   <Users className="h-4 w-4" />
-                  Who you&apos;re meeting
+                  {t("app.meetingPrep.people.title")}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
@@ -135,8 +137,11 @@ export default function MeetingPrepPage() {
                       <span className="font-medium text-sm">{p.name}</span>
                       <span className="text-[11px] text-muted-foreground">
                         {p.interaction_count > 0
-                          ? `${p.interaction_count} prior · last ${p.last_seen}`
-                          : "no prior interactions"}
+                          ? t("app.meetingPrep.people.prior", {
+                              count: p.interaction_count,
+                              lastSeen: p.last_seen,
+                            })
+                          : t("app.meetingPrep.people.none")}
                       </span>
                     </div>
                     {p.recent.length > 0 && (
@@ -161,7 +166,7 @@ export default function MeetingPrepPage() {
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
                   <ListChecks className="h-4 w-4" />
-                  Relevant open commitments
+                  {t("app.meetingPrep.commitments.title")}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -186,7 +191,7 @@ export default function MeetingPrepPage() {
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
                   <Gavel className="h-4 w-4" />
-                  Recent decisions
+                  {t("app.meetingPrep.decisions.title")}
                 </CardTitle>
               </CardHeader>
               <CardContent>

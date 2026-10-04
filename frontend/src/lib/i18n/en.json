@@ -215,5 +215,19 @@
   "commandPalette.results.other": "{count} results",
   "commandPalette.searchFailed": "Search failed. Try again.",
   "commandPalette.noMatch": "No memories match “{query}”.",
-  "commandPalette.empty": "Type to search your memory store."
+  "commandPalette.empty": "Type to search your memory store.",
+  "app.meetingPrep.title": "Meeting Prep",
+  "app.meetingPrep.subtitle": "Your proactive “before you walk in” brief — the next meeting, who's attending, what you last discussed with each of them, and the open commitments and decisions that matter. Deterministic, offline.",
+  "app.meetingPrep.placeholder": "Find a specific meeting, or leave blank for the next one…",
+  "app.meetingPrep.prep": "Prep",
+  "app.meetingPrep.noUpcoming": "No upcoming meeting found.",
+  "app.meetingPrep.empty.importPrefix": "Import a calendar (.ics) in",
+  "app.meetingPrep.empty.settings": "Settings",
+  "app.meetingPrep.empty.importSuffix": "— upcoming events power this brief.",
+  "app.meetingPrep.reason": "· {reason}",
+  "app.meetingPrep.people.title": "Who you're meeting",
+  "app.meetingPrep.people.prior": "{count} prior · last {lastSeen}",
+  "app.meetingPrep.people.none": "no prior interactions",
+  "app.meetingPrep.commitments.title": "Relevant open commitments",
+  "app.meetingPrep.decisions.title": "Recent decisions"
 }
