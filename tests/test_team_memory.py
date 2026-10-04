@@ -122,6 +122,213 @@ async def test_handoff_cannot_be_accepted_by_the_wrong_agent(engine):
 
 
 @pytest.mark.asyncio
+async def test_scheduler_matches_priority_capabilities_and_capacity(engine):
+    with _PrincipalContext(
+        pid="codex-principal",
+        workspace="team-a",
+        role="editor",
+        agent="codex",
+    ):
+        session = await engine.agent_tracker.agent_connect(
+            "codex",
+            project="atlas",
+            metadata={
+                "capabilities": ["backend", "python"],
+                "scheduler_enabled": True,
+                "max_parallel_handoffs": 1,
+            },
+        )
+        low = await engine.agent_tracker.create_handoff(
+            project="atlas",
+            to_agent="*",
+            title="Low priority backend work",
+            required_capabilities=["backend"],
+            priority=1,
+        )
+        high = await engine.agent_tracker.create_handoff(
+            project="atlas",
+            to_agent="*",
+            title="High priority Python work",
+            required_capabilities=["python", "backend"],
+            priority=20,
+        )
+        await engine.agent_tracker.create_handoff(
+            project="atlas",
+            to_agent="*",
+            title="Frontend only",
+            required_capabilities=["frontend"],
+            priority=100,
+        )
+
+        matches = await engine.agent_tracker.list_handoff_matches(project="atlas")
+        assert [m["handoff"]["id"] for m in matches] == [high["id"], low["id"]]
+        claimed = await engine.agent_tracker.claim_next_handoff(
+            session["agent_session_id"]
+        )
+        assert claimed["claimed"] is True
+        assert claimed["handoff"]["id"] == high["id"]
+        assert claimed["handoff"]["accepted_session_id"] == session["agent_session_id"]
+
+        at_capacity = await engine.agent_tracker.claim_next_handoff(
+            session["agent_session_id"]
+        )
+        assert at_capacity == {
+            "claimed": False,
+            "reason": "capacity",
+            "handoff": None,
+        }
+
+
+@pytest.mark.asyncio
+async def test_scheduler_claim_requires_matching_agent_principal(engine):
+    with _PrincipalContext(
+        pid="codex-principal",
+        workspace="team-a",
+        role="editor",
+        agent="codex",
+    ):
+        session = await engine.agent_tracker.agent_connect(
+            "codex",
+            project="atlas",
+            metadata={"capabilities": ["backend"]},
+        )
+        await engine.agent_tracker.create_handoff(
+            project="atlas",
+            to_agent="*",
+            title="Backend work",
+            required_capabilities=["backend"],
+        )
+
+    with _PrincipalContext(
+        pid="cursor-principal",
+        workspace="team-a",
+        role="editor",
+        agent="cursor",
+    ):
+        with pytest.raises(AuthorizationError, match="another agent session"):
+            await engine.agent_tracker.claim_next_handoff(
+                session["agent_session_id"]
+            )
+
+
+@pytest.mark.asyncio
+async def test_scheduler_dispatch_is_opt_in_and_load_aware(engine):
+    with _PrincipalContext(
+        pid="codex-principal",
+        workspace="team-a",
+        role="editor",
+        agent="codex",
+    ):
+        codex = await engine.agent_tracker.agent_connect(
+            "codex",
+            project="atlas",
+            metadata={
+                "capabilities": ["backend"],
+                "scheduler_enabled": True,
+                "max_parallel_handoffs": 1,
+            },
+        )
+    with _PrincipalContext(
+        pid="cursor-principal",
+        workspace="team-a",
+        role="editor",
+        agent="cursor",
+    ):
+        cursor = await engine.agent_tracker.agent_connect(
+            "cursor",
+            project="atlas",
+            metadata={
+                "capabilities": ["frontend"],
+                "scheduler_enabled": True,
+                "max_parallel_handoffs": 1,
+            },
+        )
+    with _PrincipalContext(
+        pid="vscode-principal",
+        workspace="team-a",
+        role="editor",
+        agent="vscode",
+    ):
+        vscode = await engine.agent_tracker.agent_connect(
+            "vscode",
+            project="atlas",
+            metadata={
+                "capabilities": ["backend"],
+                "scheduler_enabled": False,
+                "max_parallel_handoffs": 4,
+            },
+        )
+
+    with _PrincipalContext(pid="owner", workspace="team-a", role="admin"):
+        backend = await engine.agent_tracker.create_handoff(
+            project="atlas",
+            to_agent="*",
+            title="Backend work",
+            required_capabilities=["backend"],
+            priority=10,
+        )
+        frontend = await engine.agent_tracker.create_handoff(
+            project="atlas",
+            to_agent="*",
+            title="Frontend work",
+            required_capabilities=["frontend"],
+            priority=9,
+        )
+        overflow = await engine.agent_tracker.create_handoff(
+            project="atlas",
+            to_agent="*",
+            title="More backend work",
+            required_capabilities=["backend"],
+            priority=1,
+        )
+        dispatched = await engine.agent_tracker.dispatch_handoffs(project="atlas")
+        assert dispatched["assigned"] == 2
+        assert dispatched["unassigned"] == 1
+        by_handoff = {
+            item["handoff"]["id"]: item
+            for item in dispatched["assignments"]
+        }
+        assert by_handoff[backend["id"]]["agent_session_id"] == codex["agent_session_id"]
+        assert by_handoff[frontend["id"]]["agent_session_id"] == cursor["agent_session_id"]
+        assert vscode["agent_session_id"] not in {
+            item["agent_session_id"] for item in dispatched["assignments"]
+        }
+
+        pending = await engine.agent_tracker.list_handoffs(
+            project="atlas",
+            status="pending",
+        )
+        assert [row["id"] for row in pending] == [overflow["id"]]
+
+
+@pytest.mark.asyncio
+async def test_scheduler_never_matches_across_workspaces(engine):
+    with _PrincipalContext(pid="a", workspace="team-a", role="admin"):
+        await engine.agent_tracker.create_handoff(
+            project="atlas",
+            to_agent="*",
+            title="Team A only",
+            required_capabilities=["backend"],
+        )
+
+    with _PrincipalContext(
+        pid="b-agent",
+        workspace="team-b",
+        role="editor",
+        agent="codex",
+    ):
+        await engine.agent_tracker.agent_connect(
+            "codex",
+            project="atlas",
+            metadata={
+                "capabilities": ["backend"],
+                "scheduler_enabled": True,
+            },
+        )
+        assert await engine.agent_tracker.list_handoff_matches(project="atlas") == []
+
+
+@pytest.mark.asyncio
 async def test_shared_decision_conflict_is_signalled_not_auto_resolved(engine):
     with _PrincipalContext(pid="backend", workspace="team-a", role="editor", agent="codex"):
         first = await engine.agent_tracker.create_team_decision(
@@ -443,27 +650,45 @@ async def test_agent_tracker_migrates_pre_tenancy_tables(tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_v7_store_upgrades_to_decision_conflict_schema_v8(tmp_path):
-    path = str(tmp_path / "v7.db")
+async def test_v8_store_upgrades_handoffs_to_scheduler_schema_v9(tmp_path):
+    path = str(tmp_path / "v8.db")
     conn = sqlite3.connect(path)
-    conn.execute("PRAGMA user_version = 7")
+    conn.executescript(
+        """
+        CREATE TABLE team_handoffs (
+            id TEXT PRIMARY KEY,
+            workspace_id TEXT NOT NULL DEFAULT 'default',
+            project TEXT NOT NULL,
+            from_principal_id TEXT NOT NULL,
+            from_agent TEXT,
+            to_agent TEXT NOT NULL,
+            title TEXT NOT NULL,
+            summary TEXT NOT NULL DEFAULT '',
+            memory_ids_json TEXT NOT NULL DEFAULT '[]',
+            status TEXT NOT NULL DEFAULT 'pending',
+            created_at TEXT NOT NULL,
+            accepted_at TEXT,
+            accepted_by TEXT,
+            accepted_agent TEXT,
+            completed_at TEXT
+        );
+        PRAGMA user_version = 8;
+        """
+    )
     conn.commit()
     conn.close()
 
     db = Database(path)
     await db.connect()
     try:
-        assert db.schema_version == CURRENT_SCHEMA_VERSION == 8
-        cursor = await db.conn.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' "
-            "AND name IN ('team_handoffs', 'team_decisions', "
-            "'team_decision_conflict_candidates') ORDER BY name"
-        )
-        assert [row[0] for row in await cursor.fetchall()] == [
-            "team_decision_conflict_candidates",
-            "team_decisions",
-            "team_handoffs",
-        ]
+        assert db.schema_version == CURRENT_SCHEMA_VERSION == 9
+        cursor = await db.conn.execute("PRAGMA table_info(team_handoffs)")
+        columns = {row[1] for row in await cursor.fetchall()}
+        assert {
+            "required_capabilities_json",
+            "priority",
+            "accepted_session_id",
+        }.issubset(columns)
     finally:
         await db.close()
 
