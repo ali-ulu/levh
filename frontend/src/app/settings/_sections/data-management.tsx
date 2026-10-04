@@ -4,9 +4,11 @@ import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { api } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 import { Download, Loader2, Upload } from "lucide-react";
 
 export function DataManagement() {
+    const t = useT();
     const [exporting, setExporting] = useState(false);
     const [importingJson, setImportingJson] = useState(false);
     const [dedupeBusy, setDedupeBusy] = useState(false);
@@ -38,9 +40,14 @@ export function DataManagement() {
         const text = await file.text();
         const data = JSON.parse(text);
         const r = await api.importMemories(Array.isArray(data) ? data : []);
-        alert(`Imported ${r.imported} memories.`);
+        alert(t(
+          r.imported === 1
+            ? "settings.dataManagement.import.success.one"
+            : "settings.dataManagement.import.success.other",
+          { count: r.imported },
+        ));
       } catch (e) {
-        alert(`Import failed: ${e instanceof Error ? e.message : e}`);
+        alert(t("settings.dataManagement.import.failed", { error: e instanceof Error ? e.message : String(e) }));
       }
       setImportingJson(false);
     };
@@ -67,11 +74,11 @@ export function DataManagement() {
         const r = await api.dedupe(!apply);
         setDedupeResult(
           apply
-            ? `Removed ${r.removed} duplicate memories.`
-            : `Found ${r.duplicates} removable duplicates. Click "Remove duplicates" to delete them.`
+            ? t("settings.dataManagement.dedupe.removed", { count: r.removed })
+            : t("settings.dataManagement.dedupe.found", { count: r.duplicates })
         );
       } catch (e) {
-        setDedupeResult(e instanceof Error ? e.message : "Dedupe failed");
+        setDedupeResult(e instanceof Error ? e.message : t("settings.dataManagement.dedupe.failed"));
       }
       setDedupeBusy(false);
     };
@@ -82,20 +89,20 @@ export function DataManagement() {
         const r = await api.consolidateSimilar(!apply);
         if (apply) {
           setConsolidateSimResult(
-            `Consolidated ${r.consolidated} cluster(s), archiving ${r.archived} memories into durable summaries.`
+t("settings.dataManagement.similar.applied", { clusters: r.consolidated, memories: r.archived })
           );
         } else {
           setConsolidateSimResult(
             r.clusters_found === 0
-              ? "No consolidatable clusters (need ≥2 related, unpinned memories older than 7 days)."
-              : `Found ${r.clusters_found} cluster(s) covering ${r.clusters.reduce(
-                  (s, c) => s + c.size,
-                  0
-                )} memories. Click "Consolidate" to compress them.`
+              ? t("settings.dataManagement.similar.none")
+              : t("settings.dataManagement.similar.found", {
+                  clusters: r.clusters_found,
+                  memories: r.clusters.reduce((sum, cluster) => sum + cluster.size, 0),
+                })
           );
         }
       } catch (e) {
-        setConsolidateSimResult(e instanceof Error ? e.message : "Consolidation failed");
+        setConsolidateSimResult(e instanceof Error ? e.message : t("settings.dataManagement.consolidation.failed"));
       }
       setConsolidateSimBusy(false);
     };
@@ -104,9 +111,9 @@ export function DataManagement() {
       setConsolidateResult("");
       try {
         const r = await api.consolidate();
-        setConsolidateResult(`Promoted ${r.consolidated} short-term memories to episodic.`);
+        setConsolidateResult(t("settings.dataManagement.shortTerm.promoted", { count: r.consolidated }));
       } catch (e) {
-        setConsolidateResult(e instanceof Error ? e.message : "Consolidation failed");
+        setConsolidateResult(e instanceof Error ? e.message : t("settings.dataManagement.consolidation.failed"));
       }
       setConsolidateBusy(false);
     };
@@ -116,7 +123,7 @@ export function DataManagement() {
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <Download className="h-4 w-4" />
-            Data Management
+            {t("settings.dataManagement.title")}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -127,7 +134,7 @@ export function DataManagement() {
               ) : (
                 <Download className="h-4 w-4 mr-2" />
               )}
-              Export all memories (JSON)
+              {t("settings.dataManagement.exportMemories")}
             </Button>
             <Button
               variant="outline"
@@ -139,7 +146,7 @@ export function DataManagement() {
               ) : (
                 <Upload className="h-4 w-4 mr-2" />
               )}
-              Import from JSON
+              {t("settings.dataManagement.importJson")}
             </Button>
             <input
               ref={fileInputRef}
@@ -156,8 +163,7 @@ export function DataManagement() {
 
           <div className="pt-2 border-t space-y-1">
             <p className="text-xs text-muted-foreground">
-              Full audit export — memories, entity graph, trust scores, and conflict candidates
-              in one file. For auditing or backing up everything, not just memories.
+              {t("settings.dataManagement.fullExport.description")}
             </p>
             <div className="flex flex-wrap items-center gap-2">
               <Button
@@ -170,7 +176,7 @@ export function DataManagement() {
                 ) : (
                   <Download className="h-4 w-4 mr-2" />
                 )}
-                Full export (JSON)
+                {t("settings.dataManagement.fullExport.json")}
               </Button>
               <Button
                 variant="outline"
@@ -182,7 +188,7 @@ export function DataManagement() {
                 ) : (
                   <Download className="h-4 w-4 mr-2" />
                 )}
-                Full export (SQLite)
+                {t("settings.dataManagement.fullExport.sqlite")}
               </Button>
               <Button
                 variant="outline"
@@ -194,7 +200,7 @@ export function DataManagement() {
                 ) : (
                   <Download className="h-4 w-4 mr-2" />
                 )}
-                Audit report (PDF)
+                {t("settings.dataManagement.fullExport.pdf")}
               </Button>
             </div>
             {fullExportError && (
@@ -205,7 +211,7 @@ export function DataManagement() {
           <div className="flex flex-wrap items-center gap-2 pt-2 border-t">
             <Button variant="outline" onClick={runConsolidate} disabled={consolidateBusy}>
               {consolidateBusy && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Consolidate short-term
+              {t("settings.dataManagement.shortTerm.action")}
             </Button>
             {consolidateResult && (
               <span className="text-xs text-muted-foreground">{consolidateResult}</span>
@@ -215,10 +221,10 @@ export function DataManagement() {
           <div className="flex flex-wrap items-center gap-2 pt-2 border-t">
             <Button variant="outline" onClick={() => runDedupe(false)} disabled={dedupeBusy}>
               {dedupeBusy && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Find duplicates
+              {t("settings.dataManagement.dedupe.find")}
             </Button>
             <Button variant="outline" onClick={() => runDedupe(true)} disabled={dedupeBusy}>
-              Remove duplicates
+              {t("settings.dataManagement.dedupe.remove")}
             </Button>
             {dedupeResult && <span className="text-xs text-muted-foreground">{dedupeResult}</span>}
           </div>
@@ -230,23 +236,21 @@ export function DataManagement() {
               disabled={consolidateSimBusy}
             >
               {consolidateSimBusy && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Preview consolidation
+              {t("settings.dataManagement.similar.preview")}
             </Button>
             <Button
               variant="outline"
               onClick={() => runConsolidateSimilar(true)}
               disabled={consolidateSimBusy}
             >
-              Consolidate
+              {t("settings.dataManagement.similar.consolidate")}
             </Button>
             {consolidateSimResult && (
               <span className="text-xs text-muted-foreground">{consolidateSimResult}</span>
             )}
           </div>
           <p className="text-xs text-muted-foreground">
-            Consolidation compresses clusters of related, aged (&gt;7d), unpinned memories
-            into one durable summary each — like sleep consolidating episodes into a gist.
-            Originals are archived inside the summary, not lost.
+            {t("settings.dataManagement.similar.help")}
           </p>
         </CardContent>
       </Card>

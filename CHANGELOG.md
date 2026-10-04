@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### i18n: move Data Management into the catalogue (#448)
+
+- Data Management actions, descriptions, import/export alerts, dedupe/consolidation results, fallback errors, and help copy now resolve through `useT()`.
+- Export format enum values, MIME type, generated filenames, and server-provided errors remain technical/runtime data; the UI-string ratchet entry for `src/app/settings/_sections/data-management.tsx` drops from 17 to 0.
+
+
 ### i18n: move the Sessions page into the catalogue (#446)
 
 - Sessions heading/subtitle, create-session placeholder, empty state, memory/start/end copy, summary results, action labels, and accessibility title now resolve through `useT()`.
