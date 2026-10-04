@@ -13,6 +13,7 @@ That mirrors LEVH's existing conflict philosophy: signal, not verdict.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import sqlite3
 import uuid
@@ -38,6 +39,10 @@ class TeamMemoryService:
     def __init__(self, db: Database, emit: Callable[[str, dict], None]):
         self.db = db
         self._emit = emit
+        # One aiosqlite connection is shared by tasks in this process. Serialize
+        # the read-decide-write transaction so one task's uniqueness rollback
+        # cannot undo another task's still-uncommitted decision.
+        self._decision_lock = asyncio.Lock()
 
     @staticmethod
     def _workspace() -> str:
@@ -214,6 +219,22 @@ class TeamMemoryService:
         statement: str,
         rationale: str = "",
     ) -> dict:
+        async with self._decision_lock:
+            return await self._create_decision_locked(
+                project=project,
+                decision_key=decision_key,
+                statement=statement,
+                rationale=rationale,
+            )
+
+    async def _create_decision_locked(
+        self,
+        *,
+        project: str,
+        decision_key: str,
+        statement: str,
+        rationale: str = "",
+    ) -> dict:
         actor = authorize("store", self._workspace())
         project = (project or "").strip()
         key = (decision_key or "").strip().lower()
@@ -305,7 +326,7 @@ class TeamMemoryService:
             # A peer may have won the one-active-decision race after our read.
             # Re-evaluate against its decision; the retry will either dedupe or
             # create a contested proposal.
-            return await self.create_decision(
+            return await self._create_decision_locked(
                 project=project,
                 decision_key=key,
                 statement=statement,
