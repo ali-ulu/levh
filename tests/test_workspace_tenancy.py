@@ -179,6 +179,16 @@ async def test_full_export_and_portable_backup_require_admin(engine):
 
 
 @pytest.mark.asyncio
+async def test_authorization_error_maps_to_non_leaky_http_403():
+    from server.api import app
+
+    handler = app.exception_handlers[AuthorizationError]
+    response = await handler(None, AuthorizationError("principal secret must not leak"))
+    assert response.status_code == 403
+    assert response.body == b'{"detail":"forbidden"}'
+
+
+@pytest.mark.asyncio
 async def test_unknown_role_fails_closed(db):
     with workspace(DEFAULT_WORKSPACE_ID, role="owner", principal_id="mystery"):
         with pytest.raises(AuthorizationError, match="unknown workspace role"):
