@@ -229,5 +229,10 @@
   "app.meetingPrep.people.prior": "{count} prior · last {lastSeen}",
   "app.meetingPrep.people.none": "no prior interactions",
   "app.meetingPrep.commitments.title": "Relevant open commitments",
-  "app.meetingPrep.decisions.title": "Recent decisions"
+  "app.meetingPrep.decisions.title": "Recent decisions",
+  "settings.recallQuality.title": "Recall Quality",
+  "settings.recallQuality.descriptionBeforeEmbedder": "Runs a labelled query set against an isolated temp database (never touches your real memories) and reports hit@k / MRR — the same kind of accuracy metric managed memory services publish. Uses your configured embedder (",
+  "settings.recallQuality.hashWarning": " — non-semantic, treat as a plumbing check only",
+  "settings.recallQuality.runBenchmark": "Run benchmark",
+  "settings.recallQuality.benchmarkFailed": "Benchmark failed"
 }

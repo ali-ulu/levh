@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### i18n: move Recall Quality copy into the catalogue (#431)
+
+- Recall Quality title, explanatory copy, hash-mode warning, benchmark action, and fallback error now resolve through `useT()`.
+- Standard benchmark identifiers stay technical literals; the UI-string ratchet for `src/app/settings/_sections/recall-quality.tsx` drops from 12 to 7, leaving `hit@1`/`hit@3`/`hit@5` label+result-key pairs and `MRR`.
+
+
 ### i18n: move the Meeting Prep page into the catalogue (#429)
 
 - Meeting Prep heading, explanatory copy, search controls, empty-state guidance, people interaction copy, and section headings now resolve through `useT()`.
