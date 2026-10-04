@@ -474,7 +474,7 @@ async def test_v5_recall_log_migrates_to_principal_audit_without_losing_rows(tmp
     db = Database(path)
     await db.connect()
     try:
-        assert db.schema_version == CURRENT_SCHEMA_VERSION == 8
+        assert db.schema_version == CURRENT_SCHEMA_VERSION == 9
         rows = await db.list_recall_log(limit=5)
         assert len(rows) == 1
         assert rows[0]["query"] == "legacy question"
