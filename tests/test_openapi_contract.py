@@ -100,7 +100,26 @@ def _iter(route):
 def test_the_frozen_contract_matches_the_code():
     """The point of the freeze: regenerating must be a no-op."""
     frozen = json.loads(CONTRACT.read_text(encoding="utf-8"))
-    assert frozen == app.openapi(), (
+    actual = app.openapi()
+    scheduler_paths = {
+        key: value
+        for key, value in actual["paths"].items()
+        if "/team/handoffs" in key
+    }
+    scheduler_schemas = {
+        key: value
+        for key, value in actual["components"]["schemas"].items()
+        if key.startswith("TeamHandoff")
+    }
+    print(
+        "SCHEDULER_OPENAPI="
+        + json.dumps(
+            {"paths": scheduler_paths, "schemas": scheduler_schemas},
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+    )
+    assert frozen == actual, (
         "openapi.json is stale; regenerate it in the same commit as the change "
         "that altered the schema"
     )
