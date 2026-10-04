@@ -21,7 +21,7 @@ logger = logging.getLogger("levh.api")
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import JSONResponse, PlainTextResponse
 
 # Ensure project root is on the path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -32,6 +32,7 @@ from server.auth import RemoteAccessBoundaryMiddleware
 from server.core import engine_provider
 from server.core.env import get_env
 from server.core.memory_engine import MemoryEngine
+from server.core.tenancy import AuthorizationError
 
 # ── Engine wiring ──────────────────────────────────────────────────
 # The engine is dependency-injected (issue #93): ``deps.get_engine``
@@ -126,6 +127,12 @@ app = FastAPI(
     description="Local-first memory layer for AI agents and humans",
     lifespan=lifespan,
 )
+
+@app.exception_handler(AuthorizationError)
+async def _authorization_error_handler(_request, _exc: AuthorizationError):
+    """Project storage authorization failures as one non-leaky HTTP verdict."""
+    return JSONResponse(status_code=403, content={"detail": "forbidden"})
+
 
 # CORS: this service is normally a *local* single-user tool, so a wildcard
 # origin means any website the user visits can read their whole memory store
