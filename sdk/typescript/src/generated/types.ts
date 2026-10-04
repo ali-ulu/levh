@@ -1118,6 +1118,7 @@ export type ServerConfigResponse = {
   auto_summarize_sessions: boolean;
   outbound: Record<string, unknown>;
   recall_log: Record<string, unknown>;
+  continuity_briefs: Record<string, unknown>;
   version: string;
 };
 
