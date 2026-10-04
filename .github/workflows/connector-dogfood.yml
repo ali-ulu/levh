@@ -1,0 +1,53 @@
+name: Connector dogfood
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: read
+  pull-requests: read
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: astral-sh/setup-uv@v10.2.0
+        with:
+          python-version: "3.12"
+          enable-cache: true
+
+      - name: Install locked environment
+        run: uv sync --frozen --extra dev
+
+      - name: Configure ephemeral dogfood store
+        run: |
+          echo "SQLITE_DB_PATH=${RUNNER_TEMP}/levh-connector-dogfood.db" >> "$GITHUB_ENV"
+          echo "EMBEDDER_MODE=hash" >> "$GITHUB_ENV"
+
+      - name: Ingest this repository through the local Git connector
+        run: |
+          uv run --frozen levh sync git             --project levh             --config "repo_path=${GITHUB_WORKSPACE}"             --config max_commits=80             --config include_file_history=true             --config history_max_files=12             --config include_blame=true             --config blame_max_files=8             --config include_snapshot=true
+
+      - name: Ingest this repository through the GitHub connector
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          uv run --frozen levh sync github             --project levh             --config repos=ali-ulu/levh             --config include_readme=true             --config include_issues=true             --config include_prs=true             --config include_files=README.md,server/connectors/git.py,server/connectors/github.py             --config max_issues=25             --config max_prs=25
+
+      - name: Verify persisted sync state, provenance, and recallability
+        run: |
+          uv run --frozen python scripts/verify_connector_dogfood.py             --db "$SQLITE_DB_PATH"             --project levh             --output "${RUNNER_TEMP}/connector-dogfood-evidence.json"
+          cat "${RUNNER_TEMP}/connector-dogfood-evidence.json" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload dogfood evidence
+        uses: actions/upload-artifact@v6
+        with:
+          name: connector-dogfood-evidence
+          path: ${{ runner.temp }}/connector-dogfood-evidence.json
+          if-no-files-found: error
+          retention-days: 14
