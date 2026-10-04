@@ -27,6 +27,7 @@ kararları kalıcı tutabilmesi ve çelişkileri sessizce ezmeden yönetebilmesi
 | Recall access audit | `recall_log` principal/workspace damgası + `/api/v1/memories/{id}/access-audit` |
 | Agent presence/checkpoint tenancy | `agent_sessions.workspace_id`, `agent_checkpoints.workspace_id` |
 | Agent-to-agent handoff | `server/core/team_memory.py`, `team_handoffs`, `/api/v1/team/handoffs` |
+| Capability-aware scheduling | wildcard handoff + `required_capabilities` + priority + atomic claim + admin dispatch |
 | Shared decision ledger | `team_decisions`, `/api/v1/team/decisions` |
 | Anahtar-temelli çelişki | Aynı `project + decision_key` için farklı aktif kararlar `contested`; otomatik kazanan yok |
 | Semantic decision conflict | Farklı key'lerdeki kararlar `opposition + shared topic anchor` kuralıyla candidate olur |
@@ -44,8 +45,10 @@ yazdığında sistem son yazanı sessizce kazanan ilan etmez. Her iki öneri de
   tarar, ancak **candidate only** kalır: opposition sinyali + anlamlı topic
   overlap gerekir. LLM veya otomatik truth verdict yoktur; yanlış pozitiften
   kaçınmak için topic anchor yoksa aday üretilmez.
-- Handoff bir durable ledger ve lifecycle sağlar; otomatik görev planlayıcı /
-  ajan seçici değildir. Kimin işi alacağı caller veya operatör kararıdır.
+- Handoff scheduling artık capability-aware ve load-aware çalışır. Explicit claim
+  ajan tarafından yapılabilir; admin dispatch yalnız `scheduler_enabled=true`
+  ile opt-in olmuş online agent sessionlarına wildcard işleri deterministik
+  dağıtır. Bu bir background daemon değildir; dispatch çağrısı tetikleyicidir.
 - OIDC/account provisioning hâlâ shared-server tasarımının ayrı opt-in fazıdır;
   local ürün `local/default/admin` olarak çalışmaya devam eder.
 - Çok-hostlu concurrent writer ihtiyacı doğmadığı sürece Postgres trigger'ı
