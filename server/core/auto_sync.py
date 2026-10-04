@@ -131,7 +131,8 @@ async def run_jobs_once(engine: Any, jobs: list[dict]) -> list[dict]:
             continue
         try:
             items = await conn.fetch()
-        except Exception:  # noqa: BLE001 - logged here; the loop continues
+        except Exception:
+            # Logged here; the loop continues with the next job.
             logger.exception("auto_sync: '%s' fetch failed", connector)
             await conn.disconnect()
             reports.append({"connector": connector, "error": "fetch failed"})
@@ -159,7 +160,8 @@ async def _loop(engine: Any, interval: int, jobs: list[dict]) -> None:
     while True:
         try:
             await run_jobs_once(engine, jobs)
-        except Exception:  # noqa: BLE001 - the loop outlives any single tick
+        except Exception:
+            # Logged; the loop outlives any single tick.
             logger.exception("auto_sync: tick failed, retrying in %ss", interval)
         await asyncio.sleep(interval)
 
