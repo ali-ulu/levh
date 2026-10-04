@@ -53,7 +53,7 @@ export function AskPanel({ onViewSource }: { onViewSource?: (id: string) => void
             placeholder={t("askPanel.placeholder")}
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && ask()}
+            onKeyDown={(e) => e.key.toLowerCase() === "enter" && ask()}
           />
           <Button onClick={() => ask()} disabled={!question.trim() || loading}>
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : t("askPanel.ask")}
