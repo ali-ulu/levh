@@ -1,12 +1,12 @@
 # Shared / team memory server: tenancy, auth, storage (#302)
 
-Tarih: 2026-10-02 · Durum: kararlar alındı, faz 1 uygulandı · Tür: tasarım + karar kaydı
+Tarih: 2026-10-02 · Durum: faz 1 uygulandı; faz 2 temeli #395'te · Tür: tasarım + karar kaydı
 
 This is the design issue #302 asked for. It **proposes a shape**. The four
 questions it left open were delegated back to the agent and are now answered in
-"Open questions for the maintainer — answered" below; phase 1 of the recommended
-sequencing is implemented, and the rest stays a written decision until its
-trigger fires.
+"Open questions for the maintainer — answered" below. Phase 1 is implemented;
+#377 authorized the Phase 2 foundation, now implemented in #395. OIDC and a
+second backend remain written decisions until their triggers fire.
 
 `CONTRIBUTING.md` requires a design issue before any cloud, auth, billing, or
 workspace feature; no code lands until the maintainer agrees the direction here.
@@ -206,10 +206,9 @@ phase 1 is implemented against them.
 4. **Phase 1 is worth doing now.** *Yes*, because phase 1 is the only layer
    that is invisible to local users and irreversible-if-skipped: once a
    Postgres backend or a role system exists, a schema without `workspace_id`
-   encodes single-principal assumptions that are expensive to undo. Phases 2–4
-   still wait for their triggers. The counter-argument — no user has asked for
-   a shared server yet — is real, which is why nothing beyond the degenerate
-   case landed: no accounts, no roles enforced, no OIDC, no second backend.
+   encodes single-principal assumptions that are expensive to undo. #377 later
+   authorized the Phase 2 role/audit foundation; OIDC and a second backend
+   still wait for their deployment triggers.
 
 ### Phase 1 as implemented
 
@@ -245,7 +244,28 @@ Tests: `tests/test_workspace_tenancy.py` pins the single-user round trip
 unchanged, the cross-workspace invisibility of reads/counts/updates/deletes,
 the recall filter over the shared mirror, and the v3→v4 migration.
 
+### Phase 2 foundation as implemented (#395)
+
+- `server/core/tenancy.py` owns one fail-closed role vocabulary and
+  `authorize(action, workspace)`: viewer reads/recalls, editor mutates memory,
+  admin owns full-store export and backup/restore.
+- Memory-row queries enforce the role at the storage boundary, so a later route
+  cannot bypass the policy merely by forgetting a route-level check.
+- Viewer recall is automatically read-only: the historical reinforcement side
+  effect is skipped when the principal cannot update memory.
+- Schema v6 stamps each `recall_log` row with `workspace_id`,
+  `principal_id`, and `principal_role`. Existing v5 rows migrate losslessly
+  to the honest pre-identity default `default/local/admin`.
+- `GET /api/memories/{memory_id}/access-audit` answers who received a memory,
+  when, and at what rank, scoped to the current workspace.
+- Local mode remains the degenerate `local/default/admin` case. No OIDC or
+  account service is introduced by Phase 2.
+
+This is deliberately a foundation, not completion of #377. Agent-to-agent
+handoff, shared decision state, and conflict-mediated team coordination remain
+tracked by #377.
+
 ## Surface
 
-Storage / engine internals now; REST API, CLI and Dashboard only in phases 2–4.
-This document touches none of them.
+Phase 2 adds the read-only access-audit REST surface. OIDC/account UI and a
+second storage backend remain phases 3–4.
