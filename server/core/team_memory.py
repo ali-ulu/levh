@@ -52,11 +52,15 @@ class TeamMemoryService:
     @staticmethod
     def _decode_handoff(row) -> dict:
         out = dict(row)
-        try:
-            out["memory_ids"] = json.loads(out.pop("memory_ids_json") or "[]")
-        except (TypeError, json.JSONDecodeError):
-            out["memory_ids"] = []
-            out.pop("memory_ids_json", None)
+        for raw_key, parsed_key in (
+            ("memory_ids_json", "memory_ids"),
+            ("required_capabilities_json", "required_capabilities"),
+        ):
+            try:
+                out[parsed_key] = json.loads(out.pop(raw_key) or "[]")
+            except (TypeError, json.JSONDecodeError):
+                out[parsed_key] = []
+                out.pop(raw_key, None)
         return out
 
     @staticmethod
@@ -81,6 +85,8 @@ class TeamMemoryService:
         title: str,
         summary: str = "",
         memory_ids: list[str] | None = None,
+        required_capabilities: list[str] | None = None,
+        priority: int = 0,
     ) -> dict:
         actor = authorize("store", self._workspace())
         project = (project or "").strip()
@@ -92,7 +98,20 @@ class TeamMemoryService:
             raise ValueError("title is required")
         if not raw_target:
             raise ValueError("to_agent is required")
+        try:
+            priority = int(priority)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("priority must be an integer") from exc
+        if priority < -100 or priority > 100:
+            raise ValueError("priority must be between -100 and 100")
         target = normalize_agent(raw_target)
+        capabilities = []
+        seen_capabilities = set()
+        for capability in required_capabilities or []:
+            normalized = str(capability or "").strip().casefold()
+            if normalized and normalized not in seen_capabilities:
+                seen_capabilities.add(normalized)
+                capabilities.append(normalized)
 
         row = {
             "id": uuid.uuid4().hex,
@@ -104,23 +123,30 @@ class TeamMemoryService:
             "title": title,
             "summary": (summary or "").strip(),
             "memory_ids_json": json.dumps(memory_ids or []),
+            "required_capabilities_json": json.dumps(capabilities),
+            "priority": priority,
             "status": "pending",
             "created_at": _now(),
             "accepted_at": None,
             "accepted_by": None,
             "accepted_agent": None,
+            "accepted_session_id": None,
             "completed_at": None,
         }
         await self.db.conn.execute(
             """
             INSERT INTO team_handoffs
                 (id, workspace_id, project, from_principal_id, from_agent,
-                 to_agent, title, summary, memory_ids_json, status, created_at,
-                 accepted_at, accepted_by, accepted_agent, completed_at)
+                 to_agent, title, summary, memory_ids_json,
+                 required_capabilities_json, priority, status, created_at,
+                 accepted_at, accepted_by, accepted_agent, accepted_session_id,
+                 completed_at)
             VALUES
                 (:id, :workspace_id, :project, :from_principal_id, :from_agent,
-                 :to_agent, :title, :summary, :memory_ids_json, :status, :created_at,
-                 :accepted_at, :accepted_by, :accepted_agent, :completed_at)
+                 :to_agent, :title, :summary, :memory_ids_json,
+                 :required_capabilities_json, :priority, :status, :created_at,
+                 :accepted_at, :accepted_by, :accepted_agent, :accepted_session_id,
+                 :completed_at)
             """,
             row,
         )
