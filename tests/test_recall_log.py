@@ -25,6 +25,7 @@ import hashlib
 import json
 import logging
 import os
+import sqlite3
 import tempfile
 
 import pytest
@@ -34,6 +35,7 @@ os.environ["EMBEDDER_MODE"] = "hash"
 
 from server.core.db.recall_log import PRUNE_INTERVAL_SECONDS
 from server.core.engine.recall import MAX_QUERY_CHARS
+from server.core.database import CURRENT_SCHEMA_VERSION, Database
 from server.core.memory_engine import MemoryEngine
 from server.core.tenancy import Principal, bind_principal, reset_principal
 
@@ -383,3 +385,48 @@ async def test_stats_separate_volume_from_variety(engine):
     assert stats["newest"] >= stats["oldest"]
     assert json.dumps(stats, sort_keys=True), "stats must stay JSON-serialisable for the API"
 
+
+
+@pytest.mark.asyncio
+async def test_v5_recall_log_migrates_to_principal_audit_without_losing_rows(tmp_path):
+    path = str(tmp_path / "v5.db")
+    conn = sqlite3.connect(path)
+    conn.executescript(
+        """
+        CREATE TABLE recall_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            query TEXT NOT NULL,
+            query_sha256 TEXT NOT NULL,
+            result_ids TEXT NOT NULL,
+            result_count INTEGER NOT NULL,
+            top_k INTEGER NOT NULL,
+            project TEXT,
+            session_id TEXT,
+            reinforced INTEGER NOT NULL DEFAULT 0,
+            logged_at TEXT NOT NULL
+        );
+        INSERT INTO recall_log
+            (query, query_sha256, result_ids, result_count, top_k,
+             project, session_id, reinforced, logged_at)
+        VALUES
+            ('legacy question', 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+             '["legacy-memory"]', 1, 3, NULL, NULL, 0,
+             '2026-01-01T00:00:00+00:00');
+        PRAGMA user_version = 5;
+        """
+    )
+    conn.commit()
+    conn.close()
+
+    db = Database(path)
+    await db.connect()
+    try:
+        assert db.schema_version == CURRENT_SCHEMA_VERSION == 6
+        rows = await db.list_recall_log(limit=5)
+        assert len(rows) == 1
+        assert rows[0]["query"] == "legacy question"
+        assert rows[0]["workspace_id"] == "default"
+        assert rows[0]["principal_id"] == "local"
+        assert rows[0]["principal_role"] == "admin"
+    finally:
+        await db.close()
