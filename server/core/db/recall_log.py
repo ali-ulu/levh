@@ -110,7 +110,7 @@ class RecallLogQueries:
         cleaning up now should not wait for the throttle, and a test should not
         have to fake a clock.
         """
-        authorize("recall", current_workspace_id())
+        authorize("configure", current_workspace_id())
         if max_days <= 0:
             return 0
         cutoff = (datetime.now(timezone.utc) - timedelta(days=max_days)).isoformat()
