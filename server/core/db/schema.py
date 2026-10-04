@@ -35,7 +35,7 @@ def default_db_path() -> str:
     return os.path.abspath(get_env("SQLITE_DB_PATH", DEFAULT_DB_FILENAME))
 
 
-CURRENT_SCHEMA_VERSION = 8
+CURRENT_SCHEMA_VERSION = 9
 
 
 _TABLES = """
@@ -288,21 +288,24 @@ CREATE TABLE IF NOT EXISTS continuity_log (
 -- Team Memory collaboration layer (#377). Handoffs transfer work/context
 -- explicitly between agents; decisions provide a shared project ledger.
 CREATE TABLE IF NOT EXISTS team_handoffs (
-    id                TEXT PRIMARY KEY,
-    workspace_id      TEXT NOT NULL DEFAULT 'default',
-    project           TEXT NOT NULL,
-    from_principal_id TEXT NOT NULL,
-    from_agent        TEXT,
-    to_agent          TEXT NOT NULL,
-    title             TEXT NOT NULL,
-    summary           TEXT NOT NULL DEFAULT '',
-    memory_ids_json   TEXT NOT NULL DEFAULT '[]',
-    status            TEXT NOT NULL DEFAULT 'pending',
-    created_at        TEXT NOT NULL,
-    accepted_at       TEXT,
-    accepted_by       TEXT,
-    accepted_agent    TEXT,
-    completed_at      TEXT,
+    id                         TEXT PRIMARY KEY,
+    workspace_id               TEXT NOT NULL DEFAULT 'default',
+    project                    TEXT NOT NULL,
+    from_principal_id          TEXT NOT NULL,
+    from_agent                 TEXT,
+    to_agent                   TEXT NOT NULL,
+    title                      TEXT NOT NULL,
+    summary                    TEXT NOT NULL DEFAULT '',
+    memory_ids_json            TEXT NOT NULL DEFAULT '[]',
+    required_capabilities_json TEXT NOT NULL DEFAULT '[]',
+    priority                   INTEGER NOT NULL DEFAULT 0,
+    status                     TEXT NOT NULL DEFAULT 'pending',
+    created_at                 TEXT NOT NULL,
+    accepted_at                TEXT,
+    accepted_by                TEXT,
+    accepted_agent             TEXT,
+    accepted_session_id        TEXT,
+    completed_at               TEXT,
     CHECK (status IN ('pending', 'accepted', 'completed'))
 );
 
@@ -473,6 +476,8 @@ CREATE INDEX IF NOT EXISTS idx_team_handoffs_workspace_project
     ON team_handoffs(workspace_id, project, status, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_team_handoffs_target
     ON team_handoffs(workspace_id, to_agent, status, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_team_handoffs_schedule
+    ON team_handoffs(workspace_id, project, status, priority DESC, created_at ASC);
 CREATE INDEX IF NOT EXISTS idx_team_decisions_workspace_key
     ON team_decisions(workspace_id, project, decision_key, status, created_at DESC);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_team_decisions_one_active
