@@ -56,6 +56,7 @@ because it is a read that has to POST to carry its query.
 | DELETE | `/api/v1/memories/{memory_id}` | Delete a memory from all three layers |
 | PUT | `/api/v1/memories/{memory_id}` | Update content, importance, tags or project — routed through the admission gate |
 | POST | `/api/v1/memories/{memory_id}/feedback` | Learn from recall outcomes: helpful=true reinforces the memory, helpful=false weakens it so wrong/stale information… |
+| GET | `/api/v1/memories/{memory_id}/access-audit` | Recall access receipts for this memory: principal, role, workspace, rank and timestamp |
 | GET | `/api/v1/memories/{memory_id}/forgetting-curve` | Predicted retention curve for a memory — powers the 'memory strength' visualization in the dashboard's detail drawer |
 | PATCH | `/api/v1/memories/{memory_id}/pin` | Pin or unpin. Pinned memories never decay and always reach context files |
 | POST | `/api/v1/memories/{memory_id}/purge` | Hard-delete a memory across every layer and verify nothing survives. Pinned memories are purged too — this is a… |
