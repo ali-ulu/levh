@@ -434,6 +434,34 @@ async def test_v5_recall_log_migrates_to_principal_audit_without_losing_rows(tmp
             ('legacy question', 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
              '["legacy-memory"]', 1, 3, NULL, NULL, 0,
              '2026-01-01T00:00:00+00:00');
+
+        CREATE TABLE held_memories (
+            id TEXT PRIMARY KEY,
+            content TEXT NOT NULL,
+            importance REAL NOT NULL,
+            tags_json TEXT NOT NULL,
+            session_id TEXT,
+            project TEXT,
+            source TEXT,
+            memory_type TEXT NOT NULL,
+            pinned INTEGER NOT NULL DEFAULT 0,
+            metadata_json TEXT NOT NULL,
+            reasons_json TEXT NOT NULL,
+            max_similarity REAL NOT NULL,
+            status TEXT NOT NULL DEFAULT 'held',
+            created_at TEXT NOT NULL,
+            decided_at TEXT,
+            admitted_memory_id TEXT
+        );
+        INSERT INTO held_memories
+            (id, content, importance, tags_json, session_id, project, source,
+             memory_type, pinned, metadata_json, reasons_json, max_similarity,
+             status, created_at, decided_at, admitted_memory_id)
+        VALUES
+            ('legacy-held', 'legacy candidate', 0.7, '[]', NULL, 'legacy',
+             'import', 'episodic', 0, '{}', '["duplicate_near"]', 0.91,
+             'held', '2026-01-01T00:00:00+00:00', NULL, NULL);
+
         PRAGMA user_version = 5;
         """
     )
@@ -450,5 +478,10 @@ async def test_v5_recall_log_migrates_to_principal_audit_without_losing_rows(tmp
         assert rows[0]["workspace_id"] == "default"
         assert rows[0]["principal_id"] == "local"
         assert rows[0]["principal_role"] == "admin"
+
+        held = await db.list_held_memories()
+        assert len(held) == 1
+        assert held[0]["id"] == "legacy-held"
+        assert held[0]["workspace_id"] == "default"
     finally:
         await db.close()
