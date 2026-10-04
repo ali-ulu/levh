@@ -5,7 +5,7 @@
 ### i18n: move the Decisions page into the catalogue (#415)
 
 - Decisions page title, explanatory copy, range labels, and empty state now resolve through the existing `useT()` catalogue path.
-- Decision/project/source data stays dynamic; the UI-string ratchet for `src/app/decisions/page.tsx` drops from 10 to 1, leaving only the technical `connector:` prefix.
+- Decision/project/source data stays dynamic; the UI-string ratchet for `src/app/decisions/page.tsx` drops from 10 to 2, leaving only the technical `connector:` prefix and the single-token `hover:bg-accent` class false positive.
 
 
 ### i18n: move Privacy & Redaction settings into the catalogue (#413)
