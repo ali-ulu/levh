@@ -260,7 +260,7 @@ async def test_held_candidates_are_workspace_scoped_and_viewers_cannot_decide(en
 
 
 @pytest.mark.asyncio
-async def test_viewer_cannot_create_a_held_candidate(engine):
+async def test_viewer_cannot_run_admission_or_bulk_ingest(engine):
     _force_review(engine)
     token = bind_principal(
         Principal(id="reader", workspace_id="default", role="viewer")
@@ -268,10 +268,18 @@ async def test_viewer_cannot_create_a_held_candidate(engine):
     try:
         with pytest.raises(AuthorizationError):
             await engine.admit_memory(content=NORMAL)
+        with pytest.raises(AuthorizationError):
+            await engine.ingest_items(
+                [{"content": NORMAL}],
+                connector="github",
+            )
+        with pytest.raises(AuthorizationError):
+            await engine.import_memories_gated([{"content": NORMAL}])
     finally:
         reset_principal(token)
 
     assert await engine.db.list_held_memories() == []
+    assert await engine.list_sync_state() == []
 
 
 @pytest.mark.asyncio
