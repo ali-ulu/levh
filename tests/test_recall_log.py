@@ -37,7 +37,7 @@ from server.core.db.recall_log import PRUNE_INTERVAL_SECONDS
 from server.core.engine.recall import MAX_QUERY_CHARS
 from server.core.database import CURRENT_SCHEMA_VERSION, Database
 from server.core.memory_engine import MemoryEngine
-from server.core.tenancy import Principal, bind_principal, reset_principal
+from server.core.tenancy import AuthorizationError, Principal, bind_principal, reset_principal
 
 SECRET = "sk-proj-abc123DEF456ghi789JKL0"
 
@@ -385,6 +385,28 @@ async def test_stats_separate_volume_from_variety(engine):
     assert stats["newest"] >= stats["oldest"]
     assert json.dumps(stats, sort_keys=True), "stats must stay JSON-serialisable for the API"
 
+
+
+@pytest.mark.asyncio
+async def test_recall_log_pruning_is_admin_only(engine):
+    await engine.db.recall_log.record_recall(
+        {
+            "query": "keep audit evidence protected",
+            "query_sha256": "b" * 64,
+            "result_ids": [],
+            "result_count": 0,
+            "top_k": 3,
+        }
+    )
+
+    token = bind_principal(
+        Principal(id="reader", workspace_id="default", role="viewer")
+    )
+    try:
+        with pytest.raises(AuthorizationError):
+            await engine.db.prune_recall_log(max_days=1)
+    finally:
+        reset_principal(token)
 
 
 @pytest.mark.asyncio
