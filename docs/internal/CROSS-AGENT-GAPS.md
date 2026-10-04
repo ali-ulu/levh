@@ -28,9 +28,10 @@ kararları kalıcı tutabilmesi ve çelişkileri sessizce ezmeden yönetebilmesi
 | Agent presence/checkpoint tenancy | `agent_sessions.workspace_id`, `agent_checkpoints.workspace_id` |
 | Agent-to-agent handoff | `server/core/team_memory.py`, `team_handoffs`, `/api/v1/team/handoffs` |
 | Shared decision ledger | `team_decisions`, `/api/v1/team/decisions` |
-| Çelişki yönetimi | Aynı `project + decision_key` için farklı aktif kararlar `contested`; otomatik kazanan yok |
-| Explicit resolution | Admin seçimiyle bir karar `active`, diğerleri `superseded` |
-| Collaboration summary | Presence + checkpoints + handoffs + decisions + pending/contested sayaçları |
+| Anahtar-temelli çelişki | Aynı `project + decision_key` için farklı aktif kararlar `contested`; otomatik kazanan yok |
+| Semantic decision conflict | Farklı key'lerdeki kararlar `opposition + shared topic anchor` kuralıyla candidate olur |
+| Explicit resolution | Aynı-key contest admin seçimiyle çözülür; semantic candidate admin review ile confirm/dismiss/resolve edilir |
+| Collaboration summary | Presence + checkpoints + handoffs + decisions + açık semantic conflict adayları ve sayaçları |
 
 **Önemli semantik:** Bu katman da mevcut conflict motoru gibi **signal, not
 verdict** ilkesini korur. İki ajan aynı karar anahtarına farklı ifadeler
@@ -39,10 +40,10 @@ yazdığında sistem son yazanı sessizce kazanan ilan etmez. Her iki öneri de
 
 **Kalan gerçek boşluklar:**
 
-- Shared decision conflict şu anda **anahtar-temelli deterministik** koordinasyon:
-  `decision_key` aynıysa çatışma görünür. Serbest metin kararlar arasında
-  semantik conflict detection henüz `memory_conflict_candidates` ile
-  birleştirilmedi.
+- Semantic decision conflict artık farklı key'lerdeki serbest metin kararları
+  tarar, ancak **candidate only** kalır: opposition sinyali + anlamlı topic
+  overlap gerekir. LLM veya otomatik truth verdict yoktur; yanlış pozitiften
+  kaçınmak için topic anchor yoksa aday üretilmez.
 - Handoff bir durable ledger ve lifecycle sağlar; otomatik görev planlayıcı /
   ajan seçici değildir. Kimin işi alacağı caller veya operatör kararıdır.
 - OIDC/account provisioning hâlâ shared-server tasarımının ayrı opt-in fazıdır;
