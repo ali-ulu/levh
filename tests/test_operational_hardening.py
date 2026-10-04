@@ -408,11 +408,17 @@ def test_doctor_fails_on_tokenless_override_with_non_loopback_bind(tmp_path, mon
     """The compose override plus a widened bind must not pass silently."""
     from server.auth import ALLOW_REMOTE_WITHOUT_TOKEN_ENV
     from server.cli import cmd_doctor
+    from server.commands.doctor import NO_LIVE_PROBE_ENV
 
     monkeypatch.setenv("SQLITE_DB_PATH", str(tmp_path / "doctor-remote.db"))
     monkeypatch.setenv("EMBEDDER_MODE", "hash")
     monkeypatch.delenv("LEVH_TOKEN", raising=False)
     monkeypatch.setenv(ALLOW_REMOTE_WITHOUT_TOKEN_ENV, "true")
+    # The live probe answers whoever listens on the candidate ports — on a
+    # dev machine an unrelated server on 8000 — which darkened the FAIL
+    # assertion below. These tests assert the argv/config path, so the probe
+    # stays off (issue #389).
+    monkeypatch.setenv(NO_LIVE_PROBE_ENV, "1")
 
     # The override alone, on the default loopback bind, stays a warning.
     assert cmd_doctor(argparse.Namespace()) == 0

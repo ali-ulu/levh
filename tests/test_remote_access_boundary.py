@@ -364,10 +364,16 @@ def test_doctor_fails_when_argv_binds_non_loopback(
     Reading config printed WARN while the socket was open to every interface.
     The bind now comes from argv, so the check reaches FAIL. No server answers
     on the ephemeral port, so the live probe returns None and argv decides.
+
+    The probe is opted out, not merely pointed at a silent port: pointing at
+    port 1 still leaves the 8000/9000 fallbacks answering whatever unrelated
+    server the machine runs, which darkened this test on a dev box (issue
+    #389).
     """
     import argparse
 
     from server.cli import cmd_doctor
+    from server.commands.doctor import NO_LIVE_PROBE_ENV
 
     monkeypatch.setenv("SQLITE_DB_PATH", str(tmp_path / "doctor-156.db"))
     monkeypatch.setenv("EMBEDDER_MODE", "hash")
@@ -376,6 +382,7 @@ def test_doctor_fails_when_argv_binds_non_loopback(
     monkeypatch.delenv("LEVH_API_HOST", raising=False)
     monkeypatch.delenv("API_HOST", raising=False)
     monkeypatch.setenv("API_PORT", "1")  # nothing listens on port 1
+    monkeypatch.setenv(NO_LIVE_PROBE_ENV, "1")  # ...nor may the fallbacks answer
     monkeypatch.setattr("sys.argv", ["levh", "serve", "--host", "0.0.0.0"])
 
     assert cmd_doctor(argparse.Namespace()) == 1
@@ -393,6 +400,7 @@ def test_doctor_still_warns_on_the_loopback_default(
     import argparse
 
     from server.cli import cmd_doctor
+    from server.commands.doctor import NO_LIVE_PROBE_ENV
 
     monkeypatch.setenv("SQLITE_DB_PATH", str(tmp_path / "doctor-156b.db"))
     monkeypatch.setenv("EMBEDDER_MODE", "hash")
@@ -401,6 +409,9 @@ def test_doctor_still_warns_on_the_loopback_default(
     monkeypatch.delenv("LEVH_API_HOST", raising=False)
     monkeypatch.delenv("API_HOST", raising=False)
     monkeypatch.setenv("API_PORT", "1")
+    # Hermetic like the FAIL case above: a loopback server on a fallback port
+    # would also read WARN, but the test must not depend on one answering.
+    monkeypatch.setenv(NO_LIVE_PROBE_ENV, "1")
     monkeypatch.setattr("sys.argv", ["levh", "serve"])
 
     assert cmd_doctor(argparse.Namespace()) == 0
@@ -452,6 +463,48 @@ def test_doctor_prefers_what_a_live_server_reports(
         assert "Remote access" in failure
         assert "FAIL" in failure
         assert "0.0.0.0" in failure
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+
+def test_doctor_live_probe_opt_out_ignores_a_running_server(
+    tmp_path, monkeypatch: pytest.MonkeyPatch, capsys
+) -> None:
+    """The opt-out pins the probe skip even while a server answers (#389).
+
+    A server reporting a non-loopback bind is reachable on the configured
+    port, so without the opt-out the check reaches FAIL. With it the probe
+    stays silent and argv's loopback bind decides: WARN, verdict OK.
+    """
+    import argparse
+    import threading
+
+    from server.cli import cmd_doctor
+    from server.commands.doctor import NO_LIVE_PROBE_ENV
+
+    server = _health_server()
+    port = server.server_address[1]
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        monkeypatch.setenv("SQLITE_DB_PATH", str(tmp_path / "doctor-389.db"))
+        monkeypatch.setenv("EMBEDDER_MODE", "hash")
+        monkeypatch.delenv("LEVH_TOKEN", raising=False)
+        monkeypatch.setenv(ALLOW_REMOTE_WITHOUT_TOKEN_ENV, "true")
+        monkeypatch.delenv("LEVH_API_HOST", raising=False)
+        monkeypatch.delenv("API_HOST", raising=False)
+        monkeypatch.setenv("API_PORT", str(port))
+        # argv claims loopback; only the running server knows better.
+        monkeypatch.setattr("sys.argv", ["levh", "serve"])
+        monkeypatch.setenv(NO_LIVE_PROBE_ENV, "1")
+
+        assert cmd_doctor(argparse.Namespace()) == 0
+        output = capsys.readouterr().out
+        assert "Remote access" in output
+        assert "WARN" in output
+        assert "Verdict: OK" in output
     finally:
         server.shutdown()
         server.server_close()
