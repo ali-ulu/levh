@@ -179,5 +179,15 @@
   "settings.trustProvenance.recomputeFailed": "Recompute failed",
   "settings.trustProvenance.lowTrustFailed": "Low-trust lookup failed",
   "settings.trustProvenance.unknownSource": "unknown",
-  "settings.trustProvenance.sourceLabel": "{source} source"
+  "settings.trustProvenance.sourceLabel": "{source} source",
+  "settings.privacyRedaction.title": "Privacy & Redaction",
+  "settings.privacyRedaction.description": "Scan stored memories for secrets (credentials, tokens, API keys) that slipped in before the admission gate existed, and strip them in place.",
+  "settings.privacyRedaction.scan": "Scan for secrets",
+  "settings.privacyRedaction.redactAll": "Redact all",
+  "settings.privacyRedaction.confirmRedactAll": "Redact secrets from all flagged memories? This rewrites their content in place.",
+  "settings.privacyRedaction.scanFailed": "Scan failed",
+  "settings.privacyRedaction.redactResult": "Redacted {redacted} of {scanned} memories.",
+  "settings.privacyRedaction.redactionFailed": "Redaction failed",
+  "settings.privacyRedaction.scanned": "Scanned {count} memories —",
+  "settings.privacyRedaction.flagged": "{count} flagged"
 }

@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### i18n: move Privacy & Redaction settings into the catalogue (#413)
+
+- Privacy & Redaction title, explanatory copy, actions, confirmation, counters, and runtime result/error messages now resolve through the existing `useT()` catalogue path.
+- Server-provided secret types and previews remain dynamic data; the UI-string ratchet entry for `src/app/settings/_sections/privacy-redaction.tsx` drops from 10 to 0.
+
+
 ### i18n: move Trust & Provenance settings into the catalogue (#411)
 
 - Trust & Provenance title, explanatory copy, action/counter labels, fallback errors, and source fallback copy now resolve through the existing `useT()` catalogue path.

@@ -5,9 +5,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { api } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 import { Loader2, ShieldAlert } from "lucide-react";
 
 export function PrivacyRedaction() {
+    const t = useT();
     const [secretsScanBusy, setSecretsScanBusy] = useState(false);
     const [secretsAudit, setSecretsAudit] = useState<{
       scanned: number;
@@ -25,23 +27,23 @@ export function PrivacyRedaction() {
         const r = await api.auditSecrets();
         setSecretsAudit(r.audit);
       } catch (e) {
-        setSecretsError(e instanceof Error ? e.message : "Scan failed");
+        setSecretsError(e instanceof Error ? e.message : t("settings.privacyRedaction.scanFailed"));
       }
       setSecretsScanBusy(false);
     };
     const runRedactAll = async () => {
       if (redactAllBusy) return;
-      if (!window.confirm("Redact secrets from all flagged memories? This rewrites their content in place.")) {
+      if (!window.confirm(t("settings.privacyRedaction.confirmRedactAll"))) {
         return;
       }
       setRedactAllBusy(true);
       setRedactAllResult("");
       try {
         const r = await api.redactAll(true);
-        setRedactAllResult(`Redacted ${r.redacted} of ${r.scanned} memories.`);
+        setRedactAllResult(t("settings.privacyRedaction.redactResult", { redacted: r.redacted, scanned: r.scanned }));
         await runAuditSecrets();
       } catch (e) {
-        setRedactAllResult(e instanceof Error ? e.message : "Redaction failed");
+        setRedactAllResult(e instanceof Error ? e.message : t("settings.privacyRedaction.redactionFailed"));
       }
       setRedactAllBusy(false);
     };
@@ -51,18 +53,17 @@ export function PrivacyRedaction() {
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <ShieldAlert className="h-4 w-4" />
-            Privacy &amp; Redaction
+            {t("settings.privacyRedaction.title")}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-xs text-muted-foreground">
-            Scan stored memories for secrets (credentials, tokens, API keys) that slipped in
-            before the admission gate existed, and strip them in place.
+            {t("settings.privacyRedaction.description")}
           </p>
           <div className="flex items-center gap-2">
             <Button variant="outline" onClick={runAuditSecrets} disabled={secretsScanBusy}>
               {secretsScanBusy && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Scan for secrets
+              {t("settings.privacyRedaction.scan")}
             </Button>
             <Button
               variant="outline"
@@ -70,7 +71,7 @@ export function PrivacyRedaction() {
               disabled={redactAllBusy || !secretsAudit || secretsAudit.flagged === 0}
             >
               {redactAllBusy && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Redact all
+              {t("settings.privacyRedaction.redactAll")}
             </Button>
             {secretsError && <span className="text-xs text-destructive">{secretsError}</span>}
           </div>
@@ -80,9 +81,9 @@ export function PrivacyRedaction() {
           {secretsAudit && (
             <div className="space-y-2 pt-2 border-t">
               <p className="text-xs text-muted-foreground">
-                Scanned {secretsAudit.scanned} memories —{" "}
+                {t("settings.privacyRedaction.scanned", { count: secretsAudit.scanned })}{" "}
                 <span className={secretsAudit.flagged > 0 ? "text-amber-600 dark:text-amber-500" : ""}>
-                  {secretsAudit.flagged} flagged
+                  {t("settings.privacyRedaction.flagged", { count: secretsAudit.flagged })}
                 </span>
                 .
               </p>
