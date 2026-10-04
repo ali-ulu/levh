@@ -17,6 +17,7 @@ import pytest
 import pytest_asyncio
 
 from server.core.memory_engine import MemoryEngine
+from server.core.tenancy import AuthorizationError, Principal, bind_principal, reset_principal
 
 NORMAL = "Atlas production database uses PostgreSQL with daily backups"
 SECRET = "password=hunter2 for the production database"
@@ -219,6 +220,58 @@ async def test_a_missing_or_decided_candidate_answers_clearly(engine):
     held_id = (await engine.admit_memory(content=NORMAL))["held_id"]
     await engine.discard_held_memory(held_id)
     assert (await engine.admit_held_memory(held_id))["error"] == "already_decided"
+
+
+@pytest.mark.asyncio
+async def test_held_candidates_are_workspace_scoped_and_viewers_cannot_decide(engine):
+    _force_review(engine)
+
+    token = bind_principal(
+        Principal(id="writer-a", workspace_id="team-a", role="editor")
+    )
+    try:
+        held_id = (await engine.admit_memory(content=NORMAL))["held_id"]
+        assert held_id
+        assert (await engine.db.get_held_memory(held_id))["workspace_id"] == "team-a"
+    finally:
+        reset_principal(token)
+
+    # The default workspace cannot see another team's review queue.
+    assert await engine.db.get_held_memory(held_id) is None
+    assert await engine.db.list_held_memories() == []
+
+    token = bind_principal(
+        Principal(id="reader-a", workspace_id="team-a", role="viewer")
+    )
+    try:
+        assert (await engine.db.get_held_memory(held_id))["content"] == NORMAL
+        with pytest.raises(AuthorizationError):
+            await engine.discard_held_memory(held_id)
+    finally:
+        reset_principal(token)
+
+    token = bind_principal(
+        Principal(id="writer-a", workspace_id="team-a", role="editor")
+    )
+    try:
+        assert (await engine.discard_held_memory(held_id))["ok"] is True
+    finally:
+        reset_principal(token)
+
+
+@pytest.mark.asyncio
+async def test_viewer_cannot_create_a_held_candidate(engine):
+    _force_review(engine)
+    token = bind_principal(
+        Principal(id="reader", workspace_id="default", role="viewer")
+    )
+    try:
+        with pytest.raises(AuthorizationError):
+            await engine.admit_memory(content=NORMAL)
+    finally:
+        reset_principal(token)
+
+    assert await engine.db.list_held_memories() == []
 
 
 @pytest.mark.asyncio
