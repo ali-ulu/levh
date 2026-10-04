@@ -21,6 +21,7 @@ from datetime import datetime, timezone
 from typing import Callable
 
 from .agent_identity import normalize_agent
+from .conflict import decision_candidate_confidence, decision_conflict_signal
 from .database import Database
 from .tenancy import AuthorizationError, authorize, current_workspace_id
 
@@ -56,6 +57,20 @@ class TeamMemoryService:
         except (TypeError, json.JSONDecodeError):
             out["memory_ids"] = []
             out.pop("memory_ids_json", None)
+        return out
+
+    @staticmethod
+    def _decode_decision_conflict(row) -> dict:
+        out = dict(row)
+        for raw_key, parsed_key, fallback in (
+            ("shared_topics_json", "shared_topics", []),
+            ("explanation_json", "explanation", {}),
+        ):
+            try:
+                out[parsed_key] = json.loads(out.pop(raw_key) or json.dumps(fallback))
+            except (TypeError, json.JSONDecodeError):
+                out[parsed_key] = fallback
+                out.pop(raw_key, None)
         return out
 
     async def create_handoff(
@@ -385,6 +400,224 @@ class TeamMemoryService:
             params,
         )
         return [dict(row) for row in await cursor.fetchall()]
+
+    async def detect_decision_conflicts(
+        self,
+        *,
+        project: str | None = None,
+    ) -> dict:
+        """Scan differently-labelled live decisions for review-worthy conflicts."""
+        actor = authorize("update", self._workspace())
+        now = _now()
+
+        # An open candidate stops being actionable when either linked decision
+        # is superseded/deleted. Reviewed candidates remain immutable audit.
+        stale_cursor = await self.db.conn.execute(
+            """
+            UPDATE team_decision_conflict_candidates
+               SET status = 'resolved',
+                   reviewed_at = COALESCE(reviewed_at, ?),
+                   reviewed_by = COALESCE(reviewed_by, 'system')
+             WHERE workspace_id = ? AND status = 'open'
+               AND (
+                   NOT EXISTS (
+                       SELECT 1 FROM team_decisions d
+                        WHERE d.id = decision_id_a
+                          AND d.workspace_id = team_decision_conflict_candidates.workspace_id
+                          AND d.status IN ('active', 'contested')
+                   )
+                   OR NOT EXISTS (
+                       SELECT 1 FROM team_decisions d
+                        WHERE d.id = decision_id_b
+                          AND d.workspace_id = team_decision_conflict_candidates.workspace_id
+                          AND d.status IN ('active', 'contested')
+                   )
+               )
+            """,
+            (now, actor.workspace_id),
+        )
+
+        clauses = [
+            "workspace_id = ?",
+            "status IN ('active', 'contested')",
+        ]
+        params: list[object] = [actor.workspace_id]
+        if project:
+            clauses.append("project = ?")
+            params.append(project)
+        cursor = await self.db.conn.execute(
+            f"""SELECT * FROM team_decisions
+                WHERE {' AND '.join(clauses)}
+                ORDER BY project, created_at, rowid""",  # nosec B608
+            params,
+        )
+        decisions = [dict(row) for row in await cursor.fetchall()]
+
+        new_candidates = 0
+        pairs_examined = 0
+        for index, first in enumerate(decisions):
+            for second in decisions[index + 1 :]:
+                if first["project"] != second["project"]:
+                    continue
+                pairs_examined += 1
+                signal = decision_conflict_signal(
+                    first["decision_key"],
+                    first["statement"],
+                    second["decision_key"],
+                    second["statement"],
+                )
+                if signal is None:
+                    continue
+
+                signal_type, detail, shared_topics = signal
+                ordered = sorted((first["id"], second["id"]))
+                by_id = {first["id"]: first, second["id"]: second}
+                a, b = by_id[ordered[0]], by_id[ordered[1]]
+                distinct_agents = bool(
+                    a.get("created_agent")
+                    and b.get("created_agent")
+                    and a.get("created_agent") != b.get("created_agent")
+                )
+                confidence = decision_candidate_confidence(
+                    signal_type,
+                    len(shared_topics),
+                    distinct_agents,
+                )
+                row = {
+                    "id": f"{ordered[0]}|{ordered[1]}",
+                    "workspace_id": actor.workspace_id,
+                    "project": a["project"],
+                    "decision_id_a": ordered[0],
+                    "decision_id_b": ordered[1],
+                    "signal_type": signal_type,
+                    "confidence": confidence,
+                    "shared_topics_json": json.dumps(shared_topics),
+                    "explanation_json": json.dumps(
+                        {
+                            "signal_detail": detail,
+                            "decision_key_a": a["decision_key"],
+                            "decision_key_b": b["decision_key"],
+                            "created_agent_a": a.get("created_agent"),
+                            "created_agent_b": b.get("created_agent"),
+                            "rule": "opposition + shared topic anchor",
+                            "verdict": "candidate only",
+                        }
+                    ),
+                    "status": "open",
+                    "created_at": now,
+                    "reviewed_at": None,
+                    "reviewed_by": None,
+                }
+                inserted = await self.db.conn.execute(
+                    """
+                    INSERT OR IGNORE INTO team_decision_conflict_candidates
+                        (id, workspace_id, project, decision_id_a, decision_id_b,
+                         signal_type, confidence, shared_topics_json,
+                         explanation_json, status, created_at, reviewed_at,
+                         reviewed_by)
+                    VALUES
+                        (:id, :workspace_id, :project, :decision_id_a, :decision_id_b,
+                         :signal_type, :confidence, :shared_topics_json,
+                         :explanation_json, :status, :created_at, :reviewed_at,
+                         :reviewed_by)
+                    """,
+                    row,
+                )
+                if inserted.rowcount == 1:
+                    new_candidates += 1
+                    self._emit(
+                        "team_decision_conflict_candidate",
+                        self._decode_decision_conflict(row),
+                    )
+
+        await self.db.conn.commit()
+        cursor = await self.db.conn.execute(
+            """
+            SELECT COUNT(*) FROM team_decision_conflict_candidates
+             WHERE workspace_id = ? AND status = 'open'
+            """,
+            (actor.workspace_id,),
+        )
+        open_total = int((await cursor.fetchone())[0])
+        return {
+            "new_candidates": new_candidates,
+            "pairs_examined": pairs_examined,
+            "open_total": open_total,
+            "stale_resolved": max(0, int(stale_cursor.rowcount)),
+        }
+
+    async def list_decision_conflicts(
+        self,
+        *,
+        project: str | None = None,
+        status: str | None = "open",
+        limit: int = 100,
+    ) -> list[dict]:
+        authorize("read", self._workspace())
+        clauses = ["workspace_id = ?"]
+        params: list[object] = [self._workspace()]
+        if project:
+            clauses.append("project = ?")
+            params.append(project)
+        if status:
+            clauses.append("status = ?")
+            params.append(status)
+        params.append(max(1, min(int(limit), 1000)))
+        cursor = await self.db.conn.execute(
+            f"""SELECT * FROM team_decision_conflict_candidates
+                WHERE {' AND '.join(clauses)}
+                ORDER BY created_at DESC, rowid DESC
+                LIMIT ?""",  # nosec B608
+            params,
+        )
+        return [
+            self._decode_decision_conflict(row)
+            for row in await cursor.fetchall()
+        ]
+
+    async def review_decision_conflict(
+        self,
+        conflict_id: str,
+        action: str,
+    ) -> dict:
+        actor = authorize("configure", self._workspace())
+        statuses = {
+            "dismiss": "dismissed",
+            "confirm": "confirmed",
+            "resolve": "resolved",
+        }
+        if action not in statuses:
+            raise ValueError("action must be dismiss, confirm, or resolve")
+
+        cursor = await self.db.conn.execute(
+            """
+            UPDATE team_decision_conflict_candidates
+               SET status = ?, reviewed_at = ?, reviewed_by = ?
+             WHERE id = ? AND workspace_id = ?
+            """,
+            (
+                statuses[action],
+                _now(),
+                actor.id,
+                conflict_id,
+                actor.workspace_id,
+            ),
+        )
+        await self.db.conn.commit()
+        if cursor.rowcount != 1:
+            raise KeyError("decision conflict not found")
+        cursor = await self.db.conn.execute(
+            """
+            SELECT * FROM team_decision_conflict_candidates
+             WHERE id = ? AND workspace_id = ?
+            """,
+            (conflict_id, actor.workspace_id),
+        )
+        row = await cursor.fetchone()
+        assert row is not None
+        result = self._decode_decision_conflict(row)
+        self._emit("team_decision_conflict_reviewed", result)
+        return result
 
     async def resolve_decision(self, decision_id: str) -> dict:
         actor = authorize("configure", self._workspace())
