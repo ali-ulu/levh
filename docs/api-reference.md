@@ -149,6 +149,9 @@ because it is a read that has to POST to carry its query.
 | GET | `/api/v1/agents/collaboration/{project}` | Get collaboration info for agents on the same project |
 | POST | `/api/v1/team/handoffs` | Create a workspace-scoped work/context handoff to another agent |
 | GET | `/api/v1/team/handoffs` | List team handoffs by project, status, or target agent |
+| GET | `/api/v1/team/handoffs/matches` | Preview capability-aware handoff matches for online agents |
+| POST | `/api/v1/team/handoffs/claim` | Atomically claim the best eligible handoff for one online agent session |
+| POST | `/api/v1/team/handoffs/dispatch` | Admin-triggered deterministic dispatch to opt-in online agents |
 | POST | `/api/v1/team/handoffs/{handoff_id}/accept` | Accept a pending handoff addressed to the current agent |
 | POST | `/api/v1/team/handoffs/{handoff_id}/complete` | Mark an accepted handoff complete |
 | POST | `/api/v1/team/decisions` | Record a shared project decision; conflicting statements become contested |
