@@ -98,18 +98,17 @@ The honest warning from the architecture analysis stands: this is the hardest
 option, because it forces the provenance model and the trust model to be
 designed on purpose rather than inherited from a single principal.
 
-### B0. A federation envelope, offline first
+### B0. A federation envelope, offline first — complete
 
-Before any networking: define a bundle (peers, provenance, signature) and round
-it trip through `import_memories_gated` in a test with admitted, rejected and
-review-held entries — assert admitted entries persist, rejected entries do not,
-and review-held entries reach `hold_for_review`. An admitted-only bundle would
-pass while a later implementation persisted exactly the entries the gate exists
-to stop, so exercising all three outcomes is what makes "nothing bypasses the
-gate" a testable claim rather than an intention. If a peer's bundle cannot be
-distinguished from a local write after import, the design is not ready for a
-socket. Next step: spec the envelope in #302; land it as an offline format with
-a fixture, no transport.
+The signed offline envelope is complete through #338/#356/#357 and the B0
+acceptance proof is closed by #425. Federation import verifies the envelope
+before writing, then stamps the verified node id, signature algorithm and
+envelope timestamp into every candidate's `metadata.federation`, overwriting
+any sender-supplied spoofed value. One deterministic bundle test drives
+`import_memories_gated` through admitted, rejected and review-held outcomes:
+admitted entries persist with verified provenance, rejected entries do not
+persist, and review-held entries retain the same provenance in
+`held_memories`. No network transport is introduced in B0.
 
 ### B1. Exchange transport
 

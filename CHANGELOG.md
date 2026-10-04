@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Federation B0 provenance and admission proof (#425)
+
+- Signed federation imports now stamp verified node, algorithm, and envelope timestamp provenance onto every candidate after signature verification, overwriting sender-supplied federation metadata.
+- Admitted and review-held peer memories retain the verified provenance; rejected candidates do not persist.
+- A deterministic single-bundle regression covers admit, reject, and review-held paths through `import_memories_gated`, completing the offline B0 proof without adding network transport.
+
+
 ### Feature: deliver the continuity-start directive through MCP instructions (#423)
 
 - Stdio and SSE now publish one shared MCP server instruction asking clients to call `get_continuity_brief` before work begins; the tool is present even in the minimal profile.

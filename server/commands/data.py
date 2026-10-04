@@ -173,10 +173,20 @@ def cmd_federation_import(args: argparse.Namespace) -> int:
             print("  rejected envelope: bundle carries no memories array", file=sys.stderr)
             return 1
 
+        verified_federation = {
+            "verified": True,
+            "node_id": envelope["node_id"],
+            "algorithm": envelope["algorithm"],
+            "created_at": envelope["created_at"],
+        }
+
         engine = engine_provider.get_engine()
         await engine.initialize()
         try:
-            result = await engine.import_memories_gated(memories)
+            result = await engine.import_memories_gated(
+                memories,
+                verified_federation=verified_federation,
+            )
         finally:
             await engine.shutdown()
 

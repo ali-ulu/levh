@@ -217,6 +217,91 @@ def test_ed25519_verification_accepts_the_sender_private_key():
         os.unlink(priv)
 
 
+def test_verified_federation_bundle_exercises_admit_reject_and_review(tmp_path):
+    """One peer bundle must prove all three admission outcomes for B0 (#425)."""
+    from server.core.admission import evaluate
+    from server.core.memory_engine import MemoryEngine
+
+    engine = MemoryEngine(
+        db_path=str(tmp_path / "b0.db"),
+        embedder_mode="hash",
+        short_term_max=10,
+    )
+
+    async def _run() -> None:
+        await engine.initialize()
+        try:
+            async def deterministic_gate(content, project=None, min_length=3, exclude_id=None):
+                del project, min_length, exclude_id
+                if content.startswith("REJECT"):
+                    return evaluate(content, max_similarity=0.99)
+                if content.startswith("REVIEW"):
+                    return evaluate(content, max_similarity=0.95)
+                return evaluate(content, max_similarity=0.0)
+
+            engine.evaluate_admission = deterministic_gate
+            verified = {
+                "verified": True,
+                "node_id": "peer-a",
+                "algorithm": "ed25519",
+                "created_at": "2026-10-04T20:00:00+00:00",
+            }
+            spoof = {
+                "verified": True,
+                "node_id": "spoofed-sender",
+                "algorithm": "hmac-sha256",
+                "created_at": "1900-01-01T00:00:00+00:00",
+            }
+            result = await engine.import_memories_gated(
+                [
+                    {
+                        "id": "fed-admit",
+                        "content": "ADMIT peer fact that is safe to store",
+                        "memory_type": "episodic",
+                        "metadata": {"federation": spoof},
+                    },
+                    {
+                        "id": "fed-reject",
+                        "content": "REJECT duplicate peer fact",
+                        "memory_type": "episodic",
+                        "metadata": {"federation": spoof},
+                    },
+                    {
+                        "id": "fed-review",
+                        "content": "REVIEW near-duplicate peer fact",
+                        "memory_type": "episodic",
+                        "metadata": {"federation": spoof},
+                    },
+                ],
+                verified_federation=verified,
+            )
+
+            assert result == {
+                "imported": 1,
+                "redacted": 0,
+                "duplicates": 1,
+                "held": 1,
+                "errors": 0,
+                "gated": True,
+            }
+
+            admitted = await engine.episodic.get("fed-admit")
+            assert admitted is not None
+            assert admitted.metadata["federation"] == verified
+            assert await engine.episodic.get("fed-reject") is None
+            assert await engine.episodic.get("fed-review") is None
+
+            held = await engine.db.list_held_memories(limit=10)
+            assert len(held) == 1
+            assert held[0]["content"] == "REVIEW near-duplicate peer fact"
+            held_metadata = json.loads(held[0]["metadata_json"])
+            assert held_metadata["federation"] == verified
+        finally:
+            await engine.shutdown()
+
+    asyncio.run(_run())
+
+
 class TestFederationCli:
     """The CLI pair is what an operator actually runs; exercise it end to end.
 
@@ -285,22 +370,49 @@ class TestFederationCli:
         finally:
             engine_provider.set_engine(None)
 
-    def _seed_src(self, tmp_path, content):
+    def _seed_src(self, tmp_path, content, metadata=None):
         src = self._engine(tmp_path, "src.db")
         try:
-            asyncio.run(src.store(content, memory_type="episodic"))
+            asyncio.run(
+                src.store(
+                    content,
+                    memory_type="episodic",
+                    metadata=metadata,
+                )
+            )
         finally:
             asyncio.run(src.shutdown())
 
     def test_export_then_import_round_trips(self, tmp_path):
-        self._seed_src(tmp_path, "the build server listens on port 8930")
+        self._seed_src(
+            tmp_path,
+            "the build server listens on port 8930",
+            metadata={
+                "federation": {
+                    "verified": True,
+                    "node_id": "spoofed-sender",
+                    "algorithm": "ed25519",
+                    "created_at": "1900-01-01T00:00:00+00:00",
+                }
+            },
+        )
         rc, envelope, key = self._export(tmp_path)
         assert rc == 0
         assert json.load(open(envelope, encoding="utf-8"))["node_id"] == "workstation"
 
         assert self._import(tmp_path, envelope, key) == 0
-        contents = [m.content for m in self._stored(tmp_path, "dst.db")]
+        stored = self._stored(tmp_path, "dst.db")
+        contents = [m.content for m in stored]
         assert any("port 8930" in c for c in contents), contents
+        imported = next(m for m in stored if "port 8930" in m.content)
+        provenance = imported.metadata["federation"]
+        envelope_data = json.load(open(envelope, encoding="utf-8"))
+        assert provenance == {
+            "verified": True,
+            "node_id": "workstation",
+            "algorithm": "hmac-sha256",
+            "created_at": envelope_data["created_at"],
+        }
 
     def test_tampered_envelope_is_rejected_loudly_and_imports_nothing(self, tmp_path):
         self._seed_src(tmp_path, "a peer memory that will be tampered with")

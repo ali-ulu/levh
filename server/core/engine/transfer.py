@@ -37,12 +37,19 @@ class MemoryTransferMixin:
         memories = await self.episodic.search(**filters, limit=10000)
         return [m.model_dump() for m in memories]
 
-    async def import_memories_gated(self, data: list[dict]) -> dict:
+    async def import_memories_gated(
+        self,
+        data: list[dict],
+        verified_federation: dict | None = None,
+    ) -> dict:
         """Import user-supplied JSON through the deterministic admission gate.
 
         The record's portable identity and lifecycle fields are preserved, but
         untrusted embeddings are discarded and recomputed from the admitted
-        (possibly redacted) content using the active embedder.  Rejected items
+        (possibly redacted) content using the active embedder. When
+        ``verified_federation`` is supplied by the signed-envelope boundary,
+        its verified origin metadata overwrites any sender-supplied
+        ``metadata.federation`` value before the gate acts. Rejected items
         are dropped; ``review`` items are held for a human (see
         ``hold_for_review``) rather than discarded, so an import cannot silently
         lose the half of a file the gate declined to decide on.  Each item is
@@ -54,6 +61,10 @@ class MemoryTransferMixin:
         for item in data:
             try:
                 mem = Memory(**item)
+                if verified_federation is not None:
+                    metadata = dict(mem.metadata or {})
+                    metadata["federation"] = dict(verified_federation)
+                    mem = mem.model_copy(update={"metadata": metadata})
                 decision = await self.evaluate_admission(
                     mem.content, project=mem.project
                 )
