@@ -114,6 +114,8 @@ because it is a read that has to POST to carry its query.
 | POST | `/api/v1/connectors/import` | Import data from an external app via connector |
 | POST | `/api/v1/connectors/sync` | Connector v2 ingest: fetch, then route items through the admission gate (dedupe + secret redaction), with… |
 | GET | `/api/v1/connectors/sync-state` | Per-source sync bookkeeping: last synced, totals, run count |
+| GET | `/api/v1/connectors/sync-jobs` | Background sync jobs, newest first |
+| GET | `/api/v1/connectors/sync-jobs/{job_id}` | One background sync job: pending, running, done, or error |
 | POST | `/api/v1/connectors/upload` | Store an uploaded file locally and return the path to import from |
 | GET | `/api/v1/connectors/{name}/config` | Get required config fields for a connector |
 | GET | `/api/v1/export/full.json` | One-shot audit bundle: memories, entity graph, trust scores, and conflict candidates — the raw machine-readable record |

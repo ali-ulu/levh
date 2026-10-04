@@ -42,6 +42,13 @@ def register(mcp: FastMCP, engine: MemoryEngine) -> None:
         else:
             config = {}
 
+        from server.core.auto_sync import resolve_env_refs
+
+        try:
+            config = resolve_env_refs(config)
+        except KeyError as e:
+            return f"Unresolved config: {e}."
+
         try:
             conn = get_connector(connector)
         except KeyError as e:

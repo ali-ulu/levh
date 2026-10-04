@@ -257,6 +257,14 @@ def cmd_sync(args: argparse.Namespace) -> int:
 
     supplied_secrets = list(config.values())
 
+    from server.core.auto_sync import resolve_env_refs
+
+    try:
+        config = resolve_env_refs(config)
+    except KeyError as e:
+        print(f"  Unresolved config: {_scrub(str(e), supplied_secrets)}", file=sys.stderr)
+        return 1
+
     try:
         result = asyncio.run(_run())
     except KeyError as e:

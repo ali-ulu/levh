@@ -394,3 +394,132 @@ async def test_api_git_import_and_recall(api_client):
         assert "git" in mems[0]["tags"]
     finally:
         _cleanup(repo)
+
+
+# ── file history (Tier 1) ──────────────────────────────────────────
+
+
+def _make_shared_repo() -> str:
+    """Two authors, one shared file: three touches by Ali, one by Cline."""
+    repo = tempfile.mkdtemp()
+    _git(repo, "init", "-q")
+    _git(repo, "config", "user.name", "Ali Ulu")
+    _git(repo, "config", "user.email", "ali@example.com")
+    shared = os.path.join(repo, "shared.py")
+    with open(shared, "w", encoding="utf-8") as handle:
+        handle.write("a = 1\n")
+    _git(repo, "add", "shared.py")
+    _git(repo, "commit", "-q", "-m", "feat: add shared module")
+    with open(shared, "a", encoding="utf-8") as handle:
+        handle.write("b = 2\n")
+    _git(repo, "commit", "-q", "-am", "fix: extend shared module")
+    with open(shared, "a", encoding="utf-8") as handle:
+        handle.write("c = 3\n")
+    _git(
+        repo,
+        "-c",
+        "user.name=Cline",
+        "-c",
+        "user.email=cline@example.com",
+        "commit",
+        "-q",
+        "-am",
+        "refactor: cline touches shared module",
+    )
+    return repo
+
+
+@pytest.mark.asyncio
+async def test_git_file_history_names_authors_and_counts():
+    repo = _make_shared_repo()
+    try:
+        conn = GitConnector()
+        await conn.connect({"repo_path": repo, "include_file_history": True})
+        mems = await conn.fetch()
+        await conn.disconnect()
+        hist = [m for m in mems if m["metadata"].get("type") == "file_history"]
+        assert len(hist) == 1
+        assert hist[0]["metadata"]["path"] == "shared.py"
+        assert hist[0]["metadata"]["touches"] == 3
+        assert hist[0]["metadata"]["authors"] == {"Ali Ulu": 2, "Cline": 1}
+        assert "Cline" in hist[0]["content"]
+    finally:
+        _cleanup(repo)
+
+
+@pytest.mark.asyncio
+async def test_git_history_paths_and_escape_guard():
+    repo = _make_shared_repo()
+    try:
+        conn = GitConnector()
+        await conn.connect(
+            {"repo_path": repo, "include_file_history": True,
+             "history_paths": ["shared.py"]}
+        )
+        mems = await conn.fetch()
+        await conn.disconnect()
+        assert any(
+            m["metadata"].get("type") == "file_history" for m in mems
+        )
+
+        conn = GitConnector()
+        with pytest.raises(ValueError):
+            await conn.connect(
+                {"repo_path": repo, "include_file_history": True,
+                 "history_paths": ["../escape.py"]}
+            )
+    finally:
+        _cleanup(repo)
+
+
+# ── blame (Tier 2) ─────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_git_blame_reports_line_shares():
+    repo = _make_shared_repo()
+    try:
+        conn = GitConnector()
+        await conn.connect(
+            {"repo_path": repo, "include_blame": True,
+             "blame_paths": ["shared.py"]}
+        )
+        mems = await conn.fetch()
+        await conn.disconnect()
+        blame = [m for m in mems if m["metadata"].get("type") == "blame"]
+        assert len(blame) == 1
+        assert blame[0]["metadata"]["total_lines"] == 3
+        assert blame[0]["metadata"]["lines_per_author"] == {
+            "Ali Ulu": 2,
+            "Cline": 1,
+        }
+        assert blame[0]["metadata"]["latest_author"] == "Cline"
+    finally:
+        _cleanup(repo)
+
+
+# ── architecture snapshot ──────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_git_snapshot_counts_tree_and_entry_points():
+    repo = _make_shared_repo()
+    try:
+        readme = os.path.join(repo, "README.md")
+        with open(readme, "w", encoding="utf-8") as handle:
+            handle.write("# shared\n")
+        _git(repo, "add", "README.md")
+        _git(repo, "commit", "-q", "-m", "docs: readme")
+
+        conn = GitConnector()
+        await conn.connect({"repo_path": repo, "include_snapshot": True})
+        mems = await conn.fetch()
+        await conn.disconnect()
+        snaps = [m for m in mems if m["metadata"].get("type") == "arch_snapshot"]
+        assert len(snaps) == 1
+        assert snaps[0]["metadata"]["tracked_files"] == 2
+        assert snaps[0]["metadata"]["by_extension"] == {".py": 1, ".md": 1}
+        assert snaps[0]["metadata"]["entry_points"] == ["README.md"]
+        assert len(snaps[0]["metadata"]["sha"]) == 40
+    finally:
+        _cleanup(repo)

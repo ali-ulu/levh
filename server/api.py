@@ -82,6 +82,7 @@ async def lifespan(_app: FastAPI):
     # exiting non-zero (orphan `levh serve` processes with no listener).
     engine: MemoryEngine | None = None
     librarian_task = None
+    auto_sync_task = None
     try:
         engine = await get_engine()
         # Librarian bekçi ajanı — sunucu açılınca başlar, kapanırken durur.
@@ -92,8 +93,17 @@ async def lifespan(_app: FastAPI):
         }:
             from server.core import librarian
             librarian_task = librarian.start_background()
+        # Otomatik besleme — yalnızca config dosyası isterse: varsayılan
+        # kapalı bir kurulum eskisi gibi davranır (pull-on-demand).
+        if engine is not None and not deps.public_demo():
+            from server.core import auto_sync
+            auto_sync_task = auto_sync.start_background(engine)
         yield
     finally:
+        if auto_sync_task:
+            auto_sync_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await auto_sync_task
         if librarian_task:
             librarian_task.cancel()
             # Cancel only *requests* cancellation. Without awaiting, shutdown

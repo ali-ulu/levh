@@ -41,6 +41,8 @@ export const OPERATIONS = {
   "list_connectors_api_connectors_get_v1": { method: "GET", path: "/api/v1/connectors", pathParams: [], query: [], body: "never" },
   "connector_import_api_connectors_import_post_v1": { method: "POST", path: "/api/v1/connectors/import", pathParams: [], query: [], body: "ConnectorRequest" },
   "connector_sync_api_connectors_sync_post_v1": { method: "POST", path: "/api/v1/connectors/sync", pathParams: [], query: [], body: "ConnectorRequest" },
+  "list_sync_jobs_api_connectors_sync_jobs_get_v1": { method: "GET", path: "/api/v1/connectors/sync-jobs", pathParams: [], query: [], body: "never" },
+  "get_sync_job_api_connectors_sync_jobs__job_id__get_v1": { method: "GET", path: "/api/v1/connectors/sync-jobs/{job_id}", pathParams: ["job_id"], query: [], body: "never" },
   "connector_sync_state_api_connectors_sync_state_get_v1": { method: "GET", path: "/api/v1/connectors/sync-state", pathParams: [], query: [], body: "never" },
   "connector_upload_api_connectors_upload_post_v1": { method: "POST", path: "/api/v1/connectors/upload", pathParams: [], query: [], body: "ConnectorUploadRequest" },
   "get_connector_config_api_connectors__name__config_get_v1": { method: "GET", path: "/api/v1/connectors/{name}/config", pathParams: ["name"], query: [], body: "never" },
