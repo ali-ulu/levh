@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS agent_sessions (
     agent_display TEXT NOT NULL,
     session_id TEXT,
     project TEXT,
+    workspace_id TEXT NOT NULL DEFAULT 'default',
     status TEXT NOT NULL DEFAULT 'connected',
     connected_at TEXT NOT NULL,
     last_heartbeat_at TEXT NOT NULL,
@@ -47,6 +48,7 @@ CREATE TABLE IF NOT EXISTS agent_checkpoints (
     agent_name TEXT NOT NULL,
     session_id TEXT,
     project TEXT,
+    workspace_id TEXT NOT NULL DEFAULT 'default',
     checkpoint_type TEXT NOT NULL DEFAULT 'auto',
     title TEXT,
     summary TEXT,
@@ -60,6 +62,13 @@ CREATE INDEX IF NOT EXISTS idx_agent_sessions_status ON agent_sessions(status);
 CREATE INDEX IF NOT EXISTS idx_agent_sessions_connected ON agent_sessions(connected_at);
 CREATE INDEX IF NOT EXISTS idx_agent_checkpoints_agent ON agent_checkpoints(agent_name);
 CREATE INDEX IF NOT EXISTS idx_agent_checkpoints_created ON agent_checkpoints(created_at);
+"""
+
+_AGENT_TENANCY_INDEXES = """
+CREATE INDEX IF NOT EXISTS idx_agent_sessions_workspace
+    ON agent_sessions(workspace_id, project, status, last_heartbeat_at DESC);
+CREATE INDEX IF NOT EXISTS idx_agent_checkpoints_workspace
+    ON agent_checkpoints(workspace_id, project, created_at DESC);
 """
 
 
