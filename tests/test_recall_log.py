@@ -396,6 +396,9 @@ async def test_recall_log_pruning_is_admin_only(engine):
             "result_ids": [],
             "result_count": 0,
             "top_k": 3,
+            "project": None,
+            "session_id": None,
+            "reinforced": False,
         }
     )
 
