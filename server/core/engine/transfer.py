@@ -11,6 +11,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 from ..restore_service import RestoreService
+from ..tenancy import authorize, current_workspace_id
 from ..types import (
     Memory,
     MemoryType,
@@ -28,6 +29,8 @@ class MemoryTransferMixin:
     """Export, import, backup and restore."""
 
     async def export_memories(self, session_id: str | None = None) -> list[dict]:
+        """Export complete memory records, including embeddings."""
+        authorize("export_full", current_workspace_id())
         filters = {}
         if session_id:
             filters["session_id"] = session_id
@@ -161,6 +164,7 @@ class MemoryTransferMixin:
         when false, the ``carry_skipped`` reason (``referenced``, ``too_large``
         or ``unreadable``), and the counts appear in the envelope.
         """
+        authorize("backup_restore", current_workspace_id())
         import base64
 
         from ..attachment_store import is_managed
@@ -203,4 +207,5 @@ class MemoryTransferMixin:
         rebuild — lives in ``server.core.restore_service``; the engine
         keeps the public method so call sites are unchanged.
         """
+        authorize("backup_restore", current_workspace_id())
         return await RestoreService(self).restore(snapshot, replace=replace)
