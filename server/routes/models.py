@@ -593,6 +593,63 @@ class UsageBillingResponse(BaseModel):
     by_agent: list[dict[str, Any]] = Field(default_factory=list)
 
 
+class TeamHandoffCreateRequest(BaseModel):
+    project: str
+    to_agent: str
+    title: str
+    summary: str = ""
+    memory_ids: list[str] = Field(default_factory=list)
+
+
+class TeamHandoffOut(BaseModel):
+    id: str
+    workspace_id: str
+    project: str
+    from_principal_id: str
+    from_agent: Optional[str] = None
+    to_agent: str
+    title: str
+    summary: str = ""
+    memory_ids: list[str] = Field(default_factory=list)
+    status: str
+    created_at: str
+    accepted_at: Optional[str] = None
+    accepted_by: Optional[str] = None
+    accepted_agent: Optional[str] = None
+    completed_at: Optional[str] = None
+
+
+class TeamDecisionCreateRequest(BaseModel):
+    project: str
+    decision_key: str
+    statement: str
+    rationale: str = ""
+
+
+class TeamDecisionOut(BaseModel):
+    id: str
+    workspace_id: str
+    project: str
+    decision_key: str
+    statement: str
+    rationale: str = ""
+    status: str
+    created_by: str
+    created_agent: Optional[str] = None
+    created_at: str
+    conflict_group_id: Optional[str] = None
+    superseded_by: Optional[str] = None
+    resolved_at: Optional[str] = None
+    resolved_by: Optional[str] = None
+
+
+class TeamDecisionCreateResponse(BaseModel):
+    created: bool
+    contested: bool
+    decision: TeamDecisionOut
+    conflicts: list[TeamDecisionOut] = Field(default_factory=list)
+
+
 class CollaborationResponse(BaseModel):
     """``GET /api/agents/collaboration/{project}``."""
 
@@ -600,6 +657,10 @@ class CollaborationResponse(BaseModel):
     agents: list[dict[str, Any]] = Field(default_factory=list)
     shared_checkpoints: list[dict[str, Any]] = Field(default_factory=list)
     collaboration_score: int
+    handoffs: list[TeamHandoffOut] = Field(default_factory=list)
+    decisions: list[TeamDecisionOut] = Field(default_factory=list)
+    pending_handoffs: int = 0
+    contested_decisions: int = 0
 
 
 # ── Response models: attachments ──────────────────────────────────────
