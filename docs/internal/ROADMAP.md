@@ -20,7 +20,7 @@ quietly dropped. Adding a row without a next step is what that test refuses.
 
 | Item | Topic | State | Next step | Reference |
 | --- | --- | --- | --- | --- |
-| 4 | Frontend i18n (more than one UI language) | in-progress | Extraction mechanism settled in #308 (key-addressed catalogue + `useT()`, no runtime library; see `docs/internal/I18N-DESIGN.md`), with one page and the dialog primitive converted and a ratchet gate in `npm test`. Remaining: convert the ~20 pages one PR at a time, each lowering its own `frontend/scripts/ui-string-baseline.json` entry. | #308 |
+| 4 | Frontend i18n (more than one UI language) | in-progress | Extraction mechanism settled in #308 (key-addressed catalogue + `useT()`, no runtime library; see `docs/internal/I18N-DESIGN.md`). The ratchet-driven rollout is active and has progressed through the Ask Your Memory conversion (#418); continue one surface per PR, lowering or removing that surface's `frontend/scripts/ui-string-baseline.json` entry while leaving technical false positives pinned explicitly. | #308, #418 |
 | 5 | End-to-end tests over a real server and browser | done | — | #299 |
 | 6 | Page-level accessibility coverage (axe over each route) | done | — | #299 |
 | 8 | Not recorded at decision time | skipped | — | |
@@ -39,17 +39,18 @@ numbered findings, and because each one is also a candidate revenue surface.
 | --- | --- | --- | --- | --- |
 | connectors | Slack sync connector | deferred | Jira, Linear and GitHub connectors now exist, and the pull-on-demand question is settled by the existing `ingest_items` sync framework — no worker is planned. Slack is the remaining one, and it needs OAuth-style bot credentials plus a channel-history paging decision before it is written. | #298 |
 | continuity-proof | Measure that the continuity brief is emitted and used, not just built to be emitted | in-progress | A1 is landed: `continuity_log` (schema v5) records one emission row per brief handed out with channel and surfaced ids (`stderr_bridge`, `mcp_tool`, `session_hook`, `cli`); `GET /api/config` → `continuity_briefs` reports the counts plus `recalls_in_use_window` (surfaced memories a later recall returned within 24h); the golden-fixture evaluator carries the deterministic `continuity_brief_surface_and_use` scenario (checkpoint, pinned rule and tagged blocker surfaced in brief order; a surfaced memory recalled and reinforced afterwards). Remaining: accumulate live emission data, then decide the no-hook client story (A2) from that data per [`PLAN-CONTINUITY-AND-FEDERATION.md`](PLAN-CONTINUITY-AND-FEDERATION.md). | #378 |
-| memory-federation | Peer memory exchange with provenance, signature and receiver-side decay | proposed | Phase B of [`PLAN-CONTINUITY-AND-FEDERATION.md`](PLAN-CONTINUITY-AND-FEDERATION.md): spec an offline envelope that re-enters through `import_memories_gated` before any transport; blocked on the tenancy decision. | #302, #309 |
+| memory-federation | Peer memory exchange with provenance, signature and receiver-side decay | proposed | B0 is landed: the signed offline federation envelope and CLI verify peer provenance before re-entry through `import_memories_gated` (#356, #357 / #338). Remaining B1 is a pull-first exchange transport, which stays blocked on the tenancy decision because identity determines which peer may pull from which workspace. | #338, #356, #357, #302 |
 | typescript-sdk | TypeScript SDK over the REST and MCP surface | done | — | #307 |
 | git-enrichment | Make the git and GitHub connectors actually feed memory | done | — | #374, #399 |
 | windowing-graph | Bind the entity graph and an adaptive budget into the context window | done | — | #375 |
-| recall-log-coverage | `recall_log` is defined but never populated | proposed | The table exists, is documented as the audit substrate ("who read this memory, and when"), and holds zero rows on a live store. Phase 2 of [`SHARED-MEMORY-DESIGN.md`](SHARED-MEMORY-DESIGN.md) builds the access-audit surface on top of it, so an unpopulated log is the prerequisite that is silently missing. Decide the default (`LEVH_RECALL_LOG`) and cover it with a test that asserts rows appear. State and evidence: [`CROSS-AGENT-GAPS.md`](CROSS-AGENT-GAPS.md). | — |
+| recall-log-coverage | Populate `recall_log` and expose recall access audit | done | — | #376, #382, #395 |
 | multi-user-postgres | Multi-user auth, tenancy, and a Postgres backend | deferred | The tenancy shape is proposed in [`SHARED-MEMORY-DESIGN.md`](SHARED-MEMORY-DESIGN.md) (#302): implement tenancy as the degenerate single-user case on SQLite first, roles at the storage boundary second, OIDC only in server mode third, and Postgres last — behind the explicit trigger in that document. Blocked on the maintainer accepting the proposal and answering its four open questions; identity must be designed before storage or the schema encodes single-principal assumptions. | #302 |
 
 ## Why these are deferred rather than started
 
-Every item above except the Slack connector is gated on one of two design
-decisions that are open on purpose:
+The remaining architecture-heavy deferred/proposed items are gated on one of two design
+decisions that are open on purpose. The active i18n rollout, continuity proof,
+and Slack connector do not need either gate:
 
 - **Tenancy.** `LEVH_TOKEN` gates the whole server as a single principal — it
   identifies no user, workspace, or role. Team features and a hosted tier both
@@ -59,8 +60,8 @@ decisions that are open on purpose:
   surfaces (support/SLA, hosted sync, team workspace, SSO + metering) are ordered
   by how little they disturb the local-first core. See #298.
 
-The connectors and the TypeScript SDK are the items that do **not** need either
-decision first, which is why they are the cheapest to resume. Jira and Linear
-landed on that reasoning: they cost no architecture, and the sync framework they
-plug into already existed. The TypeScript SDK landed the same way: the contract
-it generates from was already frozen.
+The Slack connector, frontend i18n rollout, and continuity proof are the remaining
+workstreams that do **not** need either decision first, which is why they are the
+cheapest to keep moving. Jira and Linear landed on the same reasoning: they cost
+no new architecture, and the sync framework they plug into already existed. The
+TypeScript SDK is already done because the contract it generates from was frozen.
