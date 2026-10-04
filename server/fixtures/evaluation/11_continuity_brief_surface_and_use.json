@@ -1,0 +1,61 @@
+{
+  "name": "continuity_brief_surface_and_use",
+  "memories": [
+    {
+      "key": "guard-verify-before-done",
+      "content": "Rule: never report a task done without running the project's typecheck and the touched tests first.",
+      "source": "cli",
+      "importance": 0.9,
+      "pinned": true,
+      "tags": ["levh-rule"],
+      "expected_admission": "admit"
+    },
+    {
+      "key": "atlas-migration-blocker",
+      "content": "Blocker: the atlas migration job is failing after the sqlite upgrade and blocks the release.",
+      "source": "cli",
+      "importance": 0.8,
+      "tags": ["levh-blocker"],
+      "expected_admission": "admit"
+    },
+    {
+      "key": "atlas-rollback-decision",
+      "content": "Decision: the atlas service rollback stays manual until the runner flakiness is fixed.",
+      "source": "cli",
+      "importance": 0.7,
+      "tags": ["levh-decision"],
+      "expected_admission": "admit"
+    },
+    {
+      "key": "unrelated-note",
+      "content": "The office coffee machine was descaled on tuesday.",
+      "source": "cli",
+      "importance": 0.4,
+      "expected_admission": "admit"
+    }
+  ],
+  "continuity": {
+    "checkpoint": {
+      "agent_name": "fixture-agent",
+      "title": "release prep paused mid-migration",
+      "summary": "Left off waiting for the atlas migration job; do not restart the release until it is green."
+    },
+    "project": "",
+    "limit": 5,
+    "expect_checkpoint": true,
+    "expected_surfaced_order": [
+      "guard-verify-before-done",
+      "atlas-rollback-decision",
+      "atlas-migration-blocker"
+    ],
+    "recall_after_brief_key": "atlas-migration-blocker",
+    "recall_query": "the atlas migration job is failing and blocks the release"
+  },
+  "queries": [
+    {
+      "query": "what is blocking the atlas release right now?",
+      "expected_memory_keys": ["atlas-migration-blocker"]
+    }
+  ],
+  "expected_conflict_count": 0
+}

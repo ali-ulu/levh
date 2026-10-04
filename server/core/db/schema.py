@@ -35,7 +35,7 @@ def default_db_path() -> str:
     return os.path.abspath(get_env("SQLITE_DB_PATH", DEFAULT_DB_FILENAME))
 
 
-CURRENT_SCHEMA_VERSION = 4
+CURRENT_SCHEMA_VERSION = 5
 
 
 _TABLES = """
@@ -264,6 +264,23 @@ CREATE TABLE IF NOT EXISTS recall_log (
     logged_at    TEXT NOT NULL
 );
 
+-- Continuity emissions (#378). One row per brief actually handed out, so the
+-- use rate (how often the surfaced memories were then recalled) has an
+-- honest denominator. Named after the producer-side event on purpose:
+-- printing a brief or serving a tool call proves the brief was EMITTED, and
+-- says nothing about whether the agent read it — that is the client's
+-- behavior, outside this process. No brief text is stored: memory ids join
+-- back to ``memories``.
+CREATE TABLE IF NOT EXISTS continuity_log (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    channel         TEXT NOT NULL,       -- stderr_bridge | mcp_tool | session_hook | cli
+    surfaced_ids    TEXT NOT NULL,       -- JSON array, brief presentation order
+    surfaced_count  INTEGER NOT NULL,
+    project         TEXT,
+    session_id      TEXT,
+    emitted_at      TEXT NOT NULL
+);
+
 """
 
 
@@ -384,6 +401,10 @@ CREATE INDEX IF NOT EXISTS idx_find_status ON findings(status, last_seen_at DESC
 -- retention prune) and "how did we do on this question" (group by digest).
 CREATE INDEX IF NOT EXISTS idx_recall_log_when ON recall_log(logged_at DESC);
 CREATE INDEX IF NOT EXISTS idx_recall_log_sha  ON recall_log(query_sha256);
+-- The continuity log is read as "recent emissions first" (stats windows) and
+-- "one project's emissions" (per-project brief counts).
+CREATE INDEX IF NOT EXISTS idx_continuity_when    ON continuity_log(emitted_at DESC);
+CREATE INDEX IF NOT EXISTS idx_continuity_project ON continuity_log(project);
 """
 
 

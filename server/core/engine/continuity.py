@@ -8,16 +8,177 @@ the split verifiable.
 
 from __future__ import annotations
 
+import logging
+import sqlite3
 from datetime import datetime, timezone
 
 from ..types import RULE_TAG, DECISION_TAG, BLOCKER_TAG
-from ..types import (
-    Memory,
-)
+from ..types import Memory
+
+logger = logging.getLogger(__name__)
 
 
 class MemoryContinuityMixin:
     """Context handed to the next session: context files and continuity."""
+
+    async def record_brief_emission(
+        self,
+        channel: str,
+        surfaced_ids: list[str],
+        project: str | None = None,
+        session_id: str | None = None,
+    ) -> dict:
+        """Record that a brief was handed out on ``channel`` (#378).
+
+        The engine method exists so every emitter — the MCP stderr bridge,
+        the MCP tool, the CLI ``continue`` command the session hook calls —
+        goes through one write path, the same way recall logging does. It
+        records the EMISSION, not a delivery: the name is the contract, and
+        no counter here may be read as "the agent read the brief".
+
+        Best-effort by design: an instrumentation failure must never be the
+        thing that stops a session from getting its brief, so the failure is
+        logged and reported instead of raised. Only the store failure the
+        write can actually produce is caught — a programming error in this
+        call path propagates, because a bug that silently loses the
+        measurement is worse than a loud one.
+        """
+        try:
+            return await self.db.continuity_log.record_brief_emission(
+                channel=channel,
+                surfaced_ids=list(surfaced_ids),
+                project=project,
+                session_id=session_id,
+            )
+        except sqlite3.Error as exc:
+            logger.warning("continuity emission log failed: %s", exc)
+            return {"logged": False}
+
+    async def get_continuity_signals(
+        self,
+        task: str | None = None,  # noqa: ARG002
+        project: str | None = None,
+        limit: int = 5,
+        since: str | None = None,
+    ) -> dict:
+        """The continuity brief's ingredients, structured.
+
+        Issue #378: the text brief is what a human reads and what a client
+        prints, but the *measurement* needs the machine-shaped answer — which
+        checkpoint, which pinned memories, which decisions and blockers the
+        brief is about to surface. Both the text brief and the fixture
+        evaluator are built on this so "surfaced" means the same thing in
+        both.
+
+        The contract is deliberately narrow: nothing here records an emission
+        (that is the emitter's job), and nothing here reinforces (a brief
+        handed out is not a recall).
+        """
+        # Get recent memories for context
+        recent_memories = await self.episodic.search(
+            project=project,
+            limit=50,
+        )
+
+        # Get recent sessions for the project. Session metadata rarely carries
+        # a "project" key, so a session also counts as belonging to the project
+        # when any of the project's memories were recorded under it.
+        sessions = await self.list_sessions(limit=limit * 2)
+        if project:
+            project_session_ids = {m.session_id for m in recent_memories if m.session_id}
+            sessions = [
+                s
+                for s in sessions
+                if s.metadata.get("project") == project or s.id in project_session_ids
+            ]
+
+        # Filter by date if since provided — before truncating to `limit`,
+        # otherwise the cut-off list is filtered instead of the full one.
+        if since:
+            def _as_utc(value: str) -> datetime:
+                # A bare date like "2026-01-01" parses as naive and cannot be
+                # compared against the tz-aware timestamps we store, so assume UTC.
+                parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+                return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+
+            try:
+                since_dt = _as_utc(since)
+                sessions = [s for s in sessions if s.created_at and
+                            _as_utc(s.created_at) >= since_dt]
+            except ValueError:
+                pass  # Invalid date format, ignore filter
+
+        sessions = sessions[:limit]
+
+        # Also get git-hook memories (commits) for the project
+        commit_memories = [m for m in recent_memories if m.source == "git-hook"]
+        if project:
+            commit_memories = [m for m in commit_memories if m.project == project]
+
+        # Pinned context: rules and notes come from the pin flag rather than
+        # from keyword guessing, same as the text brief.
+        pinned = [m for m in recent_memories if m.pinned]
+        rules = [m for m in pinned if RULE_TAG in (m.tags or [])]
+        notes = [m for m in pinned if RULE_TAG not in (m.tags or [])]
+
+        decisions: list[Memory] = []
+        for m in recent_memories[:30]:
+            if DECISION_TAG in (m.tags or []):
+                decisions.append(m)
+                continue
+            content_lower = m.content.lower()
+            if any(kw in content_lower for kw in ["decided", "agreed", "karar", "seçtik", "we'll", "will use", "switching to"]):
+                decisions.append(m)
+
+        blockers: list[Memory] = []
+        for m in recent_memories[:30]:
+            if BLOCKER_TAG in (m.tags or []):
+                blockers.append(m)
+                continue
+            content_lower = m.content.lower()
+            if any(kw in content_lower for kw in ["error", "failed", "blocked", "todo", "fixme", "hata", "başarısız", "takıldı"]):
+                blockers.append(m)
+
+        checkpoint: Memory | None = None
+        checkpoints = await self.agent_tracker.list_checkpoints(project=project, limit=1)
+        if checkpoints:
+            cp = checkpoints[0]
+            checkpoint = Memory(
+                id=f"checkpoint:{cp.get('id', '')}",
+                content=cp.get("summary") or cp.get("title") or "",
+                metadata={
+                    "title": (cp.get("title") or "").strip(),
+                    "agent_name": cp.get("agent_name") or "unknown",
+                    "checkpoint_type": cp.get("checkpoint_type", "auto"),
+                    "created_at": cp.get("created_at") or "",
+                },
+            )
+
+        # Surfaced ids in presentation order: the checkpoint first (it is
+        # "where did we leave off"), then rules, pinned notes, decisions and
+        # blockers. This ordering IS the brief's ordering, so the use counter
+        # computed from it describes the brief a client actually saw.
+        surfaced_ids = [m.id for m in ([checkpoint] if checkpoint else [])]
+        surfaced_ids += [r.id for r in sorted(rules, key=lambda m: m.importance, reverse=True)[:10]]
+        surfaced_ids += [n.id for n in notes[:10]]
+        surfaced_ids += [d.id for d in decisions[:5]]
+        surfaced_ids += [b.id for b in blockers[:5]]
+
+        return {
+            "checkpoint": checkpoint,
+            "rules": rules,
+            "pinned_notes": notes,
+            "sessions": sessions,
+            "commit_memories": commit_memories,
+            "decisions": decisions,
+            "blockers": blockers,
+            "surfaced_ids": surfaced_ids,
+            "surfaced_checkpoint": checkpoint.id if checkpoint else None,
+            "surfaced_rule_ids": [r.id for r in sorted(rules, key=lambda m: m.importance, reverse=True)[:10]],
+            "surfaced_pinned_ids": [n.id for n in notes[:10]],
+            "surfaced_decision_ids": [d.id for d in decisions[:5]],
+            "surfaced_blocker_ids": [b.id for b in blockers[:5]],
+        }
 
     async def generate_context_file(
         self,
@@ -115,49 +276,63 @@ class MemoryContinuityMixin:
 
         Returns a human-readable brief showing where the user left off,
         including recent sessions, active files, decisions, and blockers.
+
+        A pure builder: no emission is recorded here, so tests and read-side
+        callers get the text without writing rows. Emitters wrap this in
+        :meth:`emit_continuity_brief`, which is what records the hand-off.
         """
-        from datetime import datetime, timezone
-
-        # Get recent memories for context
-        recent_memories = await self.episodic.search(
-            project=project,
-            limit=50,
+        signals = await self.get_continuity_signals(
+            task=task, project=project, limit=limit, since=since
         )
+        return self._render_brief(signals, task)
 
-        # Get recent sessions for the project. Session metadata rarely carries
-        # a "project" key, so a session also counts as belonging to the project
-        # when any of the project's memories were recorded under it.
-        sessions = await self.list_sessions(limit=limit * 2)
-        if project:
-            project_session_ids = {m.session_id for m in recent_memories if m.session_id}
-            sessions = [
-                s
-                for s in sessions
-                if s.metadata.get("project") == project or s.id in project_session_ids
-            ]
+    async def emit_continuity_brief(
+        self,
+        channel: str,
+        task: str | None = None,
+        project: str | None = None,
+        limit: int = 5,
+        since: str | None = None,
+        session_id: str | None = None,
+    ) -> str:
+        """Build the brief AND record that it was handed out (#378).
 
-        # Filter by date if since provided — before truncating to `limit`,
-        # otherwise the cut-off list is filtered instead of the full one.
-        if since:
-            def _as_utc(value: str) -> datetime:
-                # A bare date like "2026-01-01" parses as naive and cannot be
-                # compared against the tz-aware timestamps we store, so assume UTC.
-                parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
-                return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+        This is the one entry point emitters should call: the MCP stderr
+        bridge (``channel="stderr_bridge"``), the MCP tool and resource
+        (``channel="mcp_tool"``), and the CLI ``continue`` command the
+        session hook runs (``channel="session_hook"``; a bare ``levh
+        continue`` is ``channel="cli"``).
 
-            try:
-                since_dt = _as_utc(since)
-                sessions = [s for s in sessions if s.created_at and
-                            _as_utc(s.created_at) >= since_dt]
-            except ValueError:
-                pass  # Invalid date format, ignore filter
+        Every call records a row, even when the brief came back empty — the
+        producer-side event happened either way, and ``briefs_with_content``
+        separates the content-bearing subset from the empty ones. The row is
+        an EMISSION record, not a delivery receipt: the name is the contract
+        (issue #378), and no counter derived from it may be read as "the
+        agent read the brief".
 
-        sessions = sessions[:limit]
+        Returns the brief text so the emitter can print or serve it.
+        """
+        signals = await self.get_continuity_signals(
+            task=task, project=project, limit=limit, since=since
+        )
+        text = self._render_brief(signals, task)
+        await self.record_brief_emission(
+            channel=channel,
+            surfaced_ids=signals["surfaced_ids"],
+            project=project,
+            session_id=session_id,
+        )
+        return text
 
-        # Also get git-hook memories (commits) for the project
-        commit_memories = [m for m in recent_memories if m.source == "git-hook"]
-        if project:
-            commit_memories = [m for m in commit_memories if m.project == project]
+    def _render_brief(self, signals: dict, task: str | None) -> str:
+        """Assemble the text brief from structured signals.
+
+        Sync and pure: every input arrives computed, so the text is a
+        deterministic function of the store state ``get_continuity_signals``
+        read.
+        """
+        sessions = signals["sessions"]
+        commit_memories = signals["commit_memories"]
 
         # Build the brief. `lines` holds only the header until a section adds
         # something, which is how the empty case is detected below — a brief
@@ -178,18 +353,15 @@ class MemoryContinuityMixin:
         # only offered a session list with memory counts, forcing a manual
         # list_checkpoints call (or the user asking) to find the actual
         # last-session recap.
-        checkpoints = await self.agent_tracker.list_checkpoints(project=project, limit=1)
-        if checkpoints:
-            cp = checkpoints[0]
+        if signals["checkpoint"]:
+            cp = signals["checkpoint"]
             lines.append("Last Checkpoint:")
-            title = (cp.get("title") or "").strip()
-            summary = (cp.get("summary") or "").strip()
-            agent = cp.get("agent_name") or "unknown"
-            created = cp.get("created_at") or ""
-            lines.append(f"  [{cp.get('checkpoint_type', 'auto')}] {title}")
+            summary = cp.content.strip()
+            title = (cp.metadata.get("title") or "").strip()
+            lines.append(f"  [{cp.metadata.get('checkpoint_type', 'auto')}] {title}")
             if summary and summary != title:
                 lines.append(f"  {summary}")
-            lines.append(f"  ({agent} · {created})")
+            lines.append(f"  ({cp.metadata.get('agent_name', 'unknown')} · {cp.metadata.get('created_at', '')})")
             lines.append("")
 
         # Rules and pinned memories come first, and they come from the pin flag
@@ -197,9 +369,8 @@ class MemoryContinuityMixin:
         # heuristic read of recent activity; this part is what the user
         # explicitly said never to forget, so it is the one section that must
         # not depend on a phrase matching a keyword list.
-        pinned = [m for m in recent_memories if m.pinned]
-        rules = [m for m in pinned if RULE_TAG in (m.tags or [])]
-        notes = [m for m in pinned if RULE_TAG not in (m.tags or [])]
+        rules = signals["rules"]
+        notes = signals["pinned_notes"]
 
         if rules:
             lines.append("Rules (learned from mistakes — do not repeat these):")
@@ -243,14 +414,7 @@ class MemoryContinuityMixin:
         # Decisions from recent memories. Explicit `levh-decision` tags are
         # authoritative (they survive regardless of wording); the keyword list
         # below remains only as a fallback for older, untagged memories.
-        decisions = []
-        for m in recent_memories[:30]:
-            if DECISION_TAG in (m.tags or []):
-                decisions.append(m)
-                continue
-            content_lower = m.content.lower()
-            if any(kw in content_lower for kw in ["decided", "agreed", "karar", "seçtik", "we'll", "will use", "switching to"]):
-                decisions.append(m)
+        decisions = signals["decisions"]
         if decisions:
             lines.append("Recent Decisions:")
             for d in decisions[:5]:
@@ -260,14 +424,7 @@ class MemoryContinuityMixin:
 
         # Blockers / errors / TODOs. Explicit `levh-blocker` tags are
         # authoritative; keywords remain a fallback for older memories.
-        blockers = []
-        for m in recent_memories[:30]:
-            if BLOCKER_TAG in (m.tags or []):
-                blockers.append(m)
-                continue
-            content_lower = m.content.lower()
-            if any(kw in content_lower for kw in ["error", "failed", "blocked", "todo", "fixme", "hata", "başarısız", "takıldı"]):
-                blockers.append(m)
+        blockers = signals["blockers"]
         if blockers:
             lines.append("Blockers / Errors / TODOs:")
             for b in blockers[:5]:

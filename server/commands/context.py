@@ -83,7 +83,15 @@ def cmd_continue(args: argparse.Namespace) -> int:
         engine = engine_provider.get_engine()
         await engine.initialize()
         try:
-            return await engine.get_continuity_context(
+            # Channel session_hook vs cli: the session-start hook runs
+            # `levh continue --if-any`, so a non-empty brief handed out
+            # through that flag is the hook's emission. A bare `levh
+            # continue` is the operator asking directly. Both are producer-
+            # side events; recording them is what makes the brief count a
+            # measurement (#378).
+            channel = "session_hook" if getattr(args, "if_any", False) else "cli"
+            return await engine.emit_continuity_brief(
+                channel=channel,
                 task=args.task or None,
                 project=project or None,
                 limit=args.limit,

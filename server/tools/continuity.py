@@ -41,7 +41,11 @@ def register(mcp: FastMCP, engine: MemoryEngine) -> None:
             task: Specific task context (optional)
             limit: Number of recent sessions to include (default: 5)
         """
-        return await engine.get_continuity_context(
+        # Channel mcp_tool: the agent pulled the brief itself, the strongest
+        # use signal the emission log can carry — but still an emission, not
+        # proof the result was read (#378).
+        return await engine.emit_continuity_brief(
+            channel="mcp_tool",
             project=project or None,
             task=task or None,
             limit=limit,
@@ -55,7 +59,7 @@ def register(mcp: FastMCP, engine: MemoryEngine) -> None:
         Returns a synthesized context brief showing recent sessions, active files,
         decisions, blockers, and suggested next actions.
         """
-        return await engine.get_continuity_context(project=project)
+        return await engine.emit_continuity_brief(channel="mcp_tool", project=project)
 
     # Task variant uses a path segment, not a query string: FastMCP compiles
     # resource templates into regexes without escaping "?", so a query-string
@@ -63,4 +67,6 @@ def register(mcp: FastMCP, engine: MemoryEngine) -> None:
     @mcp.resource("levh://session/{project}/continuity/{task}")
     async def continuity_brief_with_task(project: str, task: str) -> str:
         """Get a continuity brief for a specific task in a project."""
-        return await engine.get_continuity_context(project=project, task=task)
+        return await engine.emit_continuity_brief(
+            channel="mcp_tool", project=project, task=task
+        )

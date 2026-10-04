@@ -105,7 +105,13 @@ async def _lifespan(_server: FastMCP) -> AsyncIterator[None]:
         # tool. Opt-out via LEVH_AUTO_BRIEF=0.
         if _env_bool("LEVH_AUTO_BRIEF", True):
             try:
-                _brief = await engine.get_continuity_context(
+                # emit_continuity_brief, not get_continuity_context: the write
+                # is what turns this hand-off into a counted emission (#378).
+                # The counter is named "emitted" for a reason — this line
+                # proves the brief was handed out, nothing about whether the
+                # agent read it.
+                _brief = await engine.emit_continuity_brief(
+                    channel="stderr_bridge",
                     project=detect_project_from_git() or None,
                     limit=5,
                 )
