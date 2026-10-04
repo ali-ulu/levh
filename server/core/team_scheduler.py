@@ -12,6 +12,7 @@ workspace/project boundaries, priority, current load, and stable tie-breaks.
 
 from __future__ import annotations
 
+import asyncio
 import json
 from datetime import datetime, timezone
 from typing import Callable
@@ -83,6 +84,7 @@ class TeamSchedulerService:
         self.db = db
         self._emit = emit
         self._presence = presence
+        self._claim_lock = asyncio.Lock()
 
     @staticmethod
     def _workspace() -> str:
@@ -245,7 +247,6 @@ class TeamSchedulerService:
             ),
         )
         if cursor.rowcount != 1:
-            await self.db.conn.rollback()
             return None
         await self.db.conn.commit()
         result = dict(handoff)
@@ -261,6 +262,10 @@ class TeamSchedulerService:
         return result
 
     async def claim_next(self, agent_session_id: str) -> dict:
+        async with self._claim_lock:
+            return await self._claim_next_locked(agent_session_id)
+
+    async def _claim_next_locked(self, agent_session_id: str) -> dict:
         """Atomically claim the best eligible handoff for one online agent."""
         actor = authorize("update", self._workspace())
         profiles = await self._profiles()
@@ -329,6 +334,15 @@ class TeamSchedulerService:
         }
 
     async def dispatch(
+        self,
+        *,
+        project: str | None = None,
+        limit: int = 100,
+    ) -> dict:
+        async with self._claim_lock:
+            return await self._dispatch_locked(project=project, limit=limit)
+
+    async def _dispatch_locked(
         self,
         *,
         project: str | None = None,
