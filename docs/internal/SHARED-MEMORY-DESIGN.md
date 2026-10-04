@@ -315,6 +315,25 @@ review-only lane for differently-keyed free-text decisions:
 This is deliberately conservative. Missing a weakly-related semantic conflict
 is preferable to flagging two unrelated architectural choices as contradictory.
 
+### Collaboration Phase 5 — capability-aware handoff scheduling
+
+Handoffs can now act as an explicit work queue without turning Team Memory into
+an opaque autonomous agent manager:
+
+- `to_agent="*"` marks an open handoff that eligible agents may claim.
+- Handoffs carry `required_capabilities` and `priority`; agent capabilities,
+  `scheduler_enabled`, and `max_parallel_handoffs` come from connect metadata.
+- Match preview is read-only and deterministic: same workspace + same project +
+  target compatibility + capability containment + available capacity.
+- Explicit claim is atomic and records the accepting agent session.
+- Admin dispatch assigns only wildcard handoffs and only to online sessions that
+  explicitly set `scheduler_enabled=true`; legacy agents therefore never begin
+  receiving work unexpectedly after upgrade.
+- Assignment order is deterministic: handoff priority/age, then current load,
+  then stable agent/session tie-breaks. No LLM chooses an owner.
+- The scheduler uses the server process's live heartbeat presence. It is not a
+  cross-host background daemon; dispatch is an explicit API action.
+
 ## Surface
 
 Phase 2 adds the read-only access-audit surface. #396 adds opt-in collaboration
