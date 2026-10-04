@@ -5,7 +5,7 @@
 ### i18n: move the Conflicts page into the catalogue (#439)
 
 - Conflicts heading/subtitle, refresh/detect controls, empty state, confidence/source labels, unknown-source fallback, and all review action labels now resolve through `useT()`.
-- Dynamic conflict data and action/status values remain runtime/technical data; the UI-string ratchet for `src/app/conflicts/page.tsx` drops from 17 to 2, leaving only the two technical `connector:` source-prefix literals.
+- Dynamic conflict data and action/status values remain runtime/technical data; the UI-string ratchet for `src/app/conflicts/page.tsx` drops from 17 to 0.
 
 
 ### i18n: move Connect Client setup copy into the catalogue (#437)
