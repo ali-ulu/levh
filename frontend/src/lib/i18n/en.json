@@ -1,7 +1,6 @@
 {
   "app.settings.title": "Settings",
   "app.settings.subtitle": "Server configuration, AI client setup, imports, and data management.",
-
   "settings.accessToken.title": "Server access token",
   "settings.accessToken.status": "Status",
   "settings.accessToken.statusSet": "•••• set",
@@ -11,14 +10,12 @@
   "settings.accessToken.save": "Save token",
   "settings.accessToken.clear": "Clear token",
   "settings.accessToken.help": "Only needed when this server was started with LEVH_TOKEN. Legacy STACKMEMORY_TOKEN is still accepted. Stored locally in your browser.",
-
   "theme.switcher.aurora": "Aurora Glass",
   "theme.switcher.void": "Deep Space",
   "theme.switcher.auroraShort": "Aurora",
   "theme.switcher.voidShort": "Void",
   "theme.switcher.switchTo": "Switch to {theme} theme",
   "theme.switcher.title": "Theme: {theme}",
-
   "sidebar.tagline": "Context continuity",
   "sidebar.group.memory": "Memory",
   "sidebar.group.intelligence": "Intelligence",
@@ -44,7 +41,6 @@
   "sidebar.status.active": "Local fabric active",
   "sidebar.status.stack": "SQLite · MCP · REST · WebSocket",
   "sidebar.status.localFirst": "local-first",
-
   "header.search.placeholder": "Search memories, people, projects…",
   "header.search.shortcut": "⌘ K",
   "header.status.online": "Local core online",
@@ -70,32 +66,26 @@
   "header.notifications.title": "Notifications",
   "header.notifications.empty": "No notifications yet.",
   "header.notifications.emptyHint": "Memories stored or recalled by connected AI clients will appear here.",
-
   "ui.dialog.close": "Close",
   "ui.dialog.closeLabel": "Close dialog",
-
   "app.error.title": "Something went wrong",
   "app.error.fallback": "An unexpected client-side error occurred.",
   "app.error.retry": "Try again",
-
   "auth.gate.loading": "Loading…",
   "auth.gate.title": "This LEVH server requires a token",
   "auth.gate.help": "Ask the server operator for the access token, or check the LEVH_TOKEN value on the server.",
   "auth.gate.placeholder": "Access token",
   "auth.gate.unlock": "Unlock",
-
   "memoryResultCard.viewDetails": "View details",
   "memoryResultCard.hScore": "H {score}",
   "memoryResultCard.pinned": "pinned",
   "memoryResultCard.demo": "Demo data",
-
   "app.timeline.title": "Timeline",
   "app.timeline.subtitle": "What happened this week and last — your memories grouped by the day they actually happened (calendar/email events use their real date, not when they were captured).",
   "app.timeline.empty.title": "No memories in the last 30 days.",
   "app.timeline.empty.hint": "Store a memory or import a connector to see your timeline fill in.",
   "app.timeline.count.one": "{count} memory",
   "app.timeline.count.other": "{count} memories",
-
   "fadingMemories.title": "Fading Memories",
   "fadingMemories.needReview": "{count} need review",
   "fadingMemories.empty": "Nothing is fading — your memory is healthy. Memories appear here when their predicted retention drops below 35%.",
@@ -103,7 +93,6 @@
   "fadingMemories.forget": "Forget permanently",
   "fadingMemories.forgetConfirm": "Forget this memory permanently?",
   "fadingMemories.footer": "Rescue what still matters; let the rest fade. This is your memory curating itself.",
-
   "liveFeed.title": "Live Activity",
   "liveFeed.connected": "● live",
   "liveFeed.connecting": "connecting...",
@@ -126,7 +115,6 @@
   "liveFeed.detail.interference": "new memory weakened {count} older near-duplicate(s)",
   "liveFeed.detail.asked": "\"{question}\" → {count} sources",
   "liveFeed.detail.summarized": "session distilled from {count} memories",
-
   "knowledgeConstellation.core": "Memory fabric",
   "knowledgeConstellation.records": "{count} records",
   "knowledgeConstellation.people": "People",
@@ -134,5 +122,13 @@
   "knowledgeConstellation.projects": "Projects",
   "knowledgeConstellation.decisions": "Decisions",
   "knowledgeConstellation.documents": "Documents",
-  "knowledgeConstellation.tasks": "Tasks"
+  "knowledgeConstellation.tasks": "Tasks",
+  "settings.connectors.git.include": "Include:",
+  "settings.connectors.git.fileHistory": "File history",
+  "settings.connectors.git.blameSummary": "Blame summary",
+  "settings.connectors.git.archSnapshot": "Arch snapshot",
+  "settings.connectors.background.help": "Slow syncs answer 202 at once and run as a tracked job instead of hanging this button",
+  "settings.connectors.background.label": "Run in background",
+  "settings.connectors.background.jobs": "Background jobs",
+  "settings.connectors.background.unknownError": "unknown error"
 }
