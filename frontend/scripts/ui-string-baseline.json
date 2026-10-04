@@ -3,7 +3,7 @@
   "src/app/briefing/page.tsx": 2,
   "src/app/decisions/page.tsx": 2,
   "src/app/findings/page.tsx": 19,
-  "src/app/graph/page.tsx": 17,
+  "src/app/graph/page.tsx": 3,
   "src/app/guard/page.tsx": 20,
   "src/app/layout.tsx": 4,
   "src/app/memories/page.tsx": 38,
