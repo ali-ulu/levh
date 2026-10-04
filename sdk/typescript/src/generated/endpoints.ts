@@ -91,6 +91,7 @@ export const OPERATIONS = {
   "delete_memory_api_memories__memory_id__delete_v1": { method: "DELETE", path: "/api/v1/memories/{memory_id}", pathParams: ["memory_id"], query: [], body: "never" },
   "get_memory_api_memories__memory_id__get_v1": { method: "GET", path: "/api/v1/memories/{memory_id}", pathParams: ["memory_id"], query: [], body: "never" },
   "update_memory_api_memories__memory_id__put_v1": { method: "PUT", path: "/api/v1/memories/{memory_id}", pathParams: ["memory_id"], query: [], body: "UpdateRequest" },
+  "memory_access_audit_api_memories__memory_id__access_audit_get_v1": { method: "GET", path: "/api/v1/memories/{memory_id}/access-audit", pathParams: ["memory_id"], query: [{ name: "limit", required: false, type: "number" }], body: "never" },
   "list_memory_attachments_api_memories__memory_id__attachments_get_v1": { method: "GET", path: "/api/v1/memories/{memory_id}/attachments", pathParams: ["memory_id"], query: [], body: "never" },
   "attach_file_api_memories__memory_id__attachments_post_v1": { method: "POST", path: "/api/v1/memories/{memory_id}/attachments", pathParams: ["memory_id"], query: [], body: "AttachFileRequest" },
   "memory_feedback_api_memories__memory_id__feedback_post_v1": { method: "POST", path: "/api/v1/memories/{memory_id}/feedback", pathParams: ["memory_id"], query: [], body: "FeedbackRequest" },
