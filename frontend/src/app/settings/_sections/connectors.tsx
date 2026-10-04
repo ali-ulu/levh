@@ -78,12 +78,13 @@ const CONNECTOR_META: Record<
     description: "Import issues and PRs from GitHub repositories",
     category: "Development",
   },
-  slack: {
-    icon: MessageSquare,
-    color: "text-sky-500",
-    description: "Import message history from Slack channels",
-    category: "Productivity",
-  },
+};
+
+CONNECTOR_META.slack = {
+  icon: MessageSquare,
+  color: "text-sky-500",
+  description: "settings.connectors.slack.description",
+  category: CONNECTOR_META.calendar.category,
 };
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -396,7 +397,7 @@ export function Connectors() {
                   {selConnector.replace(/_/g, " ")}
                 </p>
                 <p className="text-[11px] text-muted-foreground">
-                  {activeMeta?.description || activeConnector.description}
+                  {t(activeMeta?.description || activeConnector.description)}
                 </p>
               </div>
             </div>

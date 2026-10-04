@@ -205,5 +205,6 @@
   "askPanel.example.unresolved": "What's still unresolved?",
   "askPanel.errorFallback": "Ask failed",
   "askPanel.sources.one": "Grounded in {count} memory:",
-  "askPanel.sources.other": "Grounded in {count} memories:"
+  "askPanel.sources.other": "Grounded in {count} memories:",
+  "settings.connectors.slack.description": "Import message history from Slack channels"
 }
