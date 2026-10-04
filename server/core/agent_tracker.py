@@ -191,3 +191,12 @@ class AgentTracker:
 
     async def resolve_team_decision(self, decision_id: str) -> dict:
         return await self.team.resolve_decision(decision_id)
+
+    async def detect_team_decision_conflicts(self, **kwargs) -> dict:
+        return await self.team.detect_decision_conflicts(**kwargs)
+
+    async def list_team_decision_conflicts(self, **kwargs) -> list[dict]:
+        return await self.team.list_decision_conflicts(**kwargs)
+
+    async def review_team_decision_conflict(self, conflict_id: str, action: str) -> dict:
+        return await self.team.review_decision_conflict(conflict_id, action)
