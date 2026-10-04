@@ -173,6 +173,17 @@ class Database:
             if column not in existing:
                 await self._connection.execute(ddl)
 
+    async def _migrate_held_workspace(self) -> None:
+        """Put pre-Phase-2 held candidates in the implicit default workspace."""
+        cursor = await self._connection.execute("PRAGMA table_info(held_memories)")
+        existing = {row[1] for row in await cursor.fetchall()}
+        await cursor.close()
+        if "workspace_id" not in existing:
+            await self._connection.execute(
+                "ALTER TABLE held_memories ADD COLUMN workspace_id "
+                "TEXT NOT NULL DEFAULT 'default'"
+            )
+
     async def _set_user_version(self, version: int) -> None:
         await self._connection.execute(f"PRAGMA user_version = {int(version)}")
         self.schema_version = int(version)
@@ -269,6 +280,7 @@ class Database:
             # Historical rows predate identity, so the only honest backfill is
             # the pre-Phase-2 degenerate case: default/local/admin.
             await self._migrate_recall_audit()
+            await self._migrate_held_workspace()
             version = 6
             await self._set_user_version(version)
 
