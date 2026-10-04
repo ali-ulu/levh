@@ -105,10 +105,10 @@ dedupes, and `/api/connectors/sync` records last-synced state per connector.
   `GET /user`. This supports both user PATs and GitHub Actions'
   repository-scoped installation token, which may read a repository while not
   representing a user identity.
-- The repository includes a manual **Connector dogfood** workflow
+- The repository includes a **Connector dogfood** workflow
   (`.github/workflows/connector-dogfood.yml`). It checks out full Git history,
   ingests LEVH through both `git` and `github` into an ephemeral database,
-  then uploads only a JSON evidence report. The report verifies
+  then uploads only a JSON evidence report. It can be dispatched manually and also runs on `main` when the Git/GitHub connector or dogfood verifier changes. The report verifies
   `connector_sync` rows, stored provenance/types and recallability; neither
   the database nor token is uploaded.
 
