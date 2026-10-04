@@ -35,6 +35,7 @@ os.environ["EMBEDDER_MODE"] = "hash"
 from server.core.db.recall_log import PRUNE_INTERVAL_SECONDS
 from server.core.engine.recall import MAX_QUERY_CHARS
 from server.core.memory_engine import MemoryEngine
+from server.core.tenancy import Principal, bind_principal, reset_principal
 
 SECRET = "sk-proj-abc123DEF456ghi789JKL0"
 
@@ -69,6 +70,52 @@ async def test_a_recall_records_a_row_by_default(engine):
     assert len(rows) == 1, "a recall with logging on by default must leave a row"
     assert rows[0]["result_ids"] == [m.id for m in result.memories]
     assert rows[0]["result_count"] == len(result.memories)
+
+
+@pytest.mark.asyncio
+async def test_recall_audit_stamps_principal_and_workspace_and_filters_peers(engine):
+    row = {
+        "query": "where is the rollout plan",
+        "query_sha256": "f" * 64,
+        "result_ids": ["memory-42", "memory-7"],
+        "result_count": 2,
+        "top_k": 3,
+        "project": "launch",
+        "session_id": "session-1",
+        "reinforced": False,
+        # Caller-supplied identity must never win over the request context.
+        "workspace_id": "forged",
+        "principal_id": "forged",
+        "principal_role": "admin",
+    }
+
+    token = bind_principal(
+        Principal(id="backend-agent", workspace_id="team-42", role="viewer", agent="backend")
+    )
+    try:
+        await engine.db.recall_log.record_recall(row)
+        rows = await engine.db.list_recall_log(limit=5)
+        assert rows[0]["workspace_id"] == "team-42"
+        assert rows[0]["principal_id"] == "backend-agent"
+        assert rows[0]["principal_role"] == "viewer"
+
+        audit = await engine.db.access_audit("memory-42")
+        assert audit == [
+            {
+                "memory_id": "memory-42",
+                "principal_id": "backend-agent",
+                "principal_role": "viewer",
+                "workspace_id": "team-42",
+                "project": "launch",
+                "session_id": "session-1",
+                "rank": 1,
+                "logged_at": rows[0]["logged_at"],
+            }
+        ]
+    finally:
+        reset_principal(token)
+
+    assert await engine.db.list_recall_log(limit=5) == []
 
 
 @pytest.mark.asyncio
