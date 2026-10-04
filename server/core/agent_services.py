@@ -220,16 +220,6 @@ class AgentPresenceService:
                FROM agent_sessions
                WHERE workspace_id = ?
                GROUP BY agent_name
-               ORDER BY connection_count DESC"""
-        )
-        cursor = await self.db.conn.execute(
-            """SELECT agent_name, agent_display,
-                      COUNT(*) as connection_count,
-                      MIN(connected_at) as first_seen,
-                      MAX(connected_at) as last_seen
-               FROM agent_sessions
-               WHERE workspace_id = ?
-               GROUP BY agent_name
                ORDER BY connection_count DESC""",
             (workspace,),
         )
