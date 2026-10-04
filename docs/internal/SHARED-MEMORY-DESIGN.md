@@ -1,6 +1,6 @@
 # Shared / team memory server: tenancy, auth, storage (#302)
 
-Tarih: 2026-10-02 · Durum: faz 1 uygulandı; faz 2 temeli #395'te · Tür: tasarım + karar kaydı
+Tarih: 2026-10-02 · Durum: faz 1-2 uygulandı; #377 Collaboration Phase 3 → #396 · Tür: tasarım + karar kaydı
 
 This is the design issue #302 asked for. It **proposes a shape**. The four
 questions it left open were delegated back to the agent and are now answered in
@@ -261,11 +261,39 @@ the recall filter over the shared mirror, and the v3→v4 migration.
 - Local mode remains the degenerate `local/default/admin` case. No OIDC or
   account service is introduced by Phase 2.
 
-This is deliberately a foundation, not completion of #377. Agent-to-agent
-handoff, shared decision state, and conflict-mediated team coordination remain
-tracked by #377.
+This is deliberately a foundation, not completion of #377.
+
+### Collaboration Phase 3 as implemented (#396)
+
+This is **not** Decision 4's OIDC phase from the shared-server roadmap. It is
+the next #377 collaboration layer built on top of the Phase 2 tenancy/role
+foundation.
+
+- `server/core/team_memory.py` owns two workspace-scoped durable primitives:
+  agent handoffs and shared project decisions.
+- `team_handoffs` records an explicit sender, target agent, project, summary,
+  optional memory ids and the `pending → accepted → completed` lifecycle.
+- `team_decisions` is keyed logically by `workspace + project + decision_key`.
+  A different active statement for the same key does **not** overwrite the old
+  one: both become `contested`.
+- A partial unique index permits at most one `active` decision per key even
+  when writers race. The loser re-evaluates and enters the contest path.
+- Resolution is explicit and admin-only: one contested row becomes `active`;
+  its peers become `superseded`. No LLM or heuristic declares truth.
+- Agent presence and checkpoint tables now carry `workspace_id`, and all
+  collaboration queries scope them to the current principal's workspace.
+- `GET /api/agents/collaboration/{project}` now combines live presence,
+  checkpoints, handoffs, shared decisions and pending/contested counters.
+- `/api/team/handoffs` and `/api/team/decisions` expose the collaboration
+  ledger over the versioned REST contract and generated TypeScript SDK.
+
+The conflict rule remains the same as `memory_conflict_candidates`: **signal,
+not verdict**. Phase 3 conflict mediation is deterministic and key-based; free
+text semantic decision conflicts are intentionally not auto-inferred.
 
 ## Surface
 
-Phase 2 adds the read-only access-audit REST surface. OIDC/account UI and a
-second storage backend remain phases 3–4.
+Phase 2 adds the read-only access-audit surface. #396 adds opt-in collaboration
+state for agents already sharing a workspace. OIDC/account UI and a second
+storage backend remain the original shared-server phases 3–4 and are still
+trigger-gated.
