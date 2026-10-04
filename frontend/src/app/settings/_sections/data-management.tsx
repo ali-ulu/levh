@@ -89,7 +89,7 @@ export function DataManagement() {
         const r = await api.consolidateSimilar(!apply);
         if (apply) {
           setConsolidateSimResult(
-t("settings.dataManagement.similar.applied", { clusters: r.consolidated, memories: r.archived })
+t("settings.dataManagement.similar.applied", { clusters: r.consolidated ?? 0, memories: r.archived ?? 0 })
           );
         } else {
           setConsolidateSimResult(
