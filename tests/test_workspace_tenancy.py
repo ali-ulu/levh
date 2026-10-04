@@ -242,6 +242,18 @@ async def test_recall_does_not_leak_across_workspaces(engine):
         assert "the zephyr rollout is scheduled for friday" in contents
 
 
+@pytest.mark.asyncio
+async def test_viewer_recall_is_read_only_instead_of_failing(engine):
+    mem = await engine.store("the release train leaves on friday")
+
+    with workspace(DEFAULT_WORKSPACE_ID, role="viewer", principal_id="reader"):
+        result = await engine.recall("when does the release train leave", top_k=3)
+        assert any(item.id == mem.id for item in result.memories)
+        stored = await engine.db.get_memory(mem.id)
+        assert stored is not None
+        assert stored["recall_count"] == 0
+
+
 # ── A pre-tenancy store is migrated, never dropped ──────────────────
 
 
