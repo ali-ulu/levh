@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import sqlite3
 
 import pytest
@@ -140,6 +141,35 @@ async def test_shared_decision_conflict_is_signalled_not_auto_resolved(engine):
 
     with principal(pid="other", workspace="team-b", role="admin"):
         assert await engine.agent_tracker.list_team_decisions(project="atlas") == []
+
+
+@pytest.mark.asyncio
+async def test_concurrent_decisions_become_contested_without_transaction_bleed(engine):
+    with _PrincipalContext(
+        pid="writer",
+        workspace="team-a",
+        role="editor",
+        agent="codex",
+    ):
+        await asyncio.gather(
+            engine.agent_tracker.create_team_decision(
+                project="atlas",
+                decision_key="database",
+                statement="Use SQLite",
+            ),
+            engine.agent_tracker.create_team_decision(
+                project="atlas",
+                decision_key="database",
+                statement="Use PostgreSQL",
+            ),
+        )
+        rows = await engine.agent_tracker.list_team_decisions(
+            project="atlas",
+            decision_key="database",
+        )
+
+    assert len(rows) == 2
+    assert {row["status"] for row in rows} == {"contested"}
 
 
 @pytest.mark.asyncio
