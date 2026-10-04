@@ -599,6 +599,8 @@ class TeamHandoffCreateRequest(BaseModel):
     title: str
     summary: str = ""
     memory_ids: list[str] = Field(default_factory=list)
+    required_capabilities: list[str] = Field(default_factory=list)
+    priority: int = 0
 
 
 class TeamHandoffOut(BaseModel):
@@ -611,12 +613,52 @@ class TeamHandoffOut(BaseModel):
     title: str
     summary: str = ""
     memory_ids: list[str] = Field(default_factory=list)
+    required_capabilities: list[str] = Field(default_factory=list)
+    priority: int = 0
     status: str
     created_at: str
     accepted_at: Optional[str] = None
     accepted_by: Optional[str] = None
     accepted_agent: Optional[str] = None
+    accepted_session_id: Optional[str] = None
     completed_at: Optional[str] = None
+
+
+class TeamHandoffMatchOut(BaseModel):
+    handoff: TeamHandoffOut
+    agent_session_id: str
+    agent_name: str
+    capabilities: list[str] = Field(default_factory=list)
+    current_load: int
+    max_parallel_handoffs: int
+    scheduler_enabled: bool
+
+
+class TeamHandoffClaimRequest(BaseModel):
+    agent_session_id: str
+
+
+class TeamHandoffClaimResponse(BaseModel):
+    claimed: bool
+    reason: Optional[str] = None
+    handoff: Optional[TeamHandoffOut] = None
+
+
+class TeamHandoffDispatchRequest(BaseModel):
+    project: str = ""
+    limit: int = 100
+
+
+class TeamHandoffAssignmentOut(BaseModel):
+    handoff: TeamHandoffOut
+    agent_session_id: str
+    agent_name: str
+
+
+class TeamHandoffDispatchResponse(BaseModel):
+    assigned: int
+    unassigned: int
+    assignments: list[TeamHandoffAssignmentOut] = Field(default_factory=list)
 
 
 class TeamDecisionCreateRequest(BaseModel):
