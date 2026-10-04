@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### i18n: move the Ask Your Memory panel into the catalogue (#417)
+
+- Ask Your Memory title, input/action copy, example prompts, fallback error, and grounded-source count now resolve through the existing `useT()` catalogue path.
+- API-provided answer and source content remain dynamic data; the UI-string ratchet entry for `src/components/ask-panel.tsx` drops from 10 to 0.
+
+
 ### i18n: move the Decisions page into the catalogue (#415)
 
 - Decisions page title, explanatory copy, range labels, and empty state now resolve through the existing `useT()` catalogue path.

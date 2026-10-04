@@ -196,5 +196,14 @@
   "app.decisions.range.90d": "90d",
   "app.decisions.range.1y": "1y",
   "app.decisions.empty.title": "No decisions detected in the last {days} days.",
-  "app.decisions.empty.hint": "Decisions are picked up automatically from memory content — meeting notes, transcripts, and captured discussions."
+  "app.decisions.empty.hint": "Decisions are picked up automatically from memory content — meeting notes, transcripts, and captured discussions.",
+  "askPanel.title": "Ask Your Memory",
+  "askPanel.placeholder": "Ask a question about everything you've stored...",
+  "askPanel.ask": "Ask",
+  "askPanel.example.sqlite": "Why did we choose SQLite?",
+  "askPanel.example.auth": "What did I decide about auth?",
+  "askPanel.example.unresolved": "What's still unresolved?",
+  "askPanel.errorFallback": "Ask failed",
+  "askPanel.sources.one": "Grounded in {count} memory:",
+  "askPanel.sources.other": "Grounded in {count} memories:"
 }

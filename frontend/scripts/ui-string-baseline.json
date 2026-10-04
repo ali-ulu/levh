@@ -22,7 +22,6 @@
   "src/app/settings/_sections/server-configuration.tsx": 17,
   "src/app/timeline/page.tsx": 3,
   "src/app/visualize/page.tsx": 39,
-  "src/components/ask-panel.tsx": 10,
   "src/components/command-palette.tsx": 10,
   "src/components/layout/header.tsx": 3,
   "src/components/layout/sidebar.tsx": 2,
