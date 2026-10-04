@@ -2,18 +2,20 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import type { Decision } from "@/types";
 import { Gavel, Loader2 } from "lucide-react";
 
 const RANGES = [
-  { label: "30d", days: 30 },
-  { label: "90d", days: 90 },
-  { label: "1y", days: 365 },
+  { labelKey: "app.decisions.range.30d", days: 30 },
+  { labelKey: "app.decisions.range.90d", days: 90 },
+  { labelKey: "app.decisions.range.1y", days: 365 },
 ];
 
 export default function DecisionsPage() {
+  const t = useT();
   const [decisions, setDecisions] = useState<Decision[]>([]);
   const [loading, setLoading] = useState(true);
   const [days, setDays] = useState(90);
@@ -36,11 +38,9 @@ export default function DecisionsPage() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold">Decisions</h1>
+          <h1 className="text-2xl font-bold">{t("app.decisions.title")}</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Decisions detected across your memories — &ldquo;we decided&rdquo;,
-            &ldquo;agreed to&rdquo;, &ldquo;karar verdik&rdquo;. Fully offline, no
-            manual tagging.
+            {t("app.decisions.subtitle")}
           </p>
         </div>
         <div className="flex gap-1 rounded-lg border p-0.5">
@@ -55,7 +55,7 @@ export default function DecisionsPage() {
                   : "hover:bg-accent")
               }
             >
-              {r.label}
+              {t(r.labelKey)}
             </button>
           ))}
         </div>
@@ -69,11 +69,8 @@ export default function DecisionsPage() {
         <Card>
           <CardContent className="py-12 text-center text-sm text-muted-foreground space-y-2">
             <Gavel className="h-8 w-8 mx-auto opacity-40" />
-            <p>No decisions detected in the last {days} days.</p>
-            <p>
-              Decisions are picked up automatically from memory content — meeting
-              notes, transcripts, and captured discussions.
-            </p>
+            <p>{t("app.decisions.empty.title", { days })}</p>
+            <p>{t("app.decisions.empty.hint")}</p>
           </CardContent>
         </Card>
       ) : (

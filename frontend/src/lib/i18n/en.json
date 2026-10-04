@@ -189,5 +189,12 @@
   "settings.privacyRedaction.redactResult": "Redacted {redacted} of {scanned} memories.",
   "settings.privacyRedaction.redactionFailed": "Redaction failed",
   "settings.privacyRedaction.scanned": "Scanned {count} memories —",
-  "settings.privacyRedaction.flagged": "{count} flagged"
+  "settings.privacyRedaction.flagged": "{count} flagged",
+  "app.decisions.title": "Decisions",
+  "app.decisions.subtitle": "Decisions detected across your memories — “we decided”, “agreed to”, “karar verdik”. Fully offline, no manual tagging.",
+  "app.decisions.range.30d": "30d",
+  "app.decisions.range.90d": "90d",
+  "app.decisions.range.1y": "1y",
+  "app.decisions.empty.title": "No decisions detected in the last {days} days.",
+  "app.decisions.empty.hint": "Decisions are picked up automatically from memory content — meeting notes, transcripts, and captured discussions."
 }

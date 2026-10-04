@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### i18n: move the Decisions page into the catalogue (#415)
+
+- Decisions page title, explanatory copy, range labels, and empty state now resolve through the existing `useT()` catalogue path.
+- Decision/project/source data stays dynamic; the UI-string ratchet for `src/app/decisions/page.tsx` drops from 10 to 1, leaving only the technical `connector:` prefix.
+
+
 ### i18n: move Privacy & Redaction settings into the catalogue (#413)
 
 - Privacy & Redaction title, explanatory copy, actions, confirmation, counters, and runtime result/error messages now resolve through the existing `useT()` catalogue path.
