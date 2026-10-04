@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { api } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 import type { Connector, SyncJob, SyncState } from "@/types";
 import {
   Calendar,
@@ -87,6 +88,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 };
 
 export function Connectors() {
+  const t = useT();
   const [connectors, setConnectors] = useState<Connector[]>([]);
   const [selConnector, setSelConnector] = useState("local_files");
   const [connectorConfig, setConnectorConfig] = useState<Record<string, string>>({});
@@ -172,7 +174,7 @@ export function Connectors() {
           selConnector,
           cfg,
           importProject.trim() || undefined,
-          useGate
+          true
         );
         // Older servers ignore the unknown `background` flag and answer 200
         // with the full report (pydantic drops unknown fields). Handle both.
@@ -192,10 +194,17 @@ export function Connectors() {
         // Poll the job instead of the socket — a slow sync must never hang
         // this button the way the synchronous call did.
         let job: SyncJob | null = null;
+        let failures = 0;
         for (let i = 0; i < 150; i++) {
           await new Promise((r) => setTimeout(r, 2000));
           if (!mounted.current) return;
-          job = await api.getSyncJob(accepted.job_id);
+          try {
+            job = await api.getSyncJob(accepted.job_id);
+            failures = 0;
+          } catch (e) {
+            if (++failures >= 5) throw e;
+            continue;
+          }
           if (job.status === "done" || job.status === "error") break;
           setImportResult(
             `Syncing ${selConnector}… (${job.status}, job ${accepted.job_id.slice(0, 8)})`
@@ -206,7 +215,7 @@ export function Connectors() {
             `Job ${accepted.job_id.slice(0, 8)} is still ${job?.status ?? "running"} — check back in Background jobs below.`
           );
         } else if (job.status === "error") {
-          setImportResult(`Background sync failed: ${job.error ?? "unknown error"}`);
+          setImportResult(`Background sync failed: ${job.error ?? t("settings.connectors.background.unknownError")}`);
         } else {
           const r = job.result!;
           setImportResult(
@@ -443,7 +452,7 @@ export function Connectors() {
 
             {selConnector === "git" && (
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 pt-1">
-                <span className="text-[11px] text-muted-foreground">Include:</span>
+                <span className="text-[11px] text-muted-foreground">{t("settings.connectors.git.include")}</span>
                 <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
                   <input
                     type="checkbox"
@@ -451,7 +460,7 @@ export function Connectors() {
                     onChange={(e) => setGitHistory(e.target.checked)}
                     className="rounded"
                   />
-                  File history
+                  {t("settings.connectors.git.fileHistory")}
                 </label>
                 <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
                   <input
@@ -460,7 +469,7 @@ export function Connectors() {
                     onChange={(e) => setGitBlame(e.target.checked)}
                     className="rounded"
                   />
-                  Blame summary
+                  {t("settings.connectors.git.blameSummary")}
                 </label>
                 <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
                   <input
@@ -469,7 +478,7 @@ export function Connectors() {
                     onChange={(e) => setGitSnapshot(e.target.checked)}
                     className="rounded"
                   />
-                  Arch snapshot
+                  {t("settings.connectors.git.archSnapshot")}
                 </label>
               </div>
             )}
@@ -487,7 +496,7 @@ export function Connectors() {
                 </label>
                 <label
                   className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer"
-                  title="Slow syncs answer 202 at once and run as a tracked job instead of hanging this button"
+                  title={t("settings.connectors.background.help")}
                 >
                   <input
                     type="checkbox"
@@ -495,7 +504,7 @@ export function Connectors() {
                     onChange={(e) => setBackground(e.target.checked)}
                     className="rounded"
                   />
-                  Run in background
+                  {t("settings.connectors.background.label")}
                 </label>
               </div>
               <Button
@@ -560,7 +569,7 @@ export function Connectors() {
         {jobs.length > 0 && (
           <div className="pt-3 border-t">
             <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70 mb-2">
-              Background jobs
+              {t("settings.connectors.background.jobs")}
             </p>
             <div className="space-y-1.5">
               {jobs.slice(0, 5).map((j) => {
