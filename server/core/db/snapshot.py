@@ -13,7 +13,7 @@ from pathlib import Path
 import aiosqlite
 
 from ..env import get_env
-from ..tenancy import current_workspace_id
+from ..tenancy import authorize, current_workspace_id
 
 
 
@@ -24,6 +24,7 @@ class SnapshotQueries:
         self._db = db
 
     async def create_safety_backup(self, destination: str | None = None) -> str | None:
+        authorize("backup_restore", current_workspace_id())
         """Create a consistent SQLite safety copy before destructive restore.
 
         Uses SQLite's online backup API, so WAL pages are included correctly.
@@ -66,6 +67,7 @@ class SnapshotQueries:
         replace: bool,
         attachments: list[dict] | None = None,
     ) -> None:
+        authorize("backup_restore", current_workspace_id())
         """Atomically merge or replace a fully validated snapshot.
 
         Callers must validate every record before entering this method.  No
