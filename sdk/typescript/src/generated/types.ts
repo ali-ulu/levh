@@ -818,6 +818,22 @@ export type Memory = {
   superseded_by?: string | null;
 };
 
+export type MemoryAccessAuditOut = {
+  memory_id: string;
+  principal_id: string;
+  principal_role: string;
+  workspace_id: string;
+  project?: string | null;
+  session_id?: string | null;
+  rank: number;
+  logged_at: string;
+};
+
+export type MemoryAccessAuditResponse = {
+  memory_id: string;
+  audit?: MemoryAccessAuditOut[];
+};
+
 export type MemoryDeleteResponse = {
   deleted: boolean;
 };
