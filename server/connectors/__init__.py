@@ -33,6 +33,7 @@ def _ensure_registry() -> dict[str, type[BaseConnector]]:
     from .jira import JiraConnector
     from .linear import LinearConnector
     from .git import GitConnector
+    from .slack import SlackConnector
 
     _REGISTRY = {
         LocalFilesConnector.name: LocalFilesConnector,
@@ -45,6 +46,7 @@ def _ensure_registry() -> dict[str, type[BaseConnector]]:
         JiraConnector.name: JiraConnector,
         LinearConnector.name: LinearConnector,
         GitConnector.name: GitConnector,
+        SlackConnector.name: SlackConnector,
     }
     return _REGISTRY
 

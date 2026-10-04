@@ -84,6 +84,6 @@ The complete MCP tool surface. See the [README](../README.md) for an overview.
 | 69 | `project_collaboration` | Get collaboration info for agents on the same project |
 | 70 | `list_connectors` | List available app connectors |
 | 71 | `get_connector_help` | Get config help for a connector |
-| 72 | `import_from_app` | Import from Calendar/Email/Transcripts/Notion/Obsidian/GitHub/local files |
+| 72 | `import_from_app` | Import from registered connectors (Calendar/Email/Transcripts/Notion/Obsidian/GitHub/Jira/Linear/Slack/Git/local files) |
 | 73 | `sync_connector` | Connector v2 — fetch + gate-filtered incremental ingest |
 | 74 | `connector_sync_status` | Per-source sync bookkeeping (last synced, totals, run count) |

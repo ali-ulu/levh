@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Feature: pull-on-demand Slack channel history connector (#421)
+
+- New `slack` connector validates a bot token with `auth.test`, pulls explicit channel IDs through cursor-paginated `conversations.history`, and reuses the existing admission-gated sync/background-job pipeline.
+- A conservative 15-message page size and global `max_messages` bound keep runs predictable across Slack distribution tiers; optional `oldest` narrows the history window. Thread expansion is intentionally left out of this first slice.
+- Slack message memories preserve channel/user/thread/team/timestamp provenance and an ISO `captured_at`; request-shape, pagination, auth failure, channel iteration, and bounds are covered offline with `httpx.MockTransport`.
+
+
 ### i18n: move the Ask Your Memory panel into the catalogue (#417)
 
 - Ask Your Memory title, input/action copy, example prompts, fallback error, and grounded-source count now resolve through the existing `useT()` catalogue path.

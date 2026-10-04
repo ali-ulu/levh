@@ -25,7 +25,7 @@ def register(mcp: FastMCP, engine: MemoryEngine) -> None:
 
         Args:
             connector: Connector name — one of "local_files", "obsidian",
-                       "notion", "github", "jira", "linear", plus the offline
+                       "notion", "github", "jira", "linear", "slack", plus the offline
                        "calendar", "email" and "transcript" importers.
             config: JSON string of connector-specific configuration.
                     Examples:
@@ -36,6 +36,7 @@ def register(mcp: FastMCP, engine: MemoryEngine) -> None:
                       jira:         {"base_url": "https://x.atlassian.net",
                                      "email": "me@x.com", "api_token": "..."}
                       linear:       {"api_key": "lin_api_...", "team_ids": ["..."]}
+                      slack:        {"bot_token": "xoxb-...", "channel_ids": ["C123"]}
             importance: Default importance for imported memories (0-1). Default 0.5.
         """
         import json
@@ -123,7 +124,7 @@ def register(mcp: FastMCP, engine: MemoryEngine) -> None:
         """Get detailed help and configuration requirements for a connector.
 
         Args:
-            connector: Connector name (e.g. "local_files", "obsidian", "notion", "github").
+            connector: Connector name (e.g. "local_files", "notion", "github", "slack").
         """
         from server.connectors import get_connector
 

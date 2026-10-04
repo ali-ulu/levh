@@ -13,6 +13,7 @@ import_from_app("github",      config={"token": "ghp_xxx", "repos": ["owner/repo
 import_from_app("git",         config={"repo_path": "/path/to/repo"})   # local, read-only
 import_from_app("jira",        config={"base_url": "https://x.atlassian.net", "email": "me@x.com", "api_token": "..."})
 import_from_app("linear",      config={"api_key": "lin_api_xxx", "team_ids": ["..."]})
+import_from_app("slack",       config={"bot_token": "xoxb-...", "channel_ids": ["C123"]})
 import_from_app("local_files", config={"directory": "/path/to/project"})
 ```
 
@@ -48,7 +49,25 @@ Or use the **Import from Apps** panel in the dashboard's Settings page.
   `api_key` (or `LINEAR_API_KEY`). Options: `team_ids`, `project_ids`,
   `max_issues`, `include_comments`.
 
-Both run when you call `import_from_app` (or the sync route). Since #374 there is
+**Slack — bounded channel history** (pull-on-demand):
+
+- **Slack** (`slack`) imports message text from explicit conversation IDs through
+  the Slack Web API. It requires `bot_token` (or `SLACK_BOT_TOKEN`) and
+  `channel_ids` (or comma-separated `SLACK_CHANNEL_IDS`). Supplying channel
+  IDs directly avoids adding channel-discovery scopes just to find names.
+- Credential validation uses `auth.test`; history uses
+  `conversations.history` with cursor pagination. Each request asks for at most
+  **15 messages**, which stays compatible with Slack's stricter
+  distribution-specific history limit as well as the higher internal-app tier.
+  `max_messages` (default 100) caps a whole run; optional `oldest` accepts a
+  Slack timestamp lower bound.
+- Stored memories keep Slack provenance in metadata: channel id, user/bot id,
+  message timestamp, thread timestamp/reply count, team id/name, and an ISO
+  `captured_at` derived from Slack's timestamp. The first slice deliberately
+  does not expand threads with `conversations.replies`: doing so multiplies
+  API calls per parent message and belongs behind a separate opt-in.
+
+Jira, Linear, and Slack run when you call `import_from_app` (or the sync route). Since #374 there is
 also an opt-in feed: `auto_sync` in `.stackmemory/config.json` runs chosen
 connectors on a timer while the server lives (disabled by default), and
 `background=true` on the sync route runs one slow sync as a tracked job instead

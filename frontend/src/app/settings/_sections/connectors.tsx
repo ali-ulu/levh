@@ -78,6 +78,12 @@ const CONNECTOR_META: Record<
     description: "Import issues and PRs from GitHub repositories",
     category: "Development",
   },
+  slack: {
+    icon: MessageSquare,
+    color: "text-sky-500",
+    description: "Import message history from Slack channels",
+    category: "Productivity",
+  },
 };
 
 const CATEGORY_COLORS: Record<string, string> = {
