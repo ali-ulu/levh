@@ -14,6 +14,8 @@ class _Response:
 
 
 class _Client:
+    calls: list[str] = []
+
     def __init__(self, *args, **kwargs):
         pass
 
@@ -23,7 +25,8 @@ class _Client:
     async def __aexit__(self, exc_type, exc, tb):
         return False
 
-    async def get(self, *args, **kwargs):
+    async def get(self, url, *args, **kwargs):
+        self.calls.append(url)
         return _Response()
 
 
@@ -52,6 +55,7 @@ async def test_github_connector_accepts_cli_string_config(monkeypatch):
     assert conn._include_files == ["README.md", "server/connectors/git.py"]
     assert conn._max_issues == 12
     assert conn._max_prs == 7
+    assert _Client.calls[-1].endswith("/repos/ali-ulu/levh")
 
 
 @pytest.mark.asyncio
