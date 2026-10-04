@@ -19,7 +19,7 @@ from ..lexical import similarity_expanded as lexical_similarity
 from ..lexical import terms as lexical_terms
 from ..hscore import SUPERSEDED_PENALTY
 from ..synonyms import SynonymTable
-from ..tenancy import current_workspace_id
+from ..tenancy import AuthorizationError, authorize, current_workspace_id
 from ..tokens import memory_tokens, truncate_to_tokens
 from ..types import (
     ContextPacking,
@@ -413,13 +413,17 @@ class MemoryRecallMixin:
         scored.sort(key=lambda x: x[1])
         top = scored[:top_k]
 
-        # Reinforce only the memories actually returned: recalling a memory
-        # resets its decay clock AND makes it more durable (spaced repetition /
-        # the testing effect) — untouched candidates are left completely alone.
-        # A read-only recall (reinforce=False) skips this entirely. So does a
-        # point-in-time read: ``as_of`` is a question about the past, and
-        # answering it must not strengthen a belief the store holds *now*.
-        if reinforce and not as_of:
+        # Reinforce only when the principal may update shared memory. A viewer
+        # is explicitly a read/recall role in Phase 2 (#377), so its ordinary
+        # recall must degrade to read-only instead of failing because the
+        # historical default is reinforce=True.
+        effective_reinforce = reinforce and not as_of
+        if effective_reinforce:
+            try:
+                authorize("update", current_workspace_id())
+            except AuthorizationError:
+                effective_reinforce = False
+        if effective_reinforce:
             for memory, hscore in top:
                 memory.stability_hours = self.scorer.reinforce(memory.stability_hours, memory.importance)
                 memory.recall_count += 1
@@ -450,7 +454,7 @@ class MemoryRecallMixin:
             top_k=top_k,
             session_id=session_id,
             project=project,
-            reinforce=reinforce,
+            reinforce=effective_reinforce,
         )
 
         diagnosis = None
