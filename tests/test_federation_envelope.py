@@ -231,7 +231,12 @@ def test_verified_federation_bundle_exercises_admit_reject_and_review(tmp_path):
     async def _run() -> None:
         await engine.initialize()
         try:
-            async def deterministic_gate(content, project=None, min_length=3, exclude_id=None):
+            async def deterministic_gate(
+                content,
+                project=None,
+                min_length=3,
+                exclude_id=None,
+            ):
                 del project, min_length, exclude_id
                 if content.startswith("REJECT"):
                     return evaluate(content, max_similarity=0.99)
