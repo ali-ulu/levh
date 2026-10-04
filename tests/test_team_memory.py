@@ -9,6 +9,7 @@ import pytest
 import pytest_asyncio
 
 from server.core.agent_tracker import AgentTracker
+from server.core import conflict
 from server.core.database import CURRENT_SCHEMA_VERSION, Database
 from server.core.memory_engine import MemoryEngine
 from server.core.tenancy import (
@@ -43,6 +44,30 @@ async def engine(tmp_path):
     await eng.initialize()
     yield eng
     await eng.shutdown()
+
+
+def test_decision_conflict_signal_requires_opposition_and_topic_overlap():
+    signal = conflict.decision_conflict_signal(
+        "database-plan",
+        "Use SQLite for the primary database",
+        "persistence-choice",
+        "Use PostgreSQL for the primary database",
+    )
+    assert signal is not None
+    assert signal[0] == "attribute_value"
+    assert "database" in signal[2]
+
+
+def test_decision_conflict_signal_avoids_unrelated_use_statements():
+    assert (
+        conflict.decision_conflict_signal(
+            "database",
+            "Use SQLite for the primary database",
+            "cache",
+            "Use Redis for the application cache",
+        )
+        is None
+    )
 
 
 @pytest.mark.asyncio
@@ -141,6 +166,105 @@ async def test_shared_decision_conflict_is_signalled_not_auto_resolved(engine):
 
     with _PrincipalContext(pid="other", workspace="team-b", role="admin"):
         assert await engine.agent_tracker.list_team_decisions(project="atlas") == []
+
+
+@pytest.mark.asyncio
+async def test_semantic_decision_conflict_candidate_review_lifecycle(engine):
+    with _PrincipalContext(pid="backend", workspace="team-a", role="editor", agent="codex"):
+        first = await engine.agent_tracker.create_team_decision(
+            project="atlas",
+            decision_key="database-plan",
+            statement="Use SQLite for the primary database",
+        )
+    with _PrincipalContext(pid="architect", workspace="team-a", role="editor", agent="cursor"):
+        second = await engine.agent_tracker.create_team_decision(
+            project="atlas",
+            decision_key="persistence-choice",
+            statement="Use PostgreSQL for the primary database",
+        )
+        detected = await engine.agent_tracker.detect_team_decision_conflicts(
+            project="atlas"
+        )
+        assert detected["new_candidates"] == 1
+        assert detected["open_total"] == 1
+
+    with _PrincipalContext(pid="reader", workspace="team-a", role="viewer", agent="vscode"):
+        rows = await engine.agent_tracker.list_team_decision_conflicts(project="atlas")
+        assert len(rows) == 1
+        candidate = rows[0]
+        assert {candidate["decision_id_a"], candidate["decision_id_b"]} == {
+            first["decision"]["id"],
+            second["decision"]["id"],
+        }
+        assert "database" in candidate["shared_topics"]
+        assert candidate["status"] == "open"
+        with pytest.raises(AuthorizationError):
+            await engine.agent_tracker.review_team_decision_conflict(
+                candidate["id"], "confirm"
+            )
+
+    with _PrincipalContext(pid="owner", workspace="team-a", role="admin"):
+        confirmed = await engine.agent_tracker.review_team_decision_conflict(
+            candidate["id"], "confirm"
+        )
+        assert confirmed["status"] == "confirmed"
+        resolved = await engine.agent_tracker.review_team_decision_conflict(
+            candidate["id"], "resolve"
+        )
+        assert resolved["status"] == "resolved"
+
+    with _PrincipalContext(pid="other", workspace="team-b", role="admin"):
+        assert await engine.agent_tracker.list_team_decision_conflicts(
+            project="atlas", status=None
+        ) == []
+
+
+@pytest.mark.asyncio
+async def test_semantic_decision_conflicts_are_idempotent_and_do_not_reopen_dismissed(engine):
+    with _PrincipalContext(pid="writer", workspace="team-a", role="editor", agent="codex"):
+        await engine.agent_tracker.create_team_decision(
+            project="atlas",
+            decision_key="database-plan",
+            statement="Use SQLite for the primary database",
+        )
+        await engine.agent_tracker.create_team_decision(
+            project="atlas",
+            decision_key="persistence-choice",
+            statement="Use PostgreSQL for the primary database",
+        )
+        first = await engine.agent_tracker.detect_team_decision_conflicts(project="atlas")
+        second = await engine.agent_tracker.detect_team_decision_conflicts(project="atlas")
+        assert first["new_candidates"] == 1
+        assert second["new_candidates"] == 0
+        candidate = (
+            await engine.agent_tracker.list_team_decision_conflicts(project="atlas")
+        )[0]
+
+    with _PrincipalContext(pid="owner", workspace="team-a", role="admin"):
+        await engine.agent_tracker.review_team_decision_conflict(candidate["id"], "dismiss")
+
+    with _PrincipalContext(pid="writer", workspace="team-a", role="editor", agent="codex"):
+        third = await engine.agent_tracker.detect_team_decision_conflicts(project="atlas")
+        assert third["new_candidates"] == 0
+        assert third["open_total"] == 0
+
+
+@pytest.mark.asyncio
+async def test_semantic_detector_ignores_unrelated_decision_topics(engine):
+    with _PrincipalContext(pid="writer", workspace="team-a", role="editor", agent="codex"):
+        await engine.agent_tracker.create_team_decision(
+            project="atlas",
+            decision_key="database",
+            statement="Use SQLite for the primary database",
+        )
+        await engine.agent_tracker.create_team_decision(
+            project="atlas",
+            decision_key="cache",
+            statement="Use Redis for the application cache",
+        )
+        result = await engine.agent_tracker.detect_team_decision_conflicts(project="atlas")
+        assert result["new_candidates"] == 0
+        assert result["open_total"] == 0
 
 
 @pytest.mark.asyncio
@@ -282,22 +406,24 @@ async def test_agent_tracker_migrates_pre_tenancy_tables(tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_v6_store_upgrades_to_collaboration_schema_v7(tmp_path):
-    path = str(tmp_path / "v6.db")
+async def test_v7_store_upgrades_to_decision_conflict_schema_v8(tmp_path):
+    path = str(tmp_path / "v7.db")
     conn = sqlite3.connect(path)
-    conn.execute("PRAGMA user_version = 6")
+    conn.execute("PRAGMA user_version = 7")
     conn.commit()
     conn.close()
 
     db = Database(path)
     await db.connect()
     try:
-        assert db.schema_version == CURRENT_SCHEMA_VERSION == 7
+        assert db.schema_version == CURRENT_SCHEMA_VERSION == 8
         cursor = await db.conn.execute(
             "SELECT name FROM sqlite_master WHERE type='table' "
-            "AND name IN ('team_handoffs', 'team_decisions') ORDER BY name"
+            "AND name IN ('team_handoffs', 'team_decisions', "
+            "'team_decision_conflict_candidates') ORDER BY name"
         )
         assert [row[0] for row in await cursor.fetchall()] == [
+            "team_decision_conflict_candidates",
             "team_decisions",
             "team_handoffs",
         ]
@@ -373,6 +499,45 @@ async def test_team_memory_rest_flow(tmp_path):
             )
             assert r.status_code == 200
             assert r.json()["status"] == "active"
+
+            # Differently-keyed decisions with the same topic can be scanned
+            # into a review candidate without changing either decision.
+            semantic = await client.post(
+                "/api/team/decisions",
+                json={
+                    "project": "atlas",
+                    "decision_key": "storage-plan",
+                    "statement": "Use SQLite for the primary database",
+                },
+            )
+            assert semantic.status_code == 200
+            semantic2 = await client.post(
+                "/api/team/decisions",
+                json={
+                    "project": "atlas",
+                    "decision_key": "persistence-choice",
+                    "statement": "Use PostgreSQL for the primary database",
+                },
+            )
+            assert semantic2.status_code == 200
+            detect = await client.post(
+                "/api/team/decision-conflicts/detect",
+                params={"project": "atlas"},
+            )
+            assert detect.status_code == 200
+            assert detect.json()["new_candidates"] >= 1
+            listed = await client.get(
+                "/api/team/decision-conflicts",
+                params={"project": "atlas"},
+            )
+            assert listed.status_code == 200
+            candidate = listed.json()[0]
+            reviewed = await client.post(
+                f"/api/team/decision-conflicts/{candidate['id']}/review",
+                json={"action": "confirm"},
+            )
+            assert reviewed.status_code == 200
+            assert reviewed.json()["conflict"]["status"] == "confirmed"
 
             r = await client.get("/api/agents/collaboration/atlas")
             assert r.status_code == 200
