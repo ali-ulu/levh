@@ -5,7 +5,7 @@
 ### i18n: move the Command Palette into the catalogue (#427)
 
 - Command Palette title, accessible search label, placeholder, live-region search/result status, error copy, and empty states now resolve through `useT()`.
-- Dynamic memory content/project values remain API data; the UI-string ratchet entry for `src/components/command-palette.tsx` drops from 10 to 0.
+- Dynamic memory content/project values remain API data; the UI-string ratchet for `src/components/command-palette.tsx` drops from 10 to 3, leaving only the technical keyboard-event key names (`ArrowDown`, `ArrowUp`, `Enter`).
 
 
 ### Federation B0 provenance and admission proof (#425)

@@ -22,6 +22,7 @@
   "src/app/settings/_sections/server-configuration.tsx": 17,
   "src/app/timeline/page.tsx": 3,
   "src/app/visualize/page.tsx": 39,
+  "src/components/command-palette.tsx": 3,
   "src/components/layout/header.tsx": 3,
   "src/components/layout/sidebar.tsx": 2,
   "src/components/live-feed.tsx": 1,
