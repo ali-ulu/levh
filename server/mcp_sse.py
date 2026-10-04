@@ -33,6 +33,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from server.auth import ConfiguredTokenAuthMiddleware, shared_auth_limiter
 from server.core import engine_provider
 from server.core.env import get_env
+from server.core.continuity_instructions import MCP_CONTINUITY_INSTRUCTIONS
 from server.core.onboarding import levh_version
 from server.tools.register import register_all_tools
 
@@ -49,7 +50,7 @@ async def _lifespan(_server: FastMCP) -> AsyncIterator[None]:
         await engine.shutdown()
 
 
-mcp_sse = FastMCP("LEVH", lifespan=_lifespan)
+mcp_sse = FastMCP("LEVH", instructions=MCP_CONTINUITY_INSTRUCTIONS, lifespan=_lifespan)
 
 # FastMCP's constructor has no `version` parameter and never passes one to the
 # underlying lowlevel Server, which then falls back to the `mcp` SDK's own

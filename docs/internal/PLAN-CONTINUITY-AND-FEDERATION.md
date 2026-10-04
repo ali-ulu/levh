@@ -62,20 +62,20 @@ continuity scenario: store a checkpoint + a pinned rule + a blocker, then assert
 the brief surfaces them in that order and that a subsequent recall reinforces
 the surfaced memory. Determinism and privacy contracts already apply.
 
-### A2. Close the weak link honestly
+### A2. Close the weak link honestly — landed
 
-The README already names the weak link: clients with no hook surface depend on
-the agent choosing to call `recall_memory`. Options, cheapest first:
+Option 2 is selected and implemented in #423: both stdio and SSE MCP servers
+publish one shared server `instructions` directive telling the client to call
+`get_continuity_brief` at the start of a work session. The tool belongs to the
+minimal profile, so the instruction never advertises a tool the selected profile
+cannot call. Black-box protocol tests assert the directive appears in each
+transport's initialize result.
 
-1. Keep the AGENTS.md rule and measure its hit rate with A1. If agents do call
-   it, the "filing cabinet with extra steps" apology can become a measurement.
-2. For MCP clients that surface a server "instructions"/initialize field, push
-   a one-line directive there.
-3. A lightweight polling tool is a last resort — it adds a tool without adding
-   a push channel, which is the problem it claims to solve.
-
-Next step: decide between 1 and 2 with A1's data before writing any client
-adapter.
+The existing AGENTS.md rule and stderr bridge remain complementary fallbacks.
+No polling tool was added: polling would increase tool surface without creating
+a push channel. A1's emitted/use counters remain the measurement for whether the
+continuity material is actually used; the instructions field improves the
+no-hook client path without pretending it proves consumption.
 
 ---
 

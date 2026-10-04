@@ -177,15 +177,17 @@ that is all the client needs.
 
 ### Continuous brief & auto-checkpoint (agent memory loop)
 
-LEVH can hand an agent its continuity brief without it asking, and can fold a
-working session's new memories into periodic summaries. Both are opt-in and
-default to off, so the server stays inert until you ask for it. Control them
-with environment variables on the MCP server:
+LEVH exposes `get_continuity_brief` in every MCP profile. Stdio and SSE also
+publish a server `instructions` directive telling compatible clients to call
+that tool at the start of a work session. Separately, the stderr bridge can emit
+the brief itself at startup, and auto-checkpoint can fold a working session's
+new memories into periodic summaries. Control the runtime behaviors with
+environment variables on the MCP server:
 
 | Variable | Default | Effect |
 | --- | --- | --- |
 | `LEVH_AUTO_CONNECT` | `1` | Auto-detect agent + project (env / git remote), create a tracking session, start the heartbeat loop. Set `0` to disable. |
-| `LEVH_AUTO_BRIEF` | `1` | Print the continuity brief to the server's stderr at startup, so terminal-side MCP clients (Claude Code, Codex, …) receive it without calling a tool. Set `0` to disable. |
+| `LEVH_AUTO_BRIEF` | `1` | Print the continuity brief to the server's stderr at startup, so terminal-side MCP clients (Claude Code, Codex, …) receive it without calling a tool. Set `0` to disable. This does not disable the protocol-level server instruction; that carries only the directive, not memory content. |
 | `LEVH_AUTO_CHECKPOINT` | `0` | Enable the background auto-checkpoint loop (`1`/`true`). |
 | `LEVH_AUTO_CHECKPOINT_INTERVAL` | `300` | Seconds between auto-checkpoints (minimum sensible value ~60). |
 

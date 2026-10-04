@@ -15,6 +15,8 @@ from mcp import ClientSession, StdioServerParameters
 from mcp.client.sse import sse_client
 from mcp.client.stdio import stdio_client
 
+from server.core.continuity_instructions import MCP_CONTINUITY_INSTRUCTIONS
+
 ROOT = Path(__file__).resolve().parents[1]
 LEVH_VERSION = package_version("levh")
 
@@ -55,6 +57,7 @@ async def test_mcp_stdio_protocol_blackbox(tmp_path):
                 # LEVH's (regression: server/mcp_stdio.py used to report
                 # e.g. "1.28.1" here instead of the real release).
                 assert init_result.serverInfo.version == LEVH_VERSION
+                assert init_result.instructions == MCP_CONTINUITY_INSTRUCTIONS
                 tools = await session.list_tools()
                 assert [tool.name for tool in tools.tools] == [
                     "store_memory",
@@ -136,6 +139,7 @@ async def test_mcp_sse_protocol_blackbox(tmp_path):
                 # assertion above) — a separate FastMCP instance, so it
                 # needed, and got, the same fix independently.
                 assert init_result.serverInfo.version == LEVH_VERSION
+                assert init_result.instructions == MCP_CONTINUITY_INSTRUCTIONS
                 tools = await session.list_tools()
                 assert len(tools.tools) == 6
                 stored = await session.call_tool(

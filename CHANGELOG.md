@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Feature: deliver the continuity-start directive through MCP instructions (#423)
+
+- Stdio and SSE now publish one shared MCP server instruction asking clients to call `get_continuity_brief` before work begins; the tool is present even in the minimal profile.
+- Black-box protocol tests pin the instruction on both transports. Existing stderr auto-brief/hints remain fallback channels, and no polling tool is added.
+- The continuity plan records A2 option 2 as landed; the roadmap now leaves only the client × transport inventory reconciliation (A0) open in this workstream.
+
+
 ### Feature: pull-on-demand Slack channel history connector (#421)
 
 - New `slack` connector validates a bot token with `auth.test`, pulls explicit channel IDs through cursor-paginated `conversations.history`, and reuses the existing admission-gated sync/background-job pipeline.

@@ -43,6 +43,7 @@ from server.core.agent_heartbeat import (
     stop_heartbeat_background,
 )
 from server.core.env import get_env
+from server.core.continuity_instructions import MCP_CONTINUITY_INSTRUCTIONS
 from server.core.onboarding import levh_version
 from server.tools.register import register_all_tools
 
@@ -128,7 +129,7 @@ async def _lifespan(_server: FastMCP) -> AsyncIterator[None]:
         await engine.shutdown()
 
 
-mcp = FastMCP("LEVH", lifespan=_lifespan)
+mcp = FastMCP("LEVH", instructions=MCP_CONTINUITY_INSTRUCTIONS, lifespan=_lifespan)
 
 # FastMCP's constructor has no `version` parameter and never passes one to the
 # underlying lowlevel Server, which then falls back to the `mcp` SDK's own
