@@ -60,72 +60,98 @@ sınırında enforce ediliyor.
 
 ---
 
-## 2. Git/GitHub Entegrasyonu — **araç yazıldı, hiç çalıştırılmadı**
+## 2. Git/GitHub Entegrasyonu — **gerçek ingestion kanıtlandı**
 
 **İstenen:** Hafızanın commit'ler, pull request'ler ve kodun canlı mimarisiyle
-**otomatik** beslenmesi; ajanın *"bu fonksiyon 3 commit önce Ali tarafından şu
-sebeple değiştirilmişti, güven skoru yüksek bir kural"* diyebilmesi.
+beslenmesi; ajanın geçmiş değişiklikleri, dosya kökenini ve repository bağlamını
+memory üzerinden geri çağırabilmesi.
 
-**Yapılanlar:**
+**Uygulanan ve gerçek repo üzerinde doğrulananlar:**
 
 | Parça | Kanıt |
 | --- | --- |
-| Yerel git connector | `server/connectors/git.py`, main'de (PR #369) |
-| Registry kaydı | `GitConnector.name: GitConnector` — REST + MCP + CLI otomatik alıyor |
-| Testler | `tests/test_git_connector.py`, **21 test** |
-| Canlı API'de görünür | `GET /api/v1/connectors` → `{"name":"git",...,"required_config_keys":["repo_path"]}` |
-| GitHub connector | `server/connectors/github.py` (README + issues + PRs), uzun süredir var |
-| Sync framework | `ingest_items` + `connector_sync` tablosu + `/api/connectors/sync` |
+| Yerel git connector | `server/connectors/git.py`, PR #369 |
+| Commit geçmişi | Connector dogfood run #2: **80 commit memory** |
+| File history | Connector dogfood run #2: **12 file-history memory** |
+| Git blame | Connector dogfood run #2: **8 blame memory** |
+| Mimari snapshot | Connector dogfood run #2: **1 arch_snapshot memory** |
+| GitHub connector | README + seçili dosyalar gerçek GitHub API'den ingest edildi |
+| GitHub CLI config | PR #400: tek repo / comma list / JSON list, bool ve integer normalize edilir |
+| GitHub Actions token | PR #400: `/user` yerine configured repo üzerinden validation |
+| Sync bookkeeping | Dogfood: git **101 fetched / 101 stored**, github **4 / 4** |
+| Provenance | Her iki connector için `source_type = code` |
+| Recall kanıtı | Git örneği rank **1/20**, GitHub örneği rank **2/20** |
+| Evidence workflow | `.github/workflows/connector-dogfood.yml` + JSON artifact |
+| Verifier | `scripts/verify_connector_dogfood.py`, final `ok: true`, `errors: []` |
 
-**Eksik olan — istenen cümlenin tam kalbi:**
+**Gerçek dogfood akışı:**
 
-- **Hiç çalıştırılmadı.** `connector_sync` tablosunda yalnızca **iki** satır var:
-  `transcript` (1 fetched / 0 stored, 2026-09-10) ve `local_files`
-  (379 fetched / 99 stored, 2026-08-29). **`git` satırı yok** — connector kurulu,
-  kayıtlı, canlı sunucuda görünüyor, ama bir kez bile koşmamış.
-- **`github` connector'i de hiç çalışmamış** — `connector_sync`'te satırı yok.
-- **`blame` yok.** Yerel connector yalnızca `git log` okuyor; satır-yazar bilgisi yok.
-- **Kodun canlı mimarisiyle senkron yok.** Commit'ler dosya-diff düzeyinde memory
-  oluyor, mimari çıkarımı yok.
-- **"Güven skoru yüksek kural" yok.** Commit'ler memory'ye girmediği için trust
-  katmanı onlara hiç dokunmuyor; `governed-memory` akışı devreye girmiyor.
-- **Otomatik beslenme yok.** Connector'lar *pull-on-demand*; arka plan worker
-  planlanmıyor (ROADMAP'te kayıtlı karar). Yani "otomatik" kısmı tasarım gereği
-  yok — çalıştırma bir çağrıya bağlı.
+- PR #400 connector CLI/token davranışını ve dogfood workflow'unu ekledi.
+- İlk gerçek run ingestion'ı başarıyla yaptı ve verifier'da bir schema varsayımı
+  yakaladı (`metadata_json` yerine canonical `metadata`).
+- PR #401 verifier'ı düzeltti.
+- Connector dogfood run #2 (`37223213143`) aynı ephemeral store üzerinde hem
+  local Git hem canlı GitHub API ingestion'ını tamamladı ve evidence verifier'ı
+  başarıyla geçti.
+- Sonuçlar fixture değildir: workflow `ali-ulu/levh` deposunun full Git
+  history checkout'unu ve repository-scoped GitHub Actions tokenını kullanır.
 
-**Sonuç:** Araç var, **sonuç yok**. `git log` → memory boru hattı kurulu ama
-musluk açılmamış.
+**Bilinçli sınır:**
+
+Connector'lar hâlâ background daemon değildir. Sync, CLI/REST çağrısı veya
+Connector dogfood workflow'u gibi açık bir tetikleyiciyle çalışır. Bu,
+pull-on-demand tasarım kararının kendisidir; eksik bir ingestion borusu değildir.
+
+**Sonuç:** `git log / blame / file history / architecture snapshot` ve GitHub
+repository içeriğinin admission gate → memory → `connector_sync` → recall
+zincirinden geçtiği gerçek veriyle kanıtlandı.
 
 ---
 
-## 3. Dynamic Windowing — **büyük ölçüde yapıldı**
+## 3. Dynamic Windowing — **graph-aware + adaptif bütçe uygulandı**
 
-**İstenen:** Bilgi grafiğinden yararlanarak, o anki prompt'a göre en optimize context
-paketini dinamik hazırlamak; token tasarrufu sağlayan akıllı veri filtresi olmak.
+**İstenen:** Bilgi grafiğinden yararlanarak o anki prompt'a göre en uygun context
+paketini hazırlamak ve token bütçesini ölçülen ihtiyaç doğrultusunda kullanmak.
 
-**Yapılanlar:**
+**Uygulananlar:**
 
 | Parça | Kanıt |
 | --- | --- |
-| Sorgu-farkında pencere | `get_context(query=...)` (PR #370 + #371) |
-| H(x,ψ) sıralaması | `recall`'ın puanlayıcısı yeniden kullanılıyor, superseded cezası dahil |
-| Gerçek token bütçesi | `server/core/tokens.py` — `estimate_tokens` (`len//4` yerine) + `truncate_to_tokens` |
-| Bütçe-farkında paketleme | `get_context_packing()` → `ContextPacking` (giren / elenen / `used_tokens` / mod) |
-| Aday havuzu genişliği | kısa-vade + lexical tarama + FTS (synonym'lerle) — `recall`'ın kaynakları |
-| Emekli satır filtresi | `valid_to` kontrolü; mutation-check ile doğrulandı |
-| Yüzeyler | REST `GET /api/v1/context?query=`, MCP `get_context(query=...)`, `openapi.json` + TS SDK güncel |
-| Testler | `tests/test_context_window.py`, **22 test** |
+| Sorgu-farkında pencere | `get_context(query=...)`, PR #370 + #371 |
+| H(x,ψ) sıralaması | Recall ile aynı scorer ve superseded cezası |
+| Gerçek token tahmini | `server/core/tokens.py` |
+| Bütçe-farkında paketleme | `get_context_packing()` → included / omitted / used_tokens |
+| Geniş aday havuzu | short-term + semantic/lexical + FTS + synonym |
+| **Entity graph bridge** | PR #385 / #375: `_entity_linked_memories` artık `_rank_context_candidates` içinde |
+| Scope güvenliği | Graph adayları da workspace / project / session / `valid_to` predicate'inden geçer |
+| **Adaptif bütçe** | `max_tokens=None` query yolunda measured demand, **256..16000** sınırı |
+| Explicit budget uyumu | Caller bir bütçe verirse birebir korunur |
+| Layered geriye uyumluluk | Query yoksa tarihsel **4000** varsayılanı korunur |
+| Graph regression testleri | Metadata'daki entity adı üzerinden, content word-overlap olmadan gerçek graph hit'i pinlenir |
 
-**Eksik olan:**
+**Graph-aware davranışın kanıtı:**
 
-- **Bilgi grafiği farkında değil.** `recall` entity graph'ı aday kaynağı olarak
-  kullanıyor; `_rank_context_candidates` **kullanmıyor**. İstenen cümledeki
-  *"sahip olduğu bilgi grafiği sayesinde"* kısmı tam olarak burada eksik.
-- **Adaptif bütçe yok.** `max_tokens`'ı çağıran veriyor; pencere basıncına,
-  modele veya kalan bağlama göre kendini ayarlamıyor.
-- **Sorgu anında sıkıştırma yok.** Sıkıştırma `consolidate_memories` içinde
-  *offline*; pencere kurulurken özetleme yapılmıyor.
-- **Grafik-farkında paketleme testi yok** — çünkü özellik yok.
+`tests/test_context_window.py` içindeki #375 regresyonları, entity adının yalnız
+metadata'da olduğu bir memory'nin vector/lexical/FTS kelime örtüşmesi olmadan
+context window'a ulaştığını doğrular. Aynı test ailesi graph hit'inin project
+scope'u atlayamadığını da pinler.
+
+**Adaptif bütçe davranışı:**
+
+- Caller `max_tokens` verirse bu değer değiştirilmez.
+- Query var ve bütçe verilmemişse demand = pinned zorunlu malzeme + ranked aday
+  maliyeti üzerinden ölçülür, sonra 256..16000 aralığına sıkıştırılır.
+- Query yoksa layered yolun tarihsel 4000-token davranışı korunur.
+- Engine caller'ın model context limitini tahmin etmez; yalnız kendi aday
+  havuzunun ölçülebilir baskısını raporlar.
+
+**Bilinçli olarak hâlâ ayrı konu:** Query-time özetleme/sıkıştırma yapılmıyor.
+Consolidation offline bir lifecycle özelliği olmaya devam ediyor. Bu, #375'in
+graph-awareness + adaptive-budget kabul kriterinin parçası değildi.
+
+**Sonuç:** “Bilgi grafiği context paketine bağlı değil” ve “adaptif bütçe yok”
+iddiaları artık geçerli değil; ikisi de PR #385 ile runtime ve regression
+testleri düzeyinde kapandı.
 
 ---
 
