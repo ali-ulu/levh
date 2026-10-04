@@ -234,5 +234,21 @@
   "settings.recallQuality.descriptionBeforeEmbedder": "Runs a labelled query set against an isolated temp database (never touches your real memories) and reports hit@k / MRR — the same kind of accuracy metric managed memory services publish. Uses your configured embedder (",
   "settings.recallQuality.hashWarning": " — non-semantic, treat as a plumbing check only",
   "settings.recallQuality.runBenchmark": "Run benchmark",
-  "settings.recallQuality.benchmarkFailed": "Benchmark failed"
+  "settings.recallQuality.benchmarkFailed": "Benchmark failed",
+  "app.organizations.all": "All organizations",
+  "app.organizations.memoryCount": "{count} memories",
+  "app.organizations.personCount": "{count} people",
+  "app.organizations.lastSeen": "last seen {date}",
+  "app.organizations.peopleTitle": "People",
+  "app.organizations.memoriesMentioning": "Memories mentioning {name}",
+  "app.organizations.noMemories": "No memories.",
+  "app.organizations.title": "Organizations",
+  "app.organizations.subtitle": "The companies you actually interact with — grouped automatically by the email domain of people across your calendar, email, and transcripts. Personal email providers are excluded.",
+  "app.organizations.placeholder": "Filter by name or domain...",
+  "app.organizations.empty.title": "No organizations yet.",
+  "app.organizations.empty.importPrefix": "Import a calendar, email (.mbox), or meeting transcript in",
+  "app.organizations.empty.settings": "Settings",
+  "app.organizations.empty.importSuffix": "— organizations are derived from people's email domains.",
+  "app.organizations.personCount.one": "{count} person",
+  "app.organizations.personCount.other": "{count} people"
 }

@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### i18n: move the Organizations page into the catalogue (#433)
+
+- Organizations list/detail headings, summaries, search, empty-state guidance, count copy, and last-seen copy now resolve through `useT()`.
+- Dynamic organization/person/memory/domain/date/source values remain runtime data; the UI-string ratchet for `src/app/organizations/page.tsx` drops from 15 to 1, leaving only the technical `connector:` source prefix.
+
+
 ### i18n: move Recall Quality copy into the catalogue (#431)
 
 - Recall Quality title, explanatory copy, hash-mode warning, benchmark action, and fallback error now resolve through `useT()`.

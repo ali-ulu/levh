@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,6 +12,7 @@ import type { Memory, Organization } from "@/types";
 import { ArrowLeft, Building2, Loader2, Search } from "lucide-react";
 
 export default function OrganizationsPage() {
+  const t = useT();
   const [orgs, setOrgs] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("");
@@ -56,7 +58,7 @@ export default function OrganizationsPage() {
       <div className="space-y-4">
         <Button variant="ghost" size="sm" onClick={() => setSelected(null)}>
           <ArrowLeft className="h-4 w-4 mr-1.5" />
-          All organizations
+          {t("app.organizations.all")}
         </Button>
 
         <div>
@@ -65,16 +67,19 @@ export default function OrganizationsPage() {
             {selected.name}
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            <span className="font-mono">{selected.domain}</span> · {selected.memory_count} memories ·{" "}
-            {selected.person_count} people
-            {selected.last_seen && <> · last seen {selected.last_seen.slice(0, 10)}</>}
+            <span className="font-mono">{selected.domain}</span> ·{" "}
+            {t("app.organizations.memoryCount", { count: selected.memory_count })} ·{" "}
+            {t("app.organizations.personCount", { count: selected.person_count })}
+            {selected.last_seen && (
+              <> · {t("app.organizations.lastSeen", { date: selected.last_seen.slice(0, 10) })}</>
+            )}
           </p>
         </div>
 
         {selected.people.length > 0 && (
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">People</CardTitle>
+              <CardTitle className="text-base">{t("app.organizations.peopleTitle")}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex flex-wrap gap-1.5">
@@ -90,7 +95,9 @@ export default function OrganizationsPage() {
 
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Memories mentioning {selected.name}</CardTitle>
+            <CardTitle className="text-base">
+              {t("app.organizations.memoriesMentioning", { name: selected.name })}
+            </CardTitle>
           </CardHeader>
           <CardContent>
             {detailLoading ? (
@@ -98,7 +105,9 @@ export default function OrganizationsPage() {
                 <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
               </div>
             ) : orgMemories.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-4 text-center">No memories.</p>
+              <p className="text-sm text-muted-foreground py-4 text-center">
+                {t("app.organizations.noMemories")}
+              </p>
             ) : (
               <div className="space-y-2">
                 {orgMemories.map((m) => (
@@ -136,11 +145,9 @@ export default function OrganizationsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Organizations</h1>
+        <h1 className="text-2xl font-bold">{t("app.organizations.title")}</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          The companies you actually interact with — grouped automatically by the
-          email domain of people across your calendar, email, and transcripts.
-          Personal email providers are excluded.
+          {t("app.organizations.subtitle")}
         </p>
       </div>
 
@@ -148,7 +155,7 @@ export default function OrganizationsPage() {
         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
         <Input
           className="pl-8"
-          placeholder="Filter by name or domain..."
+          placeholder={t("app.organizations.placeholder")}
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
         />
@@ -162,13 +169,13 @@ export default function OrganizationsPage() {
         <Card>
           <CardContent className="py-12 text-center text-sm text-muted-foreground space-y-2">
             <Building2 className="h-8 w-8 mx-auto opacity-40" />
-            <p>No organizations yet.</p>
+            <p>{t("app.organizations.empty.title")}</p>
             <p>
-              Import a calendar, email (.mbox), or meeting transcript in{" "}
+              {t("app.organizations.empty.importPrefix")}{" "}
               <a href="/settings/" className="underline">
-                Settings
+                {t("app.organizations.empty.settings")}
               </a>{" "}
-              — organizations are derived from people&apos;s email domains.
+              {t("app.organizations.empty.importSuffix")}
             </p>
           </CardContent>
         </Card>
@@ -192,7 +199,12 @@ export default function OrganizationsPage() {
               <p className="text-xs text-muted-foreground font-mono truncate mt-0.5">{o.domain}</p>
               <div className="flex items-center justify-between mt-2">
                 <span className="text-[11px] text-muted-foreground">
-                  {o.person_count} {o.person_count === 1 ? "person" : "people"}
+                  {t(
+                    o.person_count === 1
+                      ? "app.organizations.personCount.one"
+                      : "app.organizations.personCount.other",
+                    { count: o.person_count },
+                  )}
                 </span>
                 {o.last_seen && (
                   <span className="text-[11px] text-muted-foreground">{o.last_seen.slice(0, 10)}</span>
