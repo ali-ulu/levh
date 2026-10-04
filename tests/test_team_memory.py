@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 import sqlite3
 
 import pytest
@@ -19,7 +18,7 @@ from server.core.tenancy import (
 )
 
 
-class principal:
+class _PrincipalContext:
     def __init__(self, *, pid: str, workspace: str, role: str, agent: str | None = None):
         self.value = Principal(id=pid, workspace_id=workspace, role=role, agent=agent)
         self.token = None
@@ -47,7 +46,7 @@ async def engine(tmp_path):
 
 @pytest.mark.asyncio
 async def test_handoff_lifecycle_is_workspace_scoped_and_role_gated(engine):
-    with principal(pid="backend-1", workspace="team-a", role="editor", agent="codex"):
+    with _PrincipalContext(pid="backend-1", workspace="team-a", role="editor", agent="codex"):
         handoff = await engine.agent_tracker.create_handoff(
             project="atlas",
             to_agent="cursor",
@@ -274,3 +273,85 @@ async def test_v6_store_upgrades_to_collaboration_schema_v7(tmp_path):
         ]
     finally:
         await db.close()
+
+
+@pytest.mark.asyncio
+async def test_team_memory_rest_flow(tmp_path):
+    from httpx import ASGITransport, AsyncClient
+
+    import server.api as api_mod
+
+    db_path = str(tmp_path / "team-api.db")
+    if api_mod._engine is not None:
+        await api_mod._engine.shutdown()
+    api_mod._engine = MemoryEngine(
+        db_path=db_path,
+        embedder_mode="hash",
+        short_term_max=50,
+    )
+    await api_mod._engine.initialize()
+    api_mod._initialized = True
+    try:
+        transport = ASGITransport(app=api_mod.app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            r = await client.post(
+                "/api/team/handoffs",
+                json={
+                    "project": "atlas",
+                    "to_agent": "cursor",
+                    "title": "Finish the UI",
+                    "summary": "Backend is ready",
+                    "memory_ids": ["m1"],
+                },
+            )
+            assert r.status_code == 200
+            handoff = r.json()
+            assert handoff["status"] == "pending"
+
+            r = await client.post(f"/api/team/handoffs/{handoff['id']}/accept")
+            assert r.status_code == 200
+            assert r.json()["status"] == "accepted"
+
+            first = await client.post(
+                "/api/team/decisions",
+                json={
+                    "project": "atlas",
+                    "decision_key": "database",
+                    "statement": "Use SQLite",
+                    "rationale": "Local-first",
+                },
+            )
+            assert first.status_code == 200
+            assert first.json()["contested"] is False
+
+            second = await client.post(
+                "/api/team/decisions",
+                json={
+                    "project": "atlas",
+                    "decision_key": "database",
+                    "statement": "Use PostgreSQL",
+                    "rationale": "Concurrent writers",
+                },
+            )
+            assert second.status_code == 200
+            body = second.json()
+            assert body["contested"] is True
+            assert len(body["conflicts"]) == 2
+
+            r = await client.post(
+                f"/api/team/decisions/{first.json()['decision']['id']}/resolve"
+            )
+            assert r.status_code == 200
+            assert r.json()["status"] == "active"
+
+            r = await client.get("/api/agents/collaboration/atlas")
+            assert r.status_code == 200
+            collab = r.json()
+            assert collab["pending_handoffs"] == 0
+            assert collab["contested_decisions"] == 0
+            assert collab["handoffs"][0]["id"] == handoff["id"]
+            assert any(d["status"] == "active" for d in collab["decisions"])
+    finally:
+        await api_mod._engine.shutdown()
+        api_mod._engine = None
+        api_mod._initialized = False
