@@ -250,6 +250,10 @@ export type CollaborationResponse = {
   agents?: Record<string, unknown>[];
   shared_checkpoints?: Record<string, unknown>[];
   collaboration_score: number;
+  handoffs?: TeamHandoffOut[];
+  decisions?: TeamDecisionOut[];
+  pending_handoffs?: number;
+  contested_decisions?: number;
 };
 
 export type ConflictDetectResponse = {
@@ -1212,6 +1216,63 @@ export type SyncJobOut = {
 
 export type TagListResponse = {
   tags?: NameCountOut[];
+};
+
+export type TeamDecisionCreateRequest = {
+  project: string;
+  decision_key: string;
+  statement: string;
+  rationale?: string;
+};
+
+export type TeamDecisionCreateResponse = {
+  created: boolean;
+  contested: boolean;
+  decision: TeamDecisionOut;
+  conflicts?: TeamDecisionOut[];
+};
+
+export type TeamDecisionOut = {
+  id: string;
+  workspace_id: string;
+  project: string;
+  decision_key: string;
+  statement: string;
+  rationale?: string;
+  status: string;
+  created_by: string;
+  created_agent?: string | null;
+  created_at: string;
+  conflict_group_id?: string | null;
+  superseded_by?: string | null;
+  resolved_at?: string | null;
+  resolved_by?: string | null;
+};
+
+export type TeamHandoffCreateRequest = {
+  project: string;
+  to_agent: string;
+  title: string;
+  summary?: string;
+  memory_ids?: string[];
+};
+
+export type TeamHandoffOut = {
+  id: string;
+  workspace_id: string;
+  project: string;
+  from_principal_id: string;
+  from_agent?: string | null;
+  to_agent: string;
+  title: string;
+  summary?: string;
+  memory_ids?: string[];
+  status: string;
+  created_at: string;
+  accepted_at?: string | null;
+  accepted_by?: string | null;
+  accepted_agent?: string | null;
+  completed_at?: string | null;
 };
 
 export type TimelineGroupOut = {
