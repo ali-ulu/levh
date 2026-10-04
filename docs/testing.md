@@ -29,9 +29,9 @@ every job with `uv sync --frozen --extra dev`. Plain
 `pip install -e ".[dev]"` still runs the suite but installs from pyproject's
 floor pins instead of the locked graph.
 
-### Three traps that look like code failures
+### Six traps that look like code failures
 
-Each of the three below is an environment problem, and each one surfaces in a
+Each of the six below is an environment problem, and each one surfaces in a
 shape that gets read as "the change broke something". Check the environment
 before reading a diff.
 
@@ -162,6 +162,29 @@ when in doubt:
 os.mkdir(p, 0o700)   # then: os.scandir(p) -> WinError 5
 os.mkdir(p)          # default mode: works
 ```
+
+#### 6. A live server darkening the doctor tests
+
+**Symptom.** `tests/test_remote_access_boundary.py` and the doctor case in
+`tests/test_operational_hardening.py` fail one run and pass the next, with no
+source change between the two — or fail steadily on one machine while CI stays
+green.
+
+**Cause.** The tests assert the argv/config path by pointing the configured
+port at silence (`API_PORT=1`), but `levh doctor`'s live probe
+(`server/commands/doctor.py`) also tries the 8000/9000 fallbacks. A server
+left running from a debug session — or started at logon, as `levh_serve.bat`
+is on this machine — answers there, and the check trusts the serving process
+over argv. The verdict then depends on ambient port state, not on the change
+under test. This is the doctor variant of the Playwright trap in `AGENTS.md`
+("a server you left running from a debug session is silently reused").
+
+**Fix.** Tests asserting the no-server path set `LEVH_DOCTOR_NO_LIVE_PROBE=1`,
+which makes the probe return `None` so argv and config decide. Tests that
+exercise the probe itself
+(`test_doctor_prefers_what_a_live_server_reports`,
+`test_doctor_probes_the_port_from_argv`) spin their own server on an
+ephemeral port and leave the variable unset.
 
 ## What the suite covers
 

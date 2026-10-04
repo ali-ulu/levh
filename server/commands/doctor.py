@@ -21,6 +21,14 @@ from server.core.runtime_config import configured_bind_host
 #: the very command an operator runs to find out what is wrong.
 _DB_BUSY_TIMEOUT_SECONDS = 5.0
 
+#: Opt out of the live-server probe in :func:`_running_bind_host`.
+#: The probe answers whoever happens to listen on the candidate ports, which on
+#: a developer machine is an unrelated live server — not the topology under
+#: test — so tests asserting the argv/config path set this to make argv and
+#: config decide (issue #389). Operators never need it: in production the
+#: serving process is the authority on its own socket.
+NO_LIVE_PROBE_ENV = "LEVH_DOCTOR_NO_LIVE_PROBE"
+
 
 def _running_bind_host(runtime) -> str | None:
     """Ask a live server what address it is bound to, or ``None`` if silent.
@@ -40,10 +48,16 @@ def _running_bind_host(runtime) -> str | None:
     ``levh serve --port 9000`` while ``API_PORT``/config still say ``8000``
     would otherwise never be found, and the check would report a boundary that
     is not the one in force (issue #170).
+
+    ``LEVH_DOCTOR_NO_LIVE_PROBE`` disables the probe outright and returns
+    ``None``: tests asserting the argv/config path opt out so an unrelated
+    server on a fallback port cannot darken them (issue #389).
     """
     import json
     import urllib.request
 
+    if get_env(NO_LIVE_PROBE_ENV, "").strip().lower() in ("1", "true", "yes", "on"):
+        return None
     for port in _candidate_ports(runtime):
         try:
             with urllib.request.urlopen(  # nosec B310 - fixed loopback http URL, no user input

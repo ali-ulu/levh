@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+### Fix: isolate the doctor live probe from ambient servers (#389)
+
+- Two doctor tests failed whenever a live server answered on a fallback port:
+  pointing the configured port at silence (`API_PORT=1`) was not enough,
+  because the probe also tries 8000/9000 and trusts whoever answers. On a
+  machine running `levh serve` that made the verdict depend on ambient port
+  state — flaky locally, green in CI, exactly where the suite is trusted most.
+- `LEVH_DOCTOR_NO_LIVE_PROBE=1` now makes the probe return `None` so argv and
+  config decide. Tests asserting the no-server path set it; the two tests that
+  exercise the probe itself keep spinning their own server. `docs/testing.md`
+  gains the failure as trap 6.
+
 ### Fix: stop treating wall-clock strings as exact ordering keys (#379)
 
 - The suite was recorded as "order-dependent"; it is not. There is no shared
