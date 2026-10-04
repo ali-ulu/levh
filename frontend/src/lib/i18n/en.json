@@ -263,5 +263,12 @@
   "app.review.action.weaken": "Weaken",
   "app.review.action.pin": "Pin",
   "app.review.action.snooze": "Snooze",
-  "app.review.action.forget": "Forget"
+  "app.review.action.forget": "Forget",
+  "settings.connectClient.copied": "Copied!",
+  "settings.connectClient.copyConfig": "Copy config",
+  "settings.connectClient.title": "Connect an AI Client",
+  "settings.connectClient.description": "Set up MCP (Model Context Protocol) to give your AI tools persistent memory. Select your client below and copy the config.",
+  "settings.connectClient.installPath": "LEVH install path",
+  "settings.connectClient.addTo": "Add to",
+  "settings.connectClient.cliAlternative": "Or generate configs from the CLI:"
 }

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useT } from "@/lib/i18n";
 import type { ServerConfig } from "@/types";
 import { Check, Copy, ExternalLink, Sparkles } from "lucide-react";
 
@@ -69,6 +70,7 @@ const CLIENTS = [
 ];
 
 function CopyButton({ text }: { text: string }) {
+  const t = useT();
   const [copied, setCopied] = useState(false);
   return (
     <Button
@@ -86,12 +88,13 @@ function CopyButton({ text }: { text: string }) {
       ) : (
         <Copy className="h-3.5 w-3.5" />
       )}
-      {copied ? "Copied!" : "Copy config"}
+      {copied ? t("settings.connectClient.copied") : t("settings.connectClient.copyConfig")}
     </Button>
   );
 }
 
 export function ConnectClient({ config, client, setClient }: ConnectClientProps) {
+  const t = useT();
   const [installPath, setInstallPath] = useState("/path/to/levh-new");
   const selectedClient = CLIENTS.find((c) => c.id === client)!;
 
@@ -100,11 +103,10 @@ export function ConnectClient({ config, client, setClient }: ConnectClientProps)
       <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center gap-2">
           <Sparkles className="h-4 w-4" />
-          Connect an AI Client
+          {t("settings.connectClient.title")}
         </CardTitle>
         <p className="text-xs text-muted-foreground">
-          Set up MCP (Model Context Protocol) to give your AI tools persistent memory.
-          Select your client below and copy the config.
+          {t("settings.connectClient.description")}
         </p>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -130,7 +132,7 @@ export function ConnectClient({ config, client, setClient }: ConnectClientProps)
         <div className="flex flex-wrap items-end gap-3">
           <div className="space-y-1 flex-1 min-w-48">
             <Label className="text-xs text-muted-foreground">
-              LEVH install path
+              {t("settings.connectClient.installPath")}
             </Label>
             <Input value={installPath} onChange={(e) => setInstallPath(e.target.value)} />
           </div>
@@ -139,7 +141,7 @@ export function ConnectClient({ config, client, setClient }: ConnectClientProps)
 
         {/* Config file location */}
         <p className="text-xs text-muted-foreground">
-          Add to{" "}
+          {t("settings.connectClient.addTo")}{" "}
           <code className="bg-muted px-1.5 py-0.5 rounded text-[11px]">
             {selectedClient.path}
           </code>
@@ -154,7 +156,7 @@ export function ConnectClient({ config, client, setClient }: ConnectClientProps)
 
         {/* CLI alternative */}
         <p className="text-xs text-muted-foreground">
-          Or generate configs from the CLI:{" "}
+          {t("settings.connectClient.cliAlternative")}{" "}
           <code className="bg-muted px-1.5 py-0.5 rounded text-[11px]">
             levh mcp config {client}
           </code>

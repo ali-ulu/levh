@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### i18n: move Connect Client setup copy into the catalogue (#437)
+
+- Connect Client title/description, copy-button states, install-path label, config-location lead-in, and CLI-alternative lead-in now resolve through `useT()`.
+- Client/product names, config paths, card initials, generated MCP JSON and displayed CLI command remain technical/brand data; the UI-string ratchet for `src/app/settings/_sections/connect-client.tsx` drops from 15 to 8.
+
+
 ### i18n: move the Review page into the catalogue (#435)
 
 - Review heading/subtitle, refresh/empty states, retention and recall-review summaries, and all review action labels now resolve through `useT()`.
