@@ -688,8 +688,10 @@ class CollaborationResponse(BaseModel):
     collaboration_score: int
     handoffs: list[TeamHandoffOut] = Field(default_factory=list)
     decisions: list[TeamDecisionOut] = Field(default_factory=list)
+    decision_conflicts: list[TeamDecisionConflictOut] = Field(default_factory=list)
     pending_handoffs: int = 0
     contested_decisions: int = 0
+    open_decision_conflicts: int = 0
 
 
 # ── Response models: attachments ──────────────────────────────────────
