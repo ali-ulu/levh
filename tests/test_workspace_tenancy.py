@@ -159,6 +159,26 @@ async def test_editor_can_mutate_but_cannot_run_whole_store_backup(db, tmp_path)
 
 
 @pytest.mark.asyncio
+async def test_full_export_and_portable_backup_require_admin(engine):
+    mem = await engine.store("admin-only export payload")
+
+    with workspace(DEFAULT_WORKSPACE_ID, role="viewer", principal_id="reader"):
+        assert await engine.get_memory(mem.id) is not None
+        with pytest.raises(AuthorizationError):
+            await engine.export_memories()
+
+    with workspace(DEFAULT_WORKSPACE_ID, role="editor", principal_id="writer"):
+        with pytest.raises(AuthorizationError):
+            await engine.backup()
+
+    with workspace(DEFAULT_WORKSPACE_ID, role="admin", principal_id="owner"):
+        exported = await engine.export_memories()
+        assert any(row["id"] == mem.id for row in exported)
+        snapshot = await engine.backup()
+        assert snapshot["counts"]["memories"] >= 1
+
+
+@pytest.mark.asyncio
 async def test_unknown_role_fails_closed(db):
     with workspace(DEFAULT_WORKSPACE_ID, role="owner", principal_id="mystery"):
         with pytest.raises(AuthorizationError, match="unknown workspace role"):
