@@ -14,6 +14,7 @@ from typing import Any, Callable
 
 from .agent_identity import agent_display, agent_icon, normalize_agent
 from .database import Database
+from .tenancy import authorize, current_workspace_id
 
 
 def _row_to_dict(row) -> dict:
@@ -40,9 +41,19 @@ class AgentPresenceService:
 
     async def initialize(self) -> None:
         """Create the agent tracking tables."""
-        from .agent_tracker import _AGENT_TRACKING_SCHEMA
+        from .agent_tracker import _AGENT_TRACKING_SCHEMA, _AGENT_TENANCY_INDEXES
 
         await self.db.conn.executescript(_AGENT_TRACKING_SCHEMA)
+        for table in ("agent_sessions", "agent_checkpoints"):
+            cursor = await self.db.conn.execute(f"PRAGMA table_info({table})")
+            columns = {row[1] for row in await cursor.fetchall()}
+            await cursor.close()
+            if "workspace_id" not in columns:
+                await self.db.conn.execute(
+                    f"ALTER TABLE {table} ADD COLUMN workspace_id "
+                    "TEXT NOT NULL DEFAULT 'default'"
+                )
+        await self.db.conn.executescript(_AGENT_TENANCY_INDEXES)
         await self.db.conn.commit()
 
     async def agent_connect(
@@ -55,12 +66,13 @@ class AgentPresenceService:
         """Record an agent connecting. Returns the agent session record."""
         import uuid
 
+        actor = authorize("store", current_workspace_id())
         key = normalize_agent(agent_name)
         now_iso = datetime.now(timezone.utc).isoformat()
         agent_session_id = uuid.uuid4().hex
 
         # Close any previous active connection for this agent
-        await self._close_stale_connections(key)
+        await self._close_stale_connections(key, actor.workspace_id)
 
         row = {
             "id": agent_session_id,
@@ -68,6 +80,7 @@ class AgentPresenceService:
             "agent_display": agent_display(agent_name),
             "session_id": session_id,
             "project": project,
+            "workspace_id": actor.workspace_id,
             "status": "connected",
             "connected_at": now_iso,
             "last_heartbeat_at": now_iso,
@@ -77,9 +90,9 @@ class AgentPresenceService:
 
         await self.db.conn.execute(
             """INSERT INTO agent_sessions
-               (id, agent_name, agent_display, session_id, project,
+               (id, agent_name, agent_display, session_id, project, workspace_id,
                 status, connected_at, last_heartbeat_at, disconnected_at, metadata_json)
-               VALUES (:id, :agent_name, :agent_display, :session_id, :project,
+               VALUES (:id, :agent_name, :agent_display, :session_id, :project, :workspace_id,
                        :status, :connected_at, :last_heartbeat_at, :disconnected_at, :metadata_json)""",
             row,
         )
@@ -106,33 +119,41 @@ class AgentPresenceService:
 
     async def heartbeat(self, agent_session_id: str) -> dict:
         """Update the last heartbeat for a connected agent."""
+        actor = authorize("update", current_workspace_id())
         now_iso = datetime.now(timezone.utc).isoformat()
-        await self.db.conn.execute(
-            "UPDATE agent_sessions SET last_heartbeat_at = ? WHERE id = ? AND status = 'connected'",
-            (now_iso, agent_session_id),
+        cursor = await self.db.conn.execute(
+            "UPDATE agent_sessions SET last_heartbeat_at = ? "
+            "WHERE id = ? AND workspace_id = ? AND status = 'connected'",
+            (now_iso, agent_session_id, actor.workspace_id),
         )
         await self.db.conn.commit()
-        self._presence[agent_session_id] = time.time()
-        return {"ok": True, "agent_session_id": agent_session_id, "last_heartbeat": now_iso}
+        ok = cursor.rowcount == 1
+        if ok:
+            self._presence[agent_session_id] = time.time()
+        return {"ok": ok, "agent_session_id": agent_session_id, "last_heartbeat": now_iso}
 
     async def agent_disconnect(self, agent_session_id: str) -> dict:
         """Record an agent disconnecting."""
+        actor = authorize("update", current_workspace_id())
         now_iso = datetime.now(timezone.utc).isoformat()
-        await self.db.conn.execute(
-            "UPDATE agent_sessions SET status = 'disconnected', disconnected_at = ? WHERE id = ?",
-            (now_iso, agent_session_id),
+        cursor = await self.db.conn.execute(
+            "UPDATE agent_sessions SET status = 'disconnected', disconnected_at = ? "
+            "WHERE id = ? AND workspace_id = ?",
+            (now_iso, agent_session_id, actor.workspace_id),
         )
         await self.db.conn.commit()
-        self._presence.pop(agent_session_id, None)
-        self._emit("agent_disconnected", {"agent_session_id": agent_session_id})
-        return {"ok": True, "agent_session_id": agent_session_id, "disconnected_at": now_iso}
+        ok = cursor.rowcount == 1
+        if ok:
+            self._presence.pop(agent_session_id, None)
+            self._emit("agent_disconnected", {"agent_session_id": agent_session_id})
+        return {"ok": ok, "agent_session_id": agent_session_id, "disconnected_at": now_iso}
 
-    async def _close_stale_connections(self, agent_name: str) -> None:
-        """Close any existing active connections for this agent."""
+    async def _close_stale_connections(self, agent_name: str, workspace_id: str) -> None:
+        """Close active connections for this agent inside one workspace."""
         await self.db.conn.execute(
             """UPDATE agent_sessions SET status = 'stale', disconnected_at = ?
-               WHERE agent_name = ? AND status = 'connected'""",
-            (datetime.now(timezone.utc).isoformat(), agent_name),
+               WHERE agent_name = ? AND workspace_id = ? AND status = 'connected'""",
+            (datetime.now(timezone.utc).isoformat(), agent_name, workspace_id),
         )
 
     def is_online(self, agent_session_id: str) -> bool:
@@ -143,7 +164,8 @@ class AgentPresenceService:
         return (time.time() - last) < self.heartbeat_timeout
 
     async def get_online_agents(self) -> list[dict]:
-        """Return all currently online agents."""
+        """Return currently online agents in the active workspace."""
+        authorize("read", current_workspace_id())
         now = time.time()
         online_ids = [
             aid for aid, ts in self._presence.items()
@@ -154,17 +176,20 @@ class AgentPresenceService:
 
         placeholders = ",".join("?" for _ in online_ids)
         cursor = await self.db.conn.execute(
-            f"SELECT * FROM agent_sessions WHERE id IN ({placeholders}) AND status = 'connected'",  # nosec B608 - placeholders are `?`, values bound
-            online_ids,
+            f"SELECT * FROM agent_sessions WHERE id IN ({placeholders}) "
+            "AND workspace_id = ? AND status = 'connected'",  # nosec B608 - placeholders are `?`, values bound
+            [*online_ids, current_workspace_id()],
         )
         rows = await cursor.fetchall()
         return [_row_to_dict(r) for r in rows]
 
     async def get_agent_activity(self, limit: int = 100) -> list[dict]:
-        """Return recent agent sessions (active and disconnected)."""
+        """Return recent agent sessions in the active workspace."""
+        authorize("read", current_workspace_id())
         cursor = await self.db.conn.execute(
-            "SELECT * FROM agent_sessions ORDER BY connected_at DESC LIMIT ?",
-            (limit,),
+            "SELECT * FROM agent_sessions WHERE workspace_id = ? "
+            "ORDER BY connected_at DESC LIMIT ?",
+            (current_workspace_id(), limit),
         )
         rows = await cursor.fetchall()
         result = []
@@ -176,9 +201,14 @@ class AgentPresenceService:
         return result
 
     async def get_agent_stats(self) -> dict:
-        """Aggregate statistics about agent usage."""
+        """Aggregate agent usage statistics in the active workspace."""
+        authorize("read", current_workspace_id())
+        workspace = current_workspace_id()
         # Total connections
-        cursor = await self.db.conn.execute("SELECT COUNT(*) FROM agent_sessions")
+        cursor = await self.db.conn.execute(
+            "SELECT COUNT(*) FROM agent_sessions WHERE workspace_id = ?",
+            (workspace,),
+        )
         total = (await cursor.fetchone())[0]
 
         # By agent
@@ -188,8 +218,20 @@ class AgentPresenceService:
                       MIN(connected_at) as first_seen,
                       MAX(connected_at) as last_seen
                FROM agent_sessions
+               WHERE workspace_id = ?
                GROUP BY agent_name
                ORDER BY connection_count DESC"""
+        )
+        cursor = await self.db.conn.execute(
+            """SELECT agent_name, agent_display,
+                      COUNT(*) as connection_count,
+                      MIN(connected_at) as first_seen,
+                      MAX(connected_at) as last_seen
+               FROM agent_sessions
+               WHERE workspace_id = ?
+               GROUP BY agent_name
+               ORDER BY connection_count DESC""",
+            (workspace,),
         )
         by_agent = [dict(r) for r in await cursor.fetchall()]
 
@@ -200,8 +242,9 @@ class AgentPresenceService:
         cursor = await self.db.conn.execute(
             """SELECT a.agent_name, COUNT(DISTINCT a.session_id) as session_count
                FROM agent_sessions a
-               WHERE a.session_id IS NOT NULL
-               GROUP BY a.agent_name"""
+               WHERE a.workspace_id = ? AND a.session_id IS NOT NULL
+               GROUP BY a.agent_name""",
+            (workspace,),
         )
         sessions_by_agent = {r[0]: r[1] for r in await cursor.fetchall()}
 
@@ -239,6 +282,7 @@ class AgentCheckpointService:
         """Create a checkpoint — a snapshot of important work state."""
         import uuid
 
+        actor = authorize("store", current_workspace_id())
         now_iso = datetime.now(timezone.utc).isoformat()
         checkpoint_id = uuid.uuid4().hex
 
@@ -247,6 +291,7 @@ class AgentCheckpointService:
             "agent_name": normalize_agent(agent_name),
             "session_id": session_id,
             "project": project,
+            "workspace_id": actor.workspace_id,
             "checkpoint_type": checkpoint_type,
             "title": title,
             "summary": summary,
@@ -256,9 +301,9 @@ class AgentCheckpointService:
 
         await self.db.conn.execute(
             """INSERT INTO agent_checkpoints
-               (id, agent_name, session_id, project, checkpoint_type,
+               (id, agent_name, session_id, project, workspace_id, checkpoint_type,
                 title, summary, memory_ids_json, created_at)
-               VALUES (:id, :agent_name, :session_id, :project, :checkpoint_type,
+               VALUES (:id, :agent_name, :session_id, :project, :workspace_id, :checkpoint_type,
                        :title, :summary, :memory_ids_json, :created_at)""",
             row,
         )
@@ -285,8 +330,9 @@ class AgentCheckpointService:
         limit: int = 50,
     ) -> list[dict]:
         """List recent checkpoints."""
-        conditions = []
-        params: list[Any] = []
+        authorize("read", current_workspace_id())
+        conditions = ["workspace_id = ?"]
+        params: list[Any] = [current_workspace_id()]
 
         if agent_name:
             conditions.append("agent_name = ?")
@@ -335,18 +381,22 @@ class AgentUsageService:
         One query resolves every id, so callers can decide ownership without
         a per-session round trip.
         """
+        authorize("read", current_workspace_id())
         ids = [sid for sid in session_ids if sid]
         if not ids:
             return {}
         placeholders = ",".join("?" for _ in ids)
         cursor = await self.db.conn.execute(
-            f"SELECT id, agent_name FROM agent_sessions WHERE id IN ({placeholders})",  # nosec B608 - placeholders are `?`, values bound
-            ids,
+            f"SELECT id, agent_name FROM agent_sessions WHERE id IN ({placeholders}) "
+            "AND workspace_id = ?",  # nosec B608 - placeholders are `?`, values bound
+            [*ids, current_workspace_id()],
         )
         return {row["id"]: row["agent_name"] for row in await cursor.fetchall()}
 
     async def get_agent_metrics(self, agent_name: str) -> dict:
         """Get performance metrics for a specific agent."""
+        authorize("read", current_workspace_id())
+        workspace = current_workspace_id()
         key = normalize_agent(agent_name)
 
         # Connection stats
@@ -355,8 +405,8 @@ class AgentUsageService:
                       COUNT(DISTINCT session_id) as sessions,
                       MIN(connected_at) as first_seen,
                       MAX(connected_at) as last_seen
-               FROM agent_sessions WHERE agent_name = ?""",
-            (key,),
+               FROM agent_sessions WHERE agent_name = ? AND workspace_id = ?""",
+            (key, workspace),
         )
         conn_stats = dict(await cursor.fetchone())
 
@@ -366,9 +416,9 @@ class AgentUsageService:
                       checkpoint_type,
                       COUNT(CASE WHEN checkpoint_type='auto' THEN 1 END) as auto_checkpoints,
                       COUNT(CASE WHEN checkpoint_type='manual' THEN 1 END) as manual_checkpoints
-               FROM agent_checkpoints WHERE agent_name = ?
+               FROM agent_checkpoints WHERE agent_name = ? AND workspace_id = ?
                GROUP BY checkpoint_type""",
-            (key,),
+            (key, workspace),
         )
         cp_rows = await cursor.fetchall()
         cp_stats = {r["checkpoint_type"]: dict(r) for r in cp_rows} if cp_rows else {}
@@ -395,15 +445,19 @@ class AgentUsageService:
         }
 
     async def get_usage_billing(self) -> dict:
-        """Get usage billing metrics for all agents."""
+        """Get usage metrics for agents in the active workspace."""
+        authorize("read", current_workspace_id())
+        workspace = current_workspace_id()
         # Connection counts
         cursor = await self.db.conn.execute(
             """SELECT agent_name,
                       COUNT(*) as connections,
                       COUNT(DISTINCT session_id) as sessions
                FROM agent_sessions
+               WHERE workspace_id = ?
                GROUP BY agent_name
-               ORDER BY connections DESC"""
+               ORDER BY connections DESC""",
+            (workspace,),
         )
         agents = [dict(r) for r in await cursor.fetchall()]
 
@@ -412,7 +466,9 @@ class AgentUsageService:
             """SELECT agent_name,
                       COUNT(*) as checkpoints
                FROM agent_checkpoints
-               GROUP BY agent_name"""
+               WHERE workspace_id = ?
+               GROUP BY agent_name""",
+            (workspace,),
         )
         cp_counts = {r["agent_name"]: r["checkpoints"] for r in await cursor.fetchall()}
 
@@ -438,14 +494,16 @@ class AgentUsageService:
         }
 
     async def get_project_collaboration(self, project: str) -> dict:
-        """Get collaboration info for agents working on the same project."""
+        """Get collaboration info for this project inside one workspace."""
+        authorize("read", current_workspace_id())
+        workspace = current_workspace_id()
         # Active agents on this project
         cursor = await self.db.conn.execute(
             """SELECT DISTINCT agent_name, agent_display, status, last_heartbeat_at
                FROM agent_sessions
-               WHERE project = ?
+               WHERE project = ? AND workspace_id = ?
                ORDER BY last_heartbeat_at DESC""",
-            (project,),
+            (project, workspace),
         )
         agents = [dict(r) for r in await cursor.fetchall()]
 
@@ -463,10 +521,10 @@ class AgentUsageService:
         cursor = await self.db.conn.execute(
             """SELECT agent_name, title, created_at
                FROM agent_checkpoints
-               WHERE project = ?
+               WHERE project = ? AND workspace_id = ?
                ORDER BY created_at DESC, rowid DESC
                LIMIT 10""",
-            (project,),
+            (project, workspace),
         )
         shared_checkpoints = [dict(r) for r in await cursor.fetchall()]
 
