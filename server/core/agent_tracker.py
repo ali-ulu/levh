@@ -23,6 +23,7 @@ from .agent_services import (
 )
 from .database import Database
 from .team_memory import TeamMemoryService
+from .team_scheduler import TeamSchedulerService
 
 
 # ── Database schema for agent tracking ───────────────────────────────
@@ -82,6 +83,7 @@ class AgentTracker:
         self.checkpoints = AgentCheckpointService(db, emit)
         self.usage = AgentUsageService(db, emit, self.presence)
         self.team = TeamMemoryService(db, emit)
+        self.scheduler = TeamSchedulerService(db, emit, self.presence)
 
     async def initialize(self) -> None:
         """Create the agent tracking tables."""
@@ -207,3 +209,12 @@ class AgentTracker:
 
     async def review_team_decision_conflict(self, conflict_id: str, action: str) -> dict:
         return await self.team.review_decision_conflict(conflict_id, action)
+
+    async def list_handoff_matches(self, **kwargs) -> list[dict]:
+        return await self.scheduler.list_matches(**kwargs)
+
+    async def claim_next_handoff(self, agent_session_id: str) -> dict:
+        return await self.scheduler.claim_next(agent_session_id)
+
+    async def dispatch_handoffs(self, **kwargs) -> dict:
+        return await self.scheduler.dispatch(**kwargs)
