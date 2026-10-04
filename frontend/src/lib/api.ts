@@ -24,6 +24,7 @@ import type {
   Source,
   Stats,
   SummarizeSessionResult,
+  SyncJob,
   SyncState,
   TagCount,
   TimelineDay,
@@ -568,6 +569,7 @@ export const api = {
       duplicates: number;
       held: number;
       errors: number;
+      timing_ms?: Record<string, number>;
     }>("/api/connectors/sync", {
       method: "POST",
       body: JSON.stringify({
@@ -577,6 +579,26 @@ export const api = {
         use_gate: useGate,
       }),
     }),
+  // Slow syncs: answer 202 at once, poll the job instead of the socket.
+  connectorSyncBackground: (
+    connector: string,
+    config: Record<string, unknown>,
+    project?: string,
+    useGate = true
+  ) =>
+    fetchApi<{ job_id: string; status: string }>("/api/connectors/sync", {
+      method: "POST",
+      body: JSON.stringify({
+        connector,
+        config,
+        project: project || null,
+        use_gate: useGate,
+        background: true,
+      }),
+    }),
+  listSyncJobs: () => fetchApi<SyncJob[]>("/api/connectors/sync-jobs"),
+  getSyncJob: (jobId: string) =>
+    fetchApi<SyncJob>(`/api/connectors/sync-jobs/${encodeURIComponent(jobId)}`),
   connectorSyncState: () =>
     fetchApi<{ sync_state: SyncState[] }>("/api/connectors/sync-state"),
 };

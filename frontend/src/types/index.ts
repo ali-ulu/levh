@@ -284,6 +284,25 @@ export interface SyncState {
   runs: number;
 }
 
+export interface SyncJob {
+  job_id: string;
+  status: "pending" | "running" | "done" | "error";
+  connector: string;
+  project: string | null;
+  created_at: string;
+  finished_at: string | null;
+  result: {
+    fetched: number;
+    stored: number;
+    duplicates: number;
+    redacted: number;
+    held: number;
+    errors: number;
+    timing_ms?: Record<string, number>;
+  } | null;
+  error: string | null;
+}
+
 export interface RelatedMemory extends Memory {
   similarity: number;
 }

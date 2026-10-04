@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { api } from "@/lib/api";
-import type { Connector, SyncState } from "@/types";
+import type { Connector, SyncJob, SyncState } from "@/types";
 import {
   Calendar,
   Check,
@@ -94,12 +94,19 @@ export function Connectors() {
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState("");
   const [useGate, setUseGate] = useState(true);
+  const [background, setBackground] = useState(true);
+  const [gitHistory, setGitHistory] = useState(true);
+  const [gitBlame, setGitBlame] = useState(false);
+  const [gitSnapshot, setGitSnapshot] = useState(true);
   const [syncState, setSyncState] = useState<SyncState[]>([]);
+  const [jobs, setJobs] = useState<SyncJob[]>([]);
   const [uploadingKey, setUploadingKey] = useState("");
+  const mounted = useRef(true);
 
   const [serverError, setServerError] = useState(false);
 
   useEffect(() => {
+    mounted.current = true;
     api
       .listConnectors()
       .then((r) => setConnectors(r.connectors))
@@ -111,10 +118,36 @@ export function Connectors() {
       .connectorSyncState()
       .then((r) => setSyncState(r.sync_state))
       .catch(() => setSyncState([]));
+    api
+      .listSyncJobs()
+      .then(setJobs)
+      .catch(() => setJobs([]));
+    return () => {
+      mounted.current = false;
+    };
   }, []);
 
   const activeConnector = connectors.find((c) => c.name === selConnector);
   const activeMeta = CONNECTOR_META[selConnector];
+
+  const formatDuration = (timing?: Record<string, number>) => {
+    if (!timing) return "";
+    const ms =
+      timing.job_total ?? timing.route_total ?? timing.total ?? timing.items;
+    if (ms === undefined) return "";
+    return ms >= 1000 ? ` (took ${(ms / 1000).toFixed(1)}s)` : ` (took ${Math.round(ms)}ms)`;
+  };
+
+  const refreshSyncState = async () => {
+    try {
+      const s = await api.connectorSyncState();
+      if (mounted.current) setSyncState(s.sync_state);
+    } catch {}
+    try {
+      const j = await api.listSyncJobs();
+      if (mounted.current) setJobs(j);
+    } catch {}
+  };
 
   const runImport = async () => {
     if (importing) return;
@@ -129,7 +162,64 @@ export function Connectors() {
             ? v.split(",").map((x) => x.trim())
             : v.trim();
       }
-      if (useGate) {
+      if (selConnector === "git") {
+        cfg.include_file_history = gitHistory;
+        cfg.include_blame = gitBlame;
+        cfg.include_snapshot = gitSnapshot;
+      }
+      if (background) {
+        const accepted = await api.connectorSyncBackground(
+          selConnector,
+          cfg,
+          importProject.trim() || undefined,
+          useGate
+        );
+        // Older servers ignore the unknown `background` flag and answer 200
+        // with the full report (pydantic drops unknown fields). Handle both.
+        const legacy = accepted as unknown as {
+          stored?: number;
+          fetched?: number;
+          timing_ms?: Record<string, number>;
+        };
+        if (!accepted.job_id && legacy.stored !== undefined) {
+          setImportResult(
+            `Stored ${legacy.stored} of ${legacy.fetched} items from ${selConnector}` +
+              `${formatDuration(legacy.timing_ms)}.`
+          );
+          await refreshSyncState();
+        } else {
+        // The server answers 202 at once; the pipeline keeps running.
+        // Poll the job instead of the socket — a slow sync must never hang
+        // this button the way the synchronous call did.
+        let job: SyncJob | null = null;
+        for (let i = 0; i < 150; i++) {
+          await new Promise((r) => setTimeout(r, 2000));
+          if (!mounted.current) return;
+          job = await api.getSyncJob(accepted.job_id);
+          if (job.status === "done" || job.status === "error") break;
+          setImportResult(
+            `Syncing ${selConnector}… (${job.status}, job ${accepted.job_id.slice(0, 8)})`
+          );
+        }
+        if (!job || (job.status !== "done" && job.status !== "error")) {
+          setImportResult(
+            `Job ${accepted.job_id.slice(0, 8)} is still ${job?.status ?? "running"} — check back in Background jobs below.`
+          );
+        } else if (job.status === "error") {
+          setImportResult(`Background sync failed: ${job.error ?? "unknown error"}`);
+        } else {
+          const r = job.result!;
+          setImportResult(
+            `Stored ${r.stored} of ${r.fetched} items from ${selConnector} ` +
+              `(${r.duplicates} duplicates skipped, ${r.redacted} secrets redacted` +
+              (r.held ? `, ${r.held} held for review` : "") +
+              (r.errors ? `, ${r.errors} errors` : "") +
+              `)${formatDuration(r.timing_ms)}.`
+          );
+        }
+        await refreshSyncState();
+        }
+      } else if (useGate) {
         const r = await api.connectorSync(
           selConnector,
           cfg,
@@ -141,7 +231,7 @@ export function Connectors() {
             `(${r.duplicates} duplicates skipped, ${r.redacted} secrets redacted` +
             (r.held ? `, ${r.held} held for review` : "") +
             (r.errors ? `, ${r.errors} errors` : "") +
-            ")."
+            `)${formatDuration(r.timing_ms)}.`
         );
       } else {
         const r = await api.connectorImport(
@@ -153,10 +243,7 @@ export function Connectors() {
           `Imported ${r.stored} of ${r.fetched} items from ${r.connector}.`
         );
       }
-      try {
-        const s = await api.connectorSyncState();
-        setSyncState(s.sync_state);
-      } catch {}
+      await refreshSyncState();
     } catch (e) {
       setImportResult(e instanceof Error ? e.message : "Import failed");
     }
@@ -354,16 +441,63 @@ export function Connectors() {
               </div>
             </div>
 
+            {selConnector === "git" && (
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 pt-1">
+                <span className="text-[11px] text-muted-foreground">Include:</span>
+                <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={gitHistory}
+                    onChange={(e) => setGitHistory(e.target.checked)}
+                    className="rounded"
+                  />
+                  File history
+                </label>
+                <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={gitBlame}
+                    onChange={(e) => setGitBlame(e.target.checked)}
+                    className="rounded"
+                  />
+                  Blame summary
+                </label>
+                <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={gitSnapshot}
+                    onChange={(e) => setGitSnapshot(e.target.checked)}
+                    className="rounded"
+                  />
+                  Arch snapshot
+                </label>
+              </div>
+            )}
+
             <div className="flex items-center justify-between pt-2">
-              <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={useGate}
-                  onChange={(e) => setUseGate(e.target.checked)}
-                  className="rounded"
-                />
-                Route through admission gate
-              </label>
+              <div className="flex items-center gap-4">
+                <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={useGate}
+                    onChange={(e) => setUseGate(e.target.checked)}
+                    className="rounded"
+                  />
+                  Route through admission gate
+                </label>
+                <label
+                  className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer"
+                  title="Slow syncs answer 202 at once and run as a tracked job instead of hanging this button"
+                >
+                  <input
+                    type="checkbox"
+                    checked={background}
+                    onChange={(e) => setBackground(e.target.checked)}
+                    className="rounded"
+                  />
+                  Run in background
+                </label>
+              </div>
               <Button
                 onClick={runImport}
                 disabled={importing}
@@ -415,6 +549,46 @@ export function Connectors() {
                         day: "numeric",
                         month: "short",
                       })}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+        {/* Background jobs */}
+        {jobs.length > 0 && (
+          <div className="pt-3 border-t">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70 mb-2">
+              Background jobs
+            </p>
+            <div className="space-y-1.5">
+              {jobs.slice(0, 5).map((j) => {
+                const busy = j.status === "pending" || j.status === "running";
+                return (
+                  <div
+                    key={j.job_id}
+                    className="flex items-center gap-2 text-xs"
+                  >
+                    {busy ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+                    ) : j.status === "done" ? (
+                      <Check className="h-3.5 w-3.5 text-emerald-500" />
+                    ) : (
+                      <Plug className="h-3.5 w-3.5 text-red-500" />
+                    )}
+                    <span className="font-medium">{j.connector.replace(/_/g, " ")}</span>
+                    {j.project && (
+                      <Badge variant="outline" className="text-[10px]">
+                        {j.project}
+                      </Badge>
+                    )}
+                    <span className="text-muted-foreground ml-auto">
+                      {j.status === "done" && j.result
+                        ? `${j.result.stored} stored`
+                        : j.status === "error"
+                        ? j.error ?? "failed"
+                        : j.status}
                     </span>
                   </div>
                 );

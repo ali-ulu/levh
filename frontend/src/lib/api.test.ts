@@ -96,6 +96,30 @@ describe("api client", () => {
     expect(url).toBe("/api/memories?tag=work&limit=5");
   });
 
+  it("submits a background sync with the background flag", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ job_id: "abc123", status: "pending" }));
+    const r = await api.connectorSyncBackground("git", { repo_path: "/x" }, "proj");
+    expect(r.job_id).toBe("abc123");
+    const [url, init] = lastCall(fetchMock);
+    expect(url).toBe("/api/connectors/sync");
+    expect(JSON.parse(init.body as string).background).toBe(true);
+  });
+
+  it("polls one sync job by id", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ job_id: "abc123", status: "done" }));
+    const r = await api.getSyncJob("abc123");
+    expect(r.status).toBe("done");
+    const [url] = lastCall(fetchMock);
+    expect(url).toBe("/api/connectors/sync-jobs/abc123");
+  });
+
+  it("lists background sync jobs", async () => {
+    fetchMock.mockResolvedValue(jsonResponse([]));
+    await api.listSyncJobs();
+    const [url] = lastCall(fetchMock);
+    expect(url).toBe("/api/connectors/sync-jobs");
+  });
+
   it("builds the WebSocket URL with the token as a query param", () => {
     setToken("secret-token");
     const url = wsUrl();
