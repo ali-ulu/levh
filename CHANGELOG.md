@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### i18n: move Backup & Restore settings into the catalogue (#409)
+
+- Backup and restore headings, help text, fields, actions, warnings, and runtime result/error messages now resolve through the existing `useT()` catalogue path.
+- The UI-string ratchet entry for `src/app/settings/_sections/backup-restore.tsx` drops from 11 to 0.
+
+
 ### i18n: move Admission Gate settings into the catalogue (#407)
 
 - Admission Gate title, help copy, input placeholder, action label, fallback error, and redacted-preview label now resolve through the existing `useT()` catalogue path.

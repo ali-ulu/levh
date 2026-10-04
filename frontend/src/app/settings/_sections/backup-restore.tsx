@@ -6,9 +6,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { api } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 import { Download, Loader2, ShieldCheck, Upload } from "lucide-react";
 
 export function BackupRestore() {
+    const t = useT();
     const [backupPass, setBackupPass] = useState("");
     const [backingUp, setBackingUp] = useState(false);
     const [restorePass, setRestorePass] = useState("");
@@ -27,7 +29,7 @@ export function BackupRestore() {
         a.click();
         URL.revokeObjectURL(url);
       } catch (e) {
-        alert(`Backup failed: ${e instanceof Error ? e.message : e}`);
+        alert(t("settings.backupRestore.backupFailed", { error: e instanceof Error ? e.message : String(e) }));
       }
       setBackingUp(false);
     };
@@ -43,12 +45,18 @@ export function BackupRestore() {
         const content_b64 = btoa(binary);
         const r = await api.restore(content_b64, restorePass || undefined, restoreReplace);
         setRestoreResult(
-          `Restored ${r.memories} memories and ${r.sessions} sessions (${
-            r.replace ? "replaced" : "merged"
-          }).`
+          t("settings.backupRestore.restoreSuccess", {
+            memories: r.memories,
+            sessions: r.sessions,
+            mode: t(
+              r.replace
+                ? "settings.backupRestore.mode.replaced"
+                : "settings.backupRestore.mode.merged"
+            ),
+          })
         );
       } catch (e) {
-        setRestoreResult(`Restore failed: ${e instanceof Error ? e.message : e}`);
+        setRestoreResult(t("settings.backupRestore.restoreFailed", { error: e instanceof Error ? e.message : String(e) }));
       }
       setRestoring(false);
     };
@@ -58,25 +66,23 @@ export function BackupRestore() {
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <ShieldCheck className="h-4 w-4" />
-            Backup &amp; Restore
+            {t("settings.backupRestore.title")}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-xs text-muted-foreground">
-            A full snapshot of every memory (with its decay state) and session.
-            Set a passphrase to encrypt the file at rest — it&apos;s the only way
-            to read it back, so store it safely; it cannot be recovered.
+            {t("settings.backupRestore.description")}
           </p>
 
           <div className="flex flex-wrap items-end gap-2">
             <div className="space-y-1">
               <Label className="text-xs text-muted-foreground">
-                Passphrase (optional — encrypts the backup)
+                {t("settings.backupRestore.backupPassLabel")}
               </Label>
               <Input
                 type="password"
                 className="w-64"
-                placeholder="Leave blank for plain JSON"
+                placeholder={t("settings.backupRestore.backupPassPlaceholder")}
                 value={backupPass}
                 onChange={(e) => setBackupPass(e.target.value)}
               />
@@ -87,21 +93,21 @@ export function BackupRestore() {
               ) : (
                 <Download className="h-4 w-4 mr-2" />
               )}
-              Download backup
+              {t("settings.backupRestore.download")}
             </Button>
           </div>
 
           <div className="space-y-2 pt-3 border-t">
-            <Label className="text-xs text-muted-foreground">Restore from a backup file</Label>
+            <Label className="text-xs text-muted-foreground">{t("settings.backupRestore.restoreFileLabel")}</Label>
             <div className="flex flex-wrap items-end gap-2">
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">
-                  Passphrase (if the file is encrypted)
+                  {t("settings.backupRestore.restorePassLabel")}
                 </Label>
                 <Input
                   type="password"
                   className="w-64"
-                  placeholder="Only for encrypted backups"
+                  placeholder={t("settings.backupRestore.restorePassPlaceholder")}
                   value={restorePass}
                   onChange={(e) => setRestorePass(e.target.value)}
                 />
@@ -112,7 +118,7 @@ export function BackupRestore() {
                   checked={restoreReplace}
                   onChange={(e) => setRestoreReplace(e.target.checked)}
                 />
-                Replace (wipe current data first)
+                {t("settings.backupRestore.replaceLabel")}
               </label>
               <Button
                 variant="outline"
@@ -124,7 +130,7 @@ export function BackupRestore() {
                 ) : (
                   <Upload className="h-4 w-4 mr-2" />
                 )}
-                Choose file &amp; restore
+                {t("settings.backupRestore.chooseFileRestore")}
               </Button>
               <input
                 ref={backupFileRef}
@@ -140,7 +146,7 @@ export function BackupRestore() {
             </div>
             {restoreReplace && (
               <p className="text-xs text-amber-600 dark:text-amber-500">
-                Replace mode deletes all current memories and sessions before restoring.
+                {t("settings.backupRestore.replaceWarning")}
               </p>
             )}
             {restoreResult && (

@@ -154,5 +154,21 @@
   "settings.admissionGate.placeholder": "Paste candidate memory text to evaluate…",
   "settings.admissionGate.evaluate": "Evaluate",
   "settings.admissionGate.errorFallback": "Evaluation failed",
-  "settings.admissionGate.redactedPreview": "Redacted preview:"
+  "settings.admissionGate.redactedPreview": "Redacted preview:",
+  "settings.backupRestore.title": "Backup & Restore",
+  "settings.backupRestore.description": "A full snapshot of every memory (with its decay state) and session. Set a passphrase to encrypt the file at rest — it's the only way to read it back, so store it safely; it cannot be recovered.",
+  "settings.backupRestore.backupPassLabel": "Passphrase (optional — encrypts the backup)",
+  "settings.backupRestore.backupPassPlaceholder": "Leave blank for plain JSON",
+  "settings.backupRestore.download": "Download backup",
+  "settings.backupRestore.restoreFileLabel": "Restore from a backup file",
+  "settings.backupRestore.restorePassLabel": "Passphrase (if the file is encrypted)",
+  "settings.backupRestore.restorePassPlaceholder": "Only for encrypted backups",
+  "settings.backupRestore.replaceLabel": "Replace (wipe current data first)",
+  "settings.backupRestore.chooseFileRestore": "Choose file & restore",
+  "settings.backupRestore.replaceWarning": "Replace mode deletes all current memories and sessions before restoring.",
+  "settings.backupRestore.backupFailed": "Backup failed: {error}",
+  "settings.backupRestore.restoreSuccess": "Restored {memories} memories and {sessions} sessions ({mode}).",
+  "settings.backupRestore.restoreFailed": "Restore failed: {error}",
+  "settings.backupRestore.mode.replaced": "replaced",
+  "settings.backupRestore.mode.merged": "merged"
 }
