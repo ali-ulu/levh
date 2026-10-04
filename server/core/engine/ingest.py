@@ -11,6 +11,7 @@ from __future__ import annotations
 import time
 
 from .. import metrics
+from ..tenancy import authorize, current_workspace_id
 from ..types import (
     Memory,
 )
@@ -104,6 +105,7 @@ class MemoryIngestMixin:
         would throw away content on the strength of a judgement the gate itself
         refused to make.
         """
+        authorize("admit", current_workspace_id())
         decision = await self.evaluate_admission(
             content, project=project, min_length=min_length
         )
@@ -290,6 +292,7 @@ class MemoryIngestMixin:
             and method total in milliseconds). The timing is diagnostic: it
             tells a slow sync apart by stage instead of by guessing.
         """
+        authorize("admit", current_workspace_id())
         from datetime import datetime, timezone
 
         total_start = time.perf_counter()
