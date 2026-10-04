@@ -111,8 +111,8 @@ def _row(memory_id: str, content: str) -> dict:
 # ── The single-user case is unchanged ───────────────────────────────
 
 
-def test_a_new_store_is_version_eight(db):
-    assert db.schema_version == CURRENT_SCHEMA_VERSION == 8
+def test_a_new_store_is_version_nine(db):
+    assert db.schema_version == CURRENT_SCHEMA_VERSION == 9
 
 
 def test_the_model_defaults_to_the_one_implicit_workspace():
