@@ -32,6 +32,40 @@ DEFAULT_PRINCIPAL_ID = "local"
 #: declared here so the vocabulary has one owner.
 ROLES = ("viewer", "editor", "admin")
 
+ROLE_ACTIONS = {
+    "viewer": frozenset({"read", "recall", "export_readonly"}),
+    "editor": frozenset(
+        {
+            "read",
+            "recall",
+            "export_readonly",
+            "store",
+            "update",
+            "forget",
+            "admit",
+        }
+    ),
+    "admin": frozenset(
+        {
+            "read",
+            "recall",
+            "export_readonly",
+            "store",
+            "update",
+            "forget",
+            "admit",
+            "membership",
+            "configure",
+            "export_full",
+            "backup_restore",
+        }
+    ),
+}
+
+
+class AuthorizationError(PermissionError):
+    """A principal attempted an action its workspace role does not allow."""
+
 
 @dataclass(frozen=True)
 class Principal:
@@ -74,3 +108,31 @@ def bind_principal(principal: Principal) -> Token:
 
 def reset_principal(token: Token) -> None:
     _current.reset(token)
+
+
+def authorize(
+    action: str,
+    workspace_id: str | None = None,
+    principal: Principal | None = None,
+) -> Principal:
+    """Require *principal* to hold *action* inside *workspace_id*.
+
+    The current request principal is used by default.  Workspace mismatch is
+    rejected before role evaluation so a caller cannot combine a valid role
+    from one workspace with a target row from another one.
+    """
+    actor = principal or current_principal()
+    target_workspace = workspace_id or actor.workspace_id
+    if actor.workspace_id != target_workspace:
+        raise AuthorizationError(
+            f"principal {actor.id!r} belongs to workspace {actor.workspace_id!r}, "
+            f"not {target_workspace!r}"
+        )
+    allowed = ROLE_ACTIONS.get(actor.role)
+    if allowed is None:
+        raise AuthorizationError(f"unknown workspace role: {actor.role!r}")
+    if action not in allowed:
+        raise AuthorizationError(
+            f"role {actor.role!r} is not allowed to perform {action!r}"
+        )
+    return actor
