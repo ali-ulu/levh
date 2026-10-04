@@ -35,7 +35,7 @@ def default_db_path() -> str:
     return os.path.abspath(get_env("SQLITE_DB_PATH", DEFAULT_DB_FILENAME))
 
 
-CURRENT_SCHEMA_VERSION = 7
+CURRENT_SCHEMA_VERSION = 8
 
 
 _TABLES = """
@@ -324,6 +324,23 @@ CREATE TABLE IF NOT EXISTS team_decisions (
     CHECK (status IN ('active', 'contested', 'superseded'))
 );
 
+CREATE TABLE IF NOT EXISTS team_decision_conflict_candidates (
+    id                  TEXT PRIMARY KEY,
+    workspace_id        TEXT NOT NULL DEFAULT 'default',
+    project             TEXT NOT NULL,
+    decision_id_a       TEXT NOT NULL,
+    decision_id_b       TEXT NOT NULL,
+    signal_type         TEXT NOT NULL,
+    confidence          REAL NOT NULL,
+    shared_topics_json  TEXT NOT NULL DEFAULT '[]',
+    explanation_json    TEXT NOT NULL DEFAULT '{}',
+    status              TEXT NOT NULL DEFAULT 'open',
+    created_at          TEXT NOT NULL,
+    reviewed_at         TEXT,
+    reviewed_by         TEXT,
+    CHECK (status IN ('open', 'dismissed', 'confirmed', 'resolved'))
+);
+
 """
 
 
@@ -461,6 +478,10 @@ CREATE INDEX IF NOT EXISTS idx_team_decisions_workspace_key
 CREATE UNIQUE INDEX IF NOT EXISTS idx_team_decisions_one_active
     ON team_decisions(workspace_id, project, decision_key)
     WHERE status = 'active';
+CREATE INDEX IF NOT EXISTS idx_team_decision_conflicts_workspace
+    ON team_decision_conflict_candidates(workspace_id, project, status, created_at DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_team_decision_conflicts_pair
+    ON team_decision_conflict_candidates(workspace_id, decision_id_a, decision_id_b);
 """
 
 
