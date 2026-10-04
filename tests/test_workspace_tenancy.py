@@ -25,6 +25,7 @@ from server.core.database import CURRENT_SCHEMA_VERSION, Database
 from server.core.memory_engine import MemoryEngine
 from server.core.tenancy import (
     DEFAULT_WORKSPACE_ID,
+    AuthorizationError,
     Principal,
     bind_principal,
     reset_principal,
@@ -36,12 +37,26 @@ OTHER = "team-42"
 class _Workspace:
     """Bind a principal for the duration of a ``with`` block."""
 
-    def __init__(self, workspace_id: str) -> None:
+    def __init__(
+        self,
+        workspace_id: str,
+        *,
+        role: str = "admin",
+        principal_id: str = "local",
+    ) -> None:
         self.workspace_id = workspace_id
+        self.role = role
+        self.principal_id = principal_id
         self._token = None
 
     def __enter__(self):
-        self._token = bind_principal(Principal(workspace_id=self.workspace_id))
+        self._token = bind_principal(
+            Principal(
+                id=self.principal_id,
+                workspace_id=self.workspace_id,
+                role=self.role,
+            )
+        )
         return self
 
     def __exit__(self, *exc):
@@ -49,8 +64,13 @@ class _Workspace:
         return False
 
 
-def workspace(workspace_id: str) -> _Workspace:
-    return _Workspace(workspace_id)
+def workspace(
+    workspace_id: str,
+    *,
+    role: str = "admin",
+    principal_id: str = "local",
+) -> _Workspace:
+    return _Workspace(workspace_id, role=role, principal_id=principal_id)
 
 
 @pytest_asyncio.fixture
@@ -91,8 +111,8 @@ def _row(memory_id: str, content: str) -> dict:
 # ── The single-user case is unchanged ───────────────────────────────
 
 
-def test_a_new_store_is_version_five(db):
-    assert db.schema_version == CURRENT_SCHEMA_VERSION == 5
+def test_a_new_store_is_version_six(db):
+    assert db.schema_version == CURRENT_SCHEMA_VERSION == 6
 
 
 def test_the_model_defaults_to_the_one_implicit_workspace():
@@ -107,6 +127,42 @@ async def test_default_store_and_read_round_trips(db):
     assert await db.get_memory("m1") is not None
     assert await db.count_memories() == 1
     assert await db.content_exists("the deploy branch is prod")
+
+
+# ── Phase 2 role enforcement ────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_viewer_can_read_but_cannot_mutate_memory(db):
+    await db.insert_memory(_row("m1", "shared team memory"))
+
+    with workspace(DEFAULT_WORKSPACE_ID, role="viewer", principal_id="reader"):
+        assert await db.get_memory("m1") is not None
+        with pytest.raises(AuthorizationError):
+            await db.insert_memory(_row("m2", "viewer must not write"))
+        with pytest.raises(AuthorizationError):
+            await db.update_memory("m1", {"importance": 0.9})
+        with pytest.raises(AuthorizationError):
+            await db.delete_memory("m1")
+        with pytest.raises(AuthorizationError):
+            await db.get_all_memories(across_workspaces=True)
+
+
+@pytest.mark.asyncio
+async def test_editor_can_mutate_but_cannot_run_whole_store_backup(db, tmp_path):
+    await db.insert_memory(_row("m1", "editor-visible memory"))
+
+    with workspace(DEFAULT_WORKSPACE_ID, role="editor", principal_id="writer"):
+        assert await db.update_memory("m1", {"importance": 0.9}) is True
+        with pytest.raises(AuthorizationError):
+            await db.create_safety_backup(str(tmp_path / "backup.db"))
+
+
+@pytest.mark.asyncio
+async def test_unknown_role_fails_closed(db):
+    with workspace(DEFAULT_WORKSPACE_ID, role="owner", principal_id="mystery"):
+        with pytest.raises(AuthorizationError, match="unknown workspace role"):
+            await db.get_memory("missing")
 
 
 # ── The boundary actually separates workspaces ──────────────────────
