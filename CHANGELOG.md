@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### i18n: move the Daily Briefing page into the catalogue (#403)
+
+- Daily Briefing headings, empty states, and explanatory copy now resolve through the existing `useT()` catalogue path.
+- The UI-string ratchet for `src/app/briefing/page.tsx` drops from 12 to 2; the two remaining hits are the technical `connector:` prefix, not rendered copy.
+
+
 ### Fix: isolate the doctor live probe from ambient servers (#389)
 
 - Two doctor tests failed whenever a live server answered on a fallback port:

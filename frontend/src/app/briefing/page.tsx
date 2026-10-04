@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MemoryDetailDrawer } from "@/components/memory-detail-drawer";
@@ -17,6 +18,7 @@ const EMPTY: Briefing = {
 };
 
 export default function BriefingPage() {
+  const t = useT();
   const [briefing, setBriefing] = useState<Briefing>(EMPTY);
   const [loading, setLoading] = useState(true);
   const [drawerMemory, setDrawerMemory] = useState<Memory | null>(null);
@@ -45,11 +47,9 @@ export default function BriefingPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Daily Briefing</h1>
+        <h1 className="text-2xl font-bold">{t("app.briefing.title")}</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          What&apos;s on today, what you recently committed to, and what
-          you&apos;re about to forget — computed deterministically from your
-          memories, no LLM required.
+          {t("app.briefing.subtitle")}
         </p>
       </div>
 
@@ -61,8 +61,8 @@ export default function BriefingPage() {
         <Card>
           <CardContent className="py-12 text-center text-sm text-muted-foreground space-y-2">
             <Sunrise className="h-8 w-8 mx-auto opacity-40" />
-            <p>Nothing pressing.</p>
-            <p>{counts.recent_total} memories captured in the last 7 days.</p>
+            <p>{t("app.briefing.empty.title")}</p>
+            <p>{t("app.briefing.empty.recent", { count: counts.recent_total })}</p>
           </CardContent>
         </Card>
       ) : (
@@ -72,7 +72,7 @@ export default function BriefingPage() {
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
                 <CalendarClock className="h-4 w-4 text-muted-foreground" />
-                Today
+                {t("app.briefing.today.title")}
                 <Badge variant="secondary" className="text-[11px] ml-auto">
                   {counts.today}
                 </Badge>
@@ -81,7 +81,7 @@ export default function BriefingPage() {
             <CardContent>
               {today.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-4 text-center">
-                  Nothing scheduled or captured for today.
+                  {t("app.briefing.today.empty")}
                 </p>
               ) : (
                 <div className="space-y-2">
@@ -116,7 +116,7 @@ export default function BriefingPage() {
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
                 <ListChecks className="h-4 w-4 text-muted-foreground" />
-                Open Commitments
+                {t("app.briefing.commitments.title")}
                 <Badge variant="secondary" className="text-[11px] ml-auto">
                   {counts.commitments}
                 </Badge>
@@ -125,7 +125,7 @@ export default function BriefingPage() {
             <CardContent>
               {commitments.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-4 text-center">
-                  No open commitments detected in recent memories.
+                  {t("app.briefing.commitments.empty")}
                 </p>
               ) : (
                 <div className="space-y-2">
@@ -156,7 +156,7 @@ export default function BriefingPage() {
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
                 <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-                Might Be Forgetting
+                {t("app.briefing.fading.title")}
                 <Badge variant="secondary" className="text-[11px] ml-auto">
                   {counts.fading}
                 </Badge>
@@ -165,7 +165,7 @@ export default function BriefingPage() {
             <CardContent>
               {fading.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-4 text-center">
-                  Nothing is fading — your memory is healthy.
+                  {t("app.briefing.fading.empty")}
                 </p>
               ) : (
                 <div className="space-y-2">

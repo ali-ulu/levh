@@ -130,5 +130,15 @@
   "settings.connectors.background.help": "Slow syncs answer 202 at once and run as a tracked job instead of hanging this button",
   "settings.connectors.background.label": "Run in background",
   "settings.connectors.background.jobs": "Background jobs",
-  "settings.connectors.background.unknownError": "unknown error"
+  "settings.connectors.background.unknownError": "unknown error",
+  "app.briefing.title": "Daily Briefing",
+  "app.briefing.subtitle": "What's on today, what you recently committed to, and what you're about to forget — computed deterministically from your memories, no LLM required.",
+  "app.briefing.empty.title": "Nothing pressing.",
+  "app.briefing.empty.recent": "{count} memories captured in the last 7 days.",
+  "app.briefing.today.title": "Today",
+  "app.briefing.today.empty": "Nothing scheduled or captured for today.",
+  "app.briefing.commitments.title": "Open Commitments",
+  "app.briefing.commitments.empty": "No open commitments detected in recent memories.",
+  "app.briefing.fading.title": "Might Be Forgetting",
+  "app.briefing.fading.empty": "Nothing is fading — your memory is healthy."
 }
