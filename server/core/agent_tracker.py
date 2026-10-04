@@ -22,6 +22,7 @@ from .agent_services import (
     AgentUsageService,
 )
 from .database import Database
+from .team_memory import TeamMemoryService
 
 
 # ── Database schema for agent tracking ───────────────────────────────
@@ -71,6 +72,7 @@ class AgentTracker:
         self.presence = AgentPresenceService(db, emit)
         self.checkpoints = AgentCheckpointService(db, emit)
         self.usage = AgentUsageService(db, emit, self.presence)
+        self.team = TeamMemoryService(db, emit)
 
     async def initialize(self) -> None:
         """Create the agent tracking tables."""
@@ -148,5 +150,35 @@ class AgentTracker:
         return await self.usage.get_usage_billing()
 
     async def get_project_collaboration(self, project: str) -> dict:
-        """Get collaboration info for agents working on the same project."""
-        return await self.usage.get_project_collaboration(project)
+        """Get live presence plus durable collaboration state for a project."""
+        result = await self.usage.get_project_collaboration(project)
+        handoffs = await self.team.list_handoffs(project=project, limit=20)
+        decisions = await self.team.list_decisions(project=project, limit=20)
+        result["handoffs"] = handoffs
+        result["decisions"] = decisions
+        result["pending_handoffs"] = sum(1 for h in handoffs if h["status"] == "pending")
+        result["contested_decisions"] = sum(
+            1 for d in decisions if d["status"] == "contested"
+        )
+        return result
+
+    async def create_handoff(self, **kwargs) -> dict:
+        return await self.team.create_handoff(**kwargs)
+
+    async def list_handoffs(self, **kwargs) -> list[dict]:
+        return await self.team.list_handoffs(**kwargs)
+
+    async def accept_handoff(self, handoff_id: str) -> dict:
+        return await self.team.accept_handoff(handoff_id)
+
+    async def complete_handoff(self, handoff_id: str) -> dict:
+        return await self.team.complete_handoff(handoff_id)
+
+    async def create_team_decision(self, **kwargs) -> dict:
+        return await self.team.create_decision(**kwargs)
+
+    async def list_team_decisions(self, **kwargs) -> list[dict]:
+        return await self.team.list_decisions(**kwargs)
+
+    async def resolve_team_decision(self, decision_id: str) -> dict:
+        return await self.team.resolve_decision(decision_id)
