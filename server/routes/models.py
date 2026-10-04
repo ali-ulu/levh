@@ -1018,6 +1018,26 @@ class MemoryDeleteResponse(BaseModel):
     deleted: bool
 
 
+class MemoryAccessAuditOut(BaseModel):
+    """One recall receipt showing who received a memory and at what rank."""
+
+    memory_id: str
+    principal_id: str
+    principal_role: str
+    workspace_id: str
+    project: Optional[str] = None
+    session_id: Optional[str] = None
+    rank: int
+    logged_at: str
+
+
+class MemoryAccessAuditResponse(BaseModel):
+    """``GET /api/memories/{id}/access-audit``."""
+
+    memory_id: str
+    audit: list[MemoryAccessAuditOut] = Field(default_factory=list)
+
+
 class PurgeMemoryResponse(BaseModel):
     """``POST /api/memories/{id}/purge`` - the purge postcondition audit."""
 
