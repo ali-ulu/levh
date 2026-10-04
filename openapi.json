@@ -4785,6 +4785,162 @@
           }
         }
       }
+    },
+    "/api/v1/team/decision-conflicts/detect": {
+      "post": {
+        "summary": "Detect Decision Conflicts",
+        "description": "Detect review-worthy free-text conflicts between differently-keyed decisions.",
+        "operationId": "detect_decision_conflicts_api_team_decision_conflicts_detect_post_v1",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Project"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeamDecisionConflictDetectResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/team/decision-conflicts": {
+      "get": {
+        "summary": "List Decision Conflicts",
+        "description": "List semantic decision conflict candidates in the current workspace.",
+        "operationId": "list_decision_conflicts_api_team_decision_conflicts_get_v1",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Project"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "open",
+              "title": "Status"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 100,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TeamDecisionConflictOut"
+                  },
+                  "type": "array",
+                  "title": "Response List Decision Conflicts Api Team Decision Conflicts Get V1"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/team/decision-conflicts/{conflict_id}/review": {
+      "post": {
+        "summary": "Review Decision Conflict",
+        "description": "Apply an explicit admin review; the candidate is never an auto-verdict.",
+        "operationId": "review_decision_conflict_api_team_decision_conflicts__conflict_id__review_post_v1",
+        "parameters": [
+          {
+            "name": "conflict_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Conflict Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConflictReviewRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeamDecisionConflictReviewResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -6065,6 +6221,18 @@
           "contested_decisions": {
             "type": "integer",
             "title": "Contested Decisions",
+            "default": 0
+          },
+          "decision_conflicts": {
+            "items": {
+              "$ref": "#/components/schemas/TeamDecisionConflictOut"
+            },
+            "type": "array",
+            "title": "Decision Conflicts"
+          },
+          "open_decision_conflicts": {
+            "type": "integer",
+            "title": "Open Decision Conflicts",
             "default": 0
           }
         },
@@ -11636,6 +11804,143 @@
           "decision"
         ],
         "title": "TeamDecisionCreateResponse"
+      },
+      "TeamDecisionConflictOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "workspace_id": {
+            "type": "string",
+            "title": "Workspace Id"
+          },
+          "project": {
+            "type": "string",
+            "title": "Project"
+          },
+          "decision_id_a": {
+            "type": "string",
+            "title": "Decision Id A"
+          },
+          "decision_id_b": {
+            "type": "string",
+            "title": "Decision Id B"
+          },
+          "signal_type": {
+            "type": "string",
+            "title": "Signal Type"
+          },
+          "confidence": {
+            "type": "number",
+            "title": "Confidence"
+          },
+          "shared_topics": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Shared Topics"
+          },
+          "explanation": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Explanation"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "reviewed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewed At"
+          },
+          "reviewed_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewed By"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "workspace_id",
+          "project",
+          "decision_id_a",
+          "decision_id_b",
+          "signal_type",
+          "confidence",
+          "status",
+          "created_at"
+        ],
+        "title": "TeamDecisionConflictOut"
+      },
+      "TeamDecisionConflictDetectResponse": {
+        "properties": {
+          "new_candidates": {
+            "type": "integer",
+            "title": "New Candidates"
+          },
+          "pairs_examined": {
+            "type": "integer",
+            "title": "Pairs Examined"
+          },
+          "open_total": {
+            "type": "integer",
+            "title": "Open Total"
+          },
+          "stale_resolved": {
+            "type": "integer",
+            "title": "Stale Resolved"
+          }
+        },
+        "type": "object",
+        "required": [
+          "new_candidates",
+          "pairs_examined",
+          "open_total",
+          "stale_resolved"
+        ],
+        "title": "TeamDecisionConflictDetectResponse"
+      },
+      "TeamDecisionConflictReviewResponse": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "title": "Ok",
+            "default": true
+          },
+          "action": {
+            "type": "string",
+            "title": "Action"
+          },
+          "conflict": {
+            "$ref": "#/components/schemas/TeamDecisionConflictOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "action",
+          "conflict"
+        ],
+        "title": "TeamDecisionConflictReviewResponse"
       }
     }
   }
