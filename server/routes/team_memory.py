@@ -13,7 +13,12 @@ from server.routes.models import (
     TeamDecisionCreateRequest,
     TeamDecisionCreateResponse,
     TeamDecisionOut,
+    TeamHandoffClaimRequest,
+    TeamHandoffClaimResponse,
     TeamHandoffCreateRequest,
+    TeamHandoffDispatchRequest,
+    TeamHandoffDispatchResponse,
+    TeamHandoffMatchOut,
     TeamHandoffOut,
 )
 
@@ -37,6 +42,8 @@ async def create_handoff(req: TeamHandoffCreateRequest, engine=Depends(get_engin
             title=req.title,
             summary=req.summary,
             memory_ids=req.memory_ids,
+            required_capabilities=req.required_capabilities,
+            priority=req.priority,
         )
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
@@ -56,6 +63,52 @@ async def list_handoffs(
         status=status or None,
         to_agent=to_agent or None,
         limit=limit,
+    )
+
+
+@router.get(
+    "/api/team/handoffs/matches",
+    response_model=list[TeamHandoffMatchOut],
+)
+async def list_handoff_matches(
+    project: str = "",
+    limit: int = 100,
+    engine=Depends(get_engine),
+):
+    """Preview capability-aware matches without mutating handoffs."""
+    return await _tracker(engine).list_handoff_matches(
+        project=project or None,
+        limit=limit,
+    )
+
+
+@router.post(
+    "/api/team/handoffs/claim",
+    response_model=TeamHandoffClaimResponse,
+)
+async def claim_next_handoff(
+    req: TeamHandoffClaimRequest,
+    engine=Depends(get_engine),
+):
+    """Atomically claim the best eligible pending handoff for one online agent."""
+    try:
+        return await _tracker(engine).claim_next_handoff(req.agent_session_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="agent session is not online") from exc
+
+
+@router.post(
+    "/api/team/handoffs/dispatch",
+    response_model=TeamHandoffDispatchResponse,
+)
+async def dispatch_handoffs(
+    req: TeamHandoffDispatchRequest,
+    engine=Depends(get_engine),
+):
+    """Admin-triggered deterministic dispatch to opt-in online agents."""
+    return await _tracker(engine).dispatch_handoffs(
+        project=req.project or None,
+        limit=req.limit,
     )
 
 
