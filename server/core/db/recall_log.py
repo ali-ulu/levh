@@ -33,6 +33,8 @@ from __future__ import annotations
 import json
 from datetime import datetime, timedelta, timezone
 
+from server.core.tenancy import authorize, current_principal, current_workspace_id
+
 #: How long the caller's prune signal stays valid, in seconds. One DELETE per
 #: ten minutes of traffic is invisible next to the recall it follows; one per
 #: recall would not be.
@@ -62,17 +64,23 @@ class RecallLogQueries:
         still appended — "we asked this twice and got a different list" is
         exactly the signal worth keeping.
         """
+        actor = authorize("recall", current_workspace_id())
         cursor = await self._db.conn.execute(
             """
             INSERT INTO recall_log
                 (query, query_sha256, result_ids, result_count, top_k,
-                 project, session_id, reinforced, logged_at)
+                 project, session_id, workspace_id, principal_id, principal_role,
+                 reinforced, logged_at)
             VALUES
                 (:query, :query_sha256, :result_ids, :result_count, :top_k,
-                 :project, :session_id, :reinforced, :logged_at)
+                 :project, :session_id, :workspace_id, :principal_id, :principal_role,
+                 :reinforced, :logged_at)
             """,
             {
                 **row,
+                "workspace_id": actor.workspace_id,
+                "principal_id": actor.id,
+                "principal_role": actor.role,
                 "result_ids": (
                     row["result_ids"]
                     if isinstance(row["result_ids"], str)
@@ -102,22 +110,24 @@ class RecallLogQueries:
         cleaning up now should not wait for the throttle, and a test should not
         have to fake a clock.
         """
+        authorize("recall", current_workspace_id())
         if max_days <= 0:
             return 0
         cutoff = (datetime.now(timezone.utc) - timedelta(days=max_days)).isoformat()
         cursor = await self._db.conn.execute(
-            "DELETE FROM recall_log WHERE logged_at < ?", (cutoff,)
+            "DELETE FROM recall_log WHERE workspace_id = ? AND logged_at < ?",
+            (current_workspace_id(), cutoff),
         )
         await self._db.commit()
         return cursor.rowcount
 
     async def list_recall_log(self, limit: int = 100, since: str | None = None) -> list[dict]:
-        """Most recent recalls first. ``result_ids`` is decoded to a list so a
-        caller reading the log never has to know it is JSON on disk."""
-        query = "SELECT * FROM recall_log"
-        params: list = []
+        """Most recent recalls first, scoped to the current workspace."""
+        authorize("read", current_workspace_id())
+        query = "SELECT * FROM recall_log WHERE workspace_id = ?"
+        params: list = [current_workspace_id()]
         if since:
-            query += " WHERE logged_at >= ?"
+            query += " AND logged_at >= ?"
             params.append(since)
         query += " ORDER BY logged_at DESC, id DESC LIMIT ?"
         params.append(max(1, min(int(limit), 1000)))
@@ -141,6 +151,7 @@ class RecallLogQueries:
     async def recall_log_stats(self) -> dict:
         """Counts an operator needs before trusting any number derived from
         this table: how much there is, how varied it is, and how old."""
+        authorize("read", current_workspace_id())
         cursor = await self._db.conn.execute(
             """
             SELECT COUNT(*) AS total,
@@ -148,7 +159,9 @@ class RecallLogQueries:
                    MIN(logged_at) AS oldest,
                    MAX(logged_at) AS newest
             FROM recall_log
-            """
+            WHERE workspace_id = ?
+            """,
+            (current_workspace_id(),),
         )
         row = await cursor.fetchone()
         await cursor.close()
@@ -159,3 +172,30 @@ class RecallLogQueries:
             "oldest": found.get("oldest"),
             "newest": found.get("newest"),
         }
+
+
+    async def access_audit(self, memory_id: str, limit: int = 100) -> list[dict]:
+        """Return who received *memory_id* in recall results, newest first."""
+        authorize("read", current_workspace_id())
+        rows = await self.list_recall_log(limit=1000)
+        out: list[dict] = []
+        for row in rows:
+            try:
+                rank = row["result_ids"].index(memory_id) + 1
+            except (ValueError, AttributeError):
+                continue
+            out.append(
+                {
+                    "memory_id": memory_id,
+                    "principal_id": row.get("principal_id"),
+                    "principal_role": row.get("principal_role"),
+                    "workspace_id": row.get("workspace_id"),
+                    "project": row.get("project"),
+                    "session_id": row.get("session_id"),
+                    "rank": rank,
+                    "logged_at": row.get("logged_at"),
+                }
+            )
+            if len(out) >= max(1, min(int(limit), 1000)):
+                break
+        return out
