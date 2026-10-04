@@ -5,7 +5,7 @@
 ### i18n: move the Sessions page into the catalogue (#446)
 
 - Sessions heading/subtitle, create-session placeholder, empty state, memory/start/end copy, summary results, action labels, and accessibility title now resolve through `useT()`.
-- Session names/status/data, the `create_session` MCP tool name, keyboard event key, and locale identifiers remain runtime/technical data; the UI-string ratchet for `src/app/sessions/page.tsx` is tightened from 17 to 3.
+- Session names/status/data, the `create_session` MCP tool name, keyboard event key, and locale identifiers remain runtime/technical data; the UI-string ratchet for `src/app/sessions/page.tsx` is tightened from 17 to 4, leaving the technical `create_session` tool name, `Enter` event key, and two `en-GB` locale literals.
 
 
 ### i18n: move the Graph page into the catalogue (#442)
