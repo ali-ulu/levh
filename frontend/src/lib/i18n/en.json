@@ -170,5 +170,14 @@
   "settings.backupRestore.restoreSuccess": "Restored {memories} memories and {sessions} sessions ({mode}).",
   "settings.backupRestore.restoreFailed": "Restore failed: {error}",
   "settings.backupRestore.mode.replaced": "replaced",
-  "settings.backupRestore.mode.merged": "merged"
+  "settings.backupRestore.mode.merged": "merged",
+  "settings.trustProvenance.title": "Trust & provenance",
+  "settings.trustProvenance.description": "A deterministic, explainable provenance signal — where a memory came from, how many independent sources corroborate it, and whether it carries risk flags. This is not a truth score, and it never changes recall ranking.",
+  "settings.trustProvenance.recompute": "Recompute trust scores",
+  "settings.trustProvenance.scored": "Scored {count} memories.",
+  "settings.trustProvenance.lowestTrust": "Lowest-trust memories",
+  "settings.trustProvenance.recomputeFailed": "Recompute failed",
+  "settings.trustProvenance.lowTrustFailed": "Low-trust lookup failed",
+  "settings.trustProvenance.unknownSource": "unknown",
+  "settings.trustProvenance.sourceLabel": "{source} source"
 }

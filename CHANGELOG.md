@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### i18n: move Trust & Provenance settings into the catalogue (#411)
+
+- Trust & Provenance title, explanatory copy, action/counter labels, fallback errors, and source fallback copy now resolve through the existing `useT()` catalogue path.
+- Server-provided trust labels remain dynamic data; the UI-string ratchet entry for `src/app/settings/_sections/trust-provenance.tsx` drops from 9 to 0.
+
+
 ### i18n: move Backup & Restore settings into the catalogue (#409)
 
 - Backup and restore headings, help text, fields, actions, warnings, and runtime result/error messages now resolve through the existing `useT()` catalogue path.

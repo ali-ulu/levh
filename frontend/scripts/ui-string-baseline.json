@@ -21,7 +21,6 @@
   "src/app/settings/_sections/privacy-redaction.tsx": 10,
   "src/app/settings/_sections/recall-quality.tsx": 12,
   "src/app/settings/_sections/server-configuration.tsx": 17,
-  "src/app/settings/_sections/trust-provenance.tsx": 9,
   "src/app/timeline/page.tsx": 3,
   "src/app/visualize/page.tsx": 39,
   "src/components/ask-panel.tsx": 10,

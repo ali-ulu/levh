@@ -5,10 +5,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { api } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 import type { TrustBreakdown } from "@/types";
 import { BadgeCheck, Loader2 } from "lucide-react";
 
 export function TrustProvenance() {
+    const t = useT();
     const [trustBusy, setTrustBusy] = useState(false);
     const [trustByLabel, setTrustByLabel] = useState<Record<string, number> | null>(null);
     const [trustScored, setTrustScored] = useState<number | null>(null);
@@ -25,7 +27,7 @@ export function TrustProvenance() {
         setTrustByLabel(r.by_label);
         await runLowTrust();
       } catch (e) {
-        setTrustError(e instanceof Error ? e.message : "Recompute failed");
+        setTrustError(e instanceof Error ? e.message : t("settings.trustProvenance.recomputeFailed"));
       }
       setTrustBusy(false);
     };
@@ -36,7 +38,7 @@ export function TrustProvenance() {
         const r = await api.lowTrust(0.4, 10);
         setLowTrust(r.low_trust);
       } catch (e) {
-        setTrustError(e instanceof Error ? e.message : "Low-trust lookup failed");
+        setTrustError(e instanceof Error ? e.message : t("settings.trustProvenance.lowTrustFailed"));
       }
       setLowTrustBusy(false);
     };
@@ -46,25 +48,23 @@ export function TrustProvenance() {
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <BadgeCheck className="h-4 w-4" />
-            Trust &amp; provenance
+            {t("settings.trustProvenance.title")}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-xs text-muted-foreground">
-            A deterministic, explainable provenance signal — where a memory came from, how many
-            independent sources corroborate it, and whether it carries risk flags. This is not a
-            truth score, and it never changes recall ranking.
+            {t("settings.trustProvenance.description")}
           </p>
           <div className="flex items-center gap-2">
             <Button variant="outline" onClick={runRecomputeTrust} disabled={trustBusy}>
               {trustBusy && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Recompute trust scores
+              {t("settings.trustProvenance.recompute")}
             </Button>
             {trustError && <span className="text-xs text-destructive">{trustError}</span>}
           </div>
           {trustScored !== null && trustByLabel && (
             <div className="space-y-2 pt-2 border-t">
-              <p className="text-xs text-muted-foreground">Scored {trustScored} memories.</p>
+              <p className="text-xs text-muted-foreground">{t("settings.trustProvenance.scored", { count: trustScored })}</p>
               <div className="flex flex-wrap gap-2">
                 {Object.entries(trustByLabel).map(([label, count]) => (
                   <Badge key={label} variant="secondary" className="text-[11px]">
@@ -76,7 +76,7 @@ export function TrustProvenance() {
           )}
           {lowTrust && lowTrust.length > 0 && (
             <div className="space-y-2 pt-2 border-t">
-              <p className="text-xs text-muted-foreground">Lowest-trust memories</p>
+              <p className="text-xs text-muted-foreground">{t("settings.trustProvenance.lowestTrust")}</p>
               <ul className="space-y-1">
                 {lowTrust.map((t) => (
                   <li key={t.memory_id} className="text-xs text-muted-foreground">
@@ -85,7 +85,11 @@ export function TrustProvenance() {
                     </Badge>{" "}
                     <span className="font-mono">{t.confidence.toFixed(2)}</span>{" "}
                     <span className="font-mono">{t.memory_id.slice(0, 8)}</span> —{" "}
-                    {t.evidence?.source ?? "unknown"} source
+                    {t("settings.trustProvenance.sourceLabel", {
+                      source:
+                        t.evidence?.source ??
+                        t("settings.trustProvenance.unknownSource"),
+                    })}
                   </li>
                 ))}
               </ul>
