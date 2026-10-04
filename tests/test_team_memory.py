@@ -59,7 +59,7 @@ async def test_handoff_lifecycle_is_workspace_scoped_and_role_gated(engine):
         assert handoff["to_agent"] == "cursor"
         assert handoff["workspace_id"] == "team-a"
 
-    with principal(pid="reader", workspace="team-a", role="viewer", agent="cursor"):
+    with _PrincipalContext(pid="reader", workspace="team-a", role="viewer", agent="cursor"):
         visible = await engine.agent_tracker.list_handoffs(project="atlas")
         assert [row["id"] for row in visible] == [handoff["id"]]
         with pytest.raises(AuthorizationError):
@@ -71,34 +71,34 @@ async def test_handoff_lifecycle_is_workspace_scoped_and_role_gated(engine):
         with pytest.raises(AuthorizationError):
             await engine.agent_tracker.accept_handoff(handoff["id"])
 
-    with principal(pid="frontend-1", workspace="team-a", role="editor", agent="cursor"):
+    with _PrincipalContext(pid="frontend-1", workspace="team-a", role="editor", agent="cursor"):
         accepted = await engine.agent_tracker.accept_handoff(handoff["id"])
         assert accepted["status"] == "accepted"
         assert accepted["accepted_by"] == "frontend-1"
         completed = await engine.agent_tracker.complete_handoff(handoff["id"])
         assert completed["status"] == "completed"
 
-    with principal(pid="other", workspace="team-b", role="admin", agent="cursor"):
+    with _PrincipalContext(pid="other", workspace="team-b", role="admin", agent="cursor"):
         assert await engine.agent_tracker.list_handoffs(project="atlas") == []
 
 
 @pytest.mark.asyncio
 async def test_handoff_cannot_be_accepted_by_the_wrong_agent(engine):
-    with principal(pid="backend", workspace="team-a", role="editor", agent="codex"):
+    with _PrincipalContext(pid="backend", workspace="team-a", role="editor", agent="codex"):
         handoff = await engine.agent_tracker.create_handoff(
             project="atlas",
             to_agent="cursor",
             title="Take the frontend",
         )
 
-    with principal(pid="tester", workspace="team-a", role="editor", agent="vscode"):
+    with _PrincipalContext(pid="tester", workspace="team-a", role="editor", agent="vscode"):
         with pytest.raises(AuthorizationError, match="another agent"):
             await engine.agent_tracker.accept_handoff(handoff["id"])
 
 
 @pytest.mark.asyncio
 async def test_shared_decision_conflict_is_signalled_not_auto_resolved(engine):
-    with principal(pid="backend", workspace="team-a", role="editor", agent="codex"):
+    with _PrincipalContext(pid="backend", workspace="team-a", role="editor", agent="codex"):
         first = await engine.agent_tracker.create_team_decision(
             project="atlas",
             decision_key="database",
@@ -109,7 +109,7 @@ async def test_shared_decision_conflict_is_signalled_not_auto_resolved(engine):
         assert first["contested"] is False
         first_id = first["decision"]["id"]
 
-    with principal(pid="frontend", workspace="team-a", role="editor", agent="cursor"):
+    with _PrincipalContext(pid="frontend", workspace="team-a", role="editor", agent="cursor"):
         second = await engine.agent_tracker.create_team_decision(
             project="atlas",
             decision_key="database",
@@ -120,7 +120,7 @@ async def test_shared_decision_conflict_is_signalled_not_auto_resolved(engine):
         assert {d["status"] for d in second["conflicts"]} == {"contested"}
         second_id = second["decision"]["id"]
 
-    with principal(pid="reader", workspace="team-a", role="viewer", agent="vscode"):
+    with _PrincipalContext(pid="reader", workspace="team-a", role="viewer", agent="vscode"):
         contested = await engine.agent_tracker.list_team_decisions(
             project="atlas", decision_key="database", status="contested"
         )
@@ -128,7 +128,7 @@ async def test_shared_decision_conflict_is_signalled_not_auto_resolved(engine):
         with pytest.raises(AuthorizationError):
             await engine.agent_tracker.resolve_team_decision(first_id)
 
-    with principal(pid="owner", workspace="team-a", role="admin"):
+    with _PrincipalContext(pid="owner", workspace="team-a", role="admin"):
         chosen = await engine.agent_tracker.resolve_team_decision(first_id)
         assert chosen["status"] == "active"
         rows = await engine.agent_tracker.list_team_decisions(
@@ -139,7 +139,7 @@ async def test_shared_decision_conflict_is_signalled_not_auto_resolved(engine):
         assert by_id[second_id]["status"] == "superseded"
         assert by_id[second_id]["superseded_by"] == first_id
 
-    with principal(pid="other", workspace="team-b", role="admin"):
+    with _PrincipalContext(pid="other", workspace="team-b", role="admin"):
         assert await engine.agent_tracker.list_team_decisions(project="atlas") == []
 
 
@@ -174,13 +174,13 @@ async def test_concurrent_decisions_become_contested_without_transaction_bleed(e
 
 @pytest.mark.asyncio
 async def test_duplicate_shared_decision_is_idempotent(engine):
-    with principal(pid="one", workspace="team-a", role="editor", agent="codex"):
+    with _PrincipalContext(pid="one", workspace="team-a", role="editor", agent="codex"):
         first = await engine.agent_tracker.create_team_decision(
             project="atlas",
             decision_key="api-style",
             statement="Use REST for the public API",
         )
-    with principal(pid="two", workspace="team-a", role="editor", agent="cursor"):
+    with _PrincipalContext(pid="two", workspace="team-a", role="editor", agent="cursor"):
         same = await engine.agent_tracker.create_team_decision(
             project="atlas",
             decision_key="api-style",
@@ -192,7 +192,7 @@ async def test_duplicate_shared_decision_is_idempotent(engine):
 
 @pytest.mark.asyncio
 async def test_collaboration_summary_includes_handoffs_and_decisions(engine):
-    with principal(pid="backend", workspace="team-a", role="editor", agent="codex"):
+    with _PrincipalContext(pid="backend", workspace="team-a", role="editor", agent="codex"):
         await engine.agent_tracker.agent_connect("codex", project="atlas")
         await engine.agent_tracker.create_handoff(
             project="atlas",
@@ -215,13 +215,13 @@ async def test_collaboration_summary_includes_handoffs_and_decisions(engine):
 
 @pytest.mark.asyncio
 async def test_agent_presence_and_checkpoints_do_not_cross_workspaces(engine):
-    with principal(pid="a", workspace="team-a", role="editor", agent="codex"):
+    with _PrincipalContext(pid="a", workspace="team-a", role="editor", agent="codex"):
         await engine.agent_tracker.agent_connect("codex", project="atlas")
         await engine.agent_tracker.create_checkpoint(
             "codex", "A checkpoint", project="atlas"
         )
 
-    with principal(pid="b", workspace="team-b", role="editor", agent="cursor"):
+    with _PrincipalContext(pid="b", workspace="team-b", role="editor", agent="cursor"):
         await engine.agent_tracker.agent_connect("cursor", project="atlas")
         await engine.agent_tracker.create_checkpoint(
             "cursor", "B checkpoint", project="atlas"
@@ -230,7 +230,7 @@ async def test_agent_presence_and_checkpoints_do_not_cross_workspaces(engine):
         assert {a["agent_name"] for a in collab_b["agents"]} == {"cursor"}
         assert {c["agent_name"] for c in collab_b["shared_checkpoints"]} == {"cursor"}
 
-    with principal(pid="a-reader", workspace="team-a", role="viewer", agent="codex"):
+    with _PrincipalContext(pid="a-reader", workspace="team-a", role="viewer", agent="codex"):
         collab_a = await engine.agent_tracker.get_project_collaboration("atlas")
         assert {a["agent_name"] for a in collab_a["agents"]} == {"codex"}
         assert {c["agent_name"] for c in collab_a["shared_checkpoints"]} == {"codex"}
