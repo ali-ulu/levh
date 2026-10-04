@@ -39,6 +39,7 @@ Each fixture file is one JSON object:
 | `post_review_queries` | Recall queries run *after* `review_actions`, to check fading-memory recovery (same shape as `queries`, evaluated as hit/no-hit) |
 | `reinforce_before_eval` | Keys to reinforce before trust/conflict computation, modeling "a confirmed human memory" rather than a memory that was merely stored |
 | `known_false_positives` | If `true`, this fixture's detected conflict false positives count in the aggregate but do not fail the fixture — used by the one fixture (`09_conflict_false_positive_guard.json`) that deliberately measures a known false-positive case rather than hiding it |
+| `continuity` | The continuity scenario (#378): `checkpoint` (`agent_name`/`title`/`summary`, created through the real tracker path before signals are read), `project`, `expect_checkpoint`, `expected_surfaced_order` (fixture keys, asserted in brief presentation order), `recall_after_brief_key` + `recall_query` (a surfaced memory must be recalled AND reinforced afterwards) | |
 
 ### Report structure
 
@@ -57,9 +58,34 @@ Each fixture file is one JSON object:
   },
   "conflicts": {"expected": N, "detected": N, "precision": ..., "recall": ..., "false_positives": N},
   "lifecycle": {"review_distribution": {...}, "fading_recovery_rate": ...},
+  "continuity": {"briefs": N, "checkpoint_surfaced": bool, "order_ok": bool, "use_ok": bool},
   "product": {"seed_demo": {"completed": bool, "memories": N, "conflict_candidates": N}}
 }
 ```
+
+### Continuity: emission vs use (#378)
+
+The product claims sessions start already briefed. That claim has two
+separable parts, measured at two layers:
+
+- **Emission** — a producer-side event. `continuity_log` (schema v5) records
+  one row per brief handed out, with the channel (`stderr_bridge`,
+  `mcp_tool`, `session_hook`, `cli`) and the memory ids the brief surfaced,
+  in presentation order. The counter is named "emitted" on purpose: printing
+  a brief proves it was handed out, nothing about whether the agent read it.
+  Live counts: `GET /api/config` → `continuity_briefs`, including
+  `recalls_in_use_window` — how many surfaced memories a later recall
+  returned within 24h, the store-scale use signal.
+- **Use, fixture-level** — the `continuity_brief_surface_and_use` scenario
+  asserts the brief surfaces its checkpoint, pinned rule and tagged blocker
+  in brief order, and that a subsequent recall returns and reinforces a
+  surfaced memory. This is the deterministic form of "the brief is emitted
+  and used"; the report's `continuity` block carries it, and no value in it
+  may be read as a delivery guarantee.
+
+Per the plan (`docs/internal/PLAN-CONTINUITY-AND-FEDERATION.md` A1→A2): if
+live data shows agents already recall reliably, the no-hook-client story
+stays documentation — no adapter is written.
 
 Every value in a report is tied to `evaluation_version` and the fixture set
 that actually produced it. There are no fabricated or hard-coded numbers in

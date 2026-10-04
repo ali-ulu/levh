@@ -44,6 +44,7 @@ def test_fixture_set_covers_required_scenarios():
         "redacted_secret",
         "conflict_false_positive",
         "skill_promotion",
+        "continuity_brief_surface_and_use",
     }
     assert required <= names
 
@@ -65,7 +66,7 @@ def test_report_is_versioned_and_labels_its_surfaces(report):
     # Bare "accuracy" is banned — each surface is named for what it measures.
     serialized = json.dumps(report)
     assert '"accuracy"' not in serialized
-    for surface in ("recall", "quality", "conflicts", "lifecycle", "procedures"):
+    for surface in ("recall", "quality", "conflicts", "lifecycle", "procedures", "continuity"):
         assert surface in report
 
 
@@ -177,3 +178,26 @@ async def test_trust_does_not_alter_hscore_ranking():
 def test_default_fixture_dir_is_the_shipped_golden_set():
     assert DEFAULT_FIXTURE_DIR.name == "evaluation"
     assert len(list(DEFAULT_FIXTURE_DIR.glob("*.json"))) >= 9
+
+
+def test_continuity_scenario_measures_surface_and_use(report):
+    """The continuity scenario (#378): the brief must surface its checkpoint,
+    pinned rule and tagged blocker in brief order, and a memory the brief
+    surfaced must be recallable AND reinforced afterwards. This is the
+    fixture-level form of "the brief is emitted and used".
+    """
+    c = report["continuity"]
+    # The report names its scope: fixture emissions only, never "delivered".
+    assert c["briefs"] >= 1
+    assert c["checkpoint_surfaced"] is True
+    assert c["order_ok"] is True
+    assert c["use_ok"] is True
+
+
+def test_continuity_scenario_does_not_count_as_delivery(report):
+    """No surface in the report may promise delivery: the emission/use
+    measurement speaks of surfaced memories and recalls, never of the agent
+    having read anything. Locked as a vocabulary contract (#378)."""
+    c = report["continuity"]
+    assert "delivered" not in json.dumps(c)
+    assert "read" not in json.dumps(c)

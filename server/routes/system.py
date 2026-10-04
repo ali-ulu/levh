@@ -62,6 +62,12 @@ async def get_config(engine=Depends(get_engine)):
             "retention_days": recall_log_days,
             **await engine.db.recall_log_stats(),
         },
+        # Continuity proof (#378): how many briefs this install has handed
+        # out, per channel, and how many surfaced memories a recent recall
+        # actually came back. The pairing answers "are sessions starting
+        # briefed, and does the brief matter" with producer-side numbers —
+        # emission counts, never a delivery guarantee.
+        "continuity_briefs": await engine.db.continuity_log.continuity_stats(),
         "version": APP_VERSION,
     }
 

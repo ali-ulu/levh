@@ -370,6 +370,7 @@ class ServerConfigResponse(BaseModel):
     auto_summarize_sessions: bool
     outbound: dict[str, Any]
     recall_log: dict[str, Any]
+    continuity_briefs: dict[str, Any]
     version: str
 
 

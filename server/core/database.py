@@ -27,6 +27,7 @@ from .db.schema import CURRENT_SCHEMA_VERSION, _FTS_SCHEMA, _INDEXES, _MIGRATION
 from .db.aggregates import AggregateQueries
 from .db.attachments import AttachmentQueries
 from .db.entities import EntityQueries
+from .db.continuity_log import ContinuityLogQueries
 from .db.findings import FindingQueries
 from .db.guard import GuardQueries
 from .db.held import HeldMemoryQueries
@@ -78,6 +79,7 @@ class Database:
         self.held = HeldMemoryQueries(self)
         self.findings = FindingQueries(self)
         self.recall_log = RecallLogQueries(self)
+        self.continuity_log = ContinuityLogQueries(self)
         self._groups = (
             self.memories,
             self.aggregates,
@@ -90,6 +92,7 @@ class Database:
             self.held,
             self.findings,
             self.recall_log,
+            self.continuity_log,
         )
 
     async def connect(self) -> None:
@@ -235,6 +238,15 @@ class Database:
             await self._backfill_validity()
             await self._backfill_workspace()
             version = 4
+            await self._set_user_version(version)
+
+        if version < 5:
+            # Continuity instrumentation (#378). ``continuity_log`` is in the
+            # base schema, so a fresh store already has it; this step exists so
+            # an existing v4 store connects without any further migration and
+            # simply re-runs the idempotent DDL the connect path applies before
+            # migration — recorded here to keep the numbered history complete.
+            version = 5
             await self._set_user_version(version)
 
         self.schema_version = version

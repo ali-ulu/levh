@@ -177,7 +177,10 @@ async def test_mcp_lifespan_logs_startup_failures_and_still_starts(
         raise RuntimeError("brief unavailable")
 
     monkeypatch.setattr(mcp_stdio, "smart_auto_connect", broken_connect)
-    monkeypatch.setattr(engine, "get_continuity_context", broken_brief)
+    # The stderr bridge now emits through emit_continuity_brief (#378), which
+    # wraps get_continuity_context — breaking the emitter is what exercises
+    # the startup failure path.
+    monkeypatch.setattr(engine, "emit_continuity_brief", broken_brief)
 
     with caplog.at_level(logging.ERROR, logger="levh.mcp_stdio"):
         async with mcp_stdio._lifespan(mcp_stdio.mcp):

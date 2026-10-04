@@ -251,7 +251,80 @@ async def _run_fixture(fixture: dict, embedder_mode: str) -> dict:
             )
             outcome["recovered"].append(hit)
 
-        # 8) Procedure promotion (2.32): which memories the promotion rule
+        # 8) Continuity (#378): does the brief surface the checkpoint, the
+        #    pinned rule and the blocker — in that order — and does a
+        #    subsequent recall of a surfaced memory reinforce it? Runs before
+        #    the procedure pass so the recall below does not feed reuse
+        #    evidence into a promotion fixture.
+        if "continuity" in fixture:
+            spec = fixture["continuity"]
+            id_to_key_reverse = {v: k for k, v in key_to_id.items()}
+
+            def _key_of(memory_id: str) -> str:
+                # Checkpoint ids are "checkpoint:<id>"; only real memory ids
+                # resolve to fixture keys.
+                return id_to_key_reverse.get(memory_id, memory_id)
+
+            if spec.get("checkpoint"):
+                # The brief leads with the latest checkpoint, so the fixture
+                # creates one through the real tracker path before signals
+                # are read — the same way a live session would have one.
+                await engine.agent_tracker.create_checkpoint(
+                    agent_name=spec["checkpoint"].get("agent_name", "fixture"),
+                    title=spec["checkpoint"].get("title", "fixture checkpoint"),
+                    summary=spec["checkpoint"].get("summary", "fixture checkpoint summary"),
+                    checkpoint_type="manual",
+                    project=spec.get("project") or None,
+                )
+            signals = await engine.get_continuity_signals(
+                project=spec.get("project") or None,
+                limit=spec.get("limit", 5),
+            )
+            surfaced = signals["surfaced_ids"]
+            surfaced_keys = [_key_of(mid) for mid in surfaced]
+
+            expected_order = spec.get("expected_surfaced_order", [])
+            expected_positions = [
+                surfaced_keys.index(k)
+                for k in expected_order
+                if k in surfaced_keys
+            ]
+            order_ok = expected_positions == sorted(expected_positions) and all(
+                k in surfaced_keys for k in expected_order
+            )
+
+            # The use leg: recall a memory the brief surfaced and confirm the
+            # recall (a) returned it and (b) reinforced it. This is the
+            # engine-level "brief surfaced it, recall picked it up" the live
+            # use-window counter approximates at store scale.
+            use_result: dict = {"ok": False}
+            use_key = spec.get("recall_after_brief_key")
+            if use_key and use_key in key_to_id:
+                before = await engine.episodic.get(key_to_id[use_key])
+                res = await engine.recall(
+                    query=spec["recall_query"], top_k=5, reinforce=True
+                )
+                recalled_ids = [m.id for m in res.memories]
+                after = await engine.episodic.get(key_to_id[use_key])
+                use_result = {
+                    "recalled": key_to_id[use_key] in recalled_ids,
+                    "reinforced": bool(
+                        after
+                        and before
+                        and (after.recall_count or 0) > (before.recall_count or 0)
+                    ),
+                }
+                use_result["ok"] = use_result["recalled"] and use_result["reinforced"]
+
+            outcome["continuity"] = {
+                "surfaced_count": len(surfaced),
+                "checkpoint_surfaced": spec.get("expect_checkpoint", False)
+                == bool(signals["checkpoint"]),
+                "order_ok": order_ok,
+                "use": use_result,
+            }
+
+        # 9) Procedure promotion (2.32): which memories the promotion rule
         #    proposes as skills, by fixture key. Run last so it reads the
         #    counters the earlier steps left — reuse evidence is accumulated,
         #    not declared.
@@ -328,6 +401,13 @@ async def run_evaluation(
                 expected_candidates
             )
 
+    # ── Continuity (#378) ─────────────────────────────────────────
+    # Counts the continuity scenario's outcome rather than merging it into
+    # "recall": the brief surface and the recall ranking are two different
+    # claims, and one number cannot carry both.
+    continuity_blocks = [o["continuity"] for o in outcomes if "continuity" in o]
+    briefs_in_fixtures = len(continuity_blocks)
+
     def _rate(n: int, d: int) -> float:
         return round(n / d, 4) if d else 0.0
 
@@ -344,6 +424,14 @@ async def run_evaluation(
             or o["procedure_candidates"]
             == sorted(fx["expected_procedure_candidates"])
         )
+        continuity_ok = all(
+            (
+                c["checkpoint_surfaced"]
+                and c["order_ok"]
+                and c["use"]["ok"]
+            )
+            for c in [o["continuity"]]
+        ) if "continuity" in o else True
         fixture_results.append(
             {
                 "name": o["name"],
@@ -355,6 +443,7 @@ async def run_evaluation(
                     and o["conflicts"]["missed"] == 0
                     and fp_ok
                     and procedure_ok
+                    and continuity_ok
                 ),
             }
         )
@@ -424,6 +513,25 @@ async def run_evaluation(
         "procedures": {
             "candidates": procedure_candidates,
             "mismatches": procedure_mismatches,
+        },
+        # "continuity" measures the golden continuity scenario (#378): the
+        # brief surfacing its ingredients in order and a surfaced memory
+        # being recalled-and-reinforced afterwards. Emission counts live in
+        # the store's continuity_log / levh doctor, not here — the fixtures
+        # run on throwaway stores, where an emission log would be a
+        # measurement of the throwaway, not of the install.
+        "continuity": {
+            "briefs": briefs_in_fixtures,
+            "checkpoint_surfaced": all(c["checkpoint_surfaced"] for c in continuity_blocks),
+            "order_ok": all(c["order_ok"] for c in continuity_blocks),
+            "use_ok": all(c["use"]["ok"] for c in continuity_blocks),
+        }
+        if continuity_blocks
+        else {
+            "briefs": 0,
+            "checkpoint_surfaced": False,
+            "order_ok": False,
+            "use_ok": False,
         },
     }
 
