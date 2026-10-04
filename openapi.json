@@ -45,7 +45,7 @@
     "/librarian.js": {
       "get": {
         "summary": "Librarian Widget Js",
-        "description": "Dashboard'un her sayfas\u0131na enjekte edilen sa\u011f-alt chat widget'\u0131.\n\nJavaScript olarak servis edilir. ``text/html`` ile d\u00f6n\u00fcyordu; taray\u0131c\u0131\nbeti\u011fi yanl\u0131\u015f MIME ile ya hi\u00e7 \u00e7al\u0131\u015ft\u0131rmaz ya da ``nosniff`` eklendi\u011fi an\n\u00e7al\u0131\u015ft\u0131rmay\u0131 b\u0131rak\u0131r \u2014 belirti \"widget g\u00f6r\u00fcnm\u00fcyor\" olur, sebebi g\u00f6r\u00fcnmez.",
+        "description": "Dashboard'un her sayfasına enjekte edilen sağ-alt chat widget'ı.\n\nJavaScript olarak servis edilir. ``text/html`` ile dönüyordu; tarayıcı\nbetiği yanlış MIME ile ya hiç çalıştırmaz ya da ``nosniff`` eklendiği an\nçalıştırmayı bırakır — belirti \"widget görünmüyor\" olur, sebebi görünmez.",
         "operationId": "librarian_widget_js_librarian_js_get",
         "responses": {
           "200": {
@@ -177,7 +177,7 @@
             "required": false,
             "schema": {
               "type": "number",
-              "default": 0.0,
+              "default": 0,
               "title": "Min Importance"
             }
           },
@@ -253,7 +253,7 @@
     "/api/v1/memories/fading": {
       "get": {
         "summary": "List Fading Memories",
-        "description": "Memories predicted to be nearly forgotten \u2014 the review queue.",
+        "description": "Memories predicted to be nearly forgotten — the review queue.",
         "operationId": "list_fading_memories_api_memories_fading_get_v1",
         "parameters": [
           {
@@ -318,7 +318,7 @@
     "/api/v1/memories/review": {
       "get": {
         "summary": "Get Review Queue",
-        "description": "Spaced-repetition review queue \u2014 fading, unpinned, un-snoozed memories\ndue for a keep/reinforce/weaken/pin/forget/snooze decision.",
+        "description": "Spaced-repetition review queue — fading, unpinned, un-snoozed memories\ndue for a keep/reinforce/weaken/pin/forget/snooze decision.",
         "operationId": "get_review_queue_api_memories_review_get_v1",
         "parameters": [
           {
@@ -379,7 +379,7 @@
     "/api/v1/memories/held": {
       "get": {
         "summary": "List Held Memories",
-        "description": "Candidates the admission gate answered ``review`` for and parked for a\nhuman \u2014 near-duplicates it declined to decide on its own.\n\nDistinct from ``/api/memories/review``, which is the spaced-repetition queue\nover memories that were already admitted. Nothing listed here is a memory\nyet. ``status=\"\"`` returns every decision state, which is how the queue\ndoubles as a record of what was decided.",
+        "description": "Candidates the admission gate answered ``review`` for and parked for a\nhuman — near-duplicates it declined to decide on its own.\n\nDistinct from ``/api/memories/review``, which is the spaced-repetition queue\nover memories that were already admitted. Nothing listed here is a memory\nyet. ``status=\"\"`` returns every decision state, which is how the queue\ndoubles as a record of what was decided.",
         "operationId": "list_held_memories_api_memories_held_get_v1",
         "parameters": [
           {
@@ -578,7 +578,7 @@
     "/api/v1/memories/low-trust": {
       "get": {
         "summary": "Get Low Trust Memories",
-        "description": "Stored memories whose provenance/trust confidence is below\n``threshold`` (least confident first). Run trust/recompute first to\npopulate. Provenance is NOT truth \u2014 it does not change H-score ranking.",
+        "description": "Stored memories whose provenance/trust confidence is below\n``threshold`` (least confident first). Run trust/recompute first to\npopulate. Provenance is NOT truth — it does not change H-score ranking.",
         "operationId": "get_low_trust_memories_api_memories_low_trust_get_v1",
         "parameters": [
           {
@@ -686,7 +686,7 @@
     "/api/v1/ask": {
       "post": {
         "summary": "Ask Memory",
-        "description": "Ask your memory a question and get a synthesized, cited answer.\n\nGrounded only in stored memories; each source is returned so the UI can\nshow citations. Read-only \u2014 asking does not reinforce memories. Uses an LLM\nwhen OPENAI_API_KEY is set, otherwise returns ranked evidence (offline).",
+        "description": "Ask your memory a question and get a synthesized, cited answer.\n\nGrounded only in stored memories; each source is returned so the UI can\nshow citations. Read-only — asking does not reinforce memories. Uses an LLM\nwhen OPENAI_API_KEY is set, otherwise returns ranked evidence (offline).",
         "operationId": "ask_memory_api_ask_post_v1",
         "requestBody": {
           "content": {
@@ -1125,7 +1125,7 @@
     "/api/v1/attachments/{attachment_id}/verify": {
       "post": {
         "summary": "Verify Attachment",
-        "description": "Re-check the file against what was recorded at attach time. A missing\nor changed file raises a conflict candidate rather than silently altering\nthe memory \u2014 see /api/conflicts.",
+        "description": "Re-check the file against what was recorded at attach time. A missing\nor changed file raises a conflict candidate rather than silently altering\nthe memory — see /api/conflicts.",
         "operationId": "verify_attachment_api_attachments__attachment_id__verify_post_v1",
         "parameters": [
           {
@@ -1444,7 +1444,7 @@
     "/api/v1/memories/{memory_id}/reinforce": {
       "post": {
         "summary": "Reinforce Memory",
-        "description": "Manually strengthen a memory \u2014 resets its decay clock and grows its\nstability, the same reinforcement that happens automatically on recall.",
+        "description": "Manually strengthen a memory — resets its decay clock and grows its\nstability, the same reinforcement that happens automatically on recall.",
         "operationId": "reinforce_memory_api_memories__memory_id__reinforce_post_v1",
         "parameters": [
           {
@@ -1574,7 +1574,7 @@
     "/api/v1/memories/{memory_id}/purge": {
       "post": {
         "summary": "Purge Memory",
-        "description": "Hard-delete a memory across every layer and verify nothing survives.\nPinned memories are purged too \u2014 this is a deliberate human action.",
+        "description": "Hard-delete a memory across every layer and verify nothing survives.\nPinned memories are purged too — this is a deliberate human action.",
         "operationId": "purge_memory_api_memories__memory_id__purge_post_v1",
         "parameters": [
           {
@@ -1614,7 +1614,7 @@
     "/api/v1/memories/{memory_id}/forgetting-curve": {
       "get": {
         "summary": "Get Forgetting Curve",
-        "description": "Predicted retention curve for a memory \u2014 powers the 'memory strength'\nvisualization in the dashboard's detail drawer.",
+        "description": "Predicted retention curve for a memory — powers the 'memory strength'\nvisualization in the dashboard's detail drawer.",
         "operationId": "get_forgetting_curve_api_memories__memory_id__forgetting_curve_get_v1",
         "parameters": [
           {
@@ -1664,7 +1664,7 @@
     "/api/v1/memories/{memory_id}/trust": {
       "get": {
         "summary": "Get Memory Trust",
-        "description": "Provenance/trust breakdown for a memory \u2014 explainable, deterministic,\nNOT truth, and independent of H-score recall ranking.",
+        "description": "Provenance/trust breakdown for a memory — explainable, deterministic,\nNOT truth, and independent of H-score recall ranking.",
         "operationId": "get_memory_trust_api_memories__memory_id__trust_get_v1",
         "parameters": [
           {
@@ -1704,7 +1704,7 @@
     "/api/v1/memories/{memory_id}/related": {
       "get": {
         "summary": "Related Memories",
-        "description": "Memories most similar to this one \u2014 the 'related memories' graph edge,\ncomputed live from embeddings. Powers 'see also' in the detail drawer.",
+        "description": "Memories most similar to this one — the 'related memories' graph edge,\ncomputed live from embeddings. Powers 'see also' in the detail drawer.",
         "operationId": "related_memories_api_memories__memory_id__related_get_v1",
         "parameters": [
           {
@@ -1754,7 +1754,7 @@
     "/api/v1/memories/{memory_id}/score-breakdown": {
       "get": {
         "summary": "Get Score Breakdown",
-        "description": "Return H(x,\u03c8) score breakdown for a specific memory + query pair.\n\nIf query is empty, memory.content is used as the default query so the\nbreakdown reflects self-similarity (baseline score for the memory).\n\nDelegates to ``engine.score_breakdown`` \u2014 the single source of truth for\ncosine/decay/scoring math \u2014 and reshapes its result into the public API\nschema. Contract: 404 unknown memory, 400 memory without embedding or\nwith a mismatched embedding dimension.",
+        "description": "Return H(x,ψ) score breakdown for a specific memory + query pair.\n\nIf query is empty, memory.content is used as the default query so the\nbreakdown reflects self-similarity (baseline score for the memory).\n\nDelegates to ``engine.score_breakdown`` — the single source of truth for\ncosine/decay/scoring math — and reshapes its result into the public API\nschema. Contract: 404 unknown memory, 400 memory without embedding or\nwith a mismatched embedding dimension.",
         "operationId": "get_score_breakdown_api_memories__memory_id__score_breakdown_get_v1",
         "parameters": [
           {
@@ -1921,7 +1921,7 @@
       },
       "delete": {
         "summary": "Delete Session",
-        "description": "Delete a session, saying what happens to its memories.\n\n``memories=refuse`` (default) deletes only an empty session and answers 409\nwith the count otherwise \u2014 tidying up a session must not quietly take\nmemories with it. ``detach`` keeps the memories and drops their session\nlink; ``delete`` removes them too, through the same cascade a single\nmemory delete uses.",
+        "description": "Delete a session, saying what happens to its memories.\n\n``memories=refuse`` (default) deletes only an empty session and answers 409\nwith the count otherwise — tidying up a session must not quietly take\nmemories with it. ``detach`` keeps the memories and drops their session\nlink; ``delete`` removes them too, through the same cascade a single\nmemory delete uses.",
         "operationId": "delete_session_api_sessions__session_id__delete_v1",
         "parameters": [
           {
@@ -2730,7 +2730,7 @@
     "/api/v1/timeline": {
       "get": {
         "summary": "Get Timeline",
-        "description": "Episodic memories grouped by day, most recent first \u2014 \"what happened\nthis/last week\".",
+        "description": "Episodic memories grouped by day, most recent first — \"what happened\nthis/last week\".",
         "operationId": "get_timeline_api_timeline_get_v1",
         "parameters": [
           {
@@ -2781,7 +2781,7 @@
     "/api/v1/briefing": {
       "get": {
         "summary": "Get Briefing",
-        "description": "Deterministic Daily Briefing \u2014 what's on today, open commitments from\nrecent memories, and memories that are fading and may need review.",
+        "description": "Deterministic Daily Briefing — what's on today, open commitments from\nrecent memories, and memories that are fading and may need review.",
         "operationId": "get_briefing_api_briefing_get_v1",
         "parameters": [
           {
@@ -2832,7 +2832,7 @@
     "/api/v1/meeting-prep": {
       "get": {
         "summary": "Get Meeting Prep",
-        "description": "Proactive pre-meeting brief \u2014 the next upcoming meeting (or a matched\none), each attendee's recent context, and relevant open commitments and\ndecisions. Deterministic, offline.",
+        "description": "Proactive pre-meeting brief — the next upcoming meeting (or a matched\none), each attendee's recent context, and relevant open commitments and\ndecisions. Deterministic, offline.",
         "operationId": "get_meeting_prep_api_meeting_prep_get_v1",
         "parameters": [
           {
@@ -2964,7 +2964,7 @@
     "/api/v1/decisions": {
       "get": {
         "summary": "List Decisions",
-        "description": "Deterministic decision detection \u2014 statements like \"we decided\" /\n\"agreed to\" / \"karar verdik\" in recent episodic memory content.",
+        "description": "Deterministic decision detection — statements like \"we decided\" /\n\"agreed to\" / \"karar verdik\" in recent episodic memory content.",
         "operationId": "list_decisions_api_decisions_get_v1",
         "parameters": [
           {
@@ -3171,7 +3171,7 @@
     "/api/v1/metrics": {
       "get": {
         "summary": "Get Metrics",
-        "description": "Prometheus text exposition of this process's counters (issue #145).\n\nScrapeable at ``/api/metrics`` and its versioned alias ``/api/v1/metrics``.\nThe engine, the routes and the counters share one process, so the registry\nis process-wide and this handler is a read with no engine dependency \u2014\nanswering must not itself touch the database it reports on.",
+        "description": "Prometheus text exposition of this process's counters (issue #145).\n\nScrapeable at ``/api/metrics`` and its versioned alias ``/api/v1/metrics``.\nThe engine, the routes and the counters share one process, so the registry\nis process-wide and this handler is a read with no engine dependency —\nanswering must not itself touch the database it reports on.",
         "operationId": "get_metrics_api_metrics_get_v1",
         "responses": {
           "200": {
@@ -3190,7 +3190,7 @@
     "/api/v1/readyz": {
       "get": {
         "summary": "Ready",
-        "description": "Readiness probe: this process can actually serve reads and writes.\n\n``/api/health`` is liveness \u2014 it answers from the process's own state and\nstays up even when the database is locked or the embedder is broken. That\nmade the Docker ``HEALTHCHECK`` a lie: a wedged server still reported\nhealthy (issue #145). This endpoint does the work liveness must not: it\npings SQLite, reports the embedder mode actually running and whether a\nderived-state rebuild is behind.\n\nFailure is a 503 with the reasons, so an orchestrator that reads the status\ncode (not the body) still routes around a broken instance. The body is the\nsame shape either way.",
+        "description": "Readiness probe: this process can actually serve reads and writes.\n\n``/api/health`` is liveness — it answers from the process's own state and\nstays up even when the database is locked or the embedder is broken. That\nmade the Docker ``HEALTHCHECK`` a lie: a wedged server still reported\nhealthy (issue #145). This endpoint does the work liveness must not: it\npings SQLite, reports the embedder mode actually running and whether a\nderived-state rebuild is behind.\n\nFailure is a 503 with the reasons, so an orchestrator that reads the status\ncode (not the body) still routes around a broken instance. The body is the\nsame shape either way.",
         "operationId": "ready_api_readyz_get_v1",
         "responses": {
           "200": {
@@ -3209,7 +3209,7 @@
     "/api/v1/benchmark/recall": {
       "post": {
         "summary": "Benchmark Recall",
-        "description": "Run the recall-quality benchmark harness (hit@k / MRR on a labelled\ncorpus) and return the metrics \u2014 powers the Settings 'Recall Quality'\npanel. Runs against an isolated temp DB/engine, never touches real data.",
+        "description": "Run the recall-quality benchmark harness (hit@k / MRR on a labelled\ncorpus) and return the metrics — powers the Settings 'Recall Quality'\npanel. Runs against an isolated temp DB/engine, never touches real data.",
         "operationId": "benchmark_recall_api_benchmark_recall_post_v1",
         "parameters": [
           {
@@ -3260,7 +3260,7 @@
     "/api/v1/export/full.json": {
       "get": {
         "summary": "Export Full Json",
-        "description": "One-shot audit bundle: memories, entity graph, trust scores, and\nconflict candidates \u2014 the raw machine-readable record.",
+        "description": "One-shot audit bundle: memories, entity graph, trust scores, and\nconflict candidates — the raw machine-readable record.",
         "operationId": "export_full_json_api_export_full_json_get_v1",
         "responses": {
           "200": {
@@ -3348,7 +3348,7 @@
     "/api/v1/restore": {
       "post": {
         "summary": "Restore Backup",
-        "description": "Restore from a backup file. ``content_b64`` is the base64-encoded\nbackup bytes (encrypted or plain \u2014 auto-detected). ``passphrase`` is\nrequired only for encrypted files. ``replace=true`` first creates a local\nSQLite safety backup, then replaces the current store; the default merges.",
+        "description": "Restore from a backup file. ``content_b64`` is the base64-encoded\nbackup bytes (encrypted or plain — auto-detected). ``passphrase`` is\nrequired only for encrypted files. ``replace=true`` first creates a local\nSQLite safety backup, then replaces the current store; the default merges.",
         "operationId": "restore_backup_api_restore_post_v1",
         "requestBody": {
           "content": {
@@ -3387,7 +3387,7 @@
     "/api/v1/import/file": {
       "post": {
         "summary": "Import File",
-        "description": "Turn an arbitrary uploaded file into memories.\n\nPlain text, PDF, Word, Excel and zip archives are extracted to text and\nadmitted as one or more memories (split on paragraph boundaries for long\ncontent). Formats with no extractor still get a memory recording that\nthe file arrived, so nothing silently disappears. Same base64-in-JSON\nshape as ``/api/restore`` and ``/api/connectors/upload`` \u2014 keeps\npython-multipart out of the runtime dependency list.",
+        "description": "Turn an arbitrary uploaded file into memories.\n\nPlain text, PDF, Word, Excel and zip archives are extracted to text and\nadmitted as one or more memories (split on paragraph boundaries for long\ncontent). Formats with no extractor still get a memory recording that\nthe file arrived, so nothing silently disappears. Same base64-in-JSON\nshape as ``/api/restore`` and ``/api/connectors/upload`` — keeps\npython-multipart out of the runtime dependency list.",
         "operationId": "import_file_api_import_file_post_v1",
         "requestBody": {
           "content": {
@@ -3465,7 +3465,7 @@
     "/api/v1/connectors/sync": {
       "post": {
         "summary": "Connector Sync",
-        "description": "Connector v2 ingest: fetch, then route items through the admission\ngate (dedupe + secret redaction), with incremental sync bookkeeping.\n\nWith ``background=true`` the call returns ``202`` immediately and the same\npipeline runs as a tracked job (``GET /api/connectors/sync-jobs/{id}``) \u2014\nfor syncs slower than the client's patience.",
+        "description": "Connector v2 ingest: fetch, then route items through the admission\ngate (dedupe + secret redaction), with incremental sync bookkeeping.\n\nWith ``background=true`` the call returns ``202`` immediately and the same\npipeline runs as a tracked job (``GET /api/connectors/sync-jobs/{id}``) —\nfor syncs slower than the client's patience.",
         "operationId": "connector_sync_api_connectors_sync_post_v1",
         "requestBody": {
           "content": {
@@ -3934,7 +3934,7 @@
     "/api/v1/guard/check": {
       "post": {
         "summary": "Check Guard Action",
-        "description": "Judge a proposed action against the recorded rules, before it runs.\n\nRead-only and advisory: returns ``warn`` when a recorded rule overlaps the\naction and ``allow`` otherwise. It never returns ``block`` \u2014 the caller\ndecides whether a warning is an instruction.",
+        "description": "Judge a proposed action against the recorded rules, before it runs.\n\nRead-only and advisory: returns ``warn`` when a recorded rule overlaps the\naction and ``allow`` otherwise. It never returns ``block`` — the caller\ndecides whether a warning is an instruction.",
         "operationId": "check_guard_action_api_guard_check_post_v1",
         "requestBody": {
           "content": {
@@ -4012,7 +4012,7 @@
     "/api/v1/conflicts/detect": {
       "post": {
         "summary": "Detect Conflicts",
-        "description": "Scan stored memories for conflict CANDIDATES \u2014 pairs that share an\nentity and show an opposing surface pattern. Idempotent: never resets\nalready-reviewed candidates.",
+        "description": "Scan stored memories for conflict CANDIDATES — pairs that share an\nentity and show an opposing surface pattern. Idempotent: never resets\nalready-reviewed candidates.",
         "operationId": "detect_conflicts_api_conflicts_detect_post_v1",
         "responses": {
           "200": {
@@ -4132,7 +4132,7 @@
     "/api/v1/findings": {
       "get": {
         "summary": "List Findings",
-        "description": "List findings, newest sighting first. Pass an empty status for all\nstates \u2014 that is the \"what did we decide about these\" view.",
+        "description": "List findings, newest sighting first. Pass an empty status for all\nstates — that is the \"what did we decide about these\" view.",
         "operationId": "list_findings_api_findings_get_v1",
         "parameters": [
           {
@@ -4319,7 +4319,7 @@
     "/api/v1/librarian/status": {
       "get": {
         "summary": "Librarian Status",
-        "description": "Tarama sonucu; hi\u00e7bir \u015fey yazmaz.\n\n``scan`` senkron: dosya sistemini gezip SQLite sorguluyor. Do\u011frudan\n\u00e7a\u011fr\u0131lsayd\u0131 bu rota, i\u015fi s\u00fcrerken sunucunun T\u00dcM isteklerini bekletirdi \u2014\ntek bir event loop var ve senkron kod onu b\u0131rakmaz.",
+        "description": "Tarama sonucu; hiçbir şey yazmaz.\n\n``scan`` senkron: dosya sistemini gezip SQLite sorguluyor. Doğrudan\nçağrılsaydı bu rota, işi sürerken sunucunun TÜM isteklerini bekletirdi —\ntek bir event loop var ve senkron kod onu bırakmaz.",
         "operationId": "librarian_status_api_librarian_status_get_v1",
         "responses": {
           "200": {
@@ -4338,7 +4338,7 @@
     "/api/v1/librarian/scan": {
       "post": {
         "summary": "Librarian Scan",
-        "description": "Manuel tarama \u2014 \u00e7\u0131kan bulgular\u0131 gelen kutusuna da yazar.",
+        "description": "Manuel tarama — çıkan bulguları gelen kutusuna da yazar.",
         "operationId": "librarian_scan_api_librarian_scan_post_v1",
         "responses": {
           "200": {
@@ -4375,6 +4375,56 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/LibrarianChatResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/memories/{memory_id}/access-audit": {
+      "get": {
+        "summary": "Memory Access Audit",
+        "description": "Who received this memory through recall, newest first.",
+        "operationId": "memory_access_audit_api_memories__memory_id__access_audit_get_v1",
+        "parameters": [
+          {
+            "name": "memory_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Memory Id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 100,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemoryAccessAuditResponse"
                 }
               }
             }
@@ -4992,7 +5042,7 @@
           "min_importance": {
             "type": "number",
             "title": "Min Importance",
-            "default": 0.0
+            "default": 0
           }
         },
         "type": "object",
@@ -7101,7 +7151,7 @@
           "last_seen_at"
         ],
         "title": "FindingDecisionResponse",
-        "description": "``POST /api/findings/{id}/decide`` \u2014 the updated row."
+        "description": "``POST /api/findings/{id}/decide`` — the updated row."
       },
       "FindingDeleteResponse": {
         "properties": {
@@ -8352,14 +8402,14 @@
           },
           "importance": {
             "type": "number",
-            "maximum": 1.0,
-            "minimum": 0.0,
+            "maximum": 1,
+            "minimum": 0,
             "title": "Importance",
             "default": 0.5
           },
           "frequency": {
             "type": "integer",
-            "minimum": 1.0,
+            "minimum": 1,
             "title": "Frequency",
             "default": 1
           },
@@ -8440,21 +8490,21 @@
           },
           "decay_factor": {
             "type": "number",
-            "maximum": 1.0,
-            "minimum": 0.0,
+            "maximum": 1,
+            "minimum": 0,
             "title": "Decay Factor",
-            "default": 1.0
+            "default": 1
           },
           "stability_hours": {
             "type": "number",
-            "exclusiveMinimum": 0.0,
+            "exclusiveMinimum": 0,
             "title": "Stability Hours",
-            "description": "This memory's own half-life in hours \u2014 how long until it decays to 50% relevance since last access. Grows every time the memory is recalled or explicitly reinforced (spaced-repetition style), so frequently-used memories become durable while unused ones fade.",
-            "default": 168.0
+            "description": "This memory's own half-life in hours — how long until it decays to 50% relevance since last access. Grows every time the memory is recalled or explicitly reinforced (spaced-repetition style), so frequently-used memories become durable while unused ones fade.",
+            "default": 168
           },
           "recall_count": {
             "type": "integer",
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Recall Count",
             "description": "Times this memory has been reinforced by recall.",
             "default": 0
@@ -8546,14 +8596,14 @@
           },
           "importance": {
             "type": "number",
-            "maximum": 1.0,
-            "minimum": 0.0,
+            "maximum": 1,
+            "minimum": 0,
             "title": "Importance",
             "default": 0.5
           },
           "frequency": {
             "type": "integer",
-            "minimum": 1.0,
+            "minimum": 1,
             "title": "Frequency",
             "default": 1
           },
@@ -8634,21 +8684,21 @@
           },
           "decay_factor": {
             "type": "number",
-            "maximum": 1.0,
-            "minimum": 0.0,
+            "maximum": 1,
+            "minimum": 0,
             "title": "Decay Factor",
-            "default": 1.0
+            "default": 1
           },
           "stability_hours": {
             "type": "number",
-            "exclusiveMinimum": 0.0,
+            "exclusiveMinimum": 0,
             "title": "Stability Hours",
-            "description": "This memory's own half-life in hours \u2014 how long until it decays to 50% relevance since last access. Grows every time the memory is recalled or explicitly reinforced (spaced-repetition style), so frequently-used memories become durable while unused ones fade.",
-            "default": 168.0
+            "description": "This memory's own half-life in hours — how long until it decays to 50% relevance since last access. Grows every time the memory is recalled or explicitly reinforced (spaced-repetition style), so frequently-used memories become durable while unused ones fade.",
+            "default": 168
           },
           "recall_count": {
             "type": "integer",
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Recall Count",
             "description": "Times this memory has been reinforced by recall.",
             "default": 0
@@ -8724,12 +8774,12 @@
           "avg_hscore": {
             "type": "number",
             "title": "Avg Hscore",
-            "default": 0.0
+            "default": 0
           },
           "avg_importance": {
             "type": "number",
             "title": "Avg Importance",
-            "default": 0.0
+            "default": 0
           },
           "sessions_count": {
             "type": "integer",
@@ -9371,8 +9421,8 @@
           },
           "top_k": {
             "type": "integer",
-            "maximum": 100.0,
-            "minimum": 1.0,
+            "maximum": 100,
+            "minimum": 1,
             "title": "Top K",
             "default": 10
           },
@@ -9407,15 +9457,15 @@
           },
           "min_importance": {
             "type": "number",
-            "maximum": 1.0,
-            "minimum": 0.0,
+            "maximum": 1,
+            "minimum": 0,
             "title": "Min Importance",
-            "default": 0.0
+            "default": 0
           },
           "explain": {
             "type": "boolean",
             "title": "Explain",
-            "description": "Return a per-result score breakdown: which signal drove the ranking, where each candidate came from, and the four H(x,\u03c8) penalties that sum to the score. Off by default; the ranking is identical either way.",
+            "description": "Return a per-result score breakdown: which signal drove the ranking, where each candidate came from, and the four H(x,ψ) penalties that sum to the score. Off by default; the ranking is identical either way.",
             "default": false
           },
           "reinforce": {
@@ -9434,7 +9484,7 @@
               }
             ],
             "title": "As Of",
-            "description": "Point-in-time read (issue #335): return what the store believed on this ISO-8601 instant, including facts retired since. Always read-only \u2014 a question about the past never reinforces a current belief."
+            "description": "Point-in-time read (issue #335): return what the store believed on this ISO-8601 instant, including facts retired since. Always read-only — a question about the past never reinforces a current belief."
           },
           "include_superseded": {
             "type": "boolean",
@@ -9488,7 +9538,7 @@
         },
         "type": "object",
         "title": "RecallResponse",
-        "description": "``POST /api/memories/recall`` \u2014 ranked memories plus scoring context."
+        "description": "``POST /api/memories/recall`` — ranked memories plus scoring context."
       },
       "RedactAllRequest": {
         "properties": {
@@ -9925,7 +9975,7 @@
           "weights"
         ],
         "title": "ScoreBreakdownResponse",
-        "description": "``GET /api/memories/{id}/score-breakdown`` - the public H(x,\u03c8) schema."
+        "description": "``GET /api/memories/{id}/score-breakdown`` - the public H(x,ψ) schema."
       },
       "SecretAuditItemOut": {
         "properties": {
@@ -10089,7 +10139,7 @@
           "version"
         ],
         "title": "ServerConfigResponse",
-        "description": "``GET /api/config`` \u2014 the Settings page payload. Free-form in shape by\ndesign (it mirrors runtime internals), so the envelope is typed but its\nleaves stay open."
+        "description": "``GET /api/config`` — the Settings page payload. Free-form in shape by\ndesign (it mirrors runtime internals), so the envelope is typed but its\nleaves stay open."
       },
       "Session": {
         "properties": {
@@ -10622,7 +10672,7 @@
           "explanation"
         ],
         "title": "TrustBreakdownResponse",
-        "description": "``GET /api/memories/{id}/trust`` \u2014 the explainable provenance verdict."
+        "description": "``GET /api/memories/{id}/trust`` — the explainable provenance verdict."
       },
       "TrustRecomputeResponse": {
         "properties": {
@@ -10821,6 +10871,88 @@
           "changed"
         ],
         "title": "VerifyAllAttachmentsResponse"
+      },
+      "MemoryAccessAuditOut": {
+        "properties": {
+          "memory_id": {
+            "type": "string",
+            "title": "Memory Id"
+          },
+          "principal_id": {
+            "type": "string",
+            "title": "Principal Id"
+          },
+          "principal_role": {
+            "type": "string",
+            "title": "Principal Role"
+          },
+          "workspace_id": {
+            "type": "string",
+            "title": "Workspace Id"
+          },
+          "project": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project"
+          },
+          "session_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Session Id"
+          },
+          "rank": {
+            "type": "integer",
+            "title": "Rank"
+          },
+          "logged_at": {
+            "type": "string",
+            "title": "Logged At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "memory_id",
+          "principal_id",
+          "principal_role",
+          "workspace_id",
+          "rank",
+          "logged_at"
+        ],
+        "title": "MemoryAccessAuditOut",
+        "description": "One recall receipt showing who received a memory and at what rank."
+      },
+      "MemoryAccessAuditResponse": {
+        "properties": {
+          "memory_id": {
+            "type": "string",
+            "title": "Memory Id"
+          },
+          "audit": {
+            "items": {
+              "$ref": "#/components/schemas/MemoryAccessAuditOut"
+            },
+            "type": "array",
+            "title": "Audit"
+          }
+        },
+        "type": "object",
+        "required": [
+          "memory_id"
+        ],
+        "title": "MemoryAccessAuditResponse",
+        "description": "``GET /api/memories/{id}/access-audit``."
       }
     }
   }
