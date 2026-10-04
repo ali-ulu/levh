@@ -147,6 +147,13 @@ because it is a read that has to POST to carry its query.
 | GET | `/api/v1/agents/{agent_name}/metrics` | Get performance metrics for a specific agent |
 | GET | `/api/v1/agents/metrics/usage` | Get usage billing metrics for all agents |
 | GET | `/api/v1/agents/collaboration/{project}` | Get collaboration info for agents on the same project |
+| POST | `/api/v1/team/handoffs` | Create a workspace-scoped work/context handoff to another agent |
+| GET | `/api/v1/team/handoffs` | List team handoffs by project, status, or target agent |
+| POST | `/api/v1/team/handoffs/{handoff_id}/accept` | Accept a pending handoff addressed to the current agent |
+| POST | `/api/v1/team/handoffs/{handoff_id}/complete` | Mark an accepted handoff complete |
+| POST | `/api/v1/team/decisions` | Record a shared project decision; conflicting statements become contested |
+| GET | `/api/v1/team/decisions` | List shared decisions by project, key, or status |
+| POST | `/api/v1/team/decisions/{decision_id}/resolve` | Admin resolution of a contested shared decision |
 | WS | `/ws/agents` | WebSocket for real-time agent presence updates |
 | WS | `/ws/memory` | Real-time event stream + RPC actions (recall/stats/ping; writes blocked in public demo mode) |
 | SSE | `/api/mcp/sse` | MCP SSE stream endpoint |
