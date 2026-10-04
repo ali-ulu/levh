@@ -4941,6 +4941,139 @@
           }
         }
       }
+    },
+    "/api/v1/team/handoffs/matches": {
+      "get": {
+        "summary": "List Handoff Matches",
+        "description": "Preview capability-aware matches without mutating handoffs.",
+        "operationId": "list_handoff_matches_api_team_handoffs_matches_get_v1",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Project"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 100,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TeamHandoffMatchOut"
+                  },
+                  "type": "array",
+                  "title": "Response List Handoff Matches Api Team Handoffs Matches Get V1"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/team/handoffs/claim": {
+      "post": {
+        "summary": "Claim Next Handoff",
+        "description": "Atomically claim the best eligible pending handoff for one online agent.",
+        "operationId": "claim_next_handoff_api_team_handoffs_claim_post_v1",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TeamHandoffClaimRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeamHandoffClaimResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/team/handoffs/dispatch": {
+      "post": {
+        "summary": "Dispatch Handoffs",
+        "description": "Admin-triggered deterministic dispatch to opt-in online agents.",
+        "operationId": "dispatch_handoffs_api_team_handoffs_dispatch_post_v1",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TeamHandoffDispatchRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeamHandoffDispatchResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -11515,6 +11648,18 @@
             },
             "type": "array",
             "title": "Memory Ids"
+          },
+          "required_capabilities": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Required Capabilities"
+          },
+          "priority": {
+            "type": "integer",
+            "title": "Priority",
+            "default": 0
           }
         },
         "type": "object",
@@ -11625,6 +11770,29 @@
               }
             ],
             "title": "Completed At"
+          },
+          "required_capabilities": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Required Capabilities"
+          },
+          "priority": {
+            "type": "integer",
+            "title": "Priority",
+            "default": 0
+          },
+          "accepted_session_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accepted Session Id"
           }
         },
         "type": "object",
@@ -11941,6 +12109,161 @@
           "conflict"
         ],
         "title": "TeamDecisionConflictReviewResponse"
+      },
+      "TeamHandoffMatchOut": {
+        "properties": {
+          "handoff": {
+            "$ref": "#/components/schemas/TeamHandoffOut"
+          },
+          "agent_session_id": {
+            "type": "string",
+            "title": "Agent Session Id"
+          },
+          "agent_name": {
+            "type": "string",
+            "title": "Agent Name"
+          },
+          "capabilities": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Capabilities"
+          },
+          "current_load": {
+            "type": "integer",
+            "title": "Current Load"
+          },
+          "max_parallel_handoffs": {
+            "type": "integer",
+            "title": "Max Parallel Handoffs"
+          },
+          "scheduler_enabled": {
+            "type": "boolean",
+            "title": "Scheduler Enabled"
+          }
+        },
+        "type": "object",
+        "required": [
+          "handoff",
+          "agent_session_id",
+          "agent_name",
+          "current_load",
+          "max_parallel_handoffs",
+          "scheduler_enabled"
+        ],
+        "title": "TeamHandoffMatchOut"
+      },
+      "TeamHandoffClaimRequest": {
+        "properties": {
+          "agent_session_id": {
+            "type": "string",
+            "title": "Agent Session Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "agent_session_id"
+        ],
+        "title": "TeamHandoffClaimRequest"
+      },
+      "TeamHandoffClaimResponse": {
+        "properties": {
+          "claimed": {
+            "type": "boolean",
+            "title": "Claimed"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "handoff": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TeamHandoffOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Handoff"
+          }
+        },
+        "type": "object",
+        "required": [
+          "claimed"
+        ],
+        "title": "TeamHandoffClaimResponse"
+      },
+      "TeamHandoffDispatchRequest": {
+        "properties": {
+          "project": {
+            "type": "string",
+            "title": "Project",
+            "default": ""
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit",
+            "default": 100
+          }
+        },
+        "type": "object",
+        "title": "TeamHandoffDispatchRequest"
+      },
+      "TeamHandoffAssignmentOut": {
+        "properties": {
+          "handoff": {
+            "$ref": "#/components/schemas/TeamHandoffOut"
+          },
+          "agent_session_id": {
+            "type": "string",
+            "title": "Agent Session Id"
+          },
+          "agent_name": {
+            "type": "string",
+            "title": "Agent Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "handoff",
+          "agent_session_id",
+          "agent_name"
+        ],
+        "title": "TeamHandoffAssignmentOut"
+      },
+      "TeamHandoffDispatchResponse": {
+        "properties": {
+          "assigned": {
+            "type": "integer",
+            "title": "Assigned"
+          },
+          "unassigned": {
+            "type": "integer",
+            "title": "Unassigned"
+          },
+          "assignments": {
+            "items": {
+              "$ref": "#/components/schemas/TeamHandoffAssignmentOut"
+            },
+            "type": "array",
+            "title": "Assignments"
+          }
+        },
+        "type": "object",
+        "required": [
+          "assigned",
+          "unassigned"
+        ],
+        "title": "TeamHandoffDispatchResponse"
       }
     }
   }
