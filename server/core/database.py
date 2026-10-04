@@ -291,6 +291,13 @@ class Database:
             version = 7
             await self._set_user_version(version)
 
+        if version < 8:
+            # Semantic decision conflict candidates (#377). The v8 table is
+            # additive and created by the idempotent base schema before this
+            # marker advances the store version.
+            version = 8
+            await self._set_user_version(version)
+
         self.schema_version = version
 
     @staticmethod
