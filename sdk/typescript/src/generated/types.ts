@@ -254,6 +254,8 @@ export type CollaborationResponse = {
   decisions?: TeamDecisionOut[];
   pending_handoffs?: number;
   contested_decisions?: number;
+  decision_conflicts?: TeamDecisionConflictOut[];
+  open_decision_conflicts?: number;
 };
 
 export type ConflictDetectResponse = {
@@ -1216,6 +1218,35 @@ export type SyncJobOut = {
 
 export type TagListResponse = {
   tags?: NameCountOut[];
+};
+
+export type TeamDecisionConflictDetectResponse = {
+  new_candidates: number;
+  pairs_examined: number;
+  open_total: number;
+  stale_resolved: number;
+};
+
+export type TeamDecisionConflictOut = {
+  id: string;
+  workspace_id: string;
+  project: string;
+  decision_id_a: string;
+  decision_id_b: string;
+  signal_type: string;
+  confidence: number;
+  shared_topics?: string[];
+  explanation?: Record<string, unknown>;
+  status: string;
+  created_at: string;
+  reviewed_at?: string | null;
+  reviewed_by?: string | null;
+};
+
+export type TeamDecisionConflictReviewResponse = {
+  ok?: boolean;
+  action: string;
+  conflict: TeamDecisionConflictOut;
 };
 
 export type TeamDecisionCreateRequest = {
