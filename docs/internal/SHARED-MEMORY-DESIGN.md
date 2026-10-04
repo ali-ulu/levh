@@ -1,6 +1,6 @@
 # Shared / team memory server: tenancy, auth, storage (#302)
 
-Tarih: 2026-10-02 · Durum: faz 1-2 uygulandı; #377 Collaboration Phase 3 → #396 · Tür: tasarım + karar kaydı
+Tarih: 2026-10-02 · Durum: faz 1-2 + Collaboration Phase 3 uygulandı; semantic conflict → bu PR · Tür: tasarım + karar kaydı
 
 This is the design issue #302 asked for. It **proposes a shape**. The four
 questions it left open were delegated back to the agent and are now answered in
@@ -288,8 +288,32 @@ foundation.
   ledger over the versioned REST contract and generated TypeScript SDK.
 
 The conflict rule remains the same as `memory_conflict_candidates`: **signal,
-not verdict**. Phase 3 conflict mediation is deterministic and key-based; free
-text semantic decision conflicts are intentionally not auto-inferred.
+not verdict**.
+
+### Collaboration Phase 4 — semantic decision conflict candidates
+
+Phase 3's same-key contest remains deterministic. Phase 4 adds a second,
+review-only lane for differently-keyed free-text decisions:
+
+- `server/core/conflict.py` first requires an opposing surface assertion
+  (antonym, negation, or different concrete attribute value), then requires a
+  meaningful topic anchor shared by the two decision texts/keys.
+- Generic decision verbs such as "use", "choose", and "should" are excluded
+  from topic overlap, so unrelated choices like database=SQLite and cache=Redis
+  do not conflict merely because both say "Use X".
+- Same-key rows are skipped because Phase 3 already represents them directly
+  as `contested`.
+- Candidates are durable and workspace/project scoped in
+  `team_decision_conflict_candidates`, with `open / dismissed / confirmed /
+  resolved` review states.
+- Detection is idempotent. A dismissed/confirmed candidate is never reset to
+  open by a rescan. An open candidate whose linked decision becomes superseded
+  is automatically resolved as stale.
+- The detector never changes either decision and never claims truth. Admin
+  review is explicit.
+
+This is deliberately conservative. Missing a weakly-related semantic conflict
+is preferable to flagging two unrelated architectural choices as contradictory.
 
 ## Surface
 
