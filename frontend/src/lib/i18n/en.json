@@ -284,5 +284,21 @@
   "app.conflicts.action.confirm": "Confirm",
   "app.conflicts.action.keepA": "Keep A",
   "app.conflicts.action.keepB": "Keep B",
-  "app.conflicts.action.bothValid": "Both valid"
+  "app.conflicts.action.bothValid": "Both valid",
+  "app.graph.allEntities": "All entities",
+  "app.graph.mentions.one": "{count} mention",
+  "app.graph.mentions.other": "{count} mentions",
+  "app.graph.updated": "· updated {date}",
+  "app.graph.related.title": "Related entities",
+  "app.graph.related.help": "Line thickness scales with how often each pair co-occurs in the same memory.",
+  "app.graph.relationshipMap": "Relationship map for {name}",
+  "app.graph.related.item": "[{type}] {name} · shared {shared}",
+  "app.graph.memoriesMentioning": "Memories mentioning {name}",
+  "app.graph.noMemories": "No memories.",
+  "app.graph.title": "Graph",
+  "app.graph.subtitle": "The persistent entity knowledge graph — people, organizations, events, documents, and tasks extracted from your memories, and how they connect.",
+  "app.graph.reindex": "Reindex",
+  "app.graph.all": "All ({count})",
+  "app.graph.empty.title": "No entities yet.",
+  "app.graph.empty.hint": "Click Reindex to build the entity graph from your captured memories."
 }

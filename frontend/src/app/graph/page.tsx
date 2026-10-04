@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -65,10 +66,12 @@ function RelationshipMiniGraph({
   center,
   related,
   onSelect,
+  ariaLabel,
 }: {
   center: EntityRow;
   related: RelatedEntity[];
   onSelect?: (id: string) => void;
+  ariaLabel: string;
 }) {
   const satellites = related.slice(0, 8);
   const size = 280;
@@ -83,7 +86,7 @@ function RelationshipMiniGraph({
       width="100%"
       style={{ maxHeight: 280 }}
       role="img"
-      aria-label={`Relationship map for ${center.name}`}
+      aria-label={ariaLabel}
     >
       {satellites.map((r, i) => {
         const angle = (2 * Math.PI * i) / satellites.length - Math.PI / 2;
@@ -141,6 +144,7 @@ function RelationshipMiniGraph({
 }
 
 export default function GraphPage() {
+  const t = useT();
   const [entities, setEntities] = useState<EntityRow[]>([]);
   const [byType, setByType] = useState<Record<string, number>>({});
   const [typeFilter, setTypeFilter] = useState<string>("");
@@ -219,7 +223,7 @@ export default function GraphPage() {
       <div className="space-y-4">
         <Button variant="ghost" size="sm" onClick={() => setSelected(null)}>
           <ArrowLeft className="h-4 w-4 mr-1.5" />
-          All entities
+          {t("app.graph.allEntities")}
         </Button>
 
         <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -231,8 +235,13 @@ export default function GraphPage() {
                 <Badge variant="secondary" className="text-[11px] mr-1.5">
                   {typeLabel(selected.type)}
                 </Badge>
-                {selected.mentions} mentions
-                {selected.updated_at && <> · updated {selected.updated_at.slice(0, 10)}</>}
+                {t(
+                  selected.mentions === 1 ? "app.graph.mentions.one" : "app.graph.mentions.other",
+                  { count: selected.mentions },
+                )}
+                {selected.updated_at && (
+                  <> {t("app.graph.updated", { date: selected.updated_at.slice(0, 10) })}</>
+                )}
               </p>
             </div>
           </div>
@@ -247,9 +256,9 @@ export default function GraphPage() {
             {related.length > 0 && (
               <Card>
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-base">Related entities</CardTitle>
+                  <CardTitle className="text-base">{t("app.graph.related.title")}</CardTitle>
                   <p className="text-xs text-muted-foreground">
-                    Line thickness scales with how often each pair co-occurs in the same memory.
+                    {t("app.graph.related.help")}
                   </p>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -259,13 +268,18 @@ export default function GraphPage() {
                         center={selected}
                         related={related}
                         onSelect={(id) => openEntityById(id)}
+                        ariaLabel={t("app.graph.relationshipMap", { name: selected.name })}
                       />
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {related.map((r) => (
                       <Badge key={r.id} variant="outline" className="text-xs font-normal">
-                        [{typeLabel(r.type)}] {r.name} · shared {r.shared}
+                        {t("app.graph.related.item", {
+                          type: typeLabel(r.type),
+                          name: r.name,
+                          shared: r.shared,
+                        })}
                       </Badge>
                     ))}
                   </div>
@@ -276,12 +290,12 @@ export default function GraphPage() {
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-base">
-                  Memories mentioning {selected.name}
+                  {t("app.graph.memoriesMentioning", { name: selected.name })}
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 {entityMemories.length === 0 ? (
-                  <p className="text-sm text-muted-foreground py-4 text-center">No memories.</p>
+                  <p className="text-sm text-muted-foreground py-4 text-center">{t("app.graph.noMemories")}</p>
                 ) : (
                   <div className="space-y-2">
                     {entityMemories.map((m) => (
@@ -322,11 +336,9 @@ export default function GraphPage() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold">Graph</h1>
+          <h1 className="text-2xl font-bold">{t("app.graph.title")}</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            The persistent entity knowledge graph — people, organizations,
-            events, documents, and tasks extracted from your memories, and how
-            they connect.
+            {t("app.graph.subtitle")}
           </p>
         </div>
         <Button onClick={reindex} disabled={reindexing}>
@@ -335,7 +347,7 @@ export default function GraphPage() {
           ) : (
             <RefreshCw className="h-4 w-4 mr-2" />
           )}
-          Reindex
+          {t("app.graph.reindex")}
         </Button>
       </div>
 
@@ -346,7 +358,7 @@ export default function GraphPage() {
             typeFilter === "" ? "bg-primary text-primary-foreground" : "hover:bg-accent"
           }`}
         >
-          All ({totalEntities})
+          {t("app.graph.all", { count: totalEntities })}
         </button>
         {TYPES.map((t) => (
           <button
@@ -369,8 +381,8 @@ export default function GraphPage() {
         <Card>
           <CardContent className="py-12 text-center text-sm text-muted-foreground space-y-2">
             <Network className="h-8 w-8 mx-auto opacity-40" />
-            <p>No entities yet.</p>
-            <p>Click Reindex to build the entity graph from your captured memories.</p>
+            <p>{t("app.graph.empty.title")}</p>
+            <p>{t("app.graph.empty.hint")}</p>
           </CardContent>
         </Card>
       ) : (
