@@ -712,6 +712,72 @@ async def test_team_memory_rest_flow(tmp_path):
     try:
         transport = ASGITransport(app=api_mod.app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
+            connected = await client.post(
+                "/api/agents/connect",
+                json={
+                    "agent_name": "codex",
+                    "project": "atlas",
+                    "metadata": {
+                        "capabilities": ["backend", "python"],
+                        "scheduler_enabled": True,
+                        "max_parallel_handoffs": 2,
+                    },
+                },
+            )
+            assert connected.status_code == 200
+            scheduler_session_id = connected.json()["agent_session_id"]
+
+            sched_handoff = await client.post(
+                "/api/team/handoffs",
+                json={
+                    "project": "atlas",
+                    "to_agent": "*",
+                    "title": "Scheduled backend work",
+                    "required_capabilities": ["backend"],
+                    "priority": 50,
+                },
+            )
+            assert sched_handoff.status_code == 200
+            assert sched_handoff.json()["required_capabilities"] == ["backend"]
+            assert sched_handoff.json()["priority"] == 50
+
+            matches = await client.get(
+                "/api/team/handoffs/matches",
+                params={"project": "atlas"},
+            )
+            assert matches.status_code == 200
+            assert matches.json()[0]["handoff"]["id"] == sched_handoff.json()["id"]
+
+            claimed = await client.post(
+                "/api/team/handoffs/claim",
+                json={"agent_session_id": scheduler_session_id},
+            )
+            assert claimed.status_code == 200
+            assert claimed.json()["claimed"] is True
+            assert claimed.json()["handoff"]["accepted_session_id"] == scheduler_session_id
+
+            dispatch_target = await client.post(
+                "/api/team/handoffs",
+                json={
+                    "project": "atlas",
+                    "to_agent": "*",
+                    "title": "Dispatch backend work",
+                    "required_capabilities": ["python"],
+                    "priority": 40,
+                },
+            )
+            assert dispatch_target.status_code == 200
+            dispatched = await client.post(
+                "/api/team/handoffs/dispatch",
+                json={"project": "atlas", "limit": 10},
+            )
+            assert dispatched.status_code == 200
+            assert dispatched.json()["assigned"] == 1
+            assert (
+                dispatched.json()["assignments"][0]["handoff"]["id"]
+                == dispatch_target.json()["id"]
+            )
+
             r = await client.post(
                 "/api/team/handoffs",
                 json={
