@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### i18n: move the Command Palette into the catalogue (#427)
+
+- Command Palette title, accessible search label, placeholder, live-region search/result status, error copy, and empty states now resolve through `useT()`.
+- Dynamic memory content/project values remain API data; the UI-string ratchet entry for `src/components/command-palette.tsx` drops from 10 to 0.
+
+
 ### Federation B0 provenance and admission proof (#425)
 
 - Signed federation imports now stamp verified node, algorithm, and envelope timestamp provenance onto every candidate after signature verification, overwriting sender-supplied federation metadata.

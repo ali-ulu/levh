@@ -206,5 +206,14 @@
   "askPanel.errorFallback": "Ask failed",
   "askPanel.sources.one": "Grounded in {count} memory:",
   "askPanel.sources.other": "Grounded in {count} memories:",
-  "settings.connectors.slack.description": "Import message history from Slack channels"
+  "settings.connectors.slack.description": "Import message history from Slack channels",
+  "commandPalette.title": "Search memories",
+  "commandPalette.searchLabel": "Search memories",
+  "commandPalette.placeholder": "Search memories, people, projects…",
+  "commandPalette.searching": "Searching",
+  "commandPalette.results.one": "{count} result",
+  "commandPalette.results.other": "{count} results",
+  "commandPalette.searchFailed": "Search failed. Try again.",
+  "commandPalette.noMatch": "No memories match “{query}”.",
+  "commandPalette.empty": "Type to search your memory store."
 }

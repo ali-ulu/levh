@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Search } from "lucide-react";
 import { api } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import type { Memory } from "@/types";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -26,6 +27,7 @@ type Props = {
 
 export function CommandPalette({ open, onOpenChange }: Props) {
   const router = useRouter();
+  const t = useT();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Memory[]>([]);
   const [loading, setLoading] = useState(false);
@@ -114,7 +116,7 @@ export function CommandPalette({ open, onOpenChange }: Props) {
         aria-describedby={undefined}
         onKeyDown={onKeyDown}
       >
-        <DialogTitle className="sr-only">Search memories</DialogTitle>
+        <DialogTitle className="sr-only">{t("commandPalette.title")}</DialogTitle>
 
         <div className="flex items-center gap-2 border-b px-4">
           <Search className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
@@ -122,8 +124,8 @@ export function CommandPalette({ open, onOpenChange }: Props) {
             autoFocus
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            aria-label="Search memories"
-            placeholder="Search memories, people, projects…"
+            aria-label={t("commandPalette.searchLabel")}
+            placeholder={t("commandPalette.placeholder")}
             className="h-11 w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
           />
         </div>
@@ -133,23 +135,32 @@ export function CommandPalette({ open, onOpenChange }: Props) {
               list itself having to be an ARIA listbox with selection state. */}
           <p aria-live="polite" className="sr-only">
             {loading
-              ? "Searching"
+              ? t("commandPalette.searching")
               : query.trim()
-                ? `${results.length} result${results.length === 1 ? "" : "s"}`
+                ? t(
+                    results.length === 1
+                      ? "commandPalette.results.one"
+                      : "commandPalette.results.other",
+                    { count: results.length },
+                  )
                 : ""}
           </p>
 
-          {error && <p className="px-3 py-2 text-sm text-destructive">Search failed. Try again.</p>}
+          {error && (
+            <p className="px-3 py-2 text-sm text-destructive">
+              {t("commandPalette.searchFailed")}
+            </p>
+          )}
 
           {!error && query.trim() && !loading && results.length === 0 && (
             <p className="px-3 py-2 text-sm text-muted-foreground">
-              No memories match “{query.trim()}”.
+              {t("commandPalette.noMatch", { query: query.trim() })}
             </p>
           )}
 
           {!query.trim() && (
             <p className="px-3 py-2 text-sm text-muted-foreground">
-              Type to search your memory store.
+              {t("commandPalette.empty")}
             </p>
           )}
 
