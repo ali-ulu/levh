@@ -74,8 +74,8 @@ export function DataManagement() {
         const r = await api.dedupe(!apply);
         setDedupeResult(
           apply
-            ? t("settings.dataManagement.dedupe.removed", { count: r.removed })
-            : t("settings.dataManagement.dedupe.found", { count: r.duplicates })
+            ? t("settings.dataManagement.dedupe.removed", { count: r.removed ?? 0 })
+            : t("settings.dataManagement.dedupe.found", { count: r.duplicates ?? 0 })
         );
       } catch (e) {
         setDedupeResult(e instanceof Error ? e.message : t("settings.dataManagement.dedupe.failed"));
