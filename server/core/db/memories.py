@@ -119,7 +119,6 @@ class MemoryQueries:
     async def get_all_memories(
         self, limit: int = 10000, across_workspaces: bool = False
     ) -> list[dict]:
-        self._authorize("export_full" if across_workspaces else "read")
         """Rows ordered by recency.
 
         Scoped to the current workspace by default. ``across_workspaces`` is
@@ -130,6 +129,7 @@ class MemoryQueries:
         mirror. A caller that lists memories for a user must use
         ``search_memories``, which is always scoped.
         """
+        self._authorize("export_full" if across_workspaces else "read")
         if across_workspaces:
             cursor = await self._db.conn.execute(
                 "SELECT * FROM memories ORDER BY created_at DESC LIMIT ?", (limit,)
@@ -147,7 +147,6 @@ class MemoryQueries:
     async def memories_after_rowid(
         self, rowid: int, limit: int = 10000
     ) -> tuple[list[dict], int]:
-        self._authorize("export_full")
         """Rows inserted after ``rowid``, oldest first, with the new watermark.
 
         The auto-checkpoint delta cursor (#379). It deliberately orders on
@@ -164,6 +163,7 @@ class MemoryQueries:
         that pages with ``limit`` never skips a row. Not workspace-scoped: the
         delta summarizes the whole mirror, like ``across_workspaces`` above.
         """
+        self._authorize("export_full")
         cursor = await self._db.conn.execute(
             "SELECT rowid AS _rowid, * FROM memories "
             "WHERE rowid > ? ORDER BY rowid ASC LIMIT ?",
@@ -289,7 +289,6 @@ class MemoryQueries:
 
 
     async def search_memory_ids_fts(self, query: str, limit: int = 50) -> list[str]:
-        self._authorize("read")
         """Memory ids whose content matches ``query``, best (bm25) first.
 
         The hybrid-retrieval candidate source: FTS indexes content, so it
@@ -303,6 +302,7 @@ class MemoryQueries:
         dropped first so the OR is not swamped by function words. Empty when
         FTS5 is unavailable, so callers fall back cleanly.
         """
+        self._authorize("read")
         fts_query = self._fts_or_query(query)
         if not fts_query or not self._db.fts5_available:
             return []
@@ -331,12 +331,12 @@ class MemoryQueries:
         return " OR ".join(f"{term}*" for term in sorted(lexical_terms(text))[:20])
 
     async def get_memories_by_ids(self, memory_ids: list[str]) -> list[dict]:
-        self._authorize("read")
         """Fetch several rows in one query, preserving the caller's order.
 
         ``row_to_memory_dict`` is applied per row (never raw) so a caller sees
         model-shaped values, exactly like ``get_memory``.
         """
+        self._authorize("read")
         if not memory_ids:
             return []
         placeholders = ",".join("?" for _ in memory_ids)
@@ -352,7 +352,6 @@ class MemoryQueries:
 
 
     async def content_exists(self, content: str, project: Optional[str] = None) -> bool:
-        self._authorize("read")
         """Whether a memory with byte-for-byte identical ``content`` exists.
 
         The exact-duplicate check the admission gate uses when it has no
@@ -360,6 +359,7 @@ class MemoryQueries:
         ``Embedder.is_semantic``). Filtered by ``project`` so a literal re-store
         in one workspace does not shadow the same text in another.
         """
+        self._authorize("read")
         query = "SELECT 1 FROM memories WHERE content = ? AND COALESCE(workspace_id, 'default') = ?"
         params: list = [content, self._workspace()]
         if project is not None:
@@ -400,7 +400,6 @@ class MemoryQueries:
     async def retire_if_current(
         self, memory_id: str, valid_to: str, superseded_by: str
     ) -> bool:
-        self._authorize("update")
         """Close a memory's validity window, but only while it is still open.
 
         A compare-and-set in one statement (#335). The write path runs it as a
@@ -413,6 +412,7 @@ class MemoryQueries:
         win atomically; ``rowcount`` tells the caller whether it was the one
         that closed the window, so only that caller updates its cached copy.
         """
+        self._authorize("update")
         cursor = await self._db.conn.execute(
             "UPDATE memories SET valid_to = ?, superseded_by = ? "
             "WHERE id = ? AND valid_to IS NULL "
@@ -432,13 +432,13 @@ class MemoryQueries:
         return cursor.rowcount > 0
 
     async def delete_memory_cascade(self, memory_id: str) -> bool:
-        self._authorize("forget")
         """Delete a memory and every derived row that references it.
 
         The operation is one SQLite transaction so a failed hard-delete cannot
         report success while entity, trust or conflict residues survive.
         Orphan entity rows are pruned after their final link disappears.
         """
+        self._authorize("forget")
         workspace = self._workspace()
         # Refuse before touching anything when the id is not in this workspace
         # (#302): the derived-row deletes below are keyed by memory id alone, so
@@ -513,8 +513,8 @@ class MemoryQueries:
             raise
 
     async def memory_residue(self, memory_id: str) -> dict:
-        self._authorize("read")
         """Return row counts for all persistent layers referencing a memory."""
+        self._authorize("read")
         checks = {
             "episodic": ("SELECT COUNT(*) FROM memories WHERE id = ?", (memory_id,)),
             "entity_links": (
