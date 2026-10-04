@@ -154,6 +154,9 @@ because it is a read that has to POST to carry its query.
 | POST | `/api/v1/team/decisions` | Record a shared project decision; conflicting statements become contested |
 | GET | `/api/v1/team/decisions` | List shared decisions by project, key, or status |
 | POST | `/api/v1/team/decisions/{decision_id}/resolve` | Admin resolution of a contested shared decision |
+| POST | `/api/v1/team/decision-conflicts/detect` | Scan differently-keyed shared decisions for opposition + shared-topic conflict candidates |
+| GET | `/api/v1/team/decision-conflicts` | List semantic shared-decision conflict candidates by project/status |
+| POST | `/api/v1/team/decision-conflicts/{conflict_id}/review` | Admin review of a semantic decision conflict candidate: confirm, dismiss, or resolve |
 | WS | `/ws/agents` | WebSocket for real-time agent presence updates |
 | WS | `/ws/memory` | Real-time event stream + RPC actions (recall/stats/ping; writes blocked in public demo mode) |
 | SSE | `/api/mcp/sse` | MCP SSE stream endpoint |
