@@ -23,7 +23,7 @@ def _memory_inventory(conn: sqlite3.Connection, source: str) -> dict:
     rows = _rows(
         conn,
         """
-        SELECT id, source, content, metadata_json
+        SELECT id, source, content, metadata
           FROM memories
          WHERE source = ?
          ORDER BY created_at ASC, rowid ASC
@@ -33,7 +33,7 @@ def _memory_inventory(conn: sqlite3.Connection, source: str) -> dict:
     types: Counter[str] = Counter()
     for row in rows:
         try:
-            metadata = json.loads(row["metadata_json"] or "{}")
+            metadata = json.loads(row["metadata"] or "{}")
         except json.JSONDecodeError:
             metadata = {}
         types[str(metadata.get("type") or "unknown")] += 1
