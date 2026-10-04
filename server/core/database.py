@@ -159,6 +159,20 @@ class Database:
             "UPDATE memories SET workspace_id = 'default' WHERE workspace_id IS NULL"
         )
 
+    async def _migrate_recall_audit(self) -> None:
+        """Add the Phase 2 principal/workspace audit columns to recall_log."""
+        cursor = await self._connection.execute("PRAGMA table_info(recall_log)")
+        existing = {row[1] for row in await cursor.fetchall()}
+        await cursor.close()
+        additions = (
+            ("workspace_id", "ALTER TABLE recall_log ADD COLUMN workspace_id TEXT NOT NULL DEFAULT 'default'"),
+            ("principal_id", "ALTER TABLE recall_log ADD COLUMN principal_id TEXT NOT NULL DEFAULT 'local'"),
+            ("principal_role", "ALTER TABLE recall_log ADD COLUMN principal_role TEXT NOT NULL DEFAULT 'admin'"),
+        )
+        for column, ddl in additions:
+            if column not in existing:
+                await self._connection.execute(ddl)
+
     async def _set_user_version(self, version: int) -> None:
         await self._connection.execute(f"PRAGMA user_version = {int(version)}")
         self.schema_version = int(version)
@@ -247,6 +261,15 @@ class Database:
             # simply re-runs the idempotent DDL the connect path applies before
             # migration — recorded here to keep the numbered history complete.
             version = 5
+            await self._set_user_version(version)
+
+        if version < 6:
+            # Team-memory Phase 2 (#377): recalls become an access-audit
+            # substrate by recording the principal and workspace that read.
+            # Historical rows predate identity, so the only honest backfill is
+            # the pre-Phase-2 degenerate case: default/local/admin.
+            await self._migrate_recall_audit()
+            version = 6
             await self._set_user_version(version)
 
         self.schema_version = version
