@@ -309,6 +309,7 @@ export type ConnectorRequest = {
   params?: Record<string, unknown>;
   project?: string | null;
   use_gate?: boolean;
+  background?: boolean;
 };
 
 export type ConnectorSyncResponse = {
@@ -1175,6 +1176,22 @@ export type SummarizeSessionResponse = {
   summarized: boolean;
   reason?: string | null;
   summary?: MemoryOut | null;
+};
+
+export type SyncJobAccepted = {
+  job_id: string;
+  status: string;
+};
+
+export type SyncJobOut = {
+  job_id: string;
+  status: string;
+  connector: string;
+  project?: string | null;
+  created_at: string;
+  finished_at?: string | null;
+  result?: Record<string, unknown> | null;
+  error?: string | null;
 };
 
 export type TagListResponse = {

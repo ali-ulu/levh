@@ -3465,7 +3465,7 @@
     "/api/v1/connectors/sync": {
       "post": {
         "summary": "Connector Sync",
-        "description": "Connector v2 ingest: fetch, then route items through the admission\ngate (dedupe + secret redaction), with incremental sync bookkeeping.",
+        "description": "Connector v2 ingest: fetch, then route items through the admission\ngate (dedupe + secret redaction), with incremental sync bookkeeping.\n\nWith ``background=true`` the call returns ``202`` immediately and the same\npipeline runs as a tracked job (``GET /api/connectors/sync-jobs/{id}``) \u2014\nfor syncs slower than the client's patience.",
         "operationId": "connector_sync_api_connectors_sync_post_v1",
         "requestBody": {
           "content": {
@@ -3484,6 +3484,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ConnectorSyncResponse"
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncJobAccepted"
                 }
               }
             }
@@ -3551,6 +3561,69 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ConnectorSyncStateResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/connectors/sync-jobs": {
+      "get": {
+        "summary": "List Sync Jobs",
+        "description": "Background sync jobs, newest first (process-local, best-effort).",
+        "operationId": "list_sync_jobs_api_connectors_sync_jobs_get_v1",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SyncJobOut"
+                  },
+                  "type": "array",
+                  "title": "Response List Sync Jobs Api Connectors Sync Jobs Get V1"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/connectors/sync-jobs/{job_id}": {
+      "get": {
+        "summary": "Get Sync Job",
+        "description": "One background sync job: pending, running, done, or error.",
+        "operationId": "get_sync_job_api_connectors_sync_jobs__job_id__get_v1",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncJobOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -5837,6 +5910,11 @@
             "type": "boolean",
             "title": "Use Gate",
             "default": true
+          },
+          "background": {
+            "type": "boolean",
+            "title": "Background",
+            "default": false
           }
         },
         "type": "object",
@@ -10321,6 +10399,99 @@
         ],
         "title": "SummarizeSessionResponse",
         "description": "``POST /api/sessions/{id}/summarize``."
+      },
+      "SyncJobAccepted": {
+        "properties": {
+          "job_id": {
+            "type": "string",
+            "title": "Job Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "job_id",
+          "status"
+        ],
+        "title": "SyncJobAccepted",
+        "description": "``202`` answer of a background sync: poll the job, not the socket."
+      },
+      "SyncJobOut": {
+        "properties": {
+          "job_id": {
+            "type": "string",
+            "title": "Job Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "connector": {
+            "type": "string",
+            "title": "Connector"
+          },
+          "project": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Result"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          }
+        },
+        "type": "object",
+        "required": [
+          "job_id",
+          "status",
+          "connector",
+          "created_at"
+        ],
+        "title": "SyncJobOut",
+        "description": "One background sync job: pending, running, done, or error."
       },
       "TagListResponse": {
         "properties": {

@@ -306,6 +306,7 @@ class ConnectorRequest(BaseModel):
     params: dict = {}
     project: Optional[str] = None
     use_gate: bool = True
+    background: bool = False
 
 
 class ConnectorUploadRequest(BaseModel):
@@ -701,6 +702,26 @@ class ConnectorSyncStateOut(BaseModel):
 
 class ConnectorSyncStateResponse(BaseModel):
     sync_state: list[ConnectorSyncStateOut] = Field(default_factory=list)
+
+
+class SyncJobAccepted(BaseModel):
+    """``202`` answer of a background sync: poll the job, not the socket."""
+
+    job_id: str
+    status: str
+
+
+class SyncJobOut(BaseModel):
+    """One background sync job: pending, running, done, or error."""
+
+    job_id: str
+    status: str
+    connector: str
+    project: Optional[str] = None
+    created_at: str
+    finished_at: Optional[str] = None
+    result: Optional[dict] = None
+    error: Optional[str] = None
 
 
 class ConnectorOut(BaseModel):

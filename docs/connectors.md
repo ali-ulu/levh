@@ -35,7 +35,7 @@ your machine:
 
 Or use the **Import from Apps** panel in the dashboard's Settings page.
 
-**Jira & Linear — the tracker pair** (pull-on-demand, no background worker):
+**Jira & Linear — the tracker pair** (on-demand by default, auto-feed capable):
 
 - **Jira** (`jira`): Jira Cloud REST API v3. Each issue → a memory led by
   `KEY: summary`, with status, type, assignee, priority, and the description
@@ -48,10 +48,12 @@ Or use the **Import from Apps** panel in the dashboard's Settings page.
   `api_key` (or `LINEAR_API_KEY`). Options: `team_ids`, `project_ids`,
   `max_issues`, `include_comments`.
 
-Both run only when you call `import_from_app` (or the sync route) — there is no
-scheduler in LEVH, so "sync" means one fetch per invocation. Repeat calls are
-safe: the admission gate dedupes, and `/api/connectors/sync` records last-synced
-state per connector.
+Both run when you call `import_from_app` (or the sync route). Since #374 there is
+also an opt-in feed: `auto_sync` in `.stackmemory/config.json` runs chosen
+connectors on a timer while the server lives (disabled by default), and
+`background=true` on the sync route runs one slow sync as a tracked job instead
+of holding the HTTP connection. Repeat calls are safe: the admission gate
+dedupes, and `/api/connectors/sync` records last-synced state per connector.
 
 **Git — why the code looks like this** (local, read-only, offline):
 
@@ -69,5 +71,36 @@ state per connector.
 - Options: `ref` (default `HEAD`, or a branch/tag/sha), `max_commits` (default
   200), `since` / `since_days`, `author`, `include_body` (default True),
   `body_chars` (default 2000), `timeout_seconds` (default 120).
-- Read-only by construction: `fetch` only ever runs `git log`, so importing a
-  repository cannot mutate a worktree, branch or index.
+- `include_file_history` (default False): one memory per file with its touch
+  history — who touched it, how often, last change. Without arguments it
+  reports the most-touched files in the walked range; `history_paths` names
+  files explicitly, `history_max_files` (default 20) and `history_max_touches`
+  (default 50) cap the work. This is the cheap answer to "whose hands has this
+  file passed through".
+- `include_blame` (default False): one memory per path with the line-author
+  summary — share of lines per author plus the most recent touch. Raw blame is
+  never stored (it changes with every commit, so verbatim rows would churn
+  instead of deduping); same-second commits are ordered by the log, newest
+  first. `blame_paths` defaults to `history_paths`, then the most-touched
+  files; `blame_max_files` (default 10) caps it.
+- `include_snapshot` (default False): one architecture snapshot of the revision
+  — tracked-file counts per extension, top-level layout, entry points — keyed
+  by HEAD sha, so re-syncing an unmoved HEAD dedupes instead of storing again.
+- Read-only by construction: `fetch` only ever runs `git log`, `git blame`
+  and `git ls-files`, so importing a repository cannot mutate a worktree,
+  branch or index. History/blame paths must stay inside the repo root; `..`
+  escapes are refused.
+
+**Background syncs & auto-feed** (opt-in, #374):
+
+- `POST /api/connectors/sync` with `"background": true` answers `202` with a
+  `job_id` at once; `GET /api/connectors/sync-jobs/{job_id}` polls it
+  (`pending` → `running` → `done`/`error`, with the ingest report and
+  per-stage `timing_ms`). Jobs are process-local and best-effort: a restart
+  loses the job records, never the stored memories.
+- `.stackmemory/config.json` may carry an `auto_sync` section
+  (`enabled`, `interval_seconds`, `jobs: [{connector, config, project}]`)
+  that runs while the server lives. Secrets never go in the file: any config
+  value of the form `"env:NAME"` resolves from the process environment —
+  `"token": "env:GITHUB_TOKEN"` reads `GITHUB_TOKEN`, and a missing variable
+  fails that job loudly instead of syncing half-configured.

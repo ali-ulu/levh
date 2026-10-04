@@ -20,6 +20,8 @@ from server.routes.models import (
     ConnectorSyncResponse,
     ConnectorSyncStateResponse,
     ConnectorUploadRequest,
+    SyncJobAccepted,
+    SyncJobOut,
     UploadedFileResponse,
 )
 from server.routes.deps import logger
@@ -91,9 +93,16 @@ async def connector_import(req: ConnectorRequest, engine=Depends(get_engine)):
     except KeyError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
+    from server.core.auto_sync import resolve_env_refs as _resolve_refs
+
+    try:
+        config = _resolve_refs(req.config)
+    except KeyError as e:
+        raise HTTPException(status_code=400, detail=f"Unresolved config: {e}")
+
     # Connect
     try:
-        await conn.connect(req.config)
+        await conn.connect(config)
     except (FileNotFoundError, ValueError, ConnectionError) as e:
         raise HTTPException(status_code=400, detail=f"Connection failed: {e}")
 
@@ -124,11 +133,45 @@ async def connector_import(req: ConnectorRequest, engine=Depends(get_engine)):
     return result
 
 
-@router.post("/api/connectors/sync", response_model=ConnectorSyncResponse)
+@router.post(
+    "/api/connectors/sync",
+    response_model=ConnectorSyncResponse,
+    responses={202: {"model": SyncJobAccepted}},
+)
 async def connector_sync(req: ConnectorRequest, engine=Depends(get_engine)):
     """Connector v2 ingest: fetch, then route items through the admission
-    gate (dedupe + secret redaction), with incremental sync bookkeeping."""
+    gate (dedupe + secret redaction), with incremental sync bookkeeping.
+
+    With ``background=true`` the call returns ``202`` immediately and the same
+    pipeline runs as a tracked job (``GET /api/connectors/sync-jobs/{id}``) —
+    for syncs slower than the client's patience.
+    """
     from server.connectors import get_connector
+    from server.core.auto_sync import resolve_env_refs
+
+    try:
+        config = resolve_env_refs(req.config)
+    except KeyError as e:
+        # The message names the missing variable, never a secret value.
+        raise HTTPException(status_code=400, detail=f"Unresolved config: {e}")
+
+    if req.background:
+        from fastapi.responses import JSONResponse
+
+        from server.core.sync_jobs import get_runner
+
+        runner = get_runner()
+        job = await runner.submit(
+            engine,
+            req.connector,
+            config,
+            project=req.project,
+            use_gate=req.use_gate,
+        )
+        return JSONResponse(
+            status_code=202,
+            content={"job_id": job["job_id"], "status": job["status"]},
+        )
 
     try:
         conn = get_connector(req.connector)
@@ -137,7 +180,7 @@ async def connector_sync(req: ConnectorRequest, engine=Depends(get_engine)):
 
     route_start = time.perf_counter()
     try:
-        await conn.connect(req.config)
+        await conn.connect(config)
     except (FileNotFoundError, ValueError, ConnectionError) as e:
         raise HTTPException(status_code=400, detail=f"Connection failed: {e}")
     connect_ms = (time.perf_counter() - route_start) * 1000.0
@@ -201,6 +244,27 @@ async def connector_upload(req: ConnectorUploadRequest):
 @router.get("/api/connectors/sync-state", response_model=ConnectorSyncStateResponse)
 async def connector_sync_state(engine=Depends(get_engine)):
     return {"sync_state": await engine.list_sync_state()}
+
+
+@router.get("/api/connectors/sync-jobs", response_model=list[SyncJobOut])
+async def list_sync_jobs():
+    """Background sync jobs, newest first (process-local, best-effort)."""
+    from server.core.sync_jobs import get_runner
+
+    return get_runner().list_jobs()
+
+
+@router.get("/api/connectors/sync-jobs/{job_id}", response_model=SyncJobOut)
+async def get_sync_job(job_id: str):
+    """One background sync job: pending, running, done, or error."""
+    from fastapi import HTTPException as HTTPExc
+
+    from server.core.sync_jobs import get_runner
+
+    job = get_runner().get_job(job_id)
+    if job is None:
+        raise HTTPExc(status_code=404, detail=f"unknown sync job '{job_id}'")
+    return job
 
 
 @router.get("/api/connectors", response_model=ConnectorListResponse)
