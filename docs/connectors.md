@@ -91,6 +91,42 @@ dedupes, and `/api/connectors/sync` records last-synced state per connector.
   branch or index. History/blame paths must stay inside the repo root; `..`
   escapes are refused.
 
+**GitHub — remote repository state**:
+
+- **GitHub** (`github`) imports README content, open issues, optional open PRs,
+  and selected files through the GitHub API. A PAT may be passed as `token`
+  or supplied through `GITHUB_TOKEN`.
+- CLI sync accepts connector-native lists *and* shell-friendly strings. For
+  example, `--config repos=ali-ulu/levh` is one repository,
+  `--config repos=owner/a,owner/b` is a comma-separated list, and a JSON array
+  is also accepted. `include_files` accepts the same forms. Boolean options
+  accept `true/false`; numeric limits are validated as integers.
+- Token validation probes the first configured repository rather than
+  `GET /user`. This supports both user PATs and GitHub Actions'
+  repository-scoped installation token, which may read a repository while not
+  representing a user identity.
+- The repository includes a manual **Connector dogfood** workflow
+  (`.github/workflows/connector-dogfood.yml`). It checks out full Git history,
+  ingests LEVH through both `git` and `github` into an ephemeral database,
+  then uploads only a JSON evidence report. The report verifies
+  `connector_sync` rows, stored provenance/types and recallability; neither
+  the database nor token is uploaded.
+
+Example:
+
+```bash
+levh sync git --project levh \
+  --config repo_path=/path/to/levh \
+  --config include_file_history=true \
+  --config include_blame=true \
+  --config include_snapshot=true
+
+GITHUB_TOKEN=... levh sync github --project levh \
+  --config repos=ali-ulu/levh \
+  --config include_prs=true \
+  --config include_files=README.md,server/connectors/github.py
+```
+
 **Background syncs & auto-feed** (opt-in, #374):
 
 - `POST /api/connectors/sync` with `"background": true` answers `202` with a
