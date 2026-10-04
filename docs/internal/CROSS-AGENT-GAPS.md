@@ -12,40 +12,47 @@ veya REST API'ye karşı doğrulandı, ve her iddianın kanıtı yanında yazıl
 
 ---
 
-## 1. Cross-Agent / Team Memory — **yapılmadı**
+## 1. Cross-Agent / Team Memory — **çekirdek işbirliği katmanı uygulandı**
 
 **İstenen:** Aynı projede paralel çalışan bağımsız ajanların (backend / frontend /
-test) ortak bir hafıza grafiğinden beslenmesi; birbirini manipüle etmeden, çelişki
-yönetimiyle ortak karar alması.
+test) ortak bir hafıza bağlamından beslenmesi; işi açıkça devredebilmesi, ortak
+kararları kalıcı tutabilmesi ve çelişkileri sessizce ezmeden yönetebilmesi.
 
-**Bugün var olan zemin (dürüstçe: azımsanacak değil):**
+**Uygulanan katmanlar:**
 
 | Parça | Kanıt |
 | --- | --- |
-| Ajan oturum kaydı | `agent_sessions` tablosu, canlı DB'de **62 satır** |
-| Canlı presence + heartbeat | `agent_tracker.py`, `AgentPresenceService` |
-| Çelişki adayı tespiti | `memory_conflict_candidates`, canlı DB'de **26 satır** (25 open, 1 confirmed) |
-| "Signal, not verdict" ayrımı | `server/core/conflict.py` — LLM yok, ağ yok, antonym/negation/attribute tespiti |
-| İnsan onaylı çözüm akışı | `dismiss` / `confirm` / `resolve_keep_a`, trust skoruna risk sinyali |
-| Workspace sınırı | `memories.workspace_id` canlı DB'de mevcut (şema v4) |
+| Workspace sınırı + principal context | `memories.workspace_id`, `server/core/tenancy.py` |
+| viewer / editor / admin enforcement | Phase 2 foundation, PR #395 |
+| Recall access audit | `recall_log` principal/workspace damgası + `/api/v1/memories/{id}/access-audit` |
+| Agent presence/checkpoint tenancy | `agent_sessions.workspace_id`, `agent_checkpoints.workspace_id` |
+| Agent-to-agent handoff | `server/core/team_memory.py`, `team_handoffs`, `/api/v1/team/handoffs` |
+| Shared decision ledger | `team_decisions`, `/api/v1/team/decisions` |
+| Çelişki yönetimi | Aynı `project + decision_key` için farklı aktif kararlar `contested`; otomatik kazanan yok |
+| Explicit resolution | Admin seçimiyle bir karar `active`, diğerleri `superseded` |
+| Collaboration summary | Presence + checkpoints + handoffs + decisions + pending/contested sayaçları |
 
-**Eksik olan — yeteneğin kendisi:**
+**Önemli semantik:** Bu katman da mevcut conflict motoru gibi **signal, not
+verdict** ilkesini korur. İki ajan aynı karar anahtarına farklı ifadeler
+yazdığında sistem son yazanı sessizce kazanan ilan etmez. Her iki öneri de
+`contested` kalır; admin açıkça birini resolve eder.
 
-- **Ortak hafıza grafiği yok.** `get_project_collaboration()`
-  (`server/core/agent_services.py:470`) tek bir sayı döndürüyor:
-  `collaboration_score = len([a for a in agents if a["online"]])` — yani **kaç ajan
-  online**. Paylaşılan yazma, ortak karar, ajanlar arası devir yok.
-- **Roller enforce edilmiyor.** `viewer` / `editor` / `admin` yalnızca
-  `SHARED-MEMORY-DESIGN.md`'de var; `server/core/tenancy.py`'de karşılığı yok
-  (`grep viewer|editor|admin|authorize` boş döner).
-- **`team` / `shared_memory` adlı bir modül yok** (`git ls-tree -r origin/main server/`
-  ile doğrulandı).
+**Kalan gerçek boşluklar:**
 
-**Neden yapılmadı — bu bir ihmal değil, kayıtlı bir karar:**
-`SHARED-MEMORY-DESIGN.md` Faz 1'i (workspace_id + Principal) uyguladı ve Faz 2–4'ü
-tetikleyiciye bağladı. O belgenin kendi cümlesi: *"No funded surface is implemented
-yet; the next step is whichever one the owner funds."* Yani blokaj teknik değil,
-**sahibin kararı**.
+- Shared decision conflict şu anda **anahtar-temelli deterministik** koordinasyon:
+  `decision_key` aynıysa çatışma görünür. Serbest metin kararlar arasında
+  semantik conflict detection henüz `memory_conflict_candidates` ile
+  birleştirilmedi.
+- Handoff bir durable ledger ve lifecycle sağlar; otomatik görev planlayıcı /
+  ajan seçici değildir. Kimin işi alacağı caller veya operatör kararıdır.
+- OIDC/account provisioning hâlâ shared-server tasarımının ayrı opt-in fazıdır;
+  local ürün `local/default/admin` olarak çalışmaya devam eder.
+- Çok-hostlu concurrent writer ihtiyacı doğmadığı sürece Postgres trigger'ı
+  hâlâ ateşlenmiş sayılmaz.
+
+**Sonuç:** “Kaç ajan online?” seviyesinden gerçek team coordination primitive'lerine
+geçildi: devir, ortak karar, contest ve açık çözüm artık kalıcı ve workspace
+sınırında enforce ediliyor.
 
 ---
 
