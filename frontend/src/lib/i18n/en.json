@@ -300,5 +300,21 @@
   "app.graph.reindex": "Reindex",
   "app.graph.all": "All ({count})",
   "app.graph.empty.title": "No entities yet.",
-  "app.graph.empty.hint": "Click Reindex to build the entity graph from your captured memories."
+  "app.graph.empty.hint": "Click Reindex to build the entity graph from your captured memories.",
+  "app.sessions.title": "Sessions",
+  "app.sessions.subtitle": "Group related memories. Ending a session consolidates its short-term memories into long-term storage. Summarize distills a session into one durable memory (LLM if configured, offline otherwise).",
+  "app.sessions.placeholder": "New session name...",
+  "app.sessions.empty.beforeTool": "No sessions yet. Create one above, or let your AI client call the",
+  "app.sessions.empty.afterTool": "MCP tool.",
+  "app.sessions.memoryCount.one": "{count} memory",
+  "app.sessions.memoryCount.other": "{count} memories",
+  "app.sessions.started": "started",
+  "app.sessions.ended": "ended",
+  "app.sessions.memories": "Memories",
+  "app.sessions.summarizeTitle": "Distill this session's memories into one durable summary",
+  "app.sessions.summarize": "Summarize",
+  "app.sessions.end": "End",
+  "app.sessions.summary.success": "Summarized into memory {id}",
+  "app.sessions.summary.nothing": "Nothing to summarize",
+  "app.sessions.summary.failed": "Summarize failed"
 }

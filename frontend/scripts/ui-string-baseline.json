@@ -12,7 +12,7 @@
   "src/app/people/page.tsx": 19,
   "src/app/projects/page.tsx": 43,
   "src/app/review/page.tsx": 1,
-  "src/app/sessions/page.tsx": 17,
+  "src/app/sessions/page.tsx": 3,
   "src/app/settings/_sections/connect-client.tsx": 8,
   "src/app/settings/_sections/connectors.tsx": 34,
   "src/app/settings/_sections/data-management.tsx": 17,

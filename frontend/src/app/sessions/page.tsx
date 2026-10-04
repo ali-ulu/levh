@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,6 +12,7 @@ import type { Session } from "@/types";
 import { History, Loader2, Plus, Sparkles, Square } from "lucide-react";
 
 export default function SessionsPage() {
+  const t = useT();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
   const [newName, setNewName] = useState("");
@@ -58,14 +60,14 @@ export default function SessionsPage() {
       setSummaryResult((prev) => ({
         ...prev,
         [id]: r.summarized
-          ? `Summarized into memory ${r.summary!.id.slice(0, 8)}…`
-          : r.reason ?? "Nothing to summarize",
+          ? t("app.sessions.summary.success", { id: `${r.summary!.id.slice(0, 8)}…` })
+          : r.reason ?? t("app.sessions.summary.nothing"),
       }));
       load();
     } catch (e) {
       setSummaryResult((prev) => ({
         ...prev,
-        [id]: e instanceof Error ? e.message : "Summarize failed",
+        [id]: e instanceof Error ? e.message : t("app.sessions.summary.failed"),
       }));
     }
     setSummarizingId(null);
@@ -74,17 +76,15 @@ export default function SessionsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Sessions</h1>
+        <h1 className="text-2xl font-bold">{t("app.sessions.title")}</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Group related memories. Ending a session consolidates its short-term
-          memories into long-term storage. Summarize distills a session into
-          one durable memory (LLM if configured, offline otherwise).
+          {t("app.sessions.subtitle")}
         </p>
       </div>
 
       <div className="flex gap-2 max-w-md">
         <Input
-          placeholder="New session name..."
+          placeholder={t("app.sessions.placeholder")}
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && create()}
@@ -102,9 +102,10 @@ export default function SessionsPage() {
         <Card>
           <CardContent className="py-12 text-center text-sm text-muted-foreground space-y-2">
             <History className="h-8 w-8 mx-auto opacity-40" />
-            <p>No sessions yet. Create one above, or let your AI client call the</p>
+            <p>{t("app.sessions.empty.beforeTool")}</p>
             <p>
-              <code className="text-xs bg-muted px-1 rounded">create_session</code> MCP tool.
+              <code className="text-xs bg-muted px-1 rounded">create_session</code>{" "}
+              {t("app.sessions.empty.afterTool")}
             </p>
           </CardContent>
         </Card>
@@ -124,9 +125,16 @@ export default function SessionsPage() {
                     </Badge>
                   </div>
                   <div className="text-xs text-muted-foreground mt-0.5">
-                    {s.memory_count} memories · started{" "}
+                    {t(
+                      s.memory_count === 1
+                        ? "app.sessions.memoryCount.one"
+                        : "app.sessions.memoryCount.other",
+                      { count: s.memory_count },
+                    )} · {t("app.sessions.started")}{" "}
                     {new Date(s.created_at).toLocaleString("en-GB")}
-                    {s.ended_at && <> · ended {new Date(s.ended_at).toLocaleString("en-GB")}</>}
+                    {s.ended_at && (
+                      <> · {t("app.sessions.ended")} {new Date(s.ended_at).toLocaleString("en-GB")}</>
+                    )}
                   </div>
                   {summaryResult[s.id] && (
                     <div className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
@@ -136,21 +144,21 @@ export default function SessionsPage() {
                   )}
                 </div>
                 <Button asChild variant="outline" size="sm">
-                  <Link href={`/memories/?session=${encodeURIComponent(s.id)}`}>Memories</Link>
+                  <Link href={`/memories/?session=${encodeURIComponent(s.id)}`}>{t("app.sessions.memories")}</Link>
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => summarize(s.id)}
                   disabled={summarizingId === s.id || s.memory_count === 0}
-                  title="Distill this session's memories into one durable summary"
+                  title={t("app.sessions.summarizeTitle")}
                 >
                   {summarizingId === s.id ? (
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   ) : (
                     <>
                       <Sparkles className="h-3 w-3 mr-1.5" />
-                      Summarize
+                      {t("app.sessions.summarize")}
                     </>
                   )}
                 </Button>
@@ -166,7 +174,7 @@ export default function SessionsPage() {
                     ) : (
                       <>
                         <Square className="h-3 w-3 mr-1.5" />
-                        End
+                        {t("app.sessions.end")}
                       </>
                     )}
                   </Button>
