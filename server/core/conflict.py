@@ -135,3 +135,75 @@ def candidate_confidence(signal_type: str, distinct_source_types: int) -> float:
     if distinct_source_types >= 2:
         base += 0.1
     return round(min(0.9, base), 4)
+
+
+_DECISION_TOPIC_STOP_WORDS = {
+    "the", "a", "an", "and", "or", "to", "for", "of", "in", "on", "at",
+    "is", "are", "was", "were", "be", "been", "being", "use", "uses", "used",
+    "using", "choose", "chosen", "prefer", "preferred", "should", "must", "will",
+    "can", "could", "would", "this", "that", "it", "our", "we", "with", "as",
+}
+
+
+def decision_topic_terms(decision_key: str, statement: str) -> set[str]:
+    """Meaningful topic tokens for a shared decision.
+
+    Keys are included because two agents may phrase the same subject
+    differently in prose; generic decision/action words are excluded so
+    unrelated "Use X" statements do not become conflicts merely because both
+    contain the verb "use".
+    """
+    key = (decision_key or "").replace("_", " ").replace("-", " ")
+    words = _words(f"{key} {statement or ''}")
+    return {
+        word
+        for word in words
+        if len(word) >= 3 and word not in _DECISION_TOPIC_STOP_WORDS
+    }
+
+
+def decision_conflict_signal(
+    key_a: str,
+    statement_a: str,
+    key_b: str,
+    statement_b: str,
+) -> tuple[str, str, list[str]] | None:
+    """Return an opposing decision signal only when a topic anchor overlaps.
+
+    Same-key disagreements are handled directly by Team Memory's deterministic
+    contested state and are intentionally skipped here. This helper is for the
+    harder case: differently-labelled free-text decisions that appear to talk
+    about the same subject and also carry an opposing surface assertion.
+    """
+    norm_a = (key_a or "").strip().casefold()
+    norm_b = (key_b or "").strip().casefold()
+    if norm_a and norm_a == norm_b:
+        return None
+
+    opposition = opposing_signal(statement_a, statement_b)
+    if opposition is None:
+        return None
+
+    overlap = sorted(
+        decision_topic_terms(key_a, statement_a)
+        & decision_topic_terms(key_b, statement_b)
+    )
+    if not overlap:
+        return None
+
+    signal_type, detail = opposition
+    return signal_type, detail, overlap
+
+
+def decision_candidate_confidence(
+    signal_type: str,
+    shared_topic_terms: int,
+    distinct_agents: bool,
+) -> float:
+    """Review priority for a decision conflict candidate, never truth."""
+    score = _BASE_CONFIDENCE.get(signal_type, 0.5)
+    if shared_topic_terms >= 2:
+        score += 0.05
+    if distinct_agents:
+        score += 0.05
+    return round(min(0.9, score), 4)
