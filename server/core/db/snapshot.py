@@ -24,12 +24,12 @@ class SnapshotQueries:
         self._db = db
 
     async def create_safety_backup(self, destination: str | None = None) -> str | None:
-        authorize("backup_restore", current_workspace_id())
         """Create a consistent SQLite safety copy before destructive restore.
 
         Uses SQLite's online backup API, so WAL pages are included correctly.
         In-memory databases have no durable location and therefore return None.
         """
+        authorize("backup_restore", current_workspace_id())
         if self._db.db_path == ":memory:":
             return None
 
@@ -67,12 +67,12 @@ class SnapshotQueries:
         replace: bool,
         attachments: list[dict] | None = None,
     ) -> None:
-        authorize("backup_restore", current_workspace_id())
         """Atomically merge or replace a fully validated snapshot.
 
         Callers must validate every record before entering this method.  No
         destructive clear occurs until all validation has succeeded.
         """
+        authorize("backup_restore", current_workspace_id())
         attachments = attachments or []
         workspace = current_workspace_id()
         await self._db.conn.execute("BEGIN IMMEDIATE")
