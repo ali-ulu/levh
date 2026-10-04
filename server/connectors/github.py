@@ -162,19 +162,22 @@ class GitHubConnector(BaseConnector):
             config.get("max_prs"), key="max_prs", default=20
         )
 
-        # Quick validation
+        # Validate against the first configured repository, not /user.
+        # GitHub Actions GITHUB_TOKEN is an installation token: it can read
+        # the repository but is not a user token, so /user may reject it even
+        # though the connector has exactly the repository access it needs.
         import httpx
         async with httpx.AsyncClient(
             timeout=httpx.Timeout(30.0, connect=10.0, pool=10.0)
         ) as client:
             resp = await client.get(
-                f"{GITHUB_API}/user",
+                f"{GITHUB_API}/repos/{self._repos[0]}",
                 headers=self._headers,
                 timeout=15,
             )
             if resp.status_code != 200:
                 raise ConnectionError(
-                    f"GitHub API returned {resp.status_code}: {resp.text[:200]}"
+                    f"GitHub API returned {resp.status_code} for configured repo"
                 )
 
         return True
