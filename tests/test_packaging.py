@@ -101,4 +101,4 @@ def test_packaged_evaluation_fixtures_are_available():
     from server.core.evaluation import DEFAULT_FIXTURE_DIR, load_fixtures
 
     assert DEFAULT_FIXTURE_DIR.is_dir()
-    assert len(load_fixtures()) == 10
+    assert len(load_fixtures()) == 11

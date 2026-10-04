@@ -9984,6 +9984,11 @@
             "type": "object",
             "title": "Recall Log"
           },
+          "continuity_briefs": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Continuity Briefs"
+          },
           "version": {
             "type": "string",
             "title": "Version"
@@ -10002,6 +10007,7 @@
           "auto_summarize_sessions",
           "outbound",
           "recall_log",
+          "continuity_briefs",
           "version"
         ],
         "title": "ServerConfigResponse",
