@@ -16,13 +16,75 @@ Config keys:
 
 from __future__ import annotations
 
+import json
 import os
+import re
 from typing import Any
 
 from .base import BaseConnector
 
 # GitHub API base
 GITHUB_API = "https://api.github.com"
+
+_REPO_SLUG = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
+
+
+def _config_list(value: Any, *, key: str) -> list[str]:
+    """Accept API-native lists plus CLI-friendly JSON/comma/single strings."""
+    if value is None or value == "":
+        return []
+    if isinstance(value, str):
+        raw = value.strip()
+        if raw.startswith("["):
+            try:
+                value = json.loads(raw)
+            except json.JSONDecodeError as exc:
+                raise ValueError(f"{key} must be a list or comma-separated string") from exc
+        else:
+            value = raw.split(",")
+    if not isinstance(value, (list, tuple)):
+        raise ValueError(f"{key} must be a list or comma-separated string")
+    return [str(item).strip() for item in value if str(item).strip()]
+
+
+def _config_bool(value: Any, *, key: str, default: bool) -> bool:
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    text = str(value).strip().casefold()
+    if text in {"1", "true", "yes", "on"}:
+        return True
+    if text in {"0", "false", "no", "off"}:
+        return False
+    raise ValueError(f"{key} must be true or false")
+
+
+def _config_int(value: Any, *, key: str, default: int) -> int:
+    if value is None or value == "":
+        return default
+    try:
+        result = int(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"{key} must be an integer") from exc
+    if result < 0:
+        raise ValueError(f"{key} must not be negative")
+    return result
+
+
+def _validated_repo(repo: str) -> str:
+    repo = repo.strip()
+    if not _REPO_SLUG.fullmatch(repo):
+        raise ValueError(f"invalid GitHub repository slug: {repo!r}")
+    return repo
+
+
+def _validated_file_path(path: str) -> str:
+    path = path.replace("\\", "/").strip().lstrip("/")
+    parts = [part for part in path.split("/") if part]
+    if not parts or any(part in {".", ".."} for part in parts):
+        raise ValueError(f"invalid GitHub file path: {path!r}")
+    return "/".join(parts)
 
 
 class GitHubConnector(BaseConnector):
@@ -75,17 +137,30 @@ class GitHubConnector(BaseConnector):
             "X-GitHub-Api-Version": "2022-11-28",
         }
 
-        repos = config.get("repos", [])
+        repos = _config_list(config.get("repos"), key="repos")
         if not repos:
             raise ValueError("At least one repo is required (format: 'owner/repo').")
-        self._repos = repos
+        self._repos = [_validated_repo(repo) for repo in repos]
 
-        self._include_readme = config.get("include_readme", True)
-        self._include_issues = config.get("include_issues", True)
-        self._include_prs = config.get("include_prs", False)
-        self._include_files = config.get("include_files", [])
-        self._max_issues = config.get("max_issues", 50)
-        self._max_prs = config.get("max_prs", 20)
+        self._include_readme = _config_bool(
+            config.get("include_readme"), key="include_readme", default=True
+        )
+        self._include_issues = _config_bool(
+            config.get("include_issues"), key="include_issues", default=True
+        )
+        self._include_prs = _config_bool(
+            config.get("include_prs"), key="include_prs", default=False
+        )
+        self._include_files = [
+            _validated_file_path(path)
+            for path in _config_list(config.get("include_files"), key="include_files")
+        ]
+        self._max_issues = _config_int(
+            config.get("max_issues"), key="max_issues", default=50
+        )
+        self._max_prs = _config_int(
+            config.get("max_prs"), key="max_prs", default=20
+        )
 
         # Quick validation
         import httpx
