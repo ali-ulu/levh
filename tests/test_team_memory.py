@@ -187,6 +187,9 @@ async def test_semantic_decision_conflict_candidate_review_lifecycle(engine):
         )
         assert detected["new_candidates"] == 1
         assert detected["open_total"] == 1
+        summary = await engine.agent_tracker.get_project_collaboration("atlas")
+        assert summary["open_decision_conflicts"] == 1
+        assert len(summary["decision_conflicts"]) == 1
 
     with _PrincipalContext(pid="reader", workspace="team-a", role="viewer", agent="vscode"):
         rows = await engine.agent_tracker.list_team_decision_conflicts(project="atlas")
@@ -247,6 +250,40 @@ async def test_semantic_decision_conflicts_are_idempotent_and_do_not_reopen_dism
         third = await engine.agent_tracker.detect_team_decision_conflicts(project="atlas")
         assert third["new_candidates"] == 0
         assert third["open_total"] == 0
+
+
+@pytest.mark.asyncio
+async def test_semantic_detector_resolves_stale_open_candidate(engine):
+    with _PrincipalContext(pid="writer", workspace="team-a", role="editor", agent="codex"):
+        first = await engine.agent_tracker.create_team_decision(
+            project="atlas",
+            decision_key="database-plan",
+            statement="Use SQLite for the primary database",
+        )
+        await engine.agent_tracker.create_team_decision(
+            project="atlas",
+            decision_key="persistence-choice",
+            statement="Use PostgreSQL for the primary database",
+        )
+        detected = await engine.agent_tracker.detect_team_decision_conflicts(project="atlas")
+        assert detected["open_total"] == 1
+
+        # Simulate a later explicit decision lifecycle superseding one side.
+        await engine.db.conn.execute(
+            "UPDATE team_decisions SET status = 'superseded' WHERE id = ?",
+            (first["decision"]["id"],),
+        )
+        await engine.db.conn.commit()
+
+        rescanned = await engine.agent_tracker.detect_team_decision_conflicts(project="atlas")
+        assert rescanned["stale_resolved"] == 1
+        assert rescanned["open_total"] == 0
+        rows = await engine.agent_tracker.list_team_decision_conflicts(
+            project="atlas",
+            status="resolved",
+        )
+        assert len(rows) == 1
+        assert rows[0]["reviewed_by"] == "system"
 
 
 @pytest.mark.asyncio
@@ -538,6 +575,17 @@ async def test_team_memory_rest_flow(tmp_path):
             )
             assert reviewed.status_code == 200
             assert reviewed.json()["conflict"]["status"] == "confirmed"
+
+            invalid = await client.post(
+                f"/api/team/decision-conflicts/{candidate['id']}/review",
+                json={"action": "bogus"},
+            )
+            assert invalid.status_code == 422
+            missing = await client.post(
+                "/api/team/decision-conflicts/missing|candidate/review",
+                json={"action": "confirm"},
+            )
+            assert missing.status_code == 404
 
             r = await client.get("/api/agents/collaboration/atlas")
             assert r.status_code == 200
