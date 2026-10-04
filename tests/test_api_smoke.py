@@ -106,6 +106,17 @@ async def test_api_smoke_full_surface(api_client):
     assert bd["candidate_source"] in {"vector", "keyword"}
     assert bd["memory_id"] == body["memories"][0]["id"]
 
+    # 6c. Access audit — the recall receipt identifies the local principal.
+    audit_id = body["memories"][0]["id"]
+    r = await c.get(f"/api/memories/{audit_id}/access-audit")
+    assert r.status_code == 200
+    audit = r.json()
+    assert audit["memory_id"] == audit_id
+    assert audit["audit"]
+    assert audit["audit"][0]["principal_id"] == "local"
+    assert audit["audit"][0]["principal_role"] == "admin"
+    assert audit["audit"][0]["workspace_id"] == "default"
+
     # 7. Stats
     r = await c.get("/api/stats")
     assert r.status_code == 200 and "total_memories" in r.json()
