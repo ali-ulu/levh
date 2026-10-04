@@ -44,15 +44,24 @@ class AgentPresenceService:
         from .agent_tracker import _AGENT_TRACKING_SCHEMA, _AGENT_TENANCY_INDEXES
 
         await self.db.conn.executescript(_AGENT_TRACKING_SCHEMA)
-        for table in ("agent_sessions", "agent_checkpoints"):
-            cursor = await self.db.conn.execute(f"PRAGMA table_info({table})")
+        migrations = (
+            (
+                "PRAGMA table_info(agent_sessions)",
+                "ALTER TABLE agent_sessions ADD COLUMN workspace_id "
+                "TEXT NOT NULL DEFAULT 'default'",
+            ),
+            (
+                "PRAGMA table_info(agent_checkpoints)",
+                "ALTER TABLE agent_checkpoints ADD COLUMN workspace_id "
+                "TEXT NOT NULL DEFAULT 'default'",
+            ),
+        )
+        for pragma, ddl in migrations:
+            cursor = await self.db.conn.execute(pragma)
             columns = {row[1] for row in await cursor.fetchall()}
             await cursor.close()
             if "workspace_id" not in columns:
-                await self.db.conn.execute(
-                    f"ALTER TABLE {table} ADD COLUMN workspace_id "
-                    "TEXT NOT NULL DEFAULT 'default'"
-                )
+                await self.db.conn.execute(ddl)
         await self.db.conn.executescript(_AGENT_TENANCY_INDEXES)
         await self.db.conn.commit()
 
