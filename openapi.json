@@ -4441,6 +4441,350 @@
           }
         }
       }
+    },
+    "/api/v1/team/handoffs": {
+      "post": {
+        "summary": "Create Handoff",
+        "description": "Create an explicit work/context handoff for another agent.",
+        "operationId": "create_handoff_api_team_handoffs_post_v1",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TeamHandoffCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeamHandoffOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "summary": "List Handoffs",
+        "description": "List handoffs visible to the current workspace.",
+        "operationId": "list_handoffs_api_team_handoffs_get_v1",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Project"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Status"
+            }
+          },
+          {
+            "name": "to_agent",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "To Agent"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 100,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TeamHandoffOut"
+                  },
+                  "type": "array",
+                  "title": "Response List Handoffs Api Team Handoffs Get V1"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/team/handoffs/{handoff_id}/accept": {
+      "post": {
+        "summary": "Accept Handoff",
+        "description": "Accept a pending handoff.",
+        "operationId": "accept_handoff_api_team_handoffs__handoff_id__accept_post_v1",
+        "parameters": [
+          {
+            "name": "handoff_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Handoff Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeamHandoffOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/team/handoffs/{handoff_id}/complete": {
+      "post": {
+        "summary": "Complete Handoff",
+        "description": "Mark an accepted handoff complete.",
+        "operationId": "complete_handoff_api_team_handoffs__handoff_id__complete_post_v1",
+        "parameters": [
+          {
+            "name": "handoff_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Handoff Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeamHandoffOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/team/decisions": {
+      "post": {
+        "summary": "Create Decision",
+        "description": "Record a shared decision; conflicting active statements become contested.",
+        "operationId": "create_decision_api_team_decisions_post_v1",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TeamDecisionCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeamDecisionCreateResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "summary": "List Decisions",
+        "description": "List shared project decisions visible to the current workspace.",
+        "operationId": "list_decisions_api_team_decisions_get_v1",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Project"
+            }
+          },
+          {
+            "name": "decision_key",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Decision Key"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Status"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 100,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TeamDecisionOut"
+                  },
+                  "type": "array",
+                  "title": "Response List Decisions Api Team Decisions Get V1"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/team/decisions/{decision_id}/resolve": {
+      "post": {
+        "summary": "Resolve Decision",
+        "description": "Choose one contested decision. Admin-only via storage authorization.",
+        "operationId": "resolve_decision_api_team_decisions__decision_id__resolve_post_v1",
+        "parameters": [
+          {
+            "name": "decision_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Decision Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeamDecisionOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -5698,6 +6042,30 @@
           "collaboration_score": {
             "type": "integer",
             "title": "Collaboration Score"
+          },
+          "handoffs": {
+            "items": {
+              "$ref": "#/components/schemas/TeamHandoffOut"
+            },
+            "type": "array",
+            "title": "Handoffs"
+          },
+          "decisions": {
+            "items": {
+              "$ref": "#/components/schemas/TeamDecisionOut"
+            },
+            "type": "array",
+            "title": "Decisions"
+          },
+          "pending_handoffs": {
+            "type": "integer",
+            "title": "Pending Handoffs",
+            "default": 0
+          },
+          "contested_decisions": {
+            "type": "integer",
+            "title": "Contested Decisions",
+            "default": 0
           }
         },
         "type": "object",
@@ -10953,6 +11321,321 @@
         ],
         "title": "MemoryAccessAuditResponse",
         "description": "``GET /api/memories/{id}/access-audit``."
+      },
+      "TeamHandoffCreateRequest": {
+        "properties": {
+          "project": {
+            "type": "string",
+            "title": "Project"
+          },
+          "to_agent": {
+            "type": "string",
+            "title": "To Agent"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary",
+            "default": ""
+          },
+          "memory_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Memory Ids"
+          }
+        },
+        "type": "object",
+        "required": [
+          "project",
+          "to_agent",
+          "title"
+        ],
+        "title": "TeamHandoffCreateRequest"
+      },
+      "TeamHandoffOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "workspace_id": {
+            "type": "string",
+            "title": "Workspace Id"
+          },
+          "project": {
+            "type": "string",
+            "title": "Project"
+          },
+          "from_principal_id": {
+            "type": "string",
+            "title": "From Principal Id"
+          },
+          "from_agent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From Agent"
+          },
+          "to_agent": {
+            "type": "string",
+            "title": "To Agent"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary",
+            "default": ""
+          },
+          "memory_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Memory Ids"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "accepted_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accepted At"
+          },
+          "accepted_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accepted By"
+          },
+          "accepted_agent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accepted Agent"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "workspace_id",
+          "project",
+          "from_principal_id",
+          "to_agent",
+          "title",
+          "status",
+          "created_at"
+        ],
+        "title": "TeamHandoffOut"
+      },
+      "TeamDecisionCreateRequest": {
+        "properties": {
+          "project": {
+            "type": "string",
+            "title": "Project"
+          },
+          "decision_key": {
+            "type": "string",
+            "title": "Decision Key"
+          },
+          "statement": {
+            "type": "string",
+            "title": "Statement"
+          },
+          "rationale": {
+            "type": "string",
+            "title": "Rationale",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "project",
+          "decision_key",
+          "statement"
+        ],
+        "title": "TeamDecisionCreateRequest"
+      },
+      "TeamDecisionOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "workspace_id": {
+            "type": "string",
+            "title": "Workspace Id"
+          },
+          "project": {
+            "type": "string",
+            "title": "Project"
+          },
+          "decision_key": {
+            "type": "string",
+            "title": "Decision Key"
+          },
+          "statement": {
+            "type": "string",
+            "title": "Statement"
+          },
+          "rationale": {
+            "type": "string",
+            "title": "Rationale",
+            "default": ""
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "created_by": {
+            "type": "string",
+            "title": "Created By"
+          },
+          "created_agent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created Agent"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "conflict_group_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conflict Group Id"
+          },
+          "superseded_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Superseded By"
+          },
+          "resolved_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolved At"
+          },
+          "resolved_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolved By"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "workspace_id",
+          "project",
+          "decision_key",
+          "statement",
+          "status",
+          "created_by",
+          "created_at"
+        ],
+        "title": "TeamDecisionOut"
+      },
+      "TeamDecisionCreateResponse": {
+        "properties": {
+          "created": {
+            "type": "boolean",
+            "title": "Created"
+          },
+          "contested": {
+            "type": "boolean",
+            "title": "Contested"
+          },
+          "decision": {
+            "$ref": "#/components/schemas/TeamDecisionOut"
+          },
+          "conflicts": {
+            "items": {
+              "$ref": "#/components/schemas/TeamDecisionOut"
+            },
+            "type": "array",
+            "title": "Conflicts"
+          }
+        },
+        "type": "object",
+        "required": [
+          "created",
+          "contested",
+          "decision"
+        ],
+        "title": "TeamDecisionCreateResponse"
       }
     }
   }
