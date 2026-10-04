@@ -284,6 +284,13 @@ class Database:
             version = 6
             await self._set_user_version(version)
 
+        if version < 7:
+            # Team Memory collaboration (#377). The v7 tables are created by
+            # the idempotent base schema before migrations run; recording the
+            # version here makes the upgrade monotonic for existing v6 stores.
+            version = 7
+            await self._set_user_version(version)
+
         self.schema_version = version
 
     @staticmethod
