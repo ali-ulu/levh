@@ -20,7 +20,6 @@
   "src/app/settings/_sections/connect-client.tsx": 15,
   "src/app/settings/_sections/connectors.tsx": 34,
   "src/app/settings/_sections/data-management.tsx": 17,
-  "src/app/settings/_sections/file-import.tsx": 5,
   "src/app/settings/_sections/privacy-redaction.tsx": 10,
   "src/app/settings/_sections/recall-quality.tsx": 12,
   "src/app/settings/_sections/server-configuration.tsx": 17,

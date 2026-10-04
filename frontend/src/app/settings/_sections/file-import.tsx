@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { api } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 import { FileUp, Loader2 } from "lucide-react";
 
 function toBase64(buf: ArrayBuffer): string {
@@ -19,6 +20,7 @@ function toBase64(buf: ArrayBuffer): string {
 }
 
 export function FileImport() {
+  const t = useT();
   const [project, setProject] = useState("");
   const [busy, setBusy] = useState(false);
   const [results, setResults] = useState<string[]>([]);
@@ -32,12 +34,23 @@ export function FileImport() {
         const buf = await file.arrayBuffer();
         const content_b64 = toBase64(buf);
         const r = await api.importFile(file.name, content_b64, project || undefined);
+        const memoryCount = t(
+          r.memories_created === 1
+            ? "settings.fileImport.result.memory.one"
+            : "settings.fileImport.result.memory.other",
+          { count: r.memories_created }
+        );
         lines.push(
-          `${file.name}: ${r.memories_created} memor${r.memories_created === 1 ? "y" : "ies"}` +
+          `${file.name}: ${memoryCount}` +
             (r.warnings.length ? ` (${r.warnings.join("; ")})` : "")
         );
       } catch (e) {
-        lines.push(`${file.name}: failed — ${e instanceof Error ? e.message : e}`);
+        lines.push(
+          t("settings.fileImport.result.failed", {
+            file: file.name,
+            error: e instanceof Error ? e.message : String(e),
+          })
+        );
       }
     }
     setResults(lines);
@@ -49,22 +62,19 @@ export function FileImport() {
       <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center gap-2">
           <FileUp className="h-4 w-4" />
-          Import Files
+          {t("settings.fileImport.title")}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         <p className="text-xs text-muted-foreground">
-          Drop in any file — text, PDF, Word, Excel, or a zip of several — and it&apos;s
-          turned into memories. Text is extracted where possible; other formats
-          still record that the file arrived rather than being silently dropped.
-          No size limit is enforced by the app itself.
+          {t("settings.fileImport.description")}
         </p>
         <div className="flex flex-wrap items-end gap-2">
           <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">Project (optional)</Label>
+            <Label className="text-xs text-muted-foreground">{t("settings.fileImport.projectLabel")}</Label>
             <Input
               className="w-56"
-              placeholder="e.g. levh"
+              placeholder={t("settings.fileImport.projectPlaceholder")}
               value={project}
               onChange={(e) => setProject(e.target.value)}
             />
@@ -75,7 +85,7 @@ export function FileImport() {
             ) : (
               <FileUp className="h-4 w-4 mr-2" />
             )}
-            Choose file(s) to import
+            {t("settings.fileImport.chooseFiles")}
           </Button>
           <input
             ref={inputRef}

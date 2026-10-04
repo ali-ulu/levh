@@ -140,5 +140,13 @@
   "app.briefing.commitments.title": "Open Commitments",
   "app.briefing.commitments.empty": "No open commitments detected in recent memories.",
   "app.briefing.fading.title": "Might Be Forgetting",
-  "app.briefing.fading.empty": "Nothing is fading — your memory is healthy."
+  "app.briefing.fading.empty": "Nothing is fading — your memory is healthy.",
+  "settings.fileImport.title": "Import Files",
+  "settings.fileImport.description": "Drop in any file — text, PDF, Word, Excel, or a zip of several — and it's turned into memories. Text is extracted where possible; other formats still record that the file arrived rather than being silently dropped. No size limit is enforced by the app itself.",
+  "settings.fileImport.projectLabel": "Project (optional)",
+  "settings.fileImport.projectPlaceholder": "e.g. levh",
+  "settings.fileImport.chooseFiles": "Choose file(s) to import",
+  "settings.fileImport.result.memory.one": "{count} memory",
+  "settings.fileImport.result.memory.other": "{count} memories",
+  "settings.fileImport.result.failed": "{file}: failed — {error}"
 }

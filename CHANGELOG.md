@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### i18n: move File Import settings into the catalogue (#405)
+
+- File Import headings, help text, project field copy, action copy, and runtime success/error messages now resolve through the existing `useT()` catalogue path.
+- The UI-string ratchet entry for `src/app/settings/_sections/file-import.tsx` drops from 5 to 0.
+
+
 ### i18n: move the Daily Briefing page into the catalogue (#403)
 
 - Daily Briefing headings, empty states, and explanatory copy now resolve through the existing `useT()` catalogue path.
