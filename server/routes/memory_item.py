@@ -10,6 +10,7 @@ from server.routes.deps import get_engine
 from server.routes.models import (
     FeedbackRequest,
     ForgettingCurveResponse,
+    MemoryAccessAuditResponse,
     MemoryDeleteResponse,
     MemoryOut,
     PinRequest,
@@ -126,6 +127,22 @@ async def get_memory_trust(memory_id: str, engine=Depends(get_engine)):
     if result is None:
         raise HTTPException(status_code=404, detail="memory not found")
     return result
+
+
+@router.get(
+    "/api/memories/{memory_id}/access-audit",
+    response_model=MemoryAccessAuditResponse,
+)
+async def memory_access_audit(
+    memory_id: str,
+    limit: int = 100,
+    engine=Depends(get_engine),
+):
+    """Who received this memory through recall, newest first."""
+    if not await engine.get_memory(memory_id):
+        raise HTTPException(status_code=404, detail="memory not found")
+    audit = await engine.db.access_audit(memory_id, limit=min(max(limit, 1), 1000))
+    return {"memory_id": memory_id, "audit": audit}
 
 
 @router.get("/api/memories/{memory_id}/related", response_model=RelatedMemoriesResponse)
