@@ -173,6 +173,31 @@ class Database:
             if column not in existing:
                 await self._connection.execute(ddl)
 
+    async def _migrate_team_handoff_scheduler(self) -> None:
+        """Add Phase 5 scheduler columns to existing v8 handoff tables."""
+        cursor = await self._connection.execute("PRAGMA table_info(team_handoffs)")
+        existing = {row[1] for row in await cursor.fetchall()}
+        await cursor.close()
+        additions = (
+            (
+                "required_capabilities_json",
+                "ALTER TABLE team_handoffs ADD COLUMN "
+                "required_capabilities_json TEXT NOT NULL DEFAULT '[]'",
+            ),
+            (
+                "priority",
+                "ALTER TABLE team_handoffs ADD COLUMN "
+                "priority INTEGER NOT NULL DEFAULT 0",
+            ),
+            (
+                "accepted_session_id",
+                "ALTER TABLE team_handoffs ADD COLUMN accepted_session_id TEXT",
+            ),
+        )
+        for column, ddl in additions:
+            if column not in existing:
+                await self._connection.execute(ddl)
+
     async def _migrate_held_workspace(self) -> None:
         """Put pre-Phase-2 held candidates in the implicit default workspace."""
         cursor = await self._connection.execute("PRAGMA table_info(held_memories)")
@@ -296,6 +321,13 @@ class Database:
             # additive and created by the idempotent base schema before this
             # marker advances the store version.
             version = 8
+            await self._set_user_version(version)
+
+        if version < 9:
+            # Team scheduler (#377): existing handoff rows gain capability,
+            # priority and accepting-session metadata without rewriting data.
+            await self._migrate_team_handoff_scheduler()
+            version = 9
             await self._set_user_version(version)
 
         self.schema_version = version
