@@ -1280,12 +1280,51 @@ export type TeamDecisionOut = {
   resolved_by?: string | null;
 };
 
+export type TeamHandoffAssignmentOut = {
+  handoff: TeamHandoffOut;
+  agent_session_id: string;
+  agent_name: string;
+};
+
+export type TeamHandoffClaimRequest = {
+  agent_session_id: string;
+};
+
+export type TeamHandoffClaimResponse = {
+  claimed: boolean;
+  reason?: string | null;
+  handoff?: TeamHandoffOut | null;
+};
+
 export type TeamHandoffCreateRequest = {
   project: string;
   to_agent: string;
   title: string;
   summary?: string;
   memory_ids?: string[];
+  required_capabilities?: string[];
+  priority?: number;
+};
+
+export type TeamHandoffDispatchRequest = {
+  project?: string;
+  limit?: number;
+};
+
+export type TeamHandoffDispatchResponse = {
+  assigned: number;
+  unassigned: number;
+  assignments?: TeamHandoffAssignmentOut[];
+};
+
+export type TeamHandoffMatchOut = {
+  handoff: TeamHandoffOut;
+  agent_session_id: string;
+  agent_name: string;
+  capabilities?: string[];
+  current_load: number;
+  max_parallel_handoffs: number;
+  scheduler_enabled: boolean;
 };
 
 export type TeamHandoffOut = {
@@ -1304,6 +1343,9 @@ export type TeamHandoffOut = {
   accepted_by?: string | null;
   accepted_agent?: string | null;
   completed_at?: string | null;
+  required_capabilities?: string[];
+  priority?: number;
+  accepted_session_id?: string | null;
 };
 
 export type TimelineGroupOut = {
