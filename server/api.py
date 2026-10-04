@@ -196,6 +196,7 @@ from server.routes import (
     onboarding,
     sessions,
     system,
+    team_memory,
 )
 
 app.include_router(memories.router)
@@ -212,6 +213,7 @@ app.include_router(connectors.router)
 app.include_router(entities.router)
 app.include_router(guard.router)
 app.include_router(conflicts.router)
+app.include_router(team_memory.router)
 app.include_router(findings.router)
 app.include_router(live.router)
 
