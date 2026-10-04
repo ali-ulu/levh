@@ -78,16 +78,16 @@ export function TrustProvenance() {
             <div className="space-y-2 pt-2 border-t">
               <p className="text-xs text-muted-foreground">{t("settings.trustProvenance.lowestTrust")}</p>
               <ul className="space-y-1">
-                {lowTrust.map((t) => (
-                  <li key={t.memory_id} className="text-xs text-muted-foreground">
+                {lowTrust.map((entry) => (
+                  <li key={entry.memory_id} className="text-xs text-muted-foreground">
                     <Badge variant="secondary" className="text-[11px]">
-                      {t.label}
+                      {entry.label}
                     </Badge>{" "}
-                    <span className="font-mono">{t.confidence.toFixed(2)}</span>{" "}
-                    <span className="font-mono">{t.memory_id.slice(0, 8)}</span> —{" "}
+                    <span className="font-mono">{entry.confidence.toFixed(2)}</span>{" "}
+                    <span className="font-mono">{entry.memory_id.slice(0, 8)}</span> —{" "}
                     {t("settings.trustProvenance.sourceLabel", {
                       source:
-                        t.evidence?.source ??
+                        entry.evidence?.source ??
                         t("settings.trustProvenance.unknownSource"),
                     })}
                   </li>
