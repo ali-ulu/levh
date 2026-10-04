@@ -87,7 +87,7 @@ async def _build_report(db_path: str, project: str) -> dict:
             conn,
             """
             SELECT connector, project, last_synced_at, last_fetched, last_stored,
-                   total_fetched, total_stored, runs
+                   total_stored, runs
               FROM connector_sync
              WHERE connector IN ('git', 'github')
              ORDER BY connector
@@ -104,7 +104,7 @@ async def _build_report(db_path: str, project: str) -> dict:
         row = sync_by_connector.get(name)
         if row is None:
             errors.append(f"missing connector_sync row for {name}")
-        elif int(row.get("total_fetched") or 0) <= 0:
+        elif int(row.get("last_fetched") or 0) <= 0:
             errors.append(f"{name} fetched no items")
 
     if git["count"] <= 0:
