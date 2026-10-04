@@ -299,12 +299,12 @@ class TeamMemoryService:
             )
             await self.db.conn.commit()
         except sqlite3.IntegrityError:
+            await self.db.conn.rollback()
             if contested:
                 raise
             # A peer may have won the one-active-decision race after our read.
-            # Roll back this failed insert and re-evaluate against its decision;
-            # the retry will either dedupe or create a contested proposal.
-            await self.db.conn.rollback()
+            # Re-evaluate against its decision; the retry will either dedupe or
+            # create a contested proposal.
             return await self.create_decision(
                 project=project,
                 decision_key=key,
