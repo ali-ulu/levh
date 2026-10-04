@@ -270,5 +270,19 @@
   "settings.connectClient.description": "Set up MCP (Model Context Protocol) to give your AI tools persistent memory. Select your client below and copy the config.",
   "settings.connectClient.installPath": "LEVH install path",
   "settings.connectClient.addTo": "Add to",
-  "settings.connectClient.cliAlternative": "Or generate configs from the CLI:"
+  "settings.connectClient.cliAlternative": "Or generate configs from the CLI:",
+  "app.conflicts.title": "Conflicts",
+  "app.conflicts.subtitle": "Deterministic conflict-CANDIDATE review — memories that share an entity and show an opposing surface pattern (antonym, negation, or a differing attribute value). This is a signal for a human to review, never a verdict, and nothing is ever auto-deleted.",
+  "app.conflicts.refresh": "Refresh",
+  "app.conflicts.detect": "Detect conflicts",
+  "app.conflicts.empty": "No open conflict candidates. Deterministic signal only — never a verdict.",
+  "app.conflicts.confidence": "confidence {percent}%",
+  "app.conflicts.sourceA": "A · {source}",
+  "app.conflicts.sourceB": "B · {source}",
+  "app.conflicts.unknownSource": "unknown source",
+  "app.conflicts.action.dismiss": "Dismiss",
+  "app.conflicts.action.confirm": "Confirm",
+  "app.conflicts.action.keepA": "Keep A",
+  "app.conflicts.action.keepB": "Keep B",
+  "app.conflicts.action.bothValid": "Both valid"
 }

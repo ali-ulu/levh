@@ -1,7 +1,7 @@
 {
   "src/app/agents/page.tsx": 20,
   "src/app/briefing/page.tsx": 2,
-  "src/app/conflicts/page.tsx": 17,
+  "src/app/conflicts/page.tsx": 2,
   "src/app/decisions/page.tsx": 2,
   "src/app/findings/page.tsx": 19,
   "src/app/graph/page.tsx": 17,
