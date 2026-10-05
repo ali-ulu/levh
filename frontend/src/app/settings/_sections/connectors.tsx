@@ -87,13 +87,6 @@ CONNECTOR_META.slack = {
   category: CONNECTOR_META.calendar.category,
 };
 
-const CATEGORY_COLORS: Record<string, string> = {
-  Files: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
-  Productivity: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
-  Notes: "bg-violet-500/10 text-violet-600 dark:text-violet-400",
-  Development: "bg-gray-500/10 text-gray-600 dark:text-gray-400",
-};
-
 export function Connectors() {
   const t = useT();
   const [connectors, setConnectors] = useState<Connector[]>([]);
