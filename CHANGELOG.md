@@ -5,7 +5,7 @@
 ### i18n: move Connectors settings into the catalogue (#463)
 
 - Connector descriptions/categories, server-offline guidance, upload/import/sync result copy, field/action labels, and sync-history copy now resolve through `useT()`.
-- Connector ids, config keys, path/file examples, commands, job/status enums, locale ids, and API values remain technical/runtime data; the UI-string ratchet entry for `src/app/settings/_sections/connectors.tsx` is provisionally removed from its 34-hit baseline.
+- Connector ids, config keys, path/file examples, commands, job/status enums, locale ids, and API values remain technical/runtime data; the UI-string ratchet entry for `src/app/settings/_sections/connectors.tsx` drops from 34 to 2, leaving only the technical `levh serve` command and `en-GB` locale literal.
 
 
 ### i18n: move Memory Quick Add into the catalogue (#461)
