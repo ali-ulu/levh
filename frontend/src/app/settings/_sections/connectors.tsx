@@ -39,44 +39,44 @@ const CONNECTOR_META: Record<
   local_files: {
     icon: FolderGit2,
     color: "text-blue-500",
-    description: "Import text files from a local directory",
-    category: "Files",
+    description: "settings.connectors.meta.localFiles.description",
+    category: "settings.connectors.category.files",
   },
   calendar: {
     icon: Calendar,
     color: "text-emerald-500",
-    description: "Import calendar events from .ics files",
-    category: "Productivity",
+    description: "settings.connectors.meta.calendar.description",
+    category: "settings.connectors.category.productivity",
   },
   email: {
     icon: Mail,
     color: "text-purple-500",
-    description: "Import emails from .mbox or .eml files",
-    category: "Productivity",
+    description: "settings.connectors.meta.email.description",
+    category: "settings.connectors.category.productivity",
   },
   transcripts: {
     icon: Music,
     color: "text-amber-500",
-    description: "Import meeting transcripts from .vtt/.srt files",
-    category: "Productivity",
+    description: "settings.connectors.meta.transcripts.description",
+    category: "settings.connectors.category.productivity",
   },
   obsidian: {
     icon: NotepadText,
     color: "text-violet-500",
-    description: "Import notes from an Obsidian vault",
-    category: "Notes",
+    description: "settings.connectors.meta.obsidian.description",
+    category: "settings.connectors.category.notes",
   },
   notion: {
     icon: FileText,
     color: "text-gray-500",
-    description: "Import pages from a Notion workspace",
-    category: "Notes",
+    description: "settings.connectors.meta.notion.description",
+    category: "settings.connectors.category.notes",
   },
   github: {
     icon: GitBranch,
     color: "text-gray-700 dark:text-gray-300",
-    description: "Import issues and PRs from GitHub repositories",
-    category: "Development",
+    description: "settings.connectors.meta.github.description",
+    category: "settings.connectors.category.development",
   },
 };
 
@@ -144,7 +144,9 @@ export function Connectors() {
     const ms =
       timing.job_total ?? timing.route_total ?? timing.total ?? timing.items;
     if (ms === undefined) return "";
-    return ms >= 1000 ? ` (took ${(ms / 1000).toFixed(1)}s)` : ` (took ${Math.round(ms)}ms)`;
+    return ms >= 1000
+      ? t("settings.connectors.duration.seconds", { value: (ms / 1000).toFixed(1) })
+      : t("settings.connectors.duration.milliseconds", { value: Math.round(ms) });
   };
 
   const refreshSyncState = async () => {
@@ -192,8 +194,12 @@ export function Connectors() {
         };
         if (!accepted.job_id && legacy.stored !== undefined) {
           setImportResult(
-            `Stored ${legacy.stored} of ${legacy.fetched} items from ${selConnector}` +
-              `${formatDuration(legacy.timing_ms)}.`
+            t("settings.connectors.result.stored", {
+              stored: legacy.stored ?? 0,
+              fetched: legacy.fetched ?? 0,
+              connector: selConnector,
+              duration: formatDuration(legacy.timing_ms),
+            })
           );
           await refreshSyncState();
         } else {
@@ -214,23 +220,35 @@ export function Connectors() {
           }
           if (job.status === "done" || job.status === "error") break;
           setImportResult(
-            `Syncing ${selConnector}… (${job.status}, job ${accepted.job_id.slice(0, 8)})`
+            t("settings.connectors.result.syncing", {
+              connector: selConnector,
+              status: job.status,
+              job: accepted.job_id.slice(0, 8),
+            })
           );
         }
         if (!job || (job.status !== "done" && job.status !== "error")) {
           setImportResult(
-            `Job ${accepted.job_id.slice(0, 8)} is still ${job?.status ?? "running"} — check back in Background jobs below.`
+            t("settings.connectors.result.jobStillRunning", {
+              job: accepted.job_id.slice(0, 8),
+              status: job?.status ?? "running",
+            })
           );
         } else if (job.status === "error") {
-          setImportResult(`Background sync failed: ${job.error ?? t("settings.connectors.background.unknownError")}`);
+          setImportResult(t("settings.connectors.result.backgroundFailed", { error: job.error ?? t("settings.connectors.background.unknownError") }));
         } else {
           const r = job.result!;
           setImportResult(
-            `Stored ${r.stored} of ${r.fetched} items from ${selConnector} ` +
-              `(${r.duplicates} duplicates skipped, ${r.redacted} secrets redacted` +
-              (r.held ? `, ${r.held} held for review` : "") +
-              (r.errors ? `, ${r.errors} errors` : "") +
-              `)${formatDuration(r.timing_ms)}.`
+            t("settings.connectors.result.gatedStored", {
+              stored: r.stored,
+              fetched: r.fetched,
+              connector: selConnector,
+              duplicates: r.duplicates,
+              redacted: r.redacted,
+              held: r.held ? t("settings.connectors.result.held", { count: r.held }) : "",
+              errors: r.errors ? t("settings.connectors.result.errors", { count: r.errors }) : "",
+              duration: formatDuration(r.timing_ms),
+            })
           );
         }
         await refreshSyncState();
@@ -243,11 +261,16 @@ export function Connectors() {
           true
         );
         setImportResult(
-          `Stored ${r.stored} of ${r.fetched} items from ${r.connector} ` +
-            `(${r.duplicates} duplicates skipped, ${r.redacted} secrets redacted` +
-            (r.held ? `, ${r.held} held for review` : "") +
-            (r.errors ? `, ${r.errors} errors` : "") +
-            `)${formatDuration(r.timing_ms)}.`
+          t("settings.connectors.result.gatedStored", {
+            stored: r.stored,
+            fetched: r.fetched,
+            connector: r.connector,
+            duplicates: r.duplicates,
+            redacted: r.redacted,
+            held: r.held ? t("settings.connectors.result.held", { count: r.held }) : "",
+            errors: r.errors ? t("settings.connectors.result.errors", { count: r.errors }) : "",
+            duration: formatDuration(r.timing_ms),
+          })
         );
       } else {
         const r = await api.connectorImport(
@@ -256,12 +279,16 @@ export function Connectors() {
           importProject.trim() || undefined
         );
         setImportResult(
-          `Imported ${r.stored} of ${r.fetched} items from ${r.connector}.`
+          t("settings.connectors.result.imported", {
+            stored: r.stored,
+            fetched: r.fetched,
+            connector: r.connector,
+          })
         );
       }
       await refreshSyncState();
     } catch (e) {
-      setImportResult(e instanceof Error ? e.message : "Import failed");
+      setImportResult(e instanceof Error ? e.message : t("settings.connectors.result.importFailed"));
     }
     setImporting(false);
   };
@@ -282,16 +309,19 @@ export function Connectors() {
       const r = await api.connectorUpload(file.name, btoa(binary));
       setConnectorConfig((prev) => ({ ...prev, [key]: r.path }));
       setImportResult(
-        `Uploaded ${r.filename} (${(r.bytes / 1024).toFixed(0)} KB). Now run the import.`
+        t("settings.connectors.result.uploaded", {
+          filename: r.filename,
+          kb: (r.bytes / 1024).toFixed(0),
+        })
       );
     } catch (e) {
-      setImportResult(e instanceof Error ? e.message : "Upload failed");
+      setImportResult(e instanceof Error ? e.message : t("settings.connectors.result.uploadFailed"));
     }
     setUploadingKey("");
   };
 
   // Group connectors by category
-  const categories = Array.from(new Set(connectors.map((c) => CONNECTOR_META[c.name]?.category || "Other")));
+  const categories = Array.from(new Set(connectors.map((c) => CONNECTOR_META[c.name]?.category || "settings.connectors.category.other")));
 
   const lastSyncFor = (name: string) =>
     syncState.find((s) => s.connector === name);
@@ -301,11 +331,10 @@ export function Connectors() {
       <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center gap-2">
           <Plug className="h-4 w-4" />
-          Connectors
+          {t("settings.connectors.title")}
         </CardTitle>
         <p className="text-xs text-muted-foreground">
-          Bring in real data from calendar, email, Notion, GitHub, and more. Each connector
-          imports into your local memory store — nothing leaves your machine.
+          {t("settings.connectors.description")}
         </p>
       </CardHeader>
       <CardContent className="space-y-5">
@@ -314,12 +343,12 @@ export function Connectors() {
           <div className="rounded-xl border border-dashed border-amber-500/30 bg-amber-500/5 p-4 text-center">
             <Plug className="h-8 w-8 mx-auto mb-2 text-amber-500/50" />
             <p className="text-sm font-medium text-amber-600 dark:text-amber-400">
-              LEVH server not running
+              {t("settings.connectors.serverOffline.title")}
             </p>
             <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
-              Start the server with <code className="bg-muted px-1 rounded">levh serve</code> to
-              connect external data sources. Connectors import data from your files into local memory —
-              nothing leaves your machine.
+              {t("settings.connectors.serverOffline.prefix")}{" "}
+              <code className="bg-muted px-1 rounded">levh serve</code>{" "}
+              {t("settings.connectors.serverOffline.suffix")}
             </p>
           </div>
         )}
@@ -329,12 +358,12 @@ export function Connectors() {
           {categories.map((cat) => (
             <div key={cat}>
               <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70 mb-2">
-                {cat}
+                {t(cat)}
               </p>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {connectors
                   .filter(
-                    (c) => (CONNECTOR_META[c.name]?.category || "Other") === cat
+                    (c) => (CONNECTOR_META[c.name]?.category || "settings.connectors.category.other") === cat
                   )
                   .map((c) => {
                     const meta = CONNECTOR_META[c.name];
@@ -366,7 +395,7 @@ export function Connectors() {
                             {lastSync && (
                               <span className="text-[10px] text-muted-foreground flex items-center gap-1">
                                 <Check className="h-2.5 w-2.5 text-emerald-500" />
-                                {lastSync.total_stored} stored
+                                {t("settings.connectors.storedCount", { count: lastSync.total_stored })}
                               </span>
                             )}
                           </div>
@@ -397,7 +426,9 @@ export function Connectors() {
                   {selConnector.replace(/_/g, " ")}
                 </p>
                 <p className="text-[11px] text-muted-foreground">
-                  {t(activeMeta?.description || activeConnector.description)}
+                  {activeMeta
+                    ? t(activeMeta.description)
+                    : activeConnector.description}
                 </p>
               </div>
             </div>
@@ -419,10 +450,10 @@ export function Connectors() {
                     />
                     <p className="text-[11px] text-muted-foreground">
                       {uploadingKey === key
-                        ? "Uploading…"
+                        ? t("settings.connectors.upload.uploading")
                         : connectorConfig[key]
-                        ? `Ready: ${connectorConfig[key]}`
-                        : "Pick the exported file"}
+                        ? t("settings.connectors.upload.ready", { path: connectorConfig[key] })
+                        : t("settings.connectors.upload.pickFile")}
                     </p>
                   </div>
                 ) : (
@@ -448,11 +479,11 @@ export function Connectors() {
                 )
               )}
               <div className="space-y-1">
-                <Label className="text-xs">Project (optional)</Label>
+                <Label className="text-xs">{t("settings.connectors.projectOptional")}</Label>
                 <Input
                   value={importProject}
                   onChange={(e) => setImportProject(e.target.value)}
-                  placeholder="my-repo"
+                  placeholder={t("settings.connectors.projectPlaceholder")}
                 />
               </div>
             </div>
@@ -499,7 +530,7 @@ export function Connectors() {
                     onChange={(e) => setUseGate(e.target.checked)}
                     className="rounded"
                   />
-                  Route through admission gate
+                  {t("settings.connectors.admissionGate")}
                 </label>
                 <label
                   className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer"
@@ -525,7 +556,7 @@ export function Connectors() {
                 ) : (
                   <Upload className="h-3.5 w-3.5" />
                 )}
-                Run import
+                {t("settings.connectors.runImport")}
               </Button>
             </div>
 
@@ -541,7 +572,7 @@ export function Connectors() {
         {syncState.length > 0 && (
           <div className="pt-3 border-t">
             <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70 mb-2">
-              Sync history
+              {t("settings.connectors.syncHistory")}
             </p>
             <div className="space-y-1.5">
               {syncState.map((s) => {
@@ -560,7 +591,7 @@ export function Connectors() {
                       </Badge>
                     )}
                     <span className="text-muted-foreground ml-auto">
-                      {s.total_stored} stored ·{" "}
+                      {t("settings.connectors.storedCount", { count: s.total_stored })} ·{" "}
                       {new Date(s.last_synced_at).toLocaleDateString("en-GB", {
                         day: "numeric",
                         month: "short",
@@ -601,9 +632,9 @@ export function Connectors() {
                     )}
                     <span className="text-muted-foreground ml-auto">
                       {j.status === "done" && j.result
-                        ? `${j.result.stored} stored`
+                        ? t("settings.connectors.storedCount", { count: j.result.stored })
                         : j.status === "error"
-                        ? j.error ?? "failed"
+                        ? j.error ?? t("settings.connectors.failed")
                         : j.status}
                     </span>
                   </div>
