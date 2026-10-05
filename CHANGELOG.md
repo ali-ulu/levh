@@ -5,7 +5,7 @@
 ### i18n: move the Memories page into the catalogue (#465)
 
 - Memories page/search/filter/empty-state/edit-dialog/action/relative-time/delete-confirm copy now resolves through `useT()`.
-- Memory/project/source/tag/session values and enum values remain runtime data; locale and non-UI diagnostics remain technical. The 38-hit UI-string baseline is provisionally removed pending detector residual verification.
+- Memory/project/source/tag/session values and enum values remain runtime data; locale and non-UI diagnostics remain technical. The UI-string ratchet drops from 38 to 3, leaving only technical locale/diagnostic/class-token residuals.
 
 
 ### i18n: move Connectors settings into the catalogue (#463)
