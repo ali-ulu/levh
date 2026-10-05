@@ -4,7 +4,9 @@ import tr from "./tr.json";
 import { translate } from "./translate";
 
 function placeholders(value: string): string[] {
-  return [...value.matchAll(/\{(\w+)\}/g)].map((match) => match[1]).sort();
+  return (value.match(/\{\w+\}/g) ?? [])
+    .map((token) => token.slice(1, -1))
+    .sort();
 }
 
 describe("i18n catalogues", () => {
