@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { beforeEach, describe, expect, it } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -12,18 +11,13 @@ import {
 function Probe() {
   const { locale, setLocale } = useLocale();
   const t = useT();
-  const [, forceRender] = useState(0);
-
   return (
     <div>
       <span data-testid="locale">{locale}</span>
       <span>{t("app.settings.title")}</span>
       <button
         type="button"
-        onClick={() => {
-          setLocale(locale === "en" ? "tr" : "en");
-          forceRender((value) => value + 1);
-        }}
+        onClick={() => setLocale(locale === "en" ? "tr" : "en")}
       >
         toggle
       </button>
