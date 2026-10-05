@@ -790,5 +790,11 @@
   "memoryDetail.score.formula": "H(x,ψ) = α(1−similarity) + β(1−decay) + γ(1−importance) + δ(1−frequency)",
   "app.metadata.title": "LEVH",
   "app.metadata.description": "LEVH — local-first context continuity for AI work.",
-  "app.metadata.applicationName": "LEVH"
+  "app.metadata.applicationName": "LEVH",
+  "locale.switcher.english": "English",
+  "locale.switcher.turkish": "Türkçe",
+  "locale.switcher.enShort": "EN",
+  "locale.switcher.trShort": "TR",
+  "locale.switcher.switchTo": "Switch to {language}",
+  "locale.switcher.title": "Language: {language}"
 }
