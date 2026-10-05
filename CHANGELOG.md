@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### i18n: move the Findings page into the catalogue (#453)
+
+- Findings tabs, heading/subtitle, refresh/empty state, occurrence/timeline/note copy, note placeholder, and review/delete actions now resolve through `useT()`.
+- Finding title/detail/source/status/severity/category/timestamps remain runtime data; the UI-string ratchet entry for `src/app/findings/page.tsx` drops from 19 to 0.
+
+
 ### i18n: move Server Configuration into the catalogue (#449)
 
 - Server Configuration labels, units/state copy, and explanatory prose now resolve through `useT()`.

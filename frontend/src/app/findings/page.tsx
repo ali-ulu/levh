@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -19,12 +20,12 @@ import {
   XCircle,
 } from "lucide-react";
 
-const TABS: { status: string; label: string }[] = [
-  { status: "open", label: "Open" },
-  { status: "ack", label: "Acknowledged" },
-  { status: "resolved", label: "Resolved" },
-  { status: "ignored", label: "Ignored" },
-  { status: "", label: "All" },
+const TABS: { status: string; labelKey: string }[] = [
+  { status: "open", labelKey: "app.findings.tab.open" },
+  { status: "ack", labelKey: "app.findings.tab.acknowledged" },
+  { status: "resolved", labelKey: "app.findings.tab.resolved" },
+  { status: "ignored", labelKey: "app.findings.tab.ignored" },
+  { status: "", labelKey: "app.findings.tab.all" },
 ];
 
 const SEVERITY_STYLE: Record<string, string> = {
@@ -41,6 +42,7 @@ function when(value: string | null) {
 }
 
 export default function FindingsPage() {
+  const t = useT();
   const [items, setItems] = useState<Finding[]>([]);
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [tab, setTab] = useState("open");
@@ -93,17 +95,14 @@ export default function FindingsPage() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold">Findings</h1>
+          <h1 className="text-2xl font-bold">{t("app.findings.title")}</h1>
           <p className="text-sm text-muted-foreground mt-1 max-w-3xl">
-            What LEVH noticed about itself and its environment. Every entry is a
-            report, never an action: nothing here changes code, runs a command,
-            or leaves this machine. Repeats fold into one row — the counter says
-            how often a problem was seen, not how many reports piled up.
+            {t("app.findings.subtitle")}
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={load} disabled={loading}>
           <RefreshCw className={"h-4 w-4 mr-1.5 " + (loading ? "animate-spin" : "")} />
-          Refresh
+          {t("app.findings.refresh")}
         </Button>
       </div>
 
@@ -115,7 +114,7 @@ export default function FindingsPage() {
             variant={tab === t.status ? "default" : "outline"}
             onClick={() => setTab(t.status)}
           >
-            {t.label}
+            {t(t.labelKey)}
             {counts[t.status] ? (
               <span className="ml-1.5 opacity-70">{counts[t.status]}</span>
             ) : null}
@@ -131,7 +130,7 @@ export default function FindingsPage() {
         <Card>
           <CardContent className="py-12 text-center text-sm text-muted-foreground space-y-2">
             <Inbox className="h-8 w-8 mx-auto opacity-40" />
-            <p>Nothing here. An empty inbox means nothing was reported, not that nothing is wrong.</p>
+            <p>{t("app.findings.empty")}</p>
           </CardContent>
         </Card>
       ) : (
@@ -152,12 +151,12 @@ export default function FindingsPage() {
                       </Badge>
                       <Badge variant="outline">{f.category}</Badge>
                       {f.occurrences > 1 ? (
-                        <Badge variant="outline">seen {f.occurrences}×</Badge>
+                        <Badge variant="outline">{t("app.findings.seen", { count: f.occurrences })}</Badge>
                       ) : null}
                       {!tab ? <Badge variant="outline">{f.status}</Badge> : null}
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      {f.source} · first {when(f.first_seen_at)} · last {when(f.last_seen_at)}
+                      {t("app.findings.timeline", { source: f.source, first: when(f.first_seen_at), last: when(f.last_seen_at) })}
                     </div>
                   </div>
                   <code className="text-xs text-muted-foreground shrink-0">{f.id}</code>
@@ -171,13 +170,13 @@ export default function FindingsPage() {
 
                 {f.note ? (
                   <p className="text-xs text-muted-foreground">
-                    <span className="font-medium">Note:</span> {f.note}
+                    <span className="font-medium">{t("app.findings.noteLabel")}</span> {f.note}
                   </p>
                 ) : null}
 
                 <div className="flex gap-2 flex-wrap items-center">
                   <Input
-                    placeholder="Note (optional)"
+                    placeholder={t("app.findings.notePlaceholder")}
                     className="h-8 max-w-xs"
                     value={notes[f.id] ?? ""}
                     onChange={(e) =>
@@ -192,7 +191,7 @@ export default function FindingsPage() {
                       onClick={() => decide(f.id, "ack")}
                     >
                       <Eye className="h-4 w-4 mr-1.5" />
-                      Acknowledge
+                      {t("app.findings.action.acknowledge")}
                     </Button>
                   ) : null}
                   <Button
@@ -202,7 +201,7 @@ export default function FindingsPage() {
                     onClick={() => decide(f.id, "resolved")}
                   >
                     <Check className="h-4 w-4 mr-1.5" />
-                    Resolved
+                    {t("app.findings.action.resolved")}
                   </Button>
                   <Button
                     size="sm"
@@ -211,7 +210,7 @@ export default function FindingsPage() {
                     onClick={() => decide(f.id, "ignored")}
                   >
                     <XCircle className="h-4 w-4 mr-1.5" />
-                    Ignore
+                    {t("app.findings.action.ignore")}
                   </Button>
                   {f.status !== "open" ? (
                     <Button
@@ -221,7 +220,7 @@ export default function FindingsPage() {
                       onClick={() => decide(f.id, "open")}
                     >
                       <RotateCcw className="h-4 w-4 mr-1.5" />
-                      Reopen
+                      {t("app.findings.action.reopen")}
                     </Button>
                   ) : null}
                   <Button
@@ -231,7 +230,7 @@ export default function FindingsPage() {
                     onClick={() => remove(f.id)}
                   >
                     <Trash2 className="h-4 w-4 mr-1.5" />
-                    Delete
+                    {t("app.findings.action.delete")}
                   </Button>
                 </div>
               </CardContent>
