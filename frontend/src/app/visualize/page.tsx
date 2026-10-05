@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 import { trustLabelColor, trustLabelHex, trustLabelText, TRUST_LABEL_ORDER } from "@/lib/trust-ui";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -45,6 +46,7 @@ function ChartCard({
   children: React.ReactNode;
   empty?: boolean;
 }) {
+  const t = useT();
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -53,7 +55,7 @@ function ChartCard({
       </CardHeader>
       <CardContent>
         {empty ? (
-          <p className="text-sm text-muted-foreground py-10 text-center">No data yet.</p>
+          <p className="text-sm text-muted-foreground py-10 text-center">{t("app.visualize.noData")}</p>
         ) : (
           children
         )}
@@ -63,6 +65,7 @@ function ChartCard({
 }
 
 export default function InsightsPage() {
+  const t = useT();
   const [memories, setMemories] = useState<Memory[]>([]);
   const [tags, setTags] = useState<TagCount[]>([]);
   const [sources, setSources] = useState<Source[]>([]);
@@ -120,7 +123,7 @@ export default function InsightsPage() {
   // Timeline: memories per day
   const byDate = new Map<string, number>();
   memories.forEach((m) => {
-    const date = m.created_at?.split("T")[0] || "unknown";
+    const date = m.created_at?.split("T")[0] || t("app.visualize.unknownDate");
     byDate.set(date, (byDate.get(date) || 0) + 1);
   });
   const timeline = Array.from(byDate.entries())
@@ -138,26 +141,26 @@ export default function InsightsPage() {
 
   // Type breakdown
   const typeCounts = [
-    { name: "Episodic", count: memories.filter((m) => m.memory_type === "episodic").length },
-    { name: "Short-term", count: memories.filter((m) => m.memory_type === "short_term").length },
-    { name: "Pinned", count: memories.filter((m) => m.pinned).length },
+    { name: t("app.visualize.layer.episodic"), count: memories.filter((m) => m.memory_type === "episodic").length },
+    { name: t("app.visualize.layer.shortTerm"), count: memories.filter((m) => m.memory_type === "short_term").length },
+    { name: t("app.visualize.layer.pinned"), count: memories.filter((m) => m.pinned).length },
   ];
 
   // Memory durability (stability half-life in days) — unreinforced memories
   // stay near the 7-day default; recalled/reinforced ones climb the buckets.
   const stabilityDays = (m: Memory) => m.stability_hours / 24;
   const durabilityBuckets = [
-    { name: "<7d", count: memories.filter((m) => stabilityDays(m) < 7).length },
-    { name: "7–14d", count: memories.filter((m) => stabilityDays(m) >= 7 && stabilityDays(m) < 14).length },
-    { name: "14–30d", count: memories.filter((m) => stabilityDays(m) >= 14 && stabilityDays(m) < 30).length },
-    { name: "30–90d", count: memories.filter((m) => stabilityDays(m) >= 30 && stabilityDays(m) < 90).length },
-    { name: "90d+", count: memories.filter((m) => stabilityDays(m) >= 90).length },
+    { name: t("app.visualize.durability.lt7"), count: memories.filter((m) => stabilityDays(m) < 7).length },
+    { name: t("app.visualize.durability.7to14"), count: memories.filter((m) => stabilityDays(m) >= 7 && stabilityDays(m) < 14).length },
+    { name: t("app.visualize.durability.14to30"), count: memories.filter((m) => stabilityDays(m) >= 14 && stabilityDays(m) < 30).length },
+    { name: t("app.visualize.durability.30to90"), count: memories.filter((m) => stabilityDays(m) >= 30 && stabilityDays(m) < 90).length },
+    { name: t("app.visualize.durability.90plus"), count: memories.filter((m) => stabilityDays(m) >= 90).length },
   ];
 
   // Projects
   const byProject = new Map<string, number>();
   memories.forEach((m) => {
-    const key = m.project || "(no project)";
+    const key = m.project || t("app.visualize.noProject");
     byProject.set(key, (byProject.get(key) || 0) + 1);
   });
   const projectData = Array.from(byProject.entries())
@@ -180,9 +183,9 @@ export default function InsightsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Insights</h1>
+        <h1 className="text-2xl font-bold">{t("app.visualize.title")}</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          How your memory grows and where it comes from. {memories.length} memories analyzed.
+          {t("app.visualize.subtitle", { count: memories.length })}
         </p>
       </div>
 
@@ -190,7 +193,7 @@ export default function InsightsPage() {
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium flex items-center gap-2">
             <ShieldCheck className="h-4 w-4" />
-            Trust distribution
+            {t("app.visualize.trust.title")}
             <Button
               size="sm"
               variant="outline"
@@ -203,20 +206,20 @@ export default function InsightsPage() {
               ) : (
                 <RefreshCw className="h-3 w-3 mr-1.5" />
               )}
-              Recompute trust
+              {t("app.visualize.trust.recompute")}
             </Button>
           </CardTitle>
           <p className="text-xs text-muted-foreground">
-            Provenance/corroboration confidence across all scored memories.
+            {t("app.visualize.trust.subtitle")}
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
           {!byLabel ? (
             <p className="text-sm text-muted-foreground py-6 text-center">
-              Run recompute to see the distribution.
+              {t("app.visualize.trust.runPrompt")}
             </p>
           ) : trustTotal === 0 ? (
-            <p className="text-sm text-muted-foreground py-6 text-center">No memories scored yet.</p>
+            <p className="text-sm text-muted-foreground py-6 text-center">{t("app.visualize.trust.noneScored")}</p>
           ) : (
             <>
               <ResponsiveContainer width="100%" height={140}>
@@ -229,7 +232,7 @@ export default function InsightsPage() {
                   <XAxis type="number" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} allowDecimals={false} />
                   <YAxis type="category" dataKey="name" width={90} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
                   <Tooltip contentStyle={tooltipStyle} cursor={{ fill: "rgba(120,120,120,0.08)" }} />
-                  <Bar dataKey="count" name="Memories" radius={[0, 4, 4, 0]} maxBarSize={20}>
+                  <Bar dataKey="count" name={t("app.visualize.series.memories")} radius={[0, 4, 4, 0]} maxBarSize={20}>
                     {trustChartData.map((d) => (
                       <Cell key={d.label} fill={trustLabelHex(d.label)} />
                     ))}
@@ -239,16 +242,16 @@ export default function InsightsPage() {
 
               <div>
                 <div className="text-xs font-medium text-muted-foreground mb-1.5">
-                  Lowest-trust memories
+                  {t("app.visualize.trust.lowest")}
                 </div>
                 {lowTrustLoading ? (
                   <div className="flex items-center gap-2 text-xs text-muted-foreground py-3">
                     <Loader2 className="h-3 w-3 animate-spin" />
-                    Loading...
+                    {t("app.visualize.loading")}
                   </div>
                 ) : lowTrust.length === 0 ? (
                   <p className="text-xs text-muted-foreground py-2">
-                    No memories below the low-trust threshold.
+                    {t("app.visualize.trust.noneLow")}
                   </p>
                 ) : (
                   <div className="space-y-1.5">
@@ -281,8 +284,8 @@ export default function InsightsPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <ChartCard
-          title="Memory growth"
-          subtitle="New memories stored per day"
+          title={t("app.visualize.chart.growth.title")}
+          subtitle={t("app.visualize.chart.growth.subtitle")}
           empty={noData || timeline.length === 0}
         >
           <ResponsiveContainer width="100%" height={220}>
@@ -294,7 +297,7 @@ export default function InsightsPage() {
               <Area
                 type="monotone"
                 dataKey="count"
-                name="Memories"
+                name={t("app.visualize.series.memories")}
                 stroke={SERIES}
                 strokeWidth={2}
                 fill={SERIES}
@@ -305,8 +308,8 @@ export default function InsightsPage() {
         </ChartCard>
 
         <ChartCard
-          title="Importance distribution"
-          subtitle="How critical your stored memories are (0 = low, 1 = critical)"
+          title={t("app.visualize.chart.importance.title")}
+          subtitle={t("app.visualize.chart.importance.subtitle")}
           empty={noData}
         >
           <ResponsiveContainer width="100%" height={220}>
@@ -315,14 +318,14 @@ export default function InsightsPage() {
               <XAxis dataKey="name" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
               <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} allowDecimals={false} />
               <Tooltip contentStyle={tooltipStyle} cursor={{ fill: "rgba(120,120,120,0.08)" }} />
-              <Bar dataKey="count" name="Memories" fill={SERIES} radius={[4, 4, 0, 0]} maxBarSize={48} />
+              <Bar dataKey="count" name={t("app.visualize.series.memories")} fill={SERIES} radius={[4, 4, 0, 0]} maxBarSize={48} />
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>
 
         <ChartCard
-          title="Memory durability"
-          subtitle="Half-life of stored memories — grows each time one is recalled or reinforced"
+          title={t("app.visualize.chart.durability.title")}
+          subtitle={t("app.visualize.chart.durability.subtitle")}
           empty={noData}
         >
           <ResponsiveContainer width="100%" height={220}>
@@ -331,12 +334,12 @@ export default function InsightsPage() {
               <XAxis dataKey="name" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
               <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} allowDecimals={false} />
               <Tooltip contentStyle={tooltipStyle} cursor={{ fill: "rgba(120,120,120,0.08)" }} />
-              <Bar dataKey="count" name="Memories" fill={SERIES} radius={[4, 4, 0, 0]} maxBarSize={48} />
+              <Bar dataKey="count" name={t("app.visualize.series.memories")} fill={SERIES} radius={[4, 4, 0, 0]} maxBarSize={48} />
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Memory layers" subtitle="Episodic vs short-term vs pinned" empty={noData}>
+        <ChartCard title={t("app.visualize.chart.layers.title")} subtitle={t("app.visualize.chart.layers.subtitle")} empty={noData}>
           <ResponsiveContainer width="100%" height={200}>
             <BarChart
               data={typeCounts}
@@ -347,14 +350,14 @@ export default function InsightsPage() {
               <XAxis type="number" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} allowDecimals={false} />
               <YAxis type="category" dataKey="name" width={80} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
               <Tooltip contentStyle={tooltipStyle} cursor={{ fill: "rgba(120,120,120,0.08)" }} />
-              <Bar dataKey="count" name="Memories" fill={SERIES} radius={[0, 4, 4, 0]} maxBarSize={22} />
+              <Bar dataKey="count" name={t("app.visualize.series.memories")} fill={SERIES} radius={[0, 4, 4, 0]} maxBarSize={22} />
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>
 
         <ChartCard
-          title="Memories by source"
-          subtitle="Which AI clients are writing to memory"
+          title={t("app.visualize.chart.sources.title")}
+          subtitle={t("app.visualize.chart.sources.subtitle")}
           empty={sourceData.length === 0}
         >
           <ResponsiveContainer width="100%" height={200}>
@@ -367,14 +370,14 @@ export default function InsightsPage() {
               <XAxis type="number" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} allowDecimals={false} />
               <YAxis type="category" dataKey="name" width={110} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
               <Tooltip contentStyle={tooltipStyle} cursor={{ fill: "rgba(120,120,120,0.08)" }} />
-              <Bar dataKey="count" name="Memories" fill={SERIES} radius={[0, 4, 4, 0]} maxBarSize={22} />
+              <Bar dataKey="count" name={t("app.visualize.series.memories")} fill={SERIES} radius={[0, 4, 4, 0]} maxBarSize={22} />
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>
 
         <ChartCard
-          title="Memories by project"
-          subtitle="Top workspaces"
+          title={t("app.visualize.chart.projects.title")}
+          subtitle={t("app.visualize.chart.projects.subtitle")}
           empty={projectData.length === 0}
         >
           <ResponsiveContainer width="100%" height={220}>
@@ -387,12 +390,12 @@ export default function InsightsPage() {
               <XAxis type="number" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} allowDecimals={false} />
               <YAxis type="category" dataKey="name" width={110} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
               <Tooltip contentStyle={tooltipStyle} cursor={{ fill: "rgba(120,120,120,0.08)" }} />
-              <Bar dataKey="count" name="Memories" fill={SERIES} radius={[0, 4, 4, 0]} maxBarSize={22} />
+              <Bar dataKey="count" name={t("app.visualize.series.memories")} fill={SERIES} radius={[0, 4, 4, 0]} maxBarSize={22} />
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Top tags" subtitle="Most used tags across all memories" empty={tagData.length === 0}>
+        <ChartCard title={t("app.visualize.chart.tags.title")} subtitle={t("app.visualize.chart.tags.subtitle")} empty={tagData.length === 0}>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart
               data={tagData}
@@ -403,7 +406,7 @@ export default function InsightsPage() {
               <XAxis type="number" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} allowDecimals={false} />
               <YAxis type="category" dataKey="name" width={110} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
               <Tooltip contentStyle={tooltipStyle} cursor={{ fill: "rgba(120,120,120,0.08)" }} />
-              <Bar dataKey="count" name="Uses" fill={SERIES} radius={[0, 4, 4, 0]} maxBarSize={22} />
+              <Bar dataKey="count" name={t("app.visualize.series.uses")} fill={SERIES} radius={[0, 4, 4, 0]} maxBarSize={22} />
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>

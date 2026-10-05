@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### i18n: move the Visualize insights page into the catalogue (#469)
+
+- Insights/trust copy, chart titles/subtitles, chart series display names, empty/loading states, memory layer labels, durability bucket labels, and project/date fallbacks now resolve through `useT()`.
+- API values, trust enum values, chart field keys, and Recharts configuration remain runtime/technical data. The UI-string ratchet for `src/app/visualize/page.tsx` drops from 39 to 0.
+
+
 ### i18n: move the Home dashboard into the catalogue (#467)
 
 - Home hero/status copy, metric cards, recent-memory labels, knowledge/network panels, briefing copy, conflict/review signals, empty states, and relative-time copy now resolve through `useT()`.
