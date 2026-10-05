@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### i18n: move Memory Quick Add into the catalogue (#461)
+
+- Memory Quick Add template labels/prompts/examples, dialog/accessibility copy, capture fields, pin/action copy, and fallback error now resolve through `useT()`.
+- Template ids/tags, source/memory-type values, hash target, and keyboard event keys remain technical/runtime data; the UI-string ratchet for `src/components/memory-quick-add.tsx` is provisionally tightened from 30 to 2 for the two `Enter` key literals.
+
+
 ### i18n: move the Mistake Guard page into the catalogue (#459)
 
 - Guard heading/subtitle, refresh/error/empty states, rule/incident headings and counts, task labels, severity display/filter labels, empty-filter copy, and table headings now resolve through `useT()`.

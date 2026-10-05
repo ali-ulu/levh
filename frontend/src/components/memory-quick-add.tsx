@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -28,39 +29,40 @@ import {
 const TEMPLATES = [
   {
     id: "decision",
-    label: "Decision",
+    labelKey: "memoryQuickAdd.template.decision.label",
     icon: CheckCircle2,
-    placeholder: "What did you decide and why?",
-    example: "We chose SQLite over PostgreSQL because...",
+    placeholderKey: "memoryQuickAdd.template.decision.placeholder",
+    exampleKey: "memoryQuickAdd.template.decision.example",
     tags: ["decision", "architecture"],
   },
   {
     id: "convention",
-    label: "Convention",
+    labelKey: "memoryQuickAdd.template.convention.label",
     icon: FileText,
-    placeholder: "What's the rule or convention to follow?",
-    example: "All API responses should use snake_case keys...",
+    placeholderKey: "memoryQuickAdd.template.convention.placeholder",
+    exampleKey: "memoryQuickAdd.template.convention.example",
     tags: ["convention", "standards"],
   },
   {
     id: "context",
-    label: "Context",
+    labelKey: "memoryQuickAdd.template.context.label",
     icon: BookOpen,
-    placeholder: "What context should your AI remember?",
-    example: "The auth module uses JWT tokens with 24h expiry...",
+    placeholderKey: "memoryQuickAdd.template.context.placeholder",
+    exampleKey: "memoryQuickAdd.template.context.example",
     tags: ["context"],
   },
   {
     id: "insight",
-    label: "Insight",
+    labelKey: "memoryQuickAdd.template.insight.label",
     icon: Lightbulb,
-    placeholder: "What did you learn or realize?",
-    example: "The bug was caused by a race condition in...",
+    placeholderKey: "memoryQuickAdd.template.insight.placeholder",
+    exampleKey: "memoryQuickAdd.template.insight.example",
     tags: ["insight", "debugging"],
   },
 ];
 
 export function MemoryQuickAdd({ onAdded }: { onAdded?: () => void }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [content, setContent] = useState("");
   const [tags, setTags] = useState<string[]>([]);
@@ -112,7 +114,7 @@ export function MemoryQuickAdd({ onAdded }: { onAdded?: () => void }) {
       setOpen(false);
       onAdded?.();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to store memory");
+      setError(e instanceof Error ? e.message : t("memoryQuickAdd.error.storeFailed"));
     } finally {
       setSaving(false);
     }
@@ -151,7 +153,7 @@ export function MemoryQuickAdd({ onAdded }: { onAdded?: () => void }) {
           setOpen(true);
         }}
         className="fab-button"
-        aria-label="Add new memory"
+        aria-label={t("memoryQuickAdd.addNewMemory")}
       >
         <Plus className="h-5 w-5" />
       </button>
@@ -168,7 +170,7 @@ export function MemoryQuickAdd({ onAdded }: { onAdded?: () => void }) {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-lg">
               <Sparkles className="h-5 w-5 text-primary" />
-              Add to your memory
+              {t("memoryQuickAdd.title")}
             </DialogTitle>
           </DialogHeader>
 
@@ -177,7 +179,7 @@ export function MemoryQuickAdd({ onAdded }: { onAdded?: () => void }) {
             {!selectedTemplate && (
               <div className="space-y-2">
                 <Label className="text-xs text-muted-foreground">
-                  What kind of memory?
+                  {t("memoryQuickAdd.kindPrompt")}
                 </Label>
                 <div className="grid grid-cols-2 gap-2">
                   {TEMPLATES.map((template) => {
@@ -191,10 +193,10 @@ export function MemoryQuickAdd({ onAdded }: { onAdded?: () => void }) {
                         <Icon className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
                         <div className="text-left">
                           <span className="text-sm font-medium">
-                            {template.label}
+                            {t(template.labelKey)}
                           </span>
                           <span className="block text-[11px] text-muted-foreground mt-0.5">
-                            {template.placeholder}
+                            {t(template.placeholderKey)}
                           </span>
                         </div>
                         <ArrowRight className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -209,13 +211,14 @@ export function MemoryQuickAdd({ onAdded }: { onAdded?: () => void }) {
             <div className="space-y-1">
               <Label className="text-xs text-muted-foreground">
                 {activeTemplate
-                  ? activeTemplate.placeholder
-                  : "What should your AI remember?"}
+                  ? t(activeTemplate.placeholderKey)
+                  : t("memoryQuickAdd.contentPrompt")}
               </Label>
               <Textarea
                 placeholder={
-                  activeTemplate?.example ||
-                  "A decision, convention, fact, or insight..."
+                  activeTemplate
+                    ? t(activeTemplate.exampleKey)
+                    : t("memoryQuickAdd.contentPlaceholder")
                 }
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
@@ -230,9 +233,9 @@ export function MemoryQuickAdd({ onAdded }: { onAdded?: () => void }) {
             {/* Tags */}
             <div className="space-y-1">
               <Label className="text-xs text-muted-foreground">
-                Tags{" "}
+                {t("memoryQuickAdd.tags")}{" "}
                 <span className="text-muted-foreground/60">
-                  (press Enter to add)
+                  {t("memoryQuickAdd.tagsHint")}
                 </span>
               </Label>
               <div className="flex flex-wrap gap-1.5 mb-2">
@@ -248,7 +251,7 @@ export function MemoryQuickAdd({ onAdded }: { onAdded?: () => void }) {
                 ))}
               </div>
               <Input
-                placeholder="Add a tag..."
+                placeholder={t("memoryQuickAdd.addTagPlaceholder")}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     e.preventDefault();
@@ -263,17 +266,17 @@ export function MemoryQuickAdd({ onAdded }: { onAdded?: () => void }) {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">
-                  Project (optional)
+                  {t("memoryQuickAdd.projectOptional")}
                 </Label>
                 <Input
                   value={project}
                   onChange={(e) => setProject(e.target.value)}
-                  placeholder="my-repo"
+                  placeholder={t("memoryQuickAdd.projectPlaceholder")}
                 />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">
-                  Importance: {importance.toFixed(1)}
+                  {t("memoryQuickAdd.importance", { value: importance.toFixed(1) })}
                 </Label>
                 <input
                   type="range"
@@ -296,7 +299,7 @@ export function MemoryQuickAdd({ onAdded }: { onAdded?: () => void }) {
                 onClick={() => setPinned(!pinned)}
               >
                 <Pin className="h-3.5 w-3.5 mr-1.5" />
-                {pinned ? "Pinned — never decays" : "Pin memory"}
+                {pinned ? t("memoryQuickAdd.pinned") : t("memoryQuickAdd.pin")}
               </Button>
 
               <div className="flex items-center gap-3">
@@ -307,7 +310,7 @@ export function MemoryQuickAdd({ onAdded }: { onAdded?: () => void }) {
                 )}
                 {selectedTemplate && (
                   <Button variant="ghost" size="sm" onClick={reset}>
-                    Back
+                    {t("memoryQuickAdd.back")}
                   </Button>
                 )}
                 <Button
@@ -320,7 +323,7 @@ export function MemoryQuickAdd({ onAdded }: { onAdded?: () => void }) {
                   ) : (
                     <Zap className="h-4 w-4" />
                   )}
-                  Store memory
+                  {t("memoryQuickAdd.store")}
                 </Button>
               </div>
             </div>
