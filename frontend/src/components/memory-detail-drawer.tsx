@@ -590,8 +590,7 @@ export function MemoryDetailDrawer({
               </div>
 
               <p className="text-xs text-muted-foreground">
-                H(x,&psi;) = &alpha;(1−similarity) + &beta;(1−decay) + &gamma;(1−importance) +
-                &delta;(1−frequency)
+                {t("memoryDetail.score.formula")}
               </p>
 
               {breakdownLoading && (
