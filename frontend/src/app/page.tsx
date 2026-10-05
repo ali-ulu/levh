@@ -45,21 +45,21 @@ function fmt(value?: number | null) {
   return new Intl.NumberFormat("en", { notation: value > 9999 ? "compact" : "standard", maximumFractionDigits: 1 }).format(value);
 }
 
+function relativeDate(value: string, t: ReturnType<typeof useT>) {
+  const time = new Date(value).getTime();
+  if (!Number.isFinite(time)) return "";
+  const delta = Math.max(0, Date.now() - time);
+  const minutes = Math.floor(delta / 60000);
+  if (minutes < 1) return t("app.home.relative.now");
+  if (minutes < 60) return t("app.home.relative.minutes", { count: minutes });
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return t("app.home.relative.hours", { count: hours });
+  const days = Math.floor(hours / 24);
+  return t("app.home.relative.days", { count: days });
+}
+
 export default function Dashboard() {
   const t = useT();
-
-  const relativeDate = (value: string) => {
-    const time = new Date(value).getTime();
-    if (!Number.isFinite(time)) return "";
-    const delta = Math.max(0, Date.now() - time);
-    const minutes = Math.floor(delta / 60000);
-    if (minutes < 1) return t("app.home.relative.now");
-    if (minutes < 60) return t("app.home.relative.minutes", { count: minutes });
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return t("app.home.relative.hours", { count: hours });
-    const days = Math.floor(hours / 24);
-    return t("app.home.relative.days", { count: days });
-  };
   const [stats, setStats] = useState<Stats | null>(null);
   const [onboarding, setOnboarding] = useState<OnboardingStatus | null>(null);
   const [recent, setRecent] = useState<Memory[]>([]);
@@ -196,7 +196,7 @@ export default function Dashboard() {
                       <span className="mt-1 flex items-center gap-2 text-[10px] text-muted-foreground">
                         <span>{memory.source || t("app.home.source.local")}</span>
                         <span>·</span>
-                        <span>{relativeDate(memory.created_at)}</span>
+                        <span>{relativeDate(memory.created_at, t)}</span>
                         {memory.project && <><span>·</span><span className="truncate">{memory.project}</span></>}
                       </span>
                     </span>
