@@ -5,14 +5,14 @@ Tarih: 2026-10-02 · Durum: karar verildi · Tür: tasarım kararı
 Design issue #308 asked for the extraction mechanism to be settled **before**
 any page was converted, because the mechanism decides how much of the ~20 pages
 has to be touched twice. This file records the decisions and the proof that the
-mechanism works. It is internal: it is a maintainer decision record for the shipped i18n
-architecture and its rollout history.
+mechanism works. It is internal: it is a maintainer decision record for the
+shipped i18n architecture and its rollout history.
 
 ## Decisions
 
 ### 1. Extraction mechanism — hand-managed catalogue, not a library
 
-Flat, key-addressed JSON catalogues (`frontend/src/lib/i18n/en.json` and
+A pair of flat, key-addressed JSON catalogues (`frontend/src/lib/i18n/en.json` and
 `frontend/src/lib/i18n/tr.json`) read by a pure server-safe translator
 (`frontend/src/lib/i18n/translate.ts`) plus the client hook module
 (`frontend/src/lib/i18n/index.ts`). The client module keeps the public
