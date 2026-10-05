@@ -340,5 +340,21 @@
   "settings.dataManagement.similar.none": "No consolidatable clusters (need ≥2 related, unpinned memories older than 7 days).",
   "settings.dataManagement.similar.found": "Found {clusters} cluster(s) covering {memories} memories. Click “Consolidate” to compress them.",
   "settings.dataManagement.consolidation.failed": "Consolidation failed",
-  "settings.dataManagement.similar.help": "Consolidation compresses clusters of related, aged (>7d), unpinned memories into one durable summary each — like sleep consolidating episodes into a gist. Originals are archived inside the summary, not lost."
+  "settings.dataManagement.similar.help": "Consolidation compresses clusters of related, aged (>7d), unpinned memories into one durable summary each — like sleep consolidating episodes into a gist. Originals are archived inside the summary, not lost.",
+  "settings.serverConfiguration.title": "Server Configuration",
+  "settings.serverConfiguration.embedder": "Embedder",
+  "settings.serverConfiguration.database": "Database",
+  "settings.serverConfiguration.shortTermCapacity": "Short-term capacity",
+  "settings.serverConfiguration.defaultHalfLife": "Default half-life",
+  "settings.serverConfiguration.hours": "{count} h",
+  "settings.serverConfiguration.weights": "weights",
+  "settings.serverConfiguration.reinforcementGain": "Reinforcement gain",
+  "settings.serverConfiguration.perRecall": "per recall",
+  "settings.serverConfiguration.maxStability": "Max stability",
+  "settings.serverConfiguration.days": "{count} days",
+  "settings.serverConfiguration.autoSummarize": "Auto-summarize sessions",
+  "settings.serverConfiguration.on": "on",
+  "settings.serverConfiguration.off": "off",
+  "settings.serverConfiguration.version": "Version",
+  "settings.serverConfiguration.help": "Every memory has its own half-life that starts at the default and grows every time it's recalled or reinforced — like spaced repetition. Configure via environment variables"
 }

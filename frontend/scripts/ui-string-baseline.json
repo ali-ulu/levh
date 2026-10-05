@@ -16,7 +16,7 @@
   "src/app/settings/_sections/connect-client.tsx": 8,
   "src/app/settings/_sections/connectors.tsx": 34,
   "src/app/settings/_sections/recall-quality.tsx": 7,
-  "src/app/settings/_sections/server-configuration.tsx": 17,
+  "src/app/settings/_sections/server-configuration.tsx": 4,
   "src/app/timeline/page.tsx": 3,
   "src/app/visualize/page.tsx": 39,
   "src/components/command-palette.tsx": 3,

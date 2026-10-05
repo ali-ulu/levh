@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### i18n: move Server Configuration into the catalogue (#449)
+
+- Server Configuration labels, units/state copy, and explanatory prose now resolve through `useT()`.
+- Server values, mathematical notation, dimension suffix, `.env`, and environment-variable identifiers remain technical/runtime data; the UI-string ratchet for `src/app/settings/_sections/server-configuration.tsx` drops from 17 to 4.
+
+
 ### i18n: move Data Management into the catalogue (#448)
 
 - Data Management actions, descriptions, import/export alerts, dedupe/consolidation results, fallback errors, and help copy now resolve through `useT()`.
