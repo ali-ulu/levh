@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### i18n: move the Memories page into the catalogue (#465)
+
+- Memories page/search/filter/empty-state/edit-dialog/action/relative-time/delete-confirm copy now resolves through `useT()`.
+- Memory/project/source/tag/session values and enum values remain runtime data; locale and non-UI diagnostics remain technical. The 38-hit UI-string baseline is provisionally removed pending detector residual verification.
+
+
 ### i18n: move Connectors settings into the catalogue (#463)
 
 - Connector descriptions/categories, server-offline guidance, upload/import/sync result copy, field/action labels, and sync-history copy now resolve through `useT()`.
