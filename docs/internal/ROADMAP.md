@@ -20,7 +20,7 @@ quietly dropped. Adding a row without a next step is what that test refuses.
 
 | Item | Topic | State | Next step | Reference |
 | --- | --- | --- | --- | --- |
-| 4 | Frontend i18n (more than one UI language) | in-progress | The English-copy extraction rollout is complete through the build-time metadata conversion (#478): user-facing copy is catalogue-backed across the dashboard, and remaining ratchet hits are intentionally pinned technical/runtime literals or detector false positives. The report item remains open because only `en` ships. Next product step: add a second locale plus the locale switcher/persistence path already designed in `docs/internal/I18N-DESIGN.md`. | #308, #478 |
+| 4 | Frontend i18n (more than one UI language) | done | — | #308, #478, #481 |
 | 5 | End-to-end tests over a real server and browser | done | — | #299 |
 | 6 | Page-level accessibility coverage (axe over each route) | done | — | #299 |
 | 8 | Not recorded at decision time | skipped | — | |
