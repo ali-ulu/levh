@@ -33,25 +33,9 @@
 // conversion stick: a user-visible literal that appears outside the catalogue
 // fails CI. See `docs/internal/I18N-DESIGN.md`.
 import { useCallback } from "react";
-import en from "./en.json";
-export const DEFAULT_LOCALE = "en";
+import { translate, type TranslationVars } from "./translate";
 
-type Catalogue = Record<string, string>;
-type Vars = Record<string, string | number>;
-
-const CATALOGUES: Record<string, Catalogue> = { en };
-
-/** Resolves `key` in `locale`, falling back to `en` and then to the key itself. */
-export function translate(key: string, vars?: Vars, locale: string = DEFAULT_LOCALE): string {
-  const catalogue = CATALOGUES[locale] ?? CATALOGUES[DEFAULT_LOCALE];
-  const template = catalogue[key] ?? CATALOGUES[DEFAULT_LOCALE][key] ?? key;
-  if (!vars) return template;
-  // `{name}` interpolation only. Plurals are out of scope until a locale needs
-  // them; adding them later is a change to this function, not to call sites.
-  return template.replace(/\{(\w+)\}/g, (match, name) =>
-    Object.prototype.hasOwnProperty.call(vars, name) ? String(vars[name]) : match
-  );
-}
+export { DEFAULT_LOCALE, translate } from "./translate";
 
 /**
  * Component-facing translator. Returns `t(key, vars?)`.
@@ -60,6 +44,6 @@ export function translate(key: string, vars?: Vars, locale: string = DEFAULT_LOC
  * switch to, and the persistence shape (localStorage, key `levh_locale`) is
  * recorded here so the switcher lands without touching call sites.
  */
-export function useT(): (key: string, vars?: Vars) => string {
-  return useCallback((key: string, vars?: Vars) => translate(key, vars), []);
+export function useT(): (key: string, vars?: TranslationVars) => string {
+  return useCallback((key: string, vars?: TranslationVars) => translate(key, vars), []);
 }

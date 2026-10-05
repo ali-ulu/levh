@@ -1,8 +1,19 @@
 import { describe, expect, it } from "vitest";
 import en from "./i18n/en.json";
-import { DEFAULT_LOCALE, translate } from "./i18n";
+import { translate as publicTranslate } from "./i18n";
+import { DEFAULT_LOCALE, translate } from "./i18n/translate";
 
 describe("translate", () => {
+  it("stays available through the client-facing public module", () => {
+    expect(publicTranslate("app.settings.title")).toBe("Settings");
+  });
+
+  it("resolves build-time metadata through the server-safe module", () => {
+    expect(translate("app.metadata.title")).toBe("LEVH");
+    expect(translate("app.metadata.description")).toContain("local-first");
+    expect(translate("app.metadata.applicationName")).toBe("LEVH");
+  });
+
   it("resolves a key from the en catalogue", () => {
     expect(translate("app.settings.title")).toBe("Settings");
     expect(translate("ui.dialog.close")).toBe("Close");

@@ -787,5 +787,8 @@
   "memoryDetail.related.loading": "Finding related memories...",
   "memoryDetail.related.empty": "No related memories found yet — store more content in this project to build connections.",
   "memoryDetail.related.help": "Computed live from embedding similarity — no manual linking needed.",
-  "memoryDetail.score.formula": "H(x,ψ) = α(1−similarity) + β(1−decay) + γ(1−importance) + δ(1−frequency)"
+  "memoryDetail.score.formula": "H(x,ψ) = α(1−similarity) + β(1−decay) + γ(1−importance) + δ(1−frequency)",
+  "app.metadata.title": "LEVH",
+  "app.metadata.description": "LEVH — local-first context continuity for AI work.",
+  "app.metadata.applicationName": "LEVH"
 }

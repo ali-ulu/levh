@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### i18n: make build-time metadata server-safe (#477)
+
+- Split pure catalogue translation into `src/lib/i18n/translate.ts` so build-time/server code can translate without importing the client hook.
+- Kept `@/lib/i18n` compatible by re-exporting `translate` and `DEFAULT_LOCALE`, while `useT()` remains client-only.
+- Routed root layout title, description, and application name through the catalogue; its UI-string ratchet drops from 4 to 1, leaving only the technical `afterInteractive` Script strategy token.
+- Added coverage for the server-safe metadata path and updated the i18n design record.
+
+
 ### i18n: move Memory Detail Drawer copy into the catalogue (#475)
 
 - Drawer actions/accessibility, trust, retention, metadata, score-breakdown, chart-tooltip, formula, and related-memory copy now resolve through `useT()`.

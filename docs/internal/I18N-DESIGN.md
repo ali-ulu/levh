@@ -12,9 +12,10 @@ user-facing promise that more than one language ships.
 
 ### 1. Extraction mechanism — hand-managed catalogue, not a library
 
-A flat, key-addressed JSON catalogue (`frontend/src/lib/i18n/en.json`) read by a
-small runtime (`frontend/src/lib/i18n/index.ts`) that exposes `useT()` and a
-pure `translate()`.
+A flat, key-addressed JSON catalogue (`frontend/src/lib/i18n/en.json`) read by
+a pure server-safe translator (`frontend/src/lib/i18n/translate.ts`) plus the
+client hook module (`frontend/src/lib/i18n/index.ts`). The client module keeps
+the public `translate()` export for compatibility and exposes `useT()`.
 
 Rejected: `next-intl` / `react-i18next` / `@lingui`. Each brings a runtime, a
 message format (ICU pluralisation, interpolation) and a build integration. The
@@ -81,10 +82,11 @@ The first follow-on conversion is the **app chrome**, which every page renders:
   tag names in the keyboard-shortcut guard (`INPUT`/`TEXTAREA`/`SELECT`), which
   are compared against `event.target.tagName`, not rendered.
 
-`src/app/layout.tsx` (4 hits) is **not** converted on purpose: its strings live
-in the Next.js `Metadata` export, which is evaluated at build time, outside any
-React client component. The catalogue hook cannot reach them, so they need a
-separate mechanism — a change to decide, not to sneak in here.
+`src/app/layout.tsx` is now converted through the server-safe
+`src/lib/i18n/translate.ts` module. Next.js build-time metadata resolves the
+title, description, and application name from the same catalogue without
+importing the client-only `useT()` hook. Its ratchet falls from 4 to 1; the
+remaining hit is the technical `afterInteractive` Script strategy token.
 
 Nothing else was converted. The remaining files keep their literals and their
 ratchet entries.

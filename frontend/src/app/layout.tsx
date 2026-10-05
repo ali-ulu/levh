@@ -5,12 +5,13 @@ import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AuthGate } from "@/components/auth-gate";
+import { translate } from "@/lib/i18n/translate";
 
 export const metadata: Metadata = {
-  title: "LEVH",
-  description: "LEVH — local-first context continuity for AI work.",
+  title: translate("app.metadata.title"),
+  description: translate("app.metadata.description"),
   manifest: "/manifest.webmanifest",
-  applicationName: "LEVH",
+  applicationName: translate("app.metadata.applicationName"),
   icons: [
     { rel: "icon", url: "/icon.png", type: "image/png" },
     { rel: "icon", url: "/icon-192.png", sizes: "192x192", type: "image/png" },
