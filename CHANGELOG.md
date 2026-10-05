@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### i18n: ship Turkish UI locale and switcher (#481)
+
+- Added a complete Turkish catalogue in `frontend/src/lib/i18n/tr.json`, kept `en` as the default/fallback locale, and added parity coverage so both catalogues carry the same keys and interpolation variables.
+- Added an English/Türkçe header switcher backed by `localStorage` key `levh_locale`; the selection survives reloads and updates the document language without adding locale route segments or request-time negotiation.
+- Kept the static export architecture unchanged and added unit/E2E coverage for Turkish translation, fallback, persistence, and reload behavior.
+
+
 ### docs: reconcile frontend i18n rollout status (#479)
 
 - Updated the internal roadmap to record that English-copy extraction is complete through #478 while the multi-language report item remains open because only `en` ships.
