@@ -5,7 +5,7 @@
 ### i18n: move the Projects page into the catalogue (#471)
 
 - Projects page/empty-state/dialog/action/help/error/count/date copy now resolves through `useT()`.
-- Project names, context filenames/content, format names, internal sentinels, locale/key identifiers, MIME values and CLI/MCP commands remain runtime/technical data; the UI-string ratchet for `src/app/projects/page.tsx` is provisionally tightened from 43 to 9.
+- Project names, context filenames/content, format names, internal sentinels, locale/key identifiers, MIME values and CLI/MCP commands remain runtime/technical data; the UI-string ratchet for `src/app/projects/page.tsx` drops from 43 to 7, leaving only technical/internal detector residuals.
 
 
 ### i18n: move the Visualize insights page into the catalogue (#469)

@@ -7,7 +7,7 @@
   "src/app/memories/page.tsx": 3,
   "src/app/organizations/page.tsx": 1,
   "src/app/people/page.tsx": 5,
-  "src/app/projects/page.tsx": 9,
+  "src/app/projects/page.tsx": 7,
   "src/app/review/page.tsx": 1,
   "src/app/sessions/page.tsx": 4,
   "src/app/settings/_sections/connect-client.tsx": 8,
