@@ -5,7 +5,7 @@ import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AuthGate } from "@/components/auth-gate";
-import { translate } from "@/lib/i18n/translate";
+import { DEFAULT_LOCALE, translate } from "@/lib/i18n/translate";\nimport { LocaleProvider } from "@/lib/i18n";
 
 export const metadata: Metadata = {
   title: translate("app.metadata.title"),
@@ -27,7 +27,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang={DEFAULT_LOCALE} suppressHydrationWarning>
       <body className="antialiased">
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} disableTransitionOnChange={false}>
           <div className="app-canvas min-h-screen">
