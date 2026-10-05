@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### i18n: move the Mistake Guard page into the catalogue (#459)
+
+- Guard heading/subtitle, refresh/error/empty states, rule/incident headings and counts, task labels, severity display/filter labels, empty-filter copy, and table headings now resolve through `useT()`.
+- `record_mistake` remains a technical tool identifier and rule/violation/project/source/tool/date values remain runtime data; the UI-string ratchet entry for `src/app/guard/page.tsx` drops from 20 to 0.
+
+
 ### i18n: move the Agents page into the catalogue (#457)
 
 - Agents loading/headings, stat labels/help, relative-time copy, breakdown counts, activity/checkpoint empty states, project/connectivity/status copy, and connection/session counts now resolve through `useT()`.
