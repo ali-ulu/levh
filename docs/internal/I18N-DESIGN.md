@@ -88,8 +88,12 @@ title, description, and application name from the same catalogue without
 importing the client-only `useT()` hook. Its ratchet falls from 4 to 1; the
 remaining hit is the technical `afterInteractive` Script strategy token.
 
-Nothing else was converted. The remaining files keep their literals and their
-ratchet entries.
+The surface-by-surface English-copy extraction rollout is now complete through
+#478. User-facing copy across the dashboard is catalogue-backed, including the
+build-time metadata path above. The remaining per-file ratchet entries are
+intentionally pinned technical/runtime literals or detector false positives
+documented by the individual conversion PRs; they are not a queue of untranslated
+English UI copy.
 
 ## The drift gate (the part that makes it stick)
 
@@ -127,8 +131,9 @@ The gate runs in `npm test` (via `src/lib/ui-string-ratchet.test.ts`), which the
 1. Settle the mechanism and where strings live — done here.
 2. Convert one page and the primitives it uses — done here.
 3. Add a test that fails on a literal outside the catalogue — done here.
-4. Convert the remaining pages — **not done**; each page is its own change and
-   lowers its own ratchet entry.
+4. Convert the remaining pages — done for the current one-locale extraction
+   scope through #478. Adding a second locale and wiring the switcher/persistence
+   path is the next product step if multi-language UI is resumed.
 
 ## Not in scope
 

@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### docs: reconcile frontend i18n rollout status (#479)
+
+- Updated the internal roadmap to record that English-copy extraction is complete through #478 while the multi-language report item remains open because only `en` ships.
+- Updated the i18n design record so the sequencing/status text matches the completed surface rollout and points the next product step at a second locale plus switcher/persistence.
+
+
 ### i18n: make build-time metadata server-safe (#477)
 
 - Split pure catalogue translation into `src/lib/i18n/translate.ts` so build-time/server code can translate without importing the client hook.
