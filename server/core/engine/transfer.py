@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
+from ..hscore import DEFAULT_HALF_LIFE_HOURS
 from ..restore_service import RestoreService
 from ..tenancy import authorize, current_workspace_id
 from ..types import (
@@ -44,12 +45,13 @@ class MemoryTransferMixin:
     ) -> dict:
         """Import user-supplied JSON through the deterministic admission gate.
 
-        The record's portable identity and lifecycle fields are preserved, but
-        untrusted embeddings are discarded and recomputed from the admitted
-        (possibly redacted) content using the active embedder. When
-        ``verified_federation`` is supplied by the signed-envelope boundary,
-        its verified origin metadata overwrites any sender-supplied
-        ``metadata.federation`` value before the gate acts. Rejected items
+        A normal JSON import preserves the record's portable identity and
+        lifecycle fields, but untrusted embeddings are discarded and recomputed
+        from the admitted (possibly redacted) content using the active embedder.
+        When ``verified_federation`` is supplied by the signed-envelope
+        boundary, peer provenance is preserved but receiver-owned authority is
+        reset before the gate acts: a peer cannot pin a local memory or import
+        its access frequency, recall count, stability, or decay clock. Rejected items
         are dropped; ``review`` items are held for a human (see
         ``hold_for_review``) rather than discarded, so an import cannot silently
         lose the half of a file the gate declined to decide on.  Each item is
@@ -64,7 +66,23 @@ class MemoryTransferMixin:
                 if verified_federation is not None:
                     metadata = dict(mem.metadata or {})
                     metadata["federation"] = dict(verified_federation)
-                    mem = mem.model_copy(update={"metadata": metadata})
+                    # Federation carries facts and provenance, not local
+                    # authority. The sender's pin/access history is meaningful
+                    # on the sender only; the receiver starts its own lifecycle
+                    # at admission time while preserving the sender's content,
+                    # importance, source, tags and world-time fields.
+                    mem = mem.model_copy(
+                        update={
+                            "metadata": metadata,
+                            "pinned": False,
+                            "frequency": 1,
+                            "accessed_at": datetime.now(timezone.utc).isoformat(),
+                            "decay_factor": 1.0,
+                            "stability_hours": DEFAULT_HALF_LIFE_HOURS,
+                            "recall_count": 0,
+                            "hscore": None,
+                        }
+                    )
                 decision = await self.evaluate_admission(
                     mem.content, project=mem.project
                 )
