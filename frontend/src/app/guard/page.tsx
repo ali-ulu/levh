@@ -66,7 +66,7 @@ export default function GuardPage() {
       setViolations([]);
     }
     setLoading(false);
-  }, [severity]);
+  }, [severity, t]);
 
   useEffect(() => {
     load();
