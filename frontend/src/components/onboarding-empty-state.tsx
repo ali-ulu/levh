@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -32,13 +33,13 @@ interface OnboardingEmptyStateProps {
   onChanged: () => void | Promise<void>;
 }
 
-const EXAMPLE_MEMORY = "Atlas project uses PostgreSQL in production.";
 
 export function OnboardingEmptyState({ status, onChanged }: OnboardingEmptyStateProps) {
+  const t = useT();
   const [loading, setLoading] = useState<"demo" | "memory" | "config" | "cleanup" | "">("");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
-  const [memoryText, setMemoryText] = useState(EXAMPLE_MEMORY);
+  const [memoryText, setMemoryText] = useState(() => t("onboarding.exampleMemory"));
   const [client, setClient] = useState(status.mcp_client || "claude");
   const [profile, setProfile] = useState(status.mcp_profile || status.mcp_default_profile || "work");
   const [configText, setConfigText] = useState("");
@@ -62,7 +63,7 @@ export function OnboardingEmptyState({ status, onChanged }: OnboardingEmptyState
     try {
       await fn();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Action failed");
+      setError(e instanceof Error ? e.message : t("onboarding.error.actionFailed"));
     } finally {
       setLoading("");
     }
@@ -73,8 +74,13 @@ export function OnboardingEmptyState({ status, onChanged }: OnboardingEmptyState
       const result = await api.seedDemo();
       setMessage(
         result.skipped
-          ? "The store already contains data; nothing was overwritten."
-          : `Loaded ${result.seeded} deterministic demo memories.`
+          ? t("onboarding.demo.skipped")
+          : t(
+              result.seeded === 1
+                ? "onboarding.demo.loaded.one"
+                : "onboarding.demo.loaded.other",
+              { count: result.seeded },
+            )
       );
       await onChanged();
     });
@@ -82,7 +88,7 @@ export function OnboardingEmptyState({ status, onChanged }: OnboardingEmptyState
   const handleStoreFirst = () =>
     run("memory", async () => {
       const content = memoryText.trim();
-      if (!content) throw new Error("Enter a memory first");
+      if (!content) throw new Error(t("onboarding.memory.enterFirst"));
       const memory = await api.storeMemory({
         content,
         source: "onboarding",
@@ -91,7 +97,11 @@ export function OnboardingEmptyState({ status, onChanged }: OnboardingEmptyState
       });
       const recalled = await api.recallMemories(content, 3, "getting-started", false);
       const found = recalled.memories.some((item) => item.id === memory.id);
-      setMessage(found ? "First memory stored and recalled through the real pipeline." : "Memory stored; try recall from the dashboard.");
+      setMessage(
+        found
+          ? t("onboarding.memory.storedAndRecalled")
+          : t("onboarding.memory.storedTryRecall"),
+      );
       await onChanged();
     });
 
@@ -103,22 +113,29 @@ export function OnboardingEmptyState({ status, onChanged }: OnboardingEmptyState
       setConfigText(result.config_text ?? JSON.stringify(result.config, null, 2));
       setMessage(
         result.config_path
-          ? `${result.client} config generated with ${result.tool_count} advertised tools — save as ${result.config_path}.`
-          : `${result.client} config generated with ${result.tool_count} advertised tools.`
+          ? t("onboarding.config.generatedWithPath", {
+              client: result.client,
+              count: result.tool_count,
+              path: result.config_path,
+            })
+          : t("onboarding.config.generated", {
+              client: result.client,
+              count: result.tool_count,
+            }),
       );
     });
 
   const handleCopy = async () => {
     if (!configText) return;
     await navigator.clipboard.writeText(configText);
-    setMessage("MCP config copied.");
+    setMessage(t("onboarding.config.copied"));
   };
 
   const handleCleanup = () =>
     run("cleanup", async () => {
-      if (!window.confirm("Remove only demo-tagged memories? Real memories will be preserved.")) return;
+      if (!window.confirm(t("onboarding.demo.cleanupConfirm"))) return;
       const result = await api.removeDemoData();
-      setMessage(`Removed ${result.removed} demo memories; ${result.remaining} memories remain.`);
+      setMessage(t("onboarding.demo.cleanupResult", { removed: result.removed, remaining: result.remaining }));
       await onChanged();
     });
 
@@ -127,30 +144,30 @@ export function OnboardingEmptyState({ status, onChanged }: OnboardingEmptyState
       <CardHeader className="pb-3">
         <CardTitle className="text-lg flex items-center gap-2">
           <Sparkles className="h-5 w-5 text-primary" />
-          {status.first_run ? "Set up LEVH" : "Finish your LEVH setup"}
+          {status.first_run ? t("onboarding.title.first") : t("onboarding.title.finish")}
         </CardTitle>
         <p className="text-sm text-muted-foreground">
-          {completed}/{status.checks.length} readiness checks complete. Choose demo data or start with a real memory; neither path overwrites an existing store.
+          {t("onboarding.readinessSummary", { completed, total: status.checks.length })}
         </p>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="grid gap-4 md:grid-cols-2">
           <div className="rounded-lg border p-4 space-y-3">
             <div className="flex items-center gap-2 font-medium">
-              <Sparkles className="h-4 w-4 text-primary" /> Try LEVH
+              <Sparkles className="h-4 w-4 text-primary" /> {t("onboarding.demo.title")}
             </div>
             <p className="text-sm text-muted-foreground">
-              Load the deterministic 20-memory corpus with people, organizations, trust scores, decay, and one reviewable conflict candidate.
+              {t("onboarding.demo.description")}
             </p>
             <div className="flex flex-wrap gap-2">
               <Button onClick={handleLoadDemo} disabled={Boolean(loading) || status.demo_seeded}>
                 {loading === "demo" && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {status.demo_seeded ? "Demo data loaded" : "Load demo data"}
+                {status.demo_seeded ? t("onboarding.demo.loadedButton") : t("onboarding.demo.loadButton")}
               </Button>
               {status.demo_seeded && (
                 <Button variant="outline" onClick={handleCleanup} disabled={Boolean(loading)}>
                   {loading === "cleanup" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
-                  Remove demo data
+                  {t("onboarding.demo.removeButton")}
                 </Button>
               )}
             </div>
@@ -158,32 +175,32 @@ export function OnboardingEmptyState({ status, onChanged }: OnboardingEmptyState
 
           <div className="rounded-lg border p-4 space-y-3">
             <div className="flex items-center gap-2 font-medium">
-              <Database className="h-4 w-4 text-primary" /> Set up real memory
+              <Database className="h-4 w-4 text-primary" /> {t("onboarding.memory.title")}
             </div>
             <p className="text-sm text-muted-foreground">
-              Store one ordinary memory through the existing pipeline, then verify it can be recalled.
+              {t("onboarding.memory.description")}
             </p>
-            <Label htmlFor="first-memory">First memory</Label>
+            <Label htmlFor="first-memory">{t("onboarding.memory.label")}</Label>
             <Input id="first-memory" value={memoryText} onChange={(event) => setMemoryText(event.target.value)} />
             <Button variant="secondary" onClick={handleStoreFirst} disabled={Boolean(loading) || !memoryText.trim()}>
               {loading === "memory" && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Store and test recall
+              {t("onboarding.memory.storeAndTest")}
             </Button>
             <p className="text-xs text-muted-foreground">
-              Source: onboarding · Project: getting-started · No silent pinning or trust boost.
+              {t("onboarding.memory.meta")}
             </p>
           </div>
         </div>
 
         <div className="rounded-lg border p-4 space-y-3">
           <div className="flex items-center gap-2 font-medium">
-            <Terminal className="h-4 w-4 text-primary" /> Connect an AI client
+            <Terminal className="h-4 w-4 text-primary" /> {t("onboarding.config.title")}
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label>Client</Label>
+              <Label>{t("onboarding.config.client")}</Label>
               <Select value={client} onValueChange={setClient}>
-                <SelectTrigger aria-label="Client"><SelectValue /></SelectTrigger>
+                <SelectTrigger aria-label={t("onboarding.config.client")}><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {status.clients.map((item) => (
                     <SelectItem key={item.id} value={item.id}>{item.description}</SelectItem>
@@ -192,12 +209,12 @@ export function OnboardingEmptyState({ status, onChanged }: OnboardingEmptyState
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>Tool profile</Label>
+              <Label>{t("onboarding.config.toolProfile")}</Label>
               <Select value={profile} onValueChange={setProfile}>
-                <SelectTrigger aria-label="Tool profile"><SelectValue /></SelectTrigger>
+                <SelectTrigger aria-label={t("onboarding.config.toolProfile")}><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {Object.entries(status.profile_counts).map(([name, count]) => (
-                    <SelectItem key={name} value={name}>{name} · {count} tools</SelectItem>
+                    <SelectItem key={name} value={name}>{t(count === 1 ? "onboarding.config.tools.one" : "onboarding.config.tools.other", { name, count })}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -206,11 +223,11 @@ export function OnboardingEmptyState({ status, onChanged }: OnboardingEmptyState
           <div className="flex flex-wrap items-center gap-2">
             <Button variant="secondary" onClick={handleConfig} disabled={Boolean(loading)}>
               {loading === "config" && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Generate {client} config ({profileCount} tools)
+              {t("onboarding.config.generate", { client, count: profileCount })}
             </Button>
             {configText && (
               <Button variant="outline" onClick={handleCopy}>
-                <Clipboard className="mr-2 h-4 w-4" /> Copy config
+                <Clipboard className="mr-2 h-4 w-4" /> {t("onboarding.config.copy")}
               </Button>
             )}
           </div>
@@ -221,22 +238,27 @@ export function OnboardingEmptyState({ status, onChanged }: OnboardingEmptyState
         <div className="grid gap-3 md:grid-cols-2">
           <div className="rounded-lg border p-4 space-y-2">
             <div className="flex items-center gap-2 font-medium">
-              <ShieldCheck className="h-4 w-4 text-primary" /> Local usage measurement
+              <ShieldCheck className="h-4 w-4 text-primary" /> {t("onboarding.dogfood.title")}
             </div>
             <p className="text-sm text-muted-foreground">{status.dogfood_statement}</p>
             <p className="text-xs">
-              Dogfood metrics: <strong>{status.dogfood_enabled ? "On" : "Off"}</strong> · Journal: {status.dogfood_journal.name} ({status.dogfood_journal.scope})
+              {t("onboarding.dogfood.metricsPrefix")}{" "}
+              <strong>{status.dogfood_enabled ? t("onboarding.state.on") : t("onboarding.state.off")}</strong>
+              {" · "}{t("onboarding.dogfood.journal", {
+                name: status.dogfood_journal.name,
+                scope: status.dogfood_journal.scope,
+              })}
             </p>
             {!status.dogfood_enabled && (
               <code className="block rounded bg-muted px-2 py-1 text-xs">LEVH_DOGFOOD_ENABLED=true levh serve</code>
             )}
             <p className="text-xs text-muted-foreground">
-              A process started without the flag must be restarted. Historical journals are not migrated automatically.
+              {t("onboarding.dogfood.restartHelp")}
             </p>
           </div>
 
           <div className="rounded-lg border p-4 space-y-2">
-            <div className="font-medium">Readiness</div>
+            <div className="font-medium">{t("onboarding.readiness.title")}</div>
             {status.checks.map((check) => (
               <div key={check.id} className="flex items-start gap-2 text-sm">
                 <CheckCircle2 className={`mt-0.5 h-4 w-4 ${check.status === "pass" ? "text-primary" : "text-muted-foreground"}`} />
@@ -250,8 +272,11 @@ export function OnboardingEmptyState({ status, onChanged }: OnboardingEmptyState
         {error && <p className="text-sm text-destructive">{error}</p>}
 
         <p className="text-xs text-muted-foreground">
-          Terminal path: <code className="rounded bg-muted px-1 py-0.5 font-mono">levh setup --demo --client claude --profile work</code>. See{" "}
-          <Link href="/settings" className="underline underline-offset-4">Settings</Link> for the full local configuration surface.
+          {t("onboarding.terminal.prefix")}{" "}
+          <code className="rounded bg-muted px-1 py-0.5 font-mono">levh setup --demo --client claude --profile work</code>.{" "}
+          {t("onboarding.terminal.see")}{" "}
+          <Link href="/settings" className="underline underline-offset-4">{t("onboarding.terminal.settings")}</Link>{" "}
+          {t("onboarding.terminal.suffix")}
         </p>
       </CardContent>
     </Card>

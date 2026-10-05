@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### i18n: move onboarding empty-state copy into the catalogue (#473)
+
+- Onboarding setup, demo, real-memory, MCP, dogfood, readiness, terminal, status, confirmation, label, and accessibility copy now resolves through `useT()`.
+- Dynamic server values remain runtime data; command snippets remain technical literals. The UI-string ratchet for `src/components/onboarding-empty-state.tsx` is provisionally tightened from 44 to 2.
+
+
 ### i18n: move the Projects page into the catalogue (#471)
 
 - Projects page/empty-state/dialog/action/help/error/count/date copy now resolves through `useT()`.
