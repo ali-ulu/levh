@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### i18n: move the Home dashboard into the catalogue (#467)
+
+- Home hero/status copy, metric cards, recent-memory labels, knowledge/network panels, briefing copy, conflict/review signals, empty states, and relative-time copy now resolve through `useT()`.
+- Memory/entity/project/source/status values and API data remain runtime data; locale/formatting enum tokens remain technical. The UI-string ratchet for `src/app/page.tsx` drops from 39 to 0.
+
+
 ### i18n: move the Memories page into the catalogue (#465)
 
 - Memories page/search/filter/empty-state/edit-dialog/action/relative-time/delete-confirm copy now resolves through `useT()`.

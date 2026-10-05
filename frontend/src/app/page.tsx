@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 import { AskPanel } from "@/components/ask-panel";
 import { KnowledgeConstellation } from "@/components/knowledge-constellation";
 import { LiveFeed } from "@/components/live-feed";
@@ -44,20 +45,21 @@ function fmt(value?: number | null) {
   return new Intl.NumberFormat("en", { notation: value > 9999 ? "compact" : "standard", maximumFractionDigits: 1 }).format(value);
 }
 
-function relativeDate(value: string) {
-  const time = new Date(value).getTime();
-  if (!Number.isFinite(time)) return "";
-  const delta = Math.max(0, Date.now() - time);
-  const minutes = Math.floor(delta / 60000);
-  if (minutes < 1) return "now";
-  if (minutes < 60) return `${minutes}m`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h`;
-  const days = Math.floor(hours / 24);
-  return `${days}d`;
-}
-
 export default function Dashboard() {
+  const t = useT();
+
+  const relativeDate = (value: string) => {
+    const time = new Date(value).getTime();
+    if (!Number.isFinite(time)) return "";
+    const delta = Math.max(0, Date.now() - time);
+    const minutes = Math.floor(delta / 60000);
+    if (minutes < 1) return t("app.home.relative.now");
+    if (minutes < 60) return t("app.home.relative.minutes", { count: minutes });
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return t("app.home.relative.hours", { count: hours });
+    const days = Math.floor(hours / 24);
+    return t("app.home.relative.days", { count: days });
+  };
   const [stats, setStats] = useState<Stats | null>(null);
   const [onboarding, setOnboarding] = useState<OnboardingStatus | null>(null);
   const [recent, setRecent] = useState<Memory[]>([]);
@@ -111,12 +113,12 @@ export default function Dashboard() {
     : Math.max(0, Math.round((1 - Math.min(1, stats.avg_hscore)) * 100));
 
   const metrics = [
-    { label: "Total memories", value: fmt(stats?.total_memories), note: `${fmt(stats?.episodic_count)} episodic`, icon: Database, tone: "blue" },
-    { label: "Active projects", value: fmt(stats?.projects_count), note: `${fmt(stats?.sessions_count)} sessions`, icon: FolderGit2, tone: "violet" },
-    { label: "Open conflicts", value: fmt(conflicts.length), note: "deterministic candidates", icon: GitCompareArrows, tone: "rose" },
-    { label: "H-score health", value: hscoreHealth === null ? "—" : `${hscoreHealth}%`, note: "derived recall quality", icon: ShieldCheck, tone: "emerald" },
-    { label: "Connector sources", value: fmt(uniqueConnectors), note: `${fmt(syncState.length)} sync histories`, icon: Waves, tone: "cyan" },
-    { label: "Review queue", value: fmt(review.length), note: "human-in-the-loop", icon: RefreshCw, tone: "amber" },
+    { label: t("app.home.metric.memories"), value: fmt(stats?.total_memories), note: t("app.home.metric.episodic", { count: fmt(stats?.episodic_count) }), icon: Database, tone: "blue" },
+    { label: t("app.home.metric.projects"), value: fmt(stats?.projects_count), note: t("app.home.metric.sessions", { count: fmt(stats?.sessions_count) }), icon: FolderGit2, tone: "violet" },
+    { label: t("app.home.metric.conflicts"), value: fmt(conflicts.length), note: t("app.home.metric.conflictNote"), icon: GitCompareArrows, tone: "rose" },
+    { label: t("app.home.metric.hscore"), value: hscoreHealth === null ? "—" : `${hscoreHealth}%`, note: t("app.home.metric.hscoreNote"), icon: ShieldCheck, tone: "emerald" },
+    { label: t("app.home.metric.connectors"), value: fmt(uniqueConnectors), note: t("app.home.metric.syncHistories", { count: fmt(syncState.length) }), icon: Waves, tone: "cyan" },
+    { label: t("app.home.metric.review"), value: fmt(review.length), note: t("app.home.metric.reviewNote"), icon: RefreshCw, tone: "amber" },
   ];
 
   return (
@@ -127,19 +129,19 @@ export default function Dashboard() {
           <div>
             <div className="mb-3 flex items-center gap-2 text-xs font-medium text-muted-foreground">
               <span className="pulse-dot" />
-              Local memory fabric · all systems operational
+              {t("app.home.hero.status")}
             </div>
             <h1 className="max-w-3xl text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">
-              System pulse: <span className="gradient-text">optimal flow</span>
+              {t("app.home.hero.pulsePrefix")} <span className="gradient-text">{t("app.home.hero.pulseValue")}</span>
             </h1>
             <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-              Your work context, provenance, review signals, and connected knowledge—alive in one local continuity layer.
+              {t("app.home.hero.subtitle")}
             </p>
           </div>
           <div className="hero-status-grid">
-            <div><span>Storage</span><strong>Local</strong></div>
-            <div><span>Embedding</span><strong>{onboarding?.embedder_mode ?? "—"}</strong></div>
-            <div><span>Profile</span><strong>{onboarding?.mcp_profile ?? "work"}</strong></div>
+            <div><span>{t("app.home.hero.storage")}</span><strong>{t("app.home.hero.local")}</strong></div>
+            <div><span>{t("app.home.hero.embedding")}</span><strong>{onboarding?.embedder_mode ?? "—"}</strong></div>
+            <div><span>{t("app.home.hero.profile")}</span><strong>{onboarding?.mcp_profile ?? t("app.home.hero.defaultProfile")}</strong></div>
           </div>
         </div>
       </section>
@@ -178,21 +180,21 @@ export default function Dashboard() {
             <article className="premium-card rounded-[22px] border p-5 sm:p-6">
               <div className="mb-4 flex items-center justify-between">
                 <div>
-                  <h2 className="text-base font-semibold tracking-[-0.02em]">Recent memories</h2>
-                  <p className="mt-1 text-xs text-muted-foreground">Fresh context entering the fabric</p>
+                  <h2 className="text-base font-semibold tracking-[-0.02em]">{t("app.home.recent.title")}</h2>
+                  <p className="mt-1 text-xs text-muted-foreground">{t("app.home.recent.subtitle")}</p>
                 </div>
-                <Link href="/memories" className="text-link">View all <ArrowRight className="h-3.5 w-3.5" /></Link>
+                <Link href="/memories" className="text-link">{t("app.home.viewAll")} <ArrowRight className="h-3.5 w-3.5" /></Link>
               </div>
               <div className="space-y-1">
                 {recent.length === 0 ? (
-                  <div className="empty-panel">No memories yet. Load demo data or capture your first memory.</div>
+                  <div className="empty-panel">{t("app.home.recent.empty")}</div>
                 ) : recent.map((memory) => (
                   <button key={memory.id} onClick={() => setSelectedMemory(memory)} className="memory-row group">
                     <span className="memory-source"><Layers3 className="h-3.5 w-3.5" /></span>
                     <span className="min-w-0 flex-1 text-left">
                       <span className="block truncate text-sm font-medium">{memory.content}</span>
                       <span className="mt-1 flex items-center gap-2 text-[10px] text-muted-foreground">
-                        <span>{memory.source || "local"}</span>
+                        <span>{memory.source || t("app.home.source.local")}</span>
                         <span>·</span>
                         <span>{relativeDate(memory.created_at)}</span>
                         {memory.project && <><span>·</span><span className="truncate">{memory.project}</span></>}
@@ -210,10 +212,10 @@ export default function Dashboard() {
             <article className="premium-card rounded-[22px] border p-4 sm:p-5">
               <div className="mb-2 flex items-center justify-between px-1">
                 <div>
-                  <h2 className="text-base font-semibold tracking-[-0.02em]">Connected knowledge</h2>
-                  <p className="mt-1 text-xs text-muted-foreground">A living map of your context</p>
+                  <h2 className="text-base font-semibold tracking-[-0.02em]">{t("app.home.graph.title")}</h2>
+                  <p className="mt-1 text-xs text-muted-foreground">{t("app.home.graph.subtitle")}</p>
                 </div>
-                <Link href="/graph" className="text-link">Open graph <ArrowRight className="h-3.5 w-3.5" /></Link>
+                <Link href="/graph" className="text-link">{t("app.home.graph.open")} <ArrowRight className="h-3.5 w-3.5" /></Link>
               </div>
               <KnowledgeConstellation memories={stats?.total_memories ?? 0} entityCounts={entityCounts} />
             </article>
@@ -222,12 +224,12 @@ export default function Dashboard() {
           <article className="premium-card rounded-[22px] border p-5 sm:p-6">
             <div className="mb-4 flex items-center justify-between">
               <div>
-                <h2 className="text-base font-semibold tracking-[-0.02em]">Context network</h2>
-                <p className="mt-1 text-xs text-muted-foreground">People and organizations with the strongest memory footprint</p>
+                <h2 className="text-base font-semibold tracking-[-0.02em]">{t("app.home.network.title")}</h2>
+                <p className="mt-1 text-xs text-muted-foreground">{t("app.home.network.subtitle")}</p>
               </div>
               <div className="flex gap-2">
-                <Link href="/people" className="mini-action"><Users className="h-3.5 w-3.5" /> People</Link>
-                <Link href="/organizations" className="mini-action"><Building2 className="h-3.5 w-3.5" /> Orgs</Link>
+                <Link href="/people" className="mini-action"><Users className="h-3.5 w-3.5" /> {t("app.home.network.people")}</Link>
+                <Link href="/organizations" className="mini-action"><Building2 className="h-3.5 w-3.5" /> {t("app.home.network.organizations")}</Link>
               </div>
             </div>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -236,7 +238,7 @@ export default function Dashboard() {
                   <span className={`identity-avatar avatar-${index % 4}`}>{(person.name || "?").slice(0, 2).toUpperCase()}</span>
                   <span className="min-w-0">
                     <strong className="block truncate text-sm">{person.name}</strong>
-                    <small className="text-[10px] text-muted-foreground">{person.memory_count} memories</small>
+                    <small className="text-[10px] text-muted-foreground">{t("app.home.memoryCount", { count: person.memory_count })}</small>
                   </span>
                 </Link>
               ))}
@@ -245,12 +247,12 @@ export default function Dashboard() {
                   <span className={`identity-avatar avatar-${index % 4}`}>{(org.name || "?").slice(0, 2).toUpperCase()}</span>
                   <span className="min-w-0">
                     <strong className="block truncate text-sm">{org.name}</strong>
-                    <small className="text-[10px] text-muted-foreground">{org.memory_count} memories</small>
+                    <small className="text-[10px] text-muted-foreground">{t("app.home.memoryCount", { count: org.memory_count })}</small>
                   </span>
                 </Link>
               ))}
               {people.length === 0 && organizations.length === 0 && (
-                <div className="empty-panel col-span-full">Entities appear here after indexing people and organizations.</div>
+                <div className="empty-panel col-span-full">{t("app.home.network.empty")}</div>
               )}
             </div>
           </article>
@@ -262,27 +264,27 @@ export default function Dashboard() {
               <div className="flex items-center gap-2">
                 <span className="section-icon tone-amber"><Sparkles className="h-4 w-4" /></span>
                 <div>
-                  <h2 className="text-sm font-semibold">Daily briefing</h2>
-                  <p className="text-[10px] text-muted-foreground">What deserves attention now</p>
+                  <h2 className="text-sm font-semibold">{t("app.home.briefing.title")}</h2>
+                  <p className="text-[10px] text-muted-foreground">{t("app.home.briefing.subtitle")}</p>
                 </div>
               </div>
-              <Link href="/briefing" className="text-link">View all</Link>
+              <Link href="/briefing" className="text-link">{t("app.home.viewAll")}</Link>
             </div>
             <div className="space-y-1.5">
               {(briefing?.today ?? []).slice(0, 2).map((item) => (
                 <div key={item.id} className="briefing-row">
                   <span className="briefing-dot tone-blue"><Radio className="h-3.5 w-3.5" /></span>
-                  <span className="min-w-0 flex-1"><strong>{item.summary}</strong><small>{item.source || "memory"}</small></span>
+                  <span className="min-w-0 flex-1"><strong>{item.summary}</strong><small>{item.source || t("app.home.briefing.memoryFallback")}</small></span>
                 </div>
               ))}
               {(briefing?.commitments ?? []).slice(0, 2).map((item) => (
                 <div key={item.id} className="briefing-row">
                   <span className="briefing-dot tone-violet"><CheckCircle2 className="h-3.5 w-3.5" /></span>
-                  <span className="min-w-0 flex-1"><strong>{item.text}</strong><small>{item.project || item.source || "commitment"}</small></span>
+                  <span className="min-w-0 flex-1"><strong>{item.text}</strong><small>{item.project || item.source || t("app.home.briefing.commitmentFallback")}</small></span>
                 </div>
               ))}
               {(briefing?.today?.length ?? 0) === 0 && (briefing?.commitments?.length ?? 0) === 0 && (
-                <div className="empty-panel">Your briefing is clear. New decisions and commitments will surface here.</div>
+                <div className="empty-panel">{t("app.home.briefing.empty")}</div>
               )}
             </div>
           </article>
@@ -290,8 +292,8 @@ export default function Dashboard() {
           <article className="premium-card rounded-[22px] border p-5">
             <div className="mb-4 flex items-center justify-between">
               <div>
-                <h2 className="text-sm font-semibold">Conflicts & review</h2>
-                <p className="mt-1 text-[10px] text-muted-foreground">Signals requiring human judgment</p>
+                <h2 className="text-sm font-semibold">{t("app.home.signals.title")}</h2>
+                <p className="mt-1 text-[10px] text-muted-foreground">{t("app.home.signals.subtitle")}</p>
               </div>
               <span className="count-badge">{conflicts.length + review.length}</span>
             </div>
@@ -300,7 +302,7 @@ export default function Dashboard() {
                 <Link href="/conflicts" key={conflict.id} className="signal-row">
                   <CircleAlert className="h-4 w-4 shrink-0 text-rose-500" />
                   <span className="min-w-0 flex-1">
-                    <strong>Potential conflict</strong>
+                    <strong>{t("app.home.signals.potentialConflict")}</strong>
                     <small>{conflict.shared_entities.slice(0, 2).join(" · ") || conflict.signal_type}</small>
                   </span>
                   <span className="severity-chip">{Math.round(conflict.confidence * 100)}%</span>
@@ -314,12 +316,12 @@ export default function Dashboard() {
                 </Link>
               ))}
               {conflicts.length === 0 && review.length === 0 && (
-                <div className="empty-panel">No open conflict or review signals.</div>
+                <div className="empty-panel">{t("app.home.signals.empty")}</div>
               )}
             </div>
             <div className="mt-4 grid grid-cols-2 gap-2">
-              <Link href="/conflicts" className="mini-action justify-center">Review conflicts</Link>
-              <Link href="/review" className="mini-action justify-center">Review memory</Link>
+              <Link href="/conflicts" className="mini-action justify-center">{t("app.home.signals.reviewConflicts")}</Link>
+              <Link href="/review" className="mini-action justify-center">{t("app.home.signals.reviewMemory")}</Link>
             </div>
           </article>
 
