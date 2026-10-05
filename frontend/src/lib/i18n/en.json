@@ -374,5 +374,20 @@
   "app.findings.action.resolved": "Resolved",
   "app.findings.action.ignore": "Ignore",
   "app.findings.action.reopen": "Reopen",
-  "app.findings.action.delete": "Delete"
+  "app.findings.action.delete": "Delete",
+  "app.people.askFailed": "Ask failed",
+  "app.people.all": "All people",
+  "app.people.memoryCount.one": "{count} memory",
+  "app.people.memoryCount.other": "{count} memories",
+  "app.people.lastSeen": "last seen {date}",
+  "app.people.askAbout": "Ask about {name}",
+  "app.people.memoriesMentioning": "Memories mentioning {name}",
+  "app.people.noMemories": "No memories.",
+  "app.people.title": "People",
+  "app.people.subtitle": "Everyone you interact with, extracted automatically from calendar attendees, email senders/recipients, and meeting-transcript speakers.",
+  "app.people.placeholder": "Filter by name or email...",
+  "app.people.empty.title": "No people yet.",
+  "app.people.empty.importPrefix": "Import a calendar, email (.mbox), or meeting transcript in",
+  "app.people.empty.settings": "Settings",
+  "app.people.empty.importSuffix": "— people are extracted automatically."
 }

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -41,6 +42,7 @@ function SourceChips({ sources }: { sources: string[] }) {
 }
 
 export default function PeoplePage() {
+  const t = useT();
   const [people, setPeople] = useState<Person[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("");
@@ -84,7 +86,7 @@ export default function PeoplePage() {
       const q = `Summarize everything about ${selected.name}: what we discussed and any open items.`;
       setAnswer((await api.ask(q, 8)).answer);
     } catch (e) {
-      setAnswer(e instanceof Error ? e.message : "Ask failed");
+      setAnswer(e instanceof Error ? e.message : t("app.people.askFailed"));
     }
     setAsking(false);
   };
@@ -102,7 +104,7 @@ export default function PeoplePage() {
       <div className="space-y-4">
         <Button variant="ghost" size="sm" onClick={() => setSelected(null)}>
           <ArrowLeft className="h-4 w-4 mr-1.5" />
-          All people
+          {t("app.people.all")}
         </Button>
 
         <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -110,13 +112,20 @@ export default function PeoplePage() {
             <h1 className="text-2xl font-bold">{selected.name}</h1>
             <p className="text-sm text-muted-foreground mt-0.5">
               {selected.email && <span className="font-mono">{selected.email} · </span>}
-              {selected.memory_count} memories
-              {selected.last_seen && <> · last seen {selected.last_seen.slice(0, 10)}</>}
+              {t(
+                selected.memory_count === 1
+                  ? "app.people.memoryCount.one"
+                  : "app.people.memoryCount.other",
+                { count: selected.memory_count },
+              )}
+              {selected.last_seen && (
+                <> · {t("app.people.lastSeen", { date: selected.last_seen.slice(0, 10) })}</>
+              )}
             </p>
           </div>
           <Button onClick={askAboutPerson} disabled={asking}>
             {asking ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />}
-            Ask about {selected.name.split(" ")[0]}
+            {t("app.people.askAbout", { name: selected.name.split(" ")[0] })}
           </Button>
         </div>
 
@@ -128,7 +137,9 @@ export default function PeoplePage() {
 
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Memories mentioning {selected.name.split(" ")[0]}</CardTitle>
+            <CardTitle className="text-base">
+              {t("app.people.memoriesMentioning", { name: selected.name.split(" ")[0] })}
+            </CardTitle>
           </CardHeader>
           <CardContent>
             {detailLoading ? (
@@ -136,7 +147,7 @@ export default function PeoplePage() {
                 <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
               </div>
             ) : personMemories.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-4 text-center">No memories.</p>
+              <p className="text-sm text-muted-foreground py-4 text-center">{t("app.people.noMemories")}</p>
             ) : (
               <div className="space-y-2">
                 {personMemories.map((m) => (
@@ -174,10 +185,9 @@ export default function PeoplePage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">People</h1>
+        <h1 className="text-2xl font-bold">{t("app.people.title")}</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Everyone you interact with, extracted automatically from calendar
-          attendees, email senders/recipients, and meeting-transcript speakers.
+          {t("app.people.subtitle")}
         </p>
       </div>
 
@@ -185,7 +195,7 @@ export default function PeoplePage() {
         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
         <Input
           className="pl-8"
-          placeholder="Filter by name or email..."
+          placeholder={t("app.people.placeholder")}
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
         />
@@ -199,13 +209,13 @@ export default function PeoplePage() {
         <Card>
           <CardContent className="py-12 text-center text-sm text-muted-foreground space-y-2">
             <Users className="h-8 w-8 mx-auto opacity-40" />
-            <p>No people yet.</p>
+            <p>{t("app.people.empty.title")}</p>
             <p>
-              Import a calendar, email (.mbox), or meeting transcript in{" "}
+              {t("app.people.empty.importPrefix")}{" "}
               <a href="/settings/" className="underline">
-                Settings
+                {t("app.people.empty.settings")}
               </a>{" "}
-              — people are extracted automatically.
+              {t("app.people.empty.importSuffix")}
             </p>
           </CardContent>
         </Card>
