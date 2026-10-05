@@ -5,7 +5,8 @@ import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AuthGate } from "@/components/auth-gate";
-import { DEFAULT_LOCALE, translate } from "@/lib/i18n/translate";\nimport { LocaleProvider } from "@/lib/i18n";
+import { DEFAULT_LOCALE, translate } from "@/lib/i18n/translate";
+import { LocaleProvider } from "@/lib/i18n";
 
 export const metadata: Metadata = {
   title: translate("app.metadata.title"),
