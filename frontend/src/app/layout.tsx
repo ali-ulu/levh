@@ -32,17 +32,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="antialiased">
         <LocaleProvider>
           <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} disableTransitionOnChange={false}>
-          <div className="app-canvas min-h-screen">
-            <div className="ambient ambient-one" />
-            <div className="ambient ambient-two" />
-            <Sidebar />
-            <div className="min-w-0 lg:ml-[248px]">
-              <Header />
-              <main className="relative z-10 mx-auto max-w-[1680px] p-4 sm:p-6 lg:p-8">
-                <AuthGate>{children}</AuthGate>
-              </main>
+            <div className="app-canvas min-h-screen">
+              <div className="ambient ambient-one" />
+              <div className="ambient ambient-two" />
+              <Sidebar />
+              <div className="min-w-0 lg:ml-[248px]">
+                <Header />
+                <main className="relative z-10 mx-auto max-w-[1680px] p-4 sm:p-6 lg:p-8">
+                  <AuthGate>{children}</AuthGate>
+                </main>
+              </div>
             </div>
-          </div>
           </ThemeProvider>
         </LocaleProvider>
         <Script id="levh-pwa-register" strategy="afterInteractive" src="/pwa-register.js" />
