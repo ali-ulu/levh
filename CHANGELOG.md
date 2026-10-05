@@ -5,7 +5,7 @@
 ### i18n: move the People page into the catalogue (#455)
 
 - People list/detail headings, summaries, search, empty-state guidance, memory counts, last-seen copy, ask action/fallback, and detail headings now resolve through `useT()`.
-- Dynamic person/memory/email/date/source values remain runtime data; the UI-string ratchet for `src/app/people/page.tsx` is tightened from 19 to 4, leaving only connector identifiers/source normalization literals.
+- Dynamic person/memory/email/date/source values remain runtime data; the UI-string ratchet for `src/app/people/page.tsx` is tightened from 19 to 5, leaving three connector identifiers and two source-normalization literals.
 
 
 ### i18n: move the Findings page into the catalogue (#453)
