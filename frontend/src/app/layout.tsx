@@ -29,7 +29,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang={DEFAULT_LOCALE} suppressHydrationWarning>
       <body className="antialiased">
-        <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} disableTransitionOnChange={false}>
+        <LocaleProvider>
+          <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} disableTransitionOnChange={false}>
           <div className="app-canvas min-h-screen">
             <div className="ambient ambient-one" />
             <div className="ambient ambient-two" />
@@ -41,7 +42,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               </main>
             </div>
           </div>
-        </ThemeProvider>
+          </ThemeProvider>
+        </LocaleProvider>
         <Script id="levh-pwa-register" strategy="afterInteractive" src="/pwa-register.js" />
       </body>
     </html>
