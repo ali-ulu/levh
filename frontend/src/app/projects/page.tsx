@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -37,6 +38,7 @@ import {
 const ALL_PROJECTS = "__all__";
 
 export default function ProjectsPage() {
+  const t = useT();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -89,7 +91,7 @@ export default function ProjectsPage() {
   const saveProject = async () => {
     const name = projectName.trim();
     if (!name) {
-      setError("Project name is required");
+      setError(t("app.projects.error.nameRequired"));
       return;
     }
     setSaving(true);
@@ -114,7 +116,7 @@ export default function ProjectsPage() {
         load();
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to save project");
+      setError(e instanceof Error ? e.message : t("app.projects.error.saveFailed"));
     }
     setSaving(false);
   };
@@ -140,7 +142,7 @@ export default function ProjectsPage() {
       setCtxContent(r.content);
       setCtxFilename(r.filename);
     } catch (e) {
-      setCtxContent(`Failed to generate: ${e instanceof Error ? e.message : e}`);
+      setCtxContent(t("app.projects.error.generateFailed", { error: e instanceof Error ? e.message : String(e) }));
     }
     setGenerating(false);
   };
@@ -172,20 +174,19 @@ export default function ProjectsPage() {
     <div className="space-y-6">
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Projects</h1>
+          <h1 className="text-2xl font-bold">{t("app.projects.title")}</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Memories grouped by workspace. Create a project to organize related
-            memories, then generate context files for your AI clients.
+            {t("app.projects.subtitle")}
           </p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => openDialog(ALL_PROJECTS)}>
             <FileText className="h-4 w-4 mr-2" />
-            Context file (all)
+            {t("app.projects.contextAll")}
           </Button>
           <Button onClick={openCreate}>
             <Plus className="h-4 w-4 mr-2" />
-            New project
+            {t("app.projects.newProject")}
           </Button>
         </div>
       </div>
@@ -199,16 +200,16 @@ export default function ProjectsPage() {
           <CardContent className="py-12 text-center text-sm text-muted-foreground space-y-4">
             <FolderGit2 className="h-12 w-12 mx-auto opacity-20" />
             <div className="space-y-1">
-              <p className="text-base font-medium text-foreground">No projects yet</p>
+              <p className="text-base font-medium text-foreground">{t("app.projects.empty.title")}</p>
               <p className="max-w-md mx-auto">
-                Create your first project to group related memories. You can also
-                store memories with a project name from the dashboard or via the{" "}
-                <code className="text-xs bg-muted px-1 rounded">store_memory</code> MCP tool.
+                {t("app.projects.empty.prefix")}{" "}
+                <code className="text-xs bg-muted px-1 rounded">store_memory</code>{" "}
+                {t("app.projects.empty.suffix")}
               </p>
             </div>
             <Button onClick={openCreate} className="mt-4">
               <Sparkles className="h-4 w-4 mr-2" />
-              Create your first project
+              {t("app.projects.empty.action")}
             </Button>
           </CardContent>
         </Card>
@@ -224,14 +225,14 @@ export default function ProjectsPage() {
                     <button
                       onClick={() => openEdit(p)}
                       className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground"
-                      title="Edit project"
+                      title={t("app.projects.card.editTitle")}
                     >
                       <Edit3 className="h-3.5 w-3.5" />
                     </button>
                     <button
                       onClick={() => setDeleteTarget(p)}
                       className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
-                      title="Delete project"
+                      title={t("app.projects.card.deleteTitle")}
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
@@ -240,20 +241,25 @@ export default function ProjectsPage() {
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="text-sm text-muted-foreground">
-                  {p.memory_count} memories
+                  {t(
+                    p.memory_count === 1
+                      ? "app.projects.memoryCount.one"
+                      : "app.projects.memoryCount.other",
+                    { count: p.memory_count },
+                  )}
                   {p.last_used && (
-                    <> · last used {new Date(p.last_used).toLocaleDateString("en-GB")}</>
+                    <> · {t("app.projects.lastUsed", { date: new Date(p.last_used).toLocaleDateString("en-GB") })}</>
                   )}
                 </div>
                 <div className="flex gap-2">
                   <Button asChild variant="outline" size="sm">
                     <Link href={`/memories/?project=${encodeURIComponent(p.name)}`}>
-                      Browse
+                      {t("app.projects.browse")}
                     </Link>
                   </Button>
                   <Button size="sm" onClick={() => openDialog(p.name)}>
                     <FileText className="h-3.5 w-3.5 mr-1.5" />
-                    Context file
+                    {t("app.projects.contextFile")}
                   </Button>
                 </div>
               </CardContent>
@@ -268,23 +274,25 @@ export default function ProjectsPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <FolderGit2 className="h-5 w-5" />
-              {editProject ? `Edit ${editProject.name}` : "New Project"}
+              {editProject
+                ? t("app.projects.dialog.editTitle", { name: editProject.name })
+                : t("app.projects.dialog.newTitle")}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label className="text-xs">Project name</Label>
+              <Label className="text-xs">{t("app.projects.dialog.nameLabel")}</Label>
               <Input
                 value={projectName}
                 onChange={(e) => setProjectName(e.target.value)}
-                placeholder="e.g. my-app, levh, website-redesign"
+                placeholder={t("app.projects.dialog.namePlaceholder")}
                 autoFocus
                 onKeyDown={(e) => {
                   if (e.key === "Enter") saveProject();
                 }}
               />
               <p className="text-[11px] text-muted-foreground">
-                Use lowercase, hyphens for spaces. This name groups related memories together.
+                {t("app.projects.dialog.nameHelp")}
               </p>
             </div>
 
@@ -293,7 +301,7 @@ export default function ProjectsPage() {
             )}
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="ghost" onClick={() => setCreateOpen(false)}>
-                Cancel
+                {t("app.projects.cancel")}
               </Button>
               <Button onClick={saveProject} disabled={saving || !projectName.trim()}>
                 {saving ? (
@@ -301,7 +309,7 @@ export default function ProjectsPage() {
                 ) : (
                   <Plus className="h-4 w-4 mr-2" />
                 )}
-                {editProject ? "Save changes" : "Create project"}
+                {editProject ? t("app.projects.dialog.saveChanges") : t("app.projects.dialog.create")}
               </Button>
             </div>
           </div>
@@ -314,21 +322,20 @@ export default function ProjectsPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-destructive">
               <Trash2 className="h-5 w-5" />
-              Delete Project
+              {t("app.projects.delete.title")}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              Are you sure you want to delete{" "}
+              {t("app.projects.delete.promptPrefix")}{" "}
               <strong>{deleteTarget?.name}</strong>?
             </p>
             <p className="text-xs text-muted-foreground">
-              This only removes the project grouping. Memories stored under this
-              project will remain — they just won&apos;t be grouped anymore.
+              {t("app.projects.delete.help")}
             </p>
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="ghost" onClick={() => setDeleteTarget(null)}>
-                Cancel
+                {t("app.projects.cancel")}
               </Button>
               <Button variant="destructive" onClick={deleteProject} disabled={saving}>
                 {saving ? (
@@ -336,7 +343,7 @@ export default function ProjectsPage() {
                 ) : (
                   <Trash2 className="h-4 w-4 mr-2" />
                 )}
-                Delete
+                {t("app.projects.delete.action")}
               </Button>
             </div>
           </div>
@@ -348,7 +355,9 @@ export default function ProjectsPage() {
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>
-              Context File — {ctxProject === ALL_PROJECTS ? "all projects" : ctxProject}
+              {ctxProject === ALL_PROJECTS
+                ? t("app.projects.context.titleAll")
+                : t("app.projects.context.titleProject", { name: ctxProject })}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
@@ -361,7 +370,7 @@ export default function ProjectsPage() {
                   generate(ctxProject, style);
                 }}
               >
-                <SelectTrigger className="w-44" aria-label="Context file format">
+                <SelectTrigger className="w-44" aria-label={t("app.projects.context.formatAria")}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -371,11 +380,11 @@ export default function ProjectsPage() {
               </Select>
               <Button variant="outline" size="sm" onClick={copy} disabled={generating || !ctxContent}>
                 {copied ? <Check className="h-3.5 w-3.5 mr-1.5" /> : <Copy className="h-3.5 w-3.5 mr-1.5" />}
-                {copied ? "Copied" : "Copy"}
+                {copied ? t("app.projects.context.copied") : t("app.projects.context.copy")}
               </Button>
               <Button variant="outline" size="sm" onClick={download} disabled={generating || !ctxContent}>
                 <Download className="h-3.5 w-3.5 mr-1.5" />
-                Download {ctxFilename}
+                {t("app.projects.context.download", { filename: ctxFilename })}
               </Button>
             </div>
             {generating ? (
@@ -388,8 +397,7 @@ export default function ProjectsPage() {
               </pre>
             )}
             <p className="text-xs text-muted-foreground">
-              Drop this file into your repo root — Claude Code, Cursor, and other clients read it
-              automatically at session start. Regenerate whenever your memories change, or run{" "}
+              {t("app.projects.context.helpPrefix")}{" "}
               <code className="bg-muted px-1 rounded">levh context -o CLAUDE.md</code>.
             </p>
           </div>
