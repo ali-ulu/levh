@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### i18n: move the Agents page into the catalogue (#457)
+
+- Agents loading/headings, stat labels/help, relative-time copy, breakdown counts, activity/checkpoint empty states, project/connectivity/status copy, and connection/session counts now resolve through `useT()`.
+- Agent names, API routes, icon-map keys, project/checkpoint/runtime values remain technical/runtime data; the UI-string ratchet for `src/app/agents/page.tsx` is provisionally tightened from 20 to 1 for the non-UI console diagnostic.
+
+
 ### i18n: move the People page into the catalogue (#455)
 
 - People list/detail headings, summaries, search, empty-state guidance, memory counts, last-seen copy, ask action/fallback, and detail headings now resolve through `useT()`.

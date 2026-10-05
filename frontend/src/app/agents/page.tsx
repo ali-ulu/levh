@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { useT } from "@/lib/i18n";
 
 interface AgentActivity {
   id: string;
@@ -67,19 +68,20 @@ function getAgentIcon(name: string): string {
   return AGENT_ICONS[name] || "❓";
 }
 
-function timeAgo(dateStr: string): string {
-  if (!dateStr) return "unknown";
-  const date = new Date(dateStr);
-  const now = new Date();
-  const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-
-  if (seconds < 60) return `${seconds}s ago`;
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
-  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
-  return `${Math.floor(seconds / 86400)}d ago`;
-}
-
 export default function AgentsPage() {
+  const t = useT();
+  const timeAgo = (dateStr: string): string => {
+    if (!dateStr) return t("app.agents.time.unknown");
+    const date = new Date(dateStr);
+    const now = new Date();
+    const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+    if (seconds < 60) return t("app.agents.time.seconds", { count: seconds });
+    if (seconds < 3600) return t("app.agents.time.minutes", { count: Math.floor(seconds / 60) });
+    if (seconds < 86400) return t("app.agents.time.hours", { count: Math.floor(seconds / 3600) });
+    return t("app.agents.time.days", { count: Math.floor(seconds / 86400) });
+  };
+
   const [stats, setStats] = useState<AgentStats | null>(null);
   const [activities, setActivities] = useState<AgentActivity[]>([]);
   const [checkpoints, setCheckpoints] = useState<Checkpoint[]>([]);
@@ -113,7 +115,7 @@ export default function AgentsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-muted-foreground">Loading agent activity...</div>
+        <div className="text-muted-foreground">{t("app.agents.loading")}</div>
       </div>
     );
   }
@@ -121,9 +123,9 @@ export default function AgentsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Agent Activity</h1>
+        <h1 className="text-3xl font-bold">{t("app.agents.title")}</h1>
         <p className="text-muted-foreground mt-1">
-          Real-time view of connected AI agents and their activity
+          {t("app.agents.subtitle")}
         </p>
       </div>
 
@@ -132,7 +134,7 @@ export default function AgentsPage() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Currently Online
+              {t("app.agents.currentlyOnline")}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -154,7 +156,7 @@ export default function AgentsPage() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Total Connections
+              {t("app.agents.totalConnections")}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -162,7 +164,7 @@ export default function AgentsPage() {
               {stats?.total_connections || 0}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              All-time agent connections
+              {t("app.agents.allTimeConnections")}
             </p>
           </CardContent>
         </Card>
@@ -170,7 +172,7 @@ export default function AgentsPage() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Active Agents
+              {t("app.agents.activeAgents")}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -178,7 +180,7 @@ export default function AgentsPage() {
               {stats?.by_agent?.length || 0}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              Unique agents that have connected
+              {t("app.agents.uniqueAgents")}
             </p>
           </CardContent>
         </Card>
@@ -188,7 +190,7 @@ export default function AgentsPage() {
       {stats?.by_agent && stats.by_agent.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Agent Breakdown</CardTitle>
+            <CardTitle>{t("app.agents.breakdown")}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
@@ -204,16 +206,26 @@ export default function AgentsPage() {
                     <div>
                       <div className="font-medium">{agent.agent_display}</div>
                       <div className="text-xs text-muted-foreground">
-                        First seen: {timeAgo(agent.first_seen)}
+                        {t("app.agents.firstSeen", { time: timeAgo(agent.first_seen) })}
                       </div>
                     </div>
                   </div>
                   <div className="text-right">
                     <div className="font-medium">
-                      {agent.connection_count} connections
+                      {t(
+                        agent.connection_count === 1
+                          ? "app.agents.connections.one"
+                          : "app.agents.connections.other",
+                        { count: agent.connection_count },
+                      )}
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      {agent.sessions} sessions
+                      {t(
+                        agent.sessions === 1
+                          ? "app.agents.sessions.one"
+                          : "app.agents.sessions.other",
+                        { count: agent.sessions },
+                      )}
                     </div>
                   </div>
                 </div>
@@ -226,13 +238,12 @@ export default function AgentsPage() {
       {/* Recent Activity */}
       <Card>
         <CardHeader>
-          <CardTitle>Recent Activity</CardTitle>
+          <CardTitle>{t("app.agents.recentActivity")}</CardTitle>
         </CardHeader>
         <CardContent>
           {activities.length === 0 ? (
             <p className="text-muted-foreground text-center py-8">
-              No agent activity yet. Agents will appear here when they connect
-              to LEVH.
+              {t("app.agents.noActivity")}
             </p>
           ) : (
             <div className="space-y-2">
@@ -251,8 +262,8 @@ export default function AgentsPage() {
                       </div>
                       <div className="text-xs text-muted-foreground">
                         {activity.project
-                          ? `Project: ${activity.project}`
-                          : "No project"}
+                          ? t("app.agents.project", { project: activity.project })
+                          : t("app.agents.noProject")}
                       </div>
                     </div>
                   </div>
@@ -260,12 +271,12 @@ export default function AgentsPage() {
                     <Badge
                       variant={activity.online ? "default" : "secondary"}
                     >
-                      {activity.online ? "🟢 Online" : "⚪ Offline"}
+                      {activity.online ? t("app.agents.online") : t("app.agents.offline")}
                     </Badge>
                     <div className="text-xs text-muted-foreground mt-1">
                       {activity.disconnected_at
-                        ? `Disconnected ${timeAgo(activity.disconnected_at)}`
-                        : `Connected ${timeAgo(activity.connected_at)}`}
+                        ? t("app.agents.disconnected", { time: timeAgo(activity.disconnected_at) })
+                        : t("app.agents.connected", { time: timeAgo(activity.connected_at) })}
                     </div>
                   </div>
                 </div>
@@ -278,13 +289,12 @@ export default function AgentsPage() {
       {/* Checkpoints */}
       <Card>
         <CardHeader>
-          <CardTitle>Recent Checkpoints</CardTitle>
+          <CardTitle>{t("app.agents.recentCheckpoints")}</CardTitle>
         </CardHeader>
         <CardContent>
           {checkpoints.length === 0 ? (
             <p className="text-muted-foreground text-center py-8">
-              No checkpoints yet. Agents can create checkpoints during important
-              work.
+              {t("app.agents.noCheckpoints")}
             </p>
           ) : (
             <div className="space-y-2">
