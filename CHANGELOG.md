@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### federation: add explicit pull-first peer transport (#484)
+
+- Added a source endpoint that serves the existing signed B0 federation envelope using configured node identity/signing key and the normal API authentication boundary.
+- Added `levh federation-pull` for explicit receiver-initiated exchange: optional token-file authentication, no redirect following, HTTPS required when sending a token to a remote peer, signature/node verification before opening the local store, and admission-gated import.
+- Kept federation transport deliberately narrow: no background polling, push, CRDT/shared store, or automatic conflict merge.
+
+
 ### feat: add the memory assistant chat
 
 - Added `/assistant`, an embedded Opengeni chat that answers from the local store: the proxy recalls memories for each message, attaches them as model context, and the agent cites what it used.

@@ -54,6 +54,7 @@ export const OPERATIONS = {
   "entity_graph_stats_api_entities_stats_get_v1": { method: "GET", path: "/api/v1/entities/stats", pathParams: [], query: [], body: "never" },
   "get_entity_api_entities__entity_id__get_v1": { method: "GET", path: "/api/v1/entities/{entity_id}", pathParams: ["entity_id"], query: [], body: "never" },
   "export_full_json_api_export_full_json_get_v1": { method: "GET", path: "/api/v1/export/full.json", pathParams: [], query: [], body: "never" },
+  "export_federation_envelope_api_federation_envelope_get_v1": { method: "GET", path: "/api/v1/federation/envelope", pathParams: [], query: [], body: "never" },
   "export_full_pdf_api_export_full_pdf_get_v1": { method: "GET", path: "/api/v1/export/full.pdf", pathParams: [], query: [], body: "never" },
   "export_full_sqlite_api_export_full_sqlite_get_v1": { method: "GET", path: "/api/v1/export/full.sqlite", pathParams: [], query: [], body: "never" },
   "list_findings_api_findings_get_v1": { method: "GET", path: "/api/v1/findings", pathParams: [], query: [{ name: "status", required: false, type: "string" }, { name: "category", required: false, type: "string" }, { name: "limit", required: false, type: "number" }], body: "never" },

@@ -122,6 +122,7 @@ because it is a read that has to POST to carry its query.
 | GET | `/api/v1/export/full.json` | One-shot audit bundle: memories, entity graph, trust scores, and conflict candidates — the raw machine-readable record |
 | GET | `/api/v1/export/full.pdf` | Human-readable audit report (summary counts, entity/trust/conflict overview) rendered from the same data as the JSON… |
 | GET | `/api/v1/export/full.sqlite` | Raw SQLite copy of the live database, taken via the online backup API |
+| GET | `/api/v1/federation/envelope` | Signed full-export envelope for an explicit authenticated peer pull |
 | POST | `/api/v1/backup` | Full portable snapshot (all memories + sessions) as a downloadable file. When ``passphrase`` is set the file is… |
 | POST | `/api/v1/restore` | Restore from a backup file. ``content_b64`` is the base64-encoded backup bytes (encrypted or plain — auto-detected).… |
 | POST | `/api/v1/import/file` | Turn an arbitrary uploaded file into memories. Plain text, PDF, Word, Excel and zip archives are extracted to text… |

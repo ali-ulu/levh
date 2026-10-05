@@ -48,7 +48,7 @@ Run `levh <command> --help` for the flags of any one of them.
 | `levh continue` | Show context to resume work (session DNA) |
 | `levh export-full` | Export memories, entity graph, trust scores, and conflicts to one file |
 | `levh federation-export` | Sign a full export bundle into a provenance-verified federation envelope |
-| `levh federation-import` | Verify a signed federation envelope and import its bundle through the admission gate |
+| `levh federation-import` | Verify a signed federation envelope and import its bundle through the admission gate |\n| `levh federation-pull` | Pull a signed envelope from a peer, verify it, and import it through the admission gate |
 | `levh entities <sub>` | Persistent entity knowledge graph |
 | `levh entities reindex` | Rebuild the entity graph from all memories |
 | `levh entities list` | List entities |

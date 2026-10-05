@@ -182,6 +182,7 @@ from server.commands.data import (
     cmd_export_full,
     cmd_federation_export,
     cmd_federation_import,
+    cmd_federation_pull,
     cmd_remove_demo,
     cmd_seed_demo,
 )
@@ -269,6 +270,8 @@ def main() -> int:
         return cmd_federation_export(args)
     elif args.command == "federation-import":
         return cmd_federation_import(args)
+    elif args.command == "federation-pull":
+        return cmd_federation_pull(args)
     elif args.command == "entities":
         if args.entities_command in ("reindex", "list", "about"):
             return cmd_entities(args)

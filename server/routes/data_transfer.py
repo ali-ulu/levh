@@ -44,6 +44,49 @@ async def export_full_json(engine=Depends(get_engine)):
     )
 
 
+@router.get("/api/federation/envelope")
+async def export_federation_envelope(engine=Depends(get_engine)):
+    """Serve one signed full-export envelope for an explicit peer pull.
+
+    This is deliberately transport-only: no push, polling, or shared live
+    store. The existing /api token middleware protects the request when the
+    server is exposed beyond localhost, while the envelope signature proves
+    which configured node produced the payload.
+    """
+    from server.core.crypto import CryptoUnavailableError
+    from server.core.env import get_env
+    from server.core.federation import EnvelopeError, sign_envelope
+    from server.core.full_export import build_full_export
+    from server.core.tenancy import AuthorizationError, authorize
+
+    node_id = get_env("LEVH_FEDERATION_NODE_ID", "").strip()
+    key_path = get_env("LEVH_FEDERATION_KEY_PATH", "").strip()
+    algorithm = get_env("LEVH_FEDERATION_ALGORITHM", "hmac-sha256").strip()
+
+    if not node_id or not key_path:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "federation export is not configured; set "
+                "LEVH_FEDERATION_NODE_ID and LEVH_FEDERATION_KEY_PATH"
+            ),
+        )
+
+    try:
+        authorize("export_full")
+        bundle = await build_full_export(engine)
+        return sign_envelope(
+            bundle,
+            node_id=node_id,
+            key_path=key_path,
+            algorithm=algorithm,
+        )
+    except AuthorizationError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except (EnvelopeError, CryptoUnavailableError) as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
 @router.get("/api/export/full.sqlite")
 async def export_full_sqlite(engine=Depends(get_engine)):
     """Raw SQLite copy of the live database, taken via the online backup API."""

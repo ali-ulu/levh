@@ -140,6 +140,15 @@ def cmd_federation_export(args: argparse.Namespace) -> int:
     return asyncio.run(_run())
 
 
+def _print_federation_import_result(envelope: dict, result: dict) -> None:
+    print(
+        f"  Verified node {envelope.get('node_id')} ({envelope.get('algorithm')}). "
+        f"Imported {result['imported']} memories through the admission gate "
+        f"(redacted={result['redacted']}, duplicates={result['duplicates']}, "
+        f"held={result['held']}, errors={result['errors']})."
+    )
+
+
 def cmd_federation_import(args: argparse.Namespace) -> int:
     """Verify a federation envelope and import its memories through the gate."""
     import asyncio
@@ -149,7 +158,7 @@ def cmd_federation_import(args: argparse.Namespace) -> int:
 
     async def _run() -> int:
         from server.core.crypto import CryptoUnavailableError
-        from server.core.federation import EnvelopeError, verify_envelope
+        from server.core.federation import EnvelopeError, import_verified_envelope
 
         try:
             with open(args.envelope, encoding="utf-8") as f:
@@ -158,8 +167,110 @@ def cmd_federation_import(args: argparse.Namespace) -> int:
             print(f"  cannot read envelope {args.envelope!r}: {exc}", file=sys.stderr)
             return 1
 
+        engine = engine_provider.get_engine()
+        await engine.initialize()
         try:
-            bundle = verify_envelope(
+            try:
+                result = await import_verified_envelope(
+                    engine,
+                    envelope,
+                    key_path=args.key,
+                    expected_node_id=args.from_node or None,
+                )
+            except (EnvelopeError, CryptoUnavailableError) as exc:
+                print(f"  rejected envelope: {exc}", file=sys.stderr)
+                return 1
+        finally:
+            await engine.shutdown()
+
+        _print_federation_import_result(envelope, result)
+        return 0
+
+    return asyncio.run(_run())
+
+
+def cmd_federation_pull(args: argparse.Namespace) -> int:
+    """Pull one signed envelope from a peer and import it explicitly."""
+    import asyncio
+    from pathlib import Path
+    from urllib.parse import urlparse
+
+    import httpx
+
+    from server.core import engine_provider
+
+    source = args.source.rstrip("/")
+    endpoint = (
+        source
+        if source.endswith("/api/v1/federation/envelope")
+        else f"{source}/api/v1/federation/envelope"
+    )
+    headers = {"Accept": "application/json"}
+    parsed = urlparse(endpoint)
+    if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+        print("  federation pull failed: source must be an http(s) URL", file=sys.stderr)
+        return 1
+    if (
+        args.token_file
+        and parsed.scheme != "https"
+        and parsed.hostname not in {"localhost", "127.0.0.1", "::1"}
+    ):
+        print(
+            "  federation pull refused: token authentication requires HTTPS for a remote peer",
+            file=sys.stderr,
+        )
+        return 1
+
+    if args.token_file:
+        try:
+            token = Path(args.token_file).read_text(encoding="utf-8").strip()
+        except OSError as exc:
+            print(f"  cannot read token file {args.token_file!r}: {exc}", file=sys.stderr)
+            return 1
+        if not token:
+            print(f"  token file {args.token_file!r} is empty", file=sys.stderr)
+            return 1
+        headers["X-LEVH-Token"] = token
+
+    try:
+        response = httpx.get(
+            endpoint,
+            headers=headers,
+            timeout=args.timeout,
+            follow_redirects=False,
+        )
+    except httpx.HTTPError as exc:
+        print(f"  federation pull failed: {exc}", file=sys.stderr)
+        return 1
+
+    if response.status_code != 200:
+        print(
+            f"  federation pull failed: peer returned HTTP {response.status_code}",
+            file=sys.stderr,
+        )
+        return 1
+
+    try:
+        envelope = response.json()
+    except ValueError:
+        print("  federation pull failed: peer returned invalid JSON", file=sys.stderr)
+        return 1
+    if not isinstance(envelope, dict):
+        print("  federation pull failed: peer returned a non-object envelope", file=sys.stderr)
+        return 1
+
+    async def _run() -> int:
+        from server.core.crypto import CryptoUnavailableError
+        from server.core.federation import (
+            EnvelopeError,
+            import_verified_envelope,
+            verify_envelope,
+        )
+
+        try:
+            # Verify before the local store is even opened. The import helper
+            # verifies again at the trust boundary before admitting memories.
+            verify_envelope(
                 envelope,
                 key_path=args.key,
                 expected_node_id=args.from_node or None,
@@ -168,34 +279,19 @@ def cmd_federation_import(args: argparse.Namespace) -> int:
             print(f"  rejected envelope: {exc}", file=sys.stderr)
             return 1
 
-        memories = bundle.get("memories")
-        if not isinstance(memories, list):
-            print("  rejected envelope: bundle carries no memories array", file=sys.stderr)
-            return 1
-
-        verified_federation = {
-            "verified": True,
-            "node_id": envelope["node_id"],
-            "algorithm": envelope["algorithm"],
-            "created_at": envelope["created_at"],
-        }
-
         engine = engine_provider.get_engine()
         await engine.initialize()
         try:
-            result = await engine.import_memories_gated(
-                memories,
-                verified_federation=verified_federation,
+            result = await import_verified_envelope(
+                engine,
+                envelope,
+                key_path=args.key,
+                expected_node_id=args.from_node or None,
             )
         finally:
             await engine.shutdown()
 
-        print(
-            f"  Verified node {envelope.get('node_id')} ({envelope.get('algorithm')}). "
-            f"Imported {result['imported']} memories through the admission gate "
-            f"(redacted={result['redacted']}, duplicates={result['duplicates']}, "
-            f"held={result['held']}, errors={result['errors']})."
-        )
+        _print_federation_import_result(envelope, result)
         return 0
 
     return asyncio.run(_run())

@@ -4129,6 +4129,23 @@
         }
       }
     },
+    "/api/v1/federation/envelope": {
+      "get": {
+        "summary": "Export Federation Envelope",
+        "description": "Serve one signed full-export envelope for an explicit peer pull.\n\nThis is deliberately transport-only: no push, polling, or shared\nstore. The existing /api token middleware protects the request when the\nserver is exposed beyond localhost, while the envelope signature proves\nwhich configured node produced the payload.",
+        "operationId": "export_federation_envelope_api_federation_envelope_get_v1",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/findings": {
       "get": {
         "summary": "List Findings",

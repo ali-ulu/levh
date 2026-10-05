@@ -42,8 +42,8 @@ smallest reproduction you can manage.
 - Avoid `LEVH_ALLOW_REMOTE_WITHOUT_TOKEN=true` unless an external boundary
   (a firewall, a reverse proxy, or a loopback-only container publish) already
   prevents public access. It disables authentication for every peer.
-- Do not commit `.env`, `stackmemory.db`, exported memories, logs, or generated
-  runtime artifacts.
+- Federation transport is explicit pull only. A source that enables `LEVH_FEDERATION_NODE_ID` + `LEVH_FEDERATION_KEY_PATH` should also keep the normal `LEVH_TOKEN` boundary when reachable off-host. Receivers verify the signed envelope before any write, and peer tokens/signing keys must not be committed.
+- Do not commit `.env`, `stackmemory.db`, exported memories, federation key/token files, logs, or generated runtime artifacts.
 - Use `EMBEDDER_MODE=hash` only for tests and smoke demos; use `local`,
   `ollama`, or `openai` for real semantic quality.
 

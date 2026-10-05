@@ -39,7 +39,7 @@ numbered findings, and because each one is also a candidate revenue surface.
 | --- | --- | --- | --- | --- |
 | connectors | Slack sync connector | done | — | #421 |
 | continuity-proof | Measure that the continuity brief is emitted and used, not just built to be emitted | done | — | #378, #423, #486 |
-| memory-federation | Peer memory exchange with provenance, signature and receiver-side decay | proposed | B0 is complete: the signed offline federation envelope verifies peer provenance, stamps the verified origin into admitted/held candidates, and proves admit/reject/review outcomes through `import_memories_gated` (#356, #357, #425 / #338). Remaining B1 is a pull-first exchange transport, which stays blocked on the tenancy decision because identity determines which peer may pull from which workspace. | #338, #356, #357, #425, #302 |
+| memory-federation | Peer memory exchange with provenance, signature and receiver-side decay | in-progress | B0 and B1 are complete: signed envelopes carry verified provenance; explicit receiver pulls use the normal token boundary, refuse redirects, require HTTPS for remote token authentication, verify signature/node identity before opening the local store, and import only through `import_memories_gated`. Remaining proof is B2: measure cross-instance recall quality and receiver-side decay against the continuity fixture. | #338, #356, #357, #425, #302, #484 |
 | typescript-sdk | TypeScript SDK over the REST and MCP surface | done | — | #307 |
 | git-enrichment | Make the git and GitHub connectors actually feed memory | done | — | #374, #399 |
 | windowing-graph | Bind the entity graph and an adaptive budget into the context window | done | — | #375 |
@@ -48,13 +48,16 @@ numbered findings, and because each one is also a candidate revenue surface.
 
 ## Why these are deferred rather than started
 
-The remaining architecture-heavy deferred/proposed items are gated on one of two design
-decisions that are open on purpose:
+The remaining architecture-heavy deferred/proposed items are gated primarily on
+revenue or deployment triggers. The tenancy foundation is no longer an open
+design question: its single-workspace-compatible boundary and role model are
+implemented.
 
-- **Tenancy.** `LEVH_TOKEN` gates the whole server as a single principal — it
-  identifies no user, workspace, or role. Team features and a hosted tier both
-  build on that boundary, so starting either before it is settled would bolt
-  identity onto a layer that has none. See #302.
+- **Tenancy.** The storage boundary now has principals, workspaces and roles as
+  documented in [`SHARED-MEMORY-DESIGN.md`](SHARED-MEMORY-DESIGN.md) (#302).
+  OIDC and Postgres remain trigger-gated, but federation B1 uses the existing
+  workspace boundary plus the transport token/signature pair without waiting
+  for those later phases.
 - **Revenue.** Nothing in the tree can be charged for today, and the commercial
   surfaces (support/SLA, hosted sync, team workspace, SSO + metering) are ordered
   by how little they disturb the local-first core. See #298.

@@ -238,3 +238,41 @@ def verify_envelope(
             ) from exc
 
     return bundle
+
+
+def verified_federation_metadata(envelope: dict) -> dict:
+    """Trusted provenance stamped onto memories after envelope verification."""
+    return {
+        "verified": True,
+        "node_id": envelope["node_id"],
+        "algorithm": envelope["algorithm"],
+        "created_at": envelope["created_at"],
+    }
+
+
+async def import_verified_envelope(
+    engine: Any,
+    envelope: dict,
+    *,
+    key_path: str,
+    expected_node_id: str | None = None,
+) -> dict:
+    """Verify one peer envelope, then admit its memories through the normal gate.
+
+    Verification completes before the engine sees any candidate. A bad
+    signature, unexpected peer id, or malformed bundle therefore writes
+    nothing. Sender-supplied federation metadata is overwritten by the verified
+    envelope provenance inside import_memories_gated.
+    """
+    bundle = verify_envelope(
+        envelope,
+        key_path=key_path,
+        expected_node_id=expected_node_id,
+    )
+    memories = bundle.get("memories")
+    if not isinstance(memories, list):
+        raise EnvelopeError("verified bundle carries no memories array")
+    return await engine.import_memories_gated(
+        memories,
+        verified_federation=verified_federation_metadata(envelope),
+    )

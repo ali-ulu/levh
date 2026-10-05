@@ -100,12 +100,20 @@ admitted entries persist with verified provenance, rejected entries do not
 persist, and review-held entries retain the same provenance in
 `held_memories`. No network transport is introduced in B0.
 
-### B1. Exchange transport
+### B1. Exchange transport — implemented (#484)
 
-Only after B0: a pull-first transport (instance A fetches B's bundles) rather
-than a shared store, so the single-process engine is untouched. This is where
-the tenancy decision (#302) must be settled, because identity determines who may
-pull from whom.
+The tenancy foundation is settled and implemented, so B1 stays deliberately
+narrow: instance A explicitly pulls a signed envelope from instance B rather
+than sharing a live store. The source endpoint is protected by the existing
+HTTP token boundary and signs the same B0 full-export envelope with its
+configured node identity/key. The receiver-side `levh federation-pull` command
+refuses redirects, requires HTTPS when sending a token to a remote peer,
+verifies the envelope signature and expected node id before opening the local
+store, and re-enters memories only through `import_memories_gated`.
+
+No push, polling daemon, CRDT replication or automatic conflict merge is part
+of B1. The engine remains single-process and peer verification key material
+stays local to the receiver.
 
 ### B2. Measure that federation preserved recall quality
 

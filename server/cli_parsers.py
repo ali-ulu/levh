@@ -367,6 +367,36 @@ def _add_continuation_commands(sub: argparse._SubParsersAction) -> None:
         help="Require the envelope to be signed by this node id (default: accept any verified node)",
     )
 
+    fed_pull_p = sub.add_parser(
+        "federation-pull",
+        help="Pull one signed federation envelope from a peer and import it through the admission gate",
+    )
+    fed_pull_p.add_argument(
+        "source",
+        help="Peer base URL (for example http://peer.example:8000)",
+    )
+    fed_pull_p.add_argument(
+        "--key",
+        required=True,
+        help="HMAC secret file or ed25519 PEM public key used to verify the peer",
+    )
+    fed_pull_p.add_argument(
+        "--from-node",
+        default="",
+        help="Require the envelope to be signed by this node id",
+    )
+    fed_pull_p.add_argument(
+        "--token-file",
+        default="",
+        help="File containing the peer's LEVH_TOKEN; omitted for a tokenless localhost peer",
+    )
+    fed_pull_p.add_argument(
+        "--timeout",
+        type=float,
+        default=30.0,
+        help="HTTP timeout in seconds (default: 30)",
+    )
+
 
 def _add_entities_parser(sub: argparse._SubParsersAction) -> argparse.ArgumentParser:
     """Persistent entity knowledge graph subcommand group."""
