@@ -426,7 +426,7 @@ export function MemoryDetailDrawer({
                       />
                       <Tooltip
                         formatter={(v) => [`${(Number(v) * 100).toFixed(0)}%`, t("memoryDetail.retention.predicted")]}
-                        labelFormatter={(d) => t("memoryDetail.retention.day", { day: d })}
+                        labelFormatter={(d) => t("memoryDetail.retention.day", { day: String(d) })}
                         contentStyle={{
                           backgroundColor: "hsl(var(--card))",
                           border: "1px solid hsl(var(--border))",
