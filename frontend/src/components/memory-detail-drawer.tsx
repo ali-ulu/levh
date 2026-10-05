@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { api } from "@/lib/api";
-import { trustLabelColor, trustLabelText } from "@/lib/trust-ui";
+import { useT } from "@/lib/i18n";
+import { trustLabelColor } from "@/lib/trust-ui";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,11 +30,21 @@ import {
 } from "lucide-react";
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
-function humanizeHours(hours: number): string {
-  if (hours < 24) return `${hours.toFixed(0)}h`;
+type Translator = ReturnType<typeof useT>;
+
+const TRUST_LABEL_KEYS: Record<string, string> = {
+  high: "memoryDetail.trust.label.high",
+  medium_high: "memoryDetail.trust.label.mediumHigh",
+  medium: "memoryDetail.trust.label.medium",
+  low: "memoryDetail.trust.label.low",
+  very_low: "memoryDetail.trust.label.veryLow",
+};
+
+function humanizeHours(hours: number, t: Translator): string {
+  if (hours < 24) return t("memoryDetail.duration.hours", { count: hours.toFixed(0) });
   const days = hours / 24;
-  if (days < 60) return `${days.toFixed(1)} days`;
-  return `${(days / 30).toFixed(1)} months`;
+  if (days < 60) return t("memoryDetail.duration.days", { count: days.toFixed(1) });
+  return t("memoryDetail.duration.months", { count: (days / 30).toFixed(1) });
 }
 
 function formatDate(iso?: string | null): string {
@@ -68,6 +79,7 @@ export function MemoryDetailDrawer({
    * "jump" the drawer to that memory instead of closing it. */
   onSelectRelated?: (memory: Memory) => void;
 }) {
+  const t = useT();
   const displayHscore = score ?? memory.hscore ?? undefined;
   const [breakdown, setBreakdown] = useState<ScoreBreakdown | null>(null);
   const [breakdownLoading, setBreakdownLoading] = useState(false);
@@ -225,7 +237,7 @@ export function MemoryDetailDrawer({
   };
 
   const remove = async () => {
-    if (!confirm("Delete this memory permanently?")) return;
+    if (!confirm(t("memoryDetail.deleteConfirm"))) return;
     setBusy(true);
     try {
       await api.deleteMemory(memory.id);
@@ -250,16 +262,16 @@ export function MemoryDetailDrawer({
       >
         <div className="sticky top-0 bg-background border-b p-4 flex items-center justify-between z-10">
           <h2 id={titleId} className="text-lg font-semibold">
-            Memory Details
+            {t("memoryDetail.title")}
           </h2>
           <div className="flex items-center gap-1">
-            <Button variant="ghost" size="icon" onClick={togglePin} disabled={busy} aria-label={pinned ? "Unpin" : "Pin"}>
+            <Button variant="ghost" size="icon" onClick={togglePin} disabled={busy} aria-label={pinned ? t("app.memories.action.unpin") : t("app.memories.action.pin")}>
               {pinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
             </Button>
-            <Button variant="ghost" size="icon" onClick={remove} disabled={busy} aria-label="Delete">
+            <Button variant="ghost" size="icon" onClick={remove} disabled={busy} aria-label={t("app.memories.action.delete")}>
               <Trash2 className="h-4 w-4 text-destructive" />
             </Button>
-            <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close">
+            <Button variant="ghost" size="icon" onClick={onClose} aria-label={t("memoryDetail.close")}>
               <X className="h-4 w-4" />
             </Button>
           </div>
@@ -270,11 +282,11 @@ export function MemoryDetailDrawer({
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
                 <Activity className="h-4 w-4" />
-                Content
+                {t("memoryDetail.content")}
                 {pinned && (
                   <Badge variant="secondary" className="text-[11px] ml-auto">
                     <Pin className="h-2.5 w-2.5 mr-1" />
-                    pinned — never decays
+                    {t("memoryDetail.pinnedNeverDecays")}
                   </Badge>
                 )}
               </CardTitle>
@@ -289,13 +301,13 @@ export function MemoryDetailDrawer({
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">
                   <ShieldCheck className="h-4 w-4" />
-                  Trust
+                  {t("memoryDetail.trust.title")}
                   {trust && (
                     <Badge
                       variant="outline"
                       className={`ml-auto text-[11px] ${trustLabelColor(trust.label)}`}
                     >
-                      {(trust.confidence * 100).toFixed(0)}% · {trustLabelText(trust.label)}
+                      {(trust.confidence * 100).toFixed(0)}% · {t(TRUST_LABEL_KEYS[trust.label] ?? "memoryDetail.trust.label.unknown")}
                     </Badge>
                   )}
                 </CardTitle>
@@ -304,22 +316,22 @@ export function MemoryDetailDrawer({
                 {trustLoading ? (
                   <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
                     <Loader2 className="h-3 w-3 animate-spin" />
-                    Loading trust score...
+                    {t("memoryDetail.trust.loading")}
                   </div>
                 ) : trust ? (
                   <>
                     <div className="space-y-1.5">
                       {(
                         [
-                          ["Source", trust.components.source_score],
-                          ["Corroboration", trust.components.corroboration_score],
-                          ["Review", trust.components.review_score],
-                          ["Recency", trust.components.recency_score],
+                          ["memoryDetail.trust.component.source", trust.components.source_score],
+                          ["memoryDetail.trust.component.corroboration", trust.components.corroboration_score],
+                          ["memoryDetail.trust.component.review", trust.components.review_score],
+                          ["memoryDetail.trust.component.recency", trust.components.recency_score],
                         ] as const
-                      ).map(([label, value]) => (
-                        <div key={label} className="space-y-0.5">
+                      ).map(([labelKey, value]) => (
+                        <div key={labelKey} className="space-y-0.5">
                           <div className="flex justify-between text-xs">
-                            <span className="text-muted-foreground">{label}</span>
+                            <span className="text-muted-foreground">{t(labelKey)}</span>
                             <span className="font-mono">{value.toFixed(2)}</span>
                           </div>
                           <div className="h-1.5 rounded-full bg-muted overflow-hidden">
@@ -332,7 +344,7 @@ export function MemoryDetailDrawer({
                       ))}
                       <div className="space-y-0.5">
                         <div className="flex justify-between text-xs">
-                          <span className="text-muted-foreground">Risk (subtracts)</span>
+                          <span className="text-muted-foreground">{t("memoryDetail.trust.risk")}</span>
                           <span className="font-mono">−{trust.components.risk_penalty.toFixed(2)}</span>
                         </div>
                         <div className="h-1.5 rounded-full bg-muted overflow-hidden">
@@ -358,12 +370,12 @@ export function MemoryDetailDrawer({
                       trust.evidence.conflict_status === "confirmed") && (
                       <div className="flex items-center gap-1.5 text-[11px] text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/30 rounded-md px-2 py-1.5">
                         <AlertTriangle className="h-3 w-3 shrink-0" />
-                        Conflict candidate ({trust.evidence.conflict_status}) — under review
+                        {t("memoryDetail.trust.conflictCandidate", { status: trust.evidence.conflict_status })}
                       </div>
                     )}
                   </>
                 ) : trustError && !trust ? (
-                  <p className="text-xs text-muted-foreground">Could not load trust score.</p>
+                  <p className="text-xs text-muted-foreground">{t("memoryDetail.trust.loadFailed")}</p>
                 ) : null}
               </CardContent>
             </Card>
@@ -373,9 +385,9 @@ export function MemoryDetailDrawer({
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
                 <Brain className="h-4 w-4" />
-                Memory Strength
+                {t("memoryDetail.strength.title")}
                 <span className="ml-auto text-[11px] font-normal text-muted-foreground">
-                  {memory.pinned ? "pinned — permanent" : "fades like human memory"}
+                  {memory.pinned ? t("memoryDetail.strength.pinned") : t("memoryDetail.strength.fades")}
                 </span>
               </CardTitle>
             </CardHeader>
@@ -383,12 +395,12 @@ export function MemoryDetailDrawer({
               {curveLoading ? (
                 <div className="flex items-center gap-2 text-xs text-muted-foreground py-4">
                   <Loader2 className="h-3 w-3 animate-spin" />
-                  Computing retention curve...
+                  {t("memoryDetail.retention.computing")}
                 </div>
               ) : curve ? (
                 <>
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">Current retention</span>
+                    <span className="text-muted-foreground">{t("memoryDetail.retention.current")}</span>
                     <Badge
                       variant="outline"
                       className={
@@ -413,8 +425,8 @@ export function MemoryDetailDrawer({
                         tickFormatter={(v) => `${Math.round(v * 100)}%`}
                       />
                       <Tooltip
-                        formatter={(v) => [`${(Number(v) * 100).toFixed(0)}%`, "Predicted retention"]}
-                        labelFormatter={(d) => `Day ${d}`}
+                        formatter={(v) => [`${(Number(v) * 100).toFixed(0)}%`, t("memoryDetail.retention.predicted")]}
+                        labelFormatter={(d) => t("memoryDetail.retention.day", { day: d })}
                         contentStyle={{
                           backgroundColor: "hsl(var(--card))",
                           border: "1px solid hsl(var(--border))",
@@ -434,9 +446,9 @@ export function MemoryDetailDrawer({
                   </ResponsiveContainer>
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-muted-foreground">
-                      Half-life: <strong className="text-foreground">{humanizeHours(curve.stability_hours)}</strong>
+                      {t("memoryDetail.retention.halfLife")}: <strong className="text-foreground">{humanizeHours(curve.stability_hours, t)}</strong>
                       {" · "}
-                      Reinforced <strong className="text-foreground">{curve.recall_count}×</strong>
+                      {t("memoryDetail.retention.reinforced")} <strong className="text-foreground">{curve.recall_count}×</strong>
                     </span>
                     {!memory.pinned && (
                       <div className="flex gap-1.5">
@@ -446,10 +458,10 @@ export function MemoryDetailDrawer({
                           className="h-7 text-xs"
                           onClick={markStale}
                           disabled={reinforcing}
-                          title="Wrong or outdated — make it fade fast"
+                          title={t("memoryDetail.retention.staleTitle")}
                         >
                           <TrendingDown className="h-3 w-3 mr-1.5" />
-                          Stale
+                          {t("memoryDetail.retention.stale")}
                         </Button>
                         <Button
                           variant="outline"
@@ -457,86 +469,86 @@ export function MemoryDetailDrawer({
                           className="h-7 text-xs"
                           onClick={reinforce}
                           disabled={reinforcing}
-                          title="Still true and useful — strengthen it"
+                          title={t("memoryDetail.retention.reinforceTitle")}
                         >
                           {reinforcing ? (
                             <Loader2 className="h-3 w-3 mr-1.5 animate-spin" />
                           ) : (
                             <BatteryCharging className="h-3 w-3 mr-1.5" />
                           )}
-                          Reinforce
+                          {t("memoryDetail.retention.reinforce")}
                         </Button>
                       </div>
                     )}
                   </div>
                   <p className="text-[11px] text-muted-foreground">
                     {memory.pinned
-                      ? "Pinned memories never decay — this curve is flat forever."
-                      : "Predicted relevance if this memory is never recalled again. Recalling it — or reinforcing it here — resets the clock and raises the curve, like remembering something makes it stick."}
+                      ? t("memoryDetail.retention.pinnedHelp")
+                      : t("memoryDetail.retention.help")}
                   </p>
                 </>
               ) : (
-                <p className="text-xs text-muted-foreground">Could not load retention curve.</p>
+                <p className="text-xs text-muted-foreground">{t("memoryDetail.retention.loadFailed")}</p>
               )}
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm">Metadata</CardTitle>
+              <CardTitle className="text-sm">{t("memoryDetail.metadata.title")}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
               <div className="grid grid-cols-2 gap-2 text-xs">
                 <div className="flex items-center gap-1.5 text-muted-foreground">
                   <Tag className="h-3 w-3" />
-                  <span>Type</span>
+                  <span>{t("memoryDetail.metadata.type")}</span>
                 </div>
                 <Badge
                   variant={memory.memory_type === "episodic" ? "default" : "secondary"}
                   className="text-xs justify-self-start"
                 >
-                  {memory.memory_type === "episodic" ? "Episodic" : "Short-term"}
+                  {memory.memory_type === "episodic" ? t("app.memories.filter.episodic") : t("app.memories.filter.shortTerm")}
                 </Badge>
 
                 <div className="flex items-center gap-1.5 text-muted-foreground">
                   <BarChart3 className="h-3 w-3" />
-                  <span>Importance</span>
+                  <span>{t("memoryDetail.metadata.importance")}</span>
                 </div>
                 <span className="text-sm">{memory.importance?.toFixed(2) ?? "—"}</span>
 
                 <div className="flex items-center gap-1.5 text-muted-foreground">
                   <Activity className="h-3 w-3" />
-                  <span>Access count</span>
+                  <span>{t("memoryDetail.metadata.accessCount")}</span>
                 </div>
                 <span className="text-sm">{memory.frequency ?? "—"}</span>
 
                 <div className="flex items-center gap-1.5 text-muted-foreground">
                   <FolderGit2 className="h-3 w-3" />
-                  <span>Project</span>
+                  <span>{t("memoryDetail.metadata.project")}</span>
                 </div>
                 <span className="text-sm">{memory.project ?? "—"}</span>
 
                 <div className="flex items-center gap-1.5 text-muted-foreground">
                   <FileText className="h-3 w-3" />
-                  <span>Source</span>
+                  <span>{t("memoryDetail.metadata.source")}</span>
                 </div>
                 <span className="text-sm">{memory.source ?? "—"}</span>
 
                 <div className="flex items-center gap-1.5 text-muted-foreground">
                   <User className="h-3 w-3" />
-                  <span>Session</span>
+                  <span>{t("memoryDetail.metadata.session")}</span>
                 </div>
                 <span className="text-sm font-mono truncate">{memory.session_id ?? "—"}</span>
 
                 <div className="flex items-center gap-1.5 text-muted-foreground">
                   <Clock className="h-3 w-3" />
-                  <span>Created</span>
+                  <span>{t("memoryDetail.metadata.created")}</span>
                 </div>
                 <span className="text-sm">{formatDate(memory.created_at)}</span>
 
                 <div className="flex items-center gap-1.5 text-muted-foreground">
                   <Clock className="h-3 w-3" />
-                  <span>Last accessed</span>
+                  <span>{t("memoryDetail.metadata.lastAccessed")}</span>
                 </div>
                 <span className="text-sm">{formatDate(memory.accessed_at)}</span>
               </div>
@@ -557,12 +569,12 @@ export function MemoryDetailDrawer({
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
                 <BarChart3 className="h-4 w-4" />
-                Why this score?
+                {t("memoryDetail.score.title")}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">H-score (lower = more relevant)</span>
+                <span className="text-sm text-muted-foreground">{t("memoryDetail.score.hscore")}</span>
                 <Badge
                   variant="outline"
                   className={
@@ -573,7 +585,7 @@ export function MemoryDetailDrawer({
                       : "border-red-500/60 text-red-600 dark:text-red-400"
                   }
                 >
-                  {displayHscore !== undefined ? displayHscore.toFixed(4) : "n/a"}
+                  {displayHscore !== undefined ? displayHscore.toFixed(4) : t("memoryDetail.score.notAvailable")}
                 </Badge>
               </div>
 
@@ -585,7 +597,7 @@ export function MemoryDetailDrawer({
               {breakdownLoading && (
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <Loader2 className="h-3 w-3 animate-spin" />
-                  Loading score breakdown...
+                  {t("memoryDetail.score.loading")}
                 </div>
               )}
 
@@ -593,21 +605,21 @@ export function MemoryDetailDrawer({
                 <div className="space-y-2 mt-2">
                   <div className="text-xs font-medium text-muted-foreground">
                     {recallQuery
-                      ? `Components for query: "${recallQuery}"`
-                      : "Baseline components (memory vs itself)"}
+                      ? t("memoryDetail.score.componentsForQuery", { query: recallQuery })
+                      : t("memoryDetail.score.baselineComponents")}
                   </div>
                   <div className="space-y-1.5">
                     {(
                       [
-                        ["α similarity penalty", breakdown.components.similarity_penalty, breakdown.weights.alpha],
-                        ["β decay penalty", breakdown.components.decay_penalty, breakdown.weights.beta],
-                        ["γ importance penalty", breakdown.components.importance_penalty, breakdown.weights.gamma],
-                        ["δ frequency penalty", breakdown.components.frequency_penalty, breakdown.weights.delta],
+                        ["memoryDetail.score.penalty.similarity", breakdown.components.similarity_penalty, breakdown.weights.alpha],
+                        ["memoryDetail.score.penalty.decay", breakdown.components.decay_penalty, breakdown.weights.beta],
+                        ["memoryDetail.score.penalty.importance", breakdown.components.importance_penalty, breakdown.weights.gamma],
+                        ["memoryDetail.score.penalty.frequency", breakdown.components.frequency_penalty, breakdown.weights.delta],
                       ] as const
-                    ).map(([label, value, weight]) => (
-                      <div key={label} className="space-y-0.5">
+                    ).map(([labelKey, value, weight]) => (
+                      <div key={labelKey} className="space-y-0.5">
                         <div className="flex justify-between text-xs">
-                          <span className="text-muted-foreground">{label}</span>
+                          <span className="text-muted-foreground">{t(labelKey)}</span>
                           <span className="font-mono">{value.toFixed(4)}</span>
                         </div>
                         <div className="h-1.5 rounded-full bg-muted overflow-hidden">
@@ -620,17 +632,17 @@ export function MemoryDetailDrawer({
                     ))}
                   </div>
                   <div className="text-xs text-muted-foreground pt-1 border-t">
-                    Weights: &alpha;={breakdown.weights.alpha} &beta;={breakdown.weights.beta}{" "}
+                    {t("memoryDetail.score.weights")}: &alpha;={breakdown.weights.alpha} &beta;={breakdown.weights.beta}{" "}
                     &gamma;={breakdown.weights.gamma} &delta;={breakdown.weights.delta}
                   </div>
                 </div>
               )}
 
               <div className="grid grid-cols-2 gap-1 text-xs mt-2">
-                <span className="text-muted-foreground">0.00 = perfect match</span>
-                <span className="text-muted-foreground">0.35 = good match</span>
-                <span className="text-muted-foreground">0.60 = weak match</span>
-                <span className="text-muted-foreground">1.00 = unrelated</span>
+                <span className="text-muted-foreground">{t("memoryDetail.score.guide.perfect")}</span>
+                <span className="text-muted-foreground">{t("memoryDetail.score.guide.good")}</span>
+                <span className="text-muted-foreground">{t("memoryDetail.score.guide.weak")}</span>
+                <span className="text-muted-foreground">{t("memoryDetail.score.guide.unrelated")}</span>
               </div>
             </CardContent>
           </Card>
@@ -639,9 +651,9 @@ export function MemoryDetailDrawer({
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
                 <Network className="h-4 w-4" />
-                Related Memories
+                {t("memoryDetail.related.title")}
                 <span className="ml-auto text-[11px] font-normal text-muted-foreground">
-                  nearest neighbours
+                  {t("memoryDetail.related.nearest")}
                 </span>
               </CardTitle>
             </CardHeader>
@@ -649,12 +661,11 @@ export function MemoryDetailDrawer({
               {relatedLoading ? (
                 <div className="flex items-center gap-2 text-xs text-muted-foreground py-4">
                   <Loader2 className="h-3 w-3 animate-spin" />
-                  Finding related memories...
+                  {t("memoryDetail.related.loading")}
                 </div>
               ) : !related || related.length === 0 ? (
                 <p className="text-xs text-muted-foreground py-2">
-                  No related memories found yet — store more content in this project
-                  to build connections.
+                  {t("memoryDetail.related.empty")}
                 </p>
               ) : (
                 <div className="space-y-1">
@@ -675,7 +686,7 @@ export function MemoryDetailDrawer({
                       </div>
                       {r.pinned && (
                         <span className="text-[10px] text-muted-foreground inline-flex items-center gap-1 mt-1">
-                          <Pin className="h-2.5 w-2.5" /> pinned
+                          <Pin className="h-2.5 w-2.5" /> {t("app.memories.pinned")}
                         </span>
                       )}
                     </button>
@@ -683,7 +694,7 @@ export function MemoryDetailDrawer({
                 </div>
               )}
               <p className="text-[11px] text-muted-foreground mt-2">
-                Computed live from embedding similarity — no manual linking needed.
+                {t("memoryDetail.related.help")}
               </p>
             </CardContent>
           </Card>
