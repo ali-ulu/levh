@@ -5,17 +5,19 @@ Tarih: 2026-10-02 · Durum: karar verildi · Tür: tasarım kararı
 Design issue #308 asked for the extraction mechanism to be settled **before**
 any page was converted, because the mechanism decides how much of the ~20 pages
 has to be touched twice. This file records the decisions and the proof that the
-mechanism works. It is internal: it is a maintainer decision record, not a
-user-facing promise that more than one language ships.
+mechanism works. It is internal: it is a maintainer decision record for the shipped i18n
+architecture and its rollout history.
 
 ## Decisions
 
 ### 1. Extraction mechanism — hand-managed catalogue, not a library
 
-A flat, key-addressed JSON catalogue (`frontend/src/lib/i18n/en.json`) read by
-a pure server-safe translator (`frontend/src/lib/i18n/translate.ts`) plus the
-client hook module (`frontend/src/lib/i18n/index.ts`). The client module keeps
-the public `translate()` export for compatibility and exposes `useT()`.
+Flat, key-addressed JSON catalogues (`frontend/src/lib/i18n/en.json` and
+`frontend/src/lib/i18n/tr.json`) read by a pure server-safe translator
+(`frontend/src/lib/i18n/translate.ts`) plus the client hook module
+(`frontend/src/lib/i18n/index.ts`). The client module keeps the public
+`translate()` export for compatibility and exposes `useT()`, `useLocale()` and
+the `LocaleProvider`.
 
 Rejected: `next-intl` / `react-i18next` / `@lingui`. Each brings a runtime, a
 message format (ICU pluralisation, interpolation) and a build integration. The
@@ -39,11 +41,12 @@ empty string, so a typo is visible in the rendered page.
 ### 3. Locale detection and persistence — explicit, `localStorage`, default `en`
 
 The chosen locale is stored in `localStorage` (key `levh_locale`), mirroring the
-token persistence in `src/lib/token.ts`. No switcher is wired yet: with one
-locale there is nothing to switch to, and wiring a control that does nothing is
-worse than the documented shape. Detection is deliberately **not**
+token persistence in `src/lib/token.ts`. The header switcher now toggles between
+English (`en`) and Turkish (`tr`); changing the locale updates
+`document.documentElement.lang`, and the stored choice is restored after
+hydration and survives reloads. Detection is deliberately **not**
 `Accept-Language`: the static export has no request-time negotiation, so a
-header-based locale would need a second mechanism later.
+header-based locale would require a second mechanism.
 
 ### 4. Static export — locale is a client value, not a route segment
 
@@ -52,11 +55,14 @@ is the decision that had to come first: a locale route segment (`/[locale]/…`)
 would multiply every exported page and force the choice before the first
 conversion. The client-value approach avoids that constraint entirely.
 
-### 5. No locale beyond `en`
+### 5. Shipped locales — `en` and `tr`
 
-Only `en` ships. The mechanism exists so a second locale is a data change (a new
-JSON file plus a switcher) rather than a refactor. No locale is promised or
-maintained until one is added deliberately.
+English remains the default and fallback locale. Turkish is the first additional
+locale and ships as a complete catalogue. Unsupported locale values normalize to
+`en`; a missing translated key falls back to the English catalogue and then to
+the key itself. Unit coverage asserts that `en.json` and `tr.json` contain the
+same keys and the same interpolation variables, so a catalogue cannot silently
+drift.
 
 ## Proof conversion
 
@@ -131,13 +137,13 @@ The gate runs in `npm test` (via `src/lib/ui-string-ratchet.test.ts`), which the
 1. Settle the mechanism and where strings live — done here.
 2. Convert one page and the primitives it uses — done here.
 3. Add a test that fails on a literal outside the catalogue — done here.
-4. Convert the remaining pages — done for the current one-locale extraction
-   scope through #478. Adding a second locale and wiring the switcher/persistence
-   path is the next product step if multi-language UI is resumed.
+4. Convert the remaining pages — done for the one-locale extraction scope
+   through #478.
+5. Add a real second locale and wire explicit switcher/persistence — done with
+   Turkish (`tr`) in #481, with catalogue parity and browser reload coverage.
 
 ## Not in scope
 
-- Adding a second locale's actual translations.
 - Server error message translation (API `detail` strings are produced by the
   server and are a separate decision).
 - Right-to-left layout support.
