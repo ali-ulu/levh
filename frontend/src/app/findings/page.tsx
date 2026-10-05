@@ -107,16 +107,16 @@ export default function FindingsPage() {
       </div>
 
       <div className="flex gap-2 flex-wrap">
-        {TABS.map((t) => (
+        {TABS.map((tabItem) => (
           <Button
-            key={t.status || "all"}
+            key={tabItem.status || "all"}
             size="sm"
-            variant={tab === t.status ? "default" : "outline"}
-            onClick={() => setTab(t.status)}
+            variant={tab === tabItem.status ? "default" : "outline"}
+            onClick={() => setTab(tabItem.status)}
           >
-            {t(t.labelKey)}
-            {counts[t.status] ? (
-              <span className="ml-1.5 opacity-70">{counts[t.status]}</span>
+            {t(tabItem.labelKey)}
+            {counts[tabItem.status] ? (
+              <span className="ml-1.5 opacity-70">{counts[tabItem.status]}</span>
             ) : null}
           </Button>
         ))}
