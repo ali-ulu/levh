@@ -42,21 +42,22 @@ const ALL = "__all__";
 
 const MEMORIES_LOAD_ERROR = "Memories load error:";
 
+function relativeTime(dateStr: string, t: ReturnType<typeof useT>) {
+  const time = new Date(dateStr).getTime();
+  if (!Number.isFinite(time)) return "";
+  const delta = Math.max(0, Date.now() - time);
+  const minutes = Math.floor(delta / 60000);
+  if (minutes < 1) return t("app.memories.relative.justNow");
+  if (minutes < 60) return t("app.memories.relative.minutes", { count: minutes });
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return t("app.memories.relative.hours", { count: hours });
+  const days = Math.floor(hours / 24);
+  if (days < 30) return t("app.memories.relative.days", { count: days });
+  return new Date(dateStr).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+}
+
 export default function MemoriesPage() {
   const t = useT();
-  const relativeTime = (dateStr: string) => {
-    const time = new Date(dateStr).getTime();
-    if (!Number.isFinite(time)) return "";
-    const delta = Math.max(0, Date.now() - time);
-    const minutes = Math.floor(delta / 60000);
-    if (minutes < 1) return t("app.memories.relative.justNow");
-    if (minutes < 60) return t("app.memories.relative.minutes", { count: minutes });
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return t("app.memories.relative.hours", { count: hours });
-    const days = Math.floor(hours / 24);
-    if (days < 30) return t("app.memories.relative.days", { count: days });
-    return new Date(dateStr).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
-  };
   const [memories, setMemories] = useState<Memory[]>([]);
   const [loading, setLoading] = useState(true);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -375,7 +376,7 @@ export default function MemoriesPage() {
                 <div className="flex flex-col items-end gap-1 shrink-0">
                   <span className="flex items-center gap-1 text-[11px] text-muted-foreground tabular-nums">
                     <Clock className="h-3 w-3" />
-                    {relativeTime(m.created_at)}
+                    {relativeTime(m.created_at, t)}
                   </span>
                   <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                     <Button
