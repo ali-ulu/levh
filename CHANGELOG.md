@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Placeholder for future changes (#103)
+
+- TBD
+
+## 2.33.0
+
 ### fix: anchor the antonym conflict signal to a shared topic
 
 - Bare antonym words ("keep" in one memory, "drop" in another) no longer open a conflict candidate on their own: the antonym signal now also requires a shared topic term in both texts, mirroring the decision-conflict lane.

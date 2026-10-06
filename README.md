@@ -150,6 +150,7 @@ levh mcp init my-server --with-memory   # scaffold an MCP server on this databas
 - **74 MCP tools**, a REST API, a WebSocket feed, and a live Next.js dashboard served by the API itself — one process, one port.
 - **4 embedding modes** — OpenAI, local `all-MiniLM-L6-v2`, Ollama (fully offline), or a deterministic hash fallback. The system always works.
 - **Connectors** for Calendar, Email, transcripts, Notion, Obsidian, GitHub, Jira, Linear, Slack, local git history and local files — all routed through the admission gate. Calendar, mail and transcript files are uploaded from the dashboard; there is no filesystem path to type.
+- **Signed federation** — explicit, pull-first peer exchange of memory between two LEVH instances. The envelope is ed25519-signed and verified before a single row is opened locally, then imported through the same admission gate; there is no background polling, push, or automatic conflict merge.
 - **Scaffold your own MCP server** — `levh mcp init my-server --with-memory` writes a working server that shares this database, optionally with a deploy config for Fly, Railway, Render or Docker.
 
 → [Full MCP tool list](docs/mcp-tools.md) · [REST API](docs/api-reference.md) · [CLI](docs/cli.md) · [Connectors](docs/connectors.md)
@@ -232,7 +233,7 @@ Found a vulnerability? See [SECURITY.md](SECURITY.md).
 | Database | SQLite via `aiosqlite` (auto-migrating schema) |
 | Embeddings | OpenAI / sentence-transformers / Ollama / hash |
 | Vector Search | NumPy cosine similarity |
-| Frontend | Next.js 15 + React 19 (static export) + shadcn/ui + Recharts |
+| Frontend | Next.js 16 + React 19 (static export) + shadcn/ui + Recharts |
 | Container | Docker (single image: API + dashboard) |
 
 ---

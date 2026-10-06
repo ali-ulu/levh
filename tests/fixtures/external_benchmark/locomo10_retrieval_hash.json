@@ -1,7 +1,7 @@
 {
   "benchmark": "locomo10",
   "adapter_version": "levh-locomo-retrieval-v1",
-  "levh_version": "2.32.0",
+  "levh_version": "2.33.0",
   "embedder_mode": "hash",
   "top_k": 10,
   "samples": 10,

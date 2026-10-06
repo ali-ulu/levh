@@ -128,7 +128,7 @@ export function Sidebar() {
           </div>
           <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">{t("sidebar.status.stack")}</p>
           <div className="mt-3 flex items-center justify-between text-[10px] text-muted-foreground">
-            <span>LEVH Engine v2.32</span>
+            <span>LEVH Engine v2.33</span>
             <span>{t("sidebar.status.localFirst")}</span>
           </div>
         </div>
