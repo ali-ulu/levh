@@ -115,12 +115,18 @@ No push, polling daemon, CRDT replication or automatic conflict merge is part
 of B1. The engine remains single-process and peer verification key material
 stays local to the receiver.
 
-### B2. Measure that federation preserved recall quality
+### B2. Measure that federation preserved recall quality — implemented (#488)
 
 Re-run Phase A's continuity scenario across two instances and assert the
 imported memory is recalled on the receiver, decays on the receiver's clock, and
-never outranks a local memory the receiver pinned. Next step: fixture in
-`tests/fixtures/evaluation/` once B1 exists.
+never outranks a local memory the receiver pinned.
+
+Done in `server/core/federation_quality.py` (`tests/test_federation_quality.py`):
+two throwaway engines, a signed B0 envelope imported through
+`import_verified_envelope`, asserting receiver recallability, receiver-clock
+lifecycle reset (pin cleared, counters zeroed, `accessed_at` re-stamped) and a
+pinned local memory that survives the import. The content-free metrics feed
+the offline evaluation report (`federation` section).
 
 ---
 

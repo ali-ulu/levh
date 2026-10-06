@@ -195,6 +195,9 @@ def cmd_eval_run(args: argparse.Namespace) -> int:
           f"false positives {c['false_positives']}")
     p = report["procedures"]
     print(f"  procedure: candidates {p['candidates']}  mismatches {p['mismatches']}")
+    f = report["federation"]
+    print(f"  federation: imported {f['imported']}  recallable {f['imported_recallable']}  "
+          f"lifecycle-reset {f['lifecycle_reset']}  pinned-preserved {f['pinned_preserved']}")
     print(f"  report → {args.output}\n")
     return 0 if passed == report["fixture_count"] else 1
 

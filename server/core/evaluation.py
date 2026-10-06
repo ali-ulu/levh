@@ -29,6 +29,7 @@ from pathlib import Path
 
 from server.core.memory_engine import MemoryEngine
 from server.core import procedure
+from server.core.federation_quality import run_federation_quality
 
 EVALUATION_VERSION = "memory-eval-v1"
 
@@ -533,6 +534,12 @@ async def run_evaluation(
             "order_ok": False,
             "use_ok": False,
         },
+        # "federation" measures the B2 quality proof (#488): a peer memory
+        # imported through the verified envelope boundary is recallable on
+        # the receiver, decays on the receiver's clock, and never displaces
+        # a pinned local memory. Counts and booleans only — the scenario
+        # content must not leak into the report.
+        "federation": await run_federation_quality(embedder_mode),
     }
 
 

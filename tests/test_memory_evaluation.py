@@ -66,7 +66,7 @@ def test_report_is_versioned_and_labels_its_surfaces(report):
     # Bare "accuracy" is banned — each surface is named for what it measures.
     serialized = json.dumps(report)
     assert '"accuracy"' not in serialized
-    for surface in ("recall", "quality", "conflicts", "lifecycle", "procedures", "continuity"):
+    for surface in ("recall", "quality", "conflicts", "lifecycle", "procedures", "continuity", "federation"):
         assert surface in report
 
 

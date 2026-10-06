@@ -8,6 +8,11 @@
 - Added `levh federation-pull` for explicit receiver-initiated exchange: optional token-file authentication, no redirect following, HTTPS required when sending a token to a remote peer, signature/node verification before opening the local store, and admission-gated import.
 - Kept federation transport deliberately narrow: no background polling, push, CRDT/shared store, or automatic conflict merge.
 
+### federation: prove cross-instance recall quality (#488)
+
+- Added a two-instance quality proof: a signed peer envelope imported through the verified boundary is recallable on the receiver, decays on the receiver's clock (pin cleared, counters reset, access time re-stamped), and never displaces a pinned local memory.
+- Exposed the proof as a content-free `federation` section in the offline evaluation report (`levh eval run`).
+
 
 ### feat: add the memory assistant chat
 

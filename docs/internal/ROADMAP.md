@@ -39,7 +39,7 @@ numbered findings, and because each one is also a candidate revenue surface.
 | --- | --- | --- | --- | --- |
 | connectors | Slack sync connector | done | — | #421 |
 | continuity-proof | Measure that the continuity brief is emitted and used, not just built to be emitted | done | — | #378, #423, #486 |
-| memory-federation | Peer memory exchange with provenance, signature and receiver-side decay | in-progress | B0 and B1 are complete: signed envelopes carry verified provenance; explicit receiver pulls use the normal token boundary, refuse redirects, require HTTPS for remote token authentication, verify signature/node identity before opening the local store, and import only through `import_memories_gated`. Remaining proof is B2: measure cross-instance recall quality and receiver-side decay against the continuity fixture. | #338, #356, #357, #425, #302, #484 |
+| memory-federation | Peer memory exchange with provenance, signature and receiver-side decay | done | — | #338, #356, #357, #425, #302, #484, #488 |
 | typescript-sdk | TypeScript SDK over the REST and MCP surface | done | — | #307 |
 | git-enrichment | Make the git and GitHub connectors actually feed memory | done | — | #374, #399 |
 | windowing-graph | Bind the entity graph and an adaptive budget into the context window | done | — | #375 |
