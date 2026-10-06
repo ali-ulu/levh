@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### fix: anchor the antonym conflict signal to a shared topic
+
+- Bare antonym words ("keep" in one memory, "drop" in another) no longer open a conflict candidate on their own: the antonym signal now also requires a shared topic term in both texts, mirroring the decision-conflict lane.
+- Same-subject opposition ("keep the cache table" vs "drop the cache table") still fires; unrelated passages stay silent.
+- The next conflict rescan automatically prunes open noise rows that no longer fire; reviewed verdicts are never reset.
+
 ### federation: add explicit pull-first peer transport (#484)
 
 - Added a source endpoint that serves the existing signed B0 federation envelope using configured node identity/signing key and the normal API authentication boundary.

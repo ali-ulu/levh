@@ -4,7 +4,13 @@ disagree, for a human to review. Offline, no LLM, no truth claim.
 This never decides that two memories contradict each other. It only surfaces
 *candidates*: two memories that (a) share an entity and (b) show an opposing
 surface pattern (an antonym, a negation, or the same attribute with different
-values). A human then reviews. Signal, not verdict.
+values) about a shared topic. A human then reviews. Signal, not verdict.
+
+The topic anchor is what keeps (b) honest: bare antonym words ("keep" in one
+memory, "drop" in another) fire on almost any pair of texts, so an antonym
+only counts when both texts also share a meaningful topic term. Negation and
+attribute-value signals are anchored by construction (same attribute key) and
+need no extra gate.
 
 Everything here is a pure function of the two memories' text; the engine adds
 the entity-overlap and trust context.
@@ -94,11 +100,50 @@ def _antonym_signal(a: str, b: str) -> str | None:
     return None
 
 
+#: Every antonym-pair word. Signal words never count as topic anchors: the
+#: opposition itself must not be the thing the two texts "agree" about.
+_ANTONYM_WORDS: set[str] = {word for pair in _ANTONYM_PAIRS for word in pair}
+
+
+def topic_terms(text: str) -> set[str]:
+    """Meaningful topic tokens of a free-text memory.
+
+    Same idea as :func:`decision_topic_terms` for shared decisions: generic
+    verbs and the antonym vocabulary itself are excluded, so two texts that
+    merely share the word "keep" (or "use", "should", ...) do not anchor each
+    other.
+    """
+    return {
+        word
+        for word in _words(text or "")
+        if len(word) >= 3
+        and word not in _DECISION_TOPIC_STOP_WORDS
+        and word not in _ANTONYM_WORDS
+    }
+
+
+def _anchored_antonym_signal(a: str, b: str) -> str | None:
+    """An antonym pair plus a shared topic term in both texts.
+
+    Without the anchor, pairs like on/off or keep/drop fire on any two texts
+    that happen to use those words about unrelated subjects — one commit
+    message saying "drop" and another saying "keep" is not a disagreement.
+    With it, "the contract is approved" vs "the contract is rejected" still
+    fires (shared topic: contract) while unrelated passages stay silent.
+    """
+    ant = _antonym_signal(a, b)
+    if ant is None:
+        return None
+    if not (topic_terms(a) & topic_terms(b)):
+        return None
+    return ant
+
+
 def opposing_signal(content_a: str, content_b: str) -> tuple[str, str] | None:
     """Detect an opposing surface pattern between two texts. Returns
     ``(signal_type, detail)`` or None. signal_type ∈
     {"antonym", "negation", "attribute_value"}."""
-    ant = _antonym_signal(content_a, content_b)
+    ant = _anchored_antonym_signal(content_a, content_b)
     if ant:
         return ("antonym", ant)
 

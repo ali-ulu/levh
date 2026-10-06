@@ -2,15 +2,15 @@
   "name": "conflict_false_positive",
   "memories": [
     {
-      "key": "ci-status",
-      "content": "The nightly build pipeline is up again after the runner fix.",
+      "key": "cache-policy-keep",
+      "content": "Keep the cache table for reads during the migration.",
       "source": "cli",
       "metadata": {"attendees": ["Ece Kaya <ece@acme-corp.com>"]},
       "expected_admission": "admit"
     },
     {
-      "key": "headcount-note",
-      "content": "Ece mentioned hiring is down this quarter across the platform team.",
+      "key": "cache-policy-drop",
+      "content": "Drop the cache table tonight to reclaim disk space.",
       "source": "cli",
       "metadata": {"attendees": ["Ece Kaya <ece@acme-corp.com>"]},
       "expected_admission": "admit"
@@ -18,11 +18,11 @@
   ],
   "queries": [
     {
-      "query": "What happened to the nightly build pipeline after the runner fix?",
-      "expected_memory_keys": ["ci-status"]
+      "query": "What is the cache table policy during the migration?",
+      "expected_memory_keys": ["cache-policy-keep"]
     }
   ],
   "expected_conflicts": [],
   "known_false_positives": true,
-  "note": "Deliberate false-positive scenario: 'up' vs 'down' about unrelated topics plus a shared person entity currently trips the antonym signal. The candidate is NOT a real conflict, so any detection here is counted as a false positive in the report — this fixture keeps the FP surface measured instead of hidden."
+  "note": "Deliberate false-positive scenario: keep/drop about the same cache table plus a shared person entity trips the anchored antonym signal, so detection opens a candidate here. The candidate is NOT a real conflict (a daytime read policy and a nighttime reclaim can both be true), so any detection is counted as a false positive in the report — this fixture keeps the FP surface measured instead of hidden."
 }

@@ -33,6 +33,29 @@ def test_opposing_signal_none_for_agreeing_text():
     assert conflict.opposing_signal("The sky is blue", "The sky is blue") is None
 
 
+def test_opposing_signal_none_for_antonym_without_shared_topic():
+    """Bare antonym words about unrelated subjects are not a disagreement:
+    one commit message saying "drop" and another saying "keep" must stay
+    silent when the two texts share no topic."""
+    assert (
+        conflict.opposing_signal(
+            "Release pipeline will drop the legacy flag",
+            "Keep the runbook updated for the rota",
+        )
+        is None
+    )
+
+
+def test_opposing_signal_antonym_with_shared_topic():
+    """Same-subject opposition still fires: keep/drop about the same table."""
+    signal = conflict.opposing_signal(
+        "Keep the cache table for reads",
+        "Drop the cache table tonight",
+    )
+    assert signal is not None
+    assert signal[0] == "antonym"
+
+
 def test_candidate_confidence_cross_source_higher():
     same = conflict.candidate_confidence("antonym", 1)
     cross = conflict.candidate_confidence("antonym", 2)
@@ -119,6 +142,92 @@ async def test_detect_no_candidate_for_unrelated_memories(engine):
     result = await engine.detect_conflict_candidates()
     assert result["new_candidates"] == 0
     assert result["open_total"] == 0
+
+
+async def _seed_noisy_pair(engine):
+    """Shared entity, antonym words, but no shared topic: the noise shape
+    that filled the open list (commit says "drop", another says "keep")."""
+    a = await engine.store(
+        content="Release pipeline will drop the legacy flag",
+        memory_type="episodic",
+        source="connector:calendar",
+        metadata={"attendees": ["Alice <alice@acme.com>"]},
+    )
+    b = await engine.store(
+        content="Keep the runbook updated for the rota",
+        memory_type="episodic",
+        source="connector:calendar",
+        metadata={"attendees": ["Alice <alice@acme.com>"]},
+    )
+    return a, b
+
+
+async def _seed_anchored_pair(engine):
+    """Shared entity and same-subject opposition: keep/drop the cache table."""
+    a = await engine.store(
+        content="Keep the cache table for reads",
+        memory_type="episodic",
+        source="connector:calendar",
+        metadata={"attendees": ["Alice <alice@acme.com>"]},
+    )
+    b = await engine.store(
+        content="Drop the cache table tonight",
+        memory_type="episodic",
+        source="connector:calendar",
+        metadata={"attendees": ["Alice <alice@acme.com>"]},
+    )
+    return a, b
+
+
+@pytest.mark.asyncio
+async def test_detect_no_candidate_for_unanchored_antonym(engine):
+    await _seed_noisy_pair(engine)
+    result = await engine.detect_conflict_candidates()
+    assert result["new_candidates"] == 0
+    assert result["open_total"] == 0
+
+
+@pytest.mark.asyncio
+async def test_detect_candidate_for_anchored_antonym(engine):
+    await _seed_anchored_pair(engine)
+    result = await engine.detect_conflict_candidates()
+    assert result["new_candidates"] >= 1
+    open_candidates = await engine.list_conflict_candidates(status="open")
+    assert any(c["signal_type"] == "antonym" for c in open_candidates)
+
+
+@pytest.mark.asyncio
+async def test_rescan_prunes_stale_unanchored_noise(engine):
+    """An open row from before the topic-anchor fix must disappear on the
+    next detection instead of lingering in the review list."""
+    import json
+    from datetime import datetime, timezone
+
+    a, b = await _seed_noisy_pair(engine)
+    left, right = sorted([a.id, b.id])
+    await engine.db.insert_conflict_if_absent(
+        {
+            "id": f"{left}|{right}",
+            "memory_id_a": left,
+            "memory_id_b": right,
+            "shared_entities_json": json.dumps(["person:alice@acme.com"]),
+            "signal_type": "antonym",
+            "confidence": 0.7,
+            "status": "open",
+            "explanation_json": json.dumps({"signal_type": "antonym"}),
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
+    )
+    await engine.db.commit()
+    # NB: read through engine.db, not engine.list_conflict_candidates: the
+    # latter awaits a derived-state rebuild first, which would prune this
+    # stale row before we assert it exists.
+    assert await engine.db.get_conflict(f"{left}|{right}") is not None
+
+    result = await engine.conflict_service.detect_conflict_candidates()
+
+    assert result["stale_pruned"] >= 1
+    assert await engine.db.get_conflict(f"{left}|{right}") is None
 
 
 # ── 3/4. same-source duplicate does not inflate severity; different
