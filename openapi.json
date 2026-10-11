@@ -3344,7 +3344,7 @@
     "/api/v1/federation/pull": {
       "post": {
         "summary": "Federation Pull",
-        "description": "Pull one signed envelope from a peer and import it through the gate.\n\nServer-side twin of the ``federation-pull`` CLI command: the dashboard\ncannot reach ``verify_envelope`` itself, and the receiver's verification\nkey must never leave the server. Configuration comes from the same\nLEVH_FEDERATION_* environment the CLI reads.",
+        "description": "Pull one signed envelope from an allowlisted peer through the gate.\n\nServer-side twin of the ``federation-pull`` CLI command: the dashboard\ncannot reach ``verify_envelope`` itself, and the receiver's verification\nkey must never leave the server. Unlike the CLI, the request URL is built\nonly from the operator-approved ``LEVH_FEDERATION_PEERS`` allowlist \u2014 the\nbody's ``source`` is matched against that list (defaulting to the only\nentry), never used to construct the URL. That keeps a browser session\nfrom turning this server into a request proxy against arbitrary hosts.",
         "operationId": "federation_pull_api_federation_pull_post_v1",
         "requestBody": {
           "content": {
@@ -7880,7 +7880,7 @@
           "source"
         ],
         "title": "FederationPullRequest",
-        "description": "Body for the dashboard-side federation pull button.\n\n``source`` is the peer base URL; ``expected_node_id`` pins the peer id\nwhen the operator wants to accept one node only."
+        "description": "Body for the dashboard-side federation pull button.\n\n``source`` names a peer the operator has already approved via\n``LEVH_FEDERATION_PEERS``; ``expected_node_id`` pins the peer id when the\noperator wants to accept one node only. The request URL itself is built\nfrom the allowlist entry, never from the request body, so a logged-in\ndashboard session cannot make this server contact an arbitrary host."
       },
       "FeedbackRequest": {
         "properties": {
