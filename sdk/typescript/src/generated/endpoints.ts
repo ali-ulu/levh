@@ -57,6 +57,7 @@ export const OPERATIONS = {
   "export_full_pdf_api_export_full_pdf_get_v1": { method: "GET", path: "/api/v1/export/full.pdf", pathParams: [], query: [], body: "never" },
   "export_full_sqlite_api_export_full_sqlite_get_v1": { method: "GET", path: "/api/v1/export/full.sqlite", pathParams: [], query: [], body: "never" },
   "export_federation_envelope_api_federation_envelope_get_v1": { method: "GET", path: "/api/v1/federation/envelope", pathParams: [], query: [], body: "never" },
+  "federation_pull_api_federation_pull_post_v1": { method: "POST", path: "/api/v1/federation/pull", pathParams: [], query: [], body: "FederationPullRequest" },
   "list_findings_api_findings_get_v1": { method: "GET", path: "/api/v1/findings", pathParams: [], query: [{ name: "status", required: false, type: "string" }, { name: "category", required: false, type: "string" }, { name: "limit", required: false, type: "number" }], body: "never" },
   "report_finding_api_findings_post_v1": { method: "POST", path: "/api/v1/findings", pathParams: [], query: [], body: "FindingReportRequest" },
   "delete_finding_api_findings__finding_id__delete_v1": { method: "DELETE", path: "/api/v1/findings/{finding_id}", pathParams: ["finding_id"], query: [], body: "never" },

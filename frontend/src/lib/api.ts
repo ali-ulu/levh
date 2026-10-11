@@ -9,6 +9,7 @@ import type {
   EntityRow,
   Finding,
   ForgettingCurve,
+  FederationPullResult,
   MeetingPrep,
   Memory,
   Organization,
@@ -523,6 +524,15 @@ export const api = {
       `/api/benchmark/recall?embedder_mode=${embedder_mode ?? ""}&top_k=${top_k}`,
       { method: "POST" }
     ),
+
+  // Federation pull: ask this server to fetch, verify and admit one peer
+  // envelope. The verification key stays server-side; the browser only picks
+  // the peer and (optionally) pins the expected node id.
+  federationPull: (source: string, expected_node_id?: string) =>
+    fetchApi<FederationPullResult>("/api/federation/pull", {
+      method: "POST",
+      body: JSON.stringify({ source, expected_node_id: expected_node_id || null }),
+    }),
 
   // Connectors
   listConnectors: () => fetchApi<{ connectors: Connector[] }>("/api/connectors"),

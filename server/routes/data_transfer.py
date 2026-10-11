@@ -6,8 +6,12 @@ import base64
 import binascii
 from datetime import datetime, timezone
 
+# NOTE: federation pull route lives under the same permission model as
+# admissions (see /api/federation/pull below).
+
 from fastapi import Depends, APIRouter, HTTPException
 from fastapi.responses import Response
+from pydantic import BaseModel
 
 from server.routes.deps import get_engine
 from server.routes.models import (
@@ -85,6 +89,127 @@ async def export_federation_envelope(engine=Depends(get_engine)):
         raise HTTPException(status_code=403, detail=str(exc)) from exc
     except (EnvelopeError, CryptoUnavailableError) as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+class FederationPullRequest(BaseModel):
+    """Body for the dashboard-side federation pull button.
+
+    ``source`` is the peer base URL; ``expected_node_id`` pins the peer id
+    when the operator wants to accept one node only.
+    """
+
+    source: str
+    expected_node_id: str | None = None
+
+
+@router.post("/api/federation/pull")
+async def federation_pull(
+    request: FederationPullRequest,
+    engine=Depends(get_engine),
+):
+    """Pull one signed envelope from a peer and import it through the gate.
+
+    Server-side twin of the ``federation-pull`` CLI command: the dashboard
+    cannot reach ``verify_envelope`` itself, and the receiver's verification
+    key must never leave the server. Configuration comes from the same
+    LEVH_FEDERATION_* environment the CLI reads.
+    """
+    import httpx
+    from urllib.parse import urlparse
+
+    from server.core.crypto import CryptoUnavailableError
+    from server.core.env import get_env
+    from server.core.federation import EnvelopeError, import_verified_envelope
+    from server.core.tenancy import AuthorizationError, authorize
+
+    authorize("admit")
+
+    source = request.source.strip().rstrip("/")
+    endpoint = (
+        source
+        if source.endswith("/api/v1/federation/envelope")
+        else f"{source}/api/v1/federation/envelope"
+
+    ) if source else ""
+    parsed = urlparse(endpoint)
+    if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+        raise HTTPException(
+            status_code=422,
+            detail="federation pull failed: source must be an http(s) URL",
+        )
+
+    key_path = get_env("LEVH_FEDERATION_KEY_PATH", "").strip()
+    if not key_path:
+        raise HTTPException(
+            status_code=503,
+            detail="federation pull needs LEVH_FEDERATION_KEY_PATH on this server",
+        )
+
+    token = get_env("LEVH_TOKEN", "").strip()
+    headers = {"Accept": "application/json"}
+    if token:
+        # Same rule as the CLI: a token may ride to a localhost peer over
+        # plain http, but a remote peer must speak https.
+        if parsed.scheme != "https" and parsed.hostname not in {
+            "localhost",
+            "127.0.0.1",
+            "::1",
+        }:
+            raise HTTPException(
+                status_code=422,
+                detail=(
+                    "federation pull refused: token authentication requires "
+                    "HTTPS for a remote peer"
+                ),
+            )
+        headers["X-LEVH-Token"] = token
+
+    try:
+        response = httpx.get(
+            endpoint,
+            headers=headers,
+            timeout=30.0,
+            follow_redirects=False,
+        )
+    except httpx.HTTPError as exc:
+        raise HTTPException(status_code=502, detail=f"federation pull failed: {exc}") from exc
+
+    if response.status_code != 200:
+        raise HTTPException(
+            status_code=502,
+            detail=f"federation pull failed: peer returned HTTP {response.status_code}",
+        )
+
+    try:
+        envelope = response.json()
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail="federation pull failed: peer returned invalid JSON",
+        ) from exc
+    if not isinstance(envelope, dict):
+        raise HTTPException(
+            status_code=502,
+            detail="federation pull failed: peer returned a non-object envelope",
+        )
+
+    try:
+        result = await import_verified_envelope(
+            engine,
+            envelope,
+            key_path=key_path,
+            expected_node_id=request.expected_node_id or None,
+        )
+    except (EnvelopeError, CryptoUnavailableError) as exc:
+        raise HTTPException(status_code=422, detail=f"rejected envelope: {exc}") from exc
+    except AuthorizationError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+
+    return {
+        "node_id": envelope.get("node_id"),
+        "algorithm": envelope.get("algorithm"),
+        **result,
+    }
 
 
 @router.get("/api/export/full.sqlite")

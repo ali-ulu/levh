@@ -258,6 +258,19 @@ export interface ServerConfig {
   version: string;
 }
 
+// Result of a peer federation pull: which node it came from (from the
+// verified envelope, not sender-supplied fields) and the admission-gate
+// breakdown for its memories.
+export interface FederationPullResult {
+  node_id: string | null;
+  algorithm: string | null;
+  imported: number;
+  redacted: number;
+  duplicates: number;
+  held: number;
+  errors: number;
+}
+
 export interface ForgettingCurve {
   memory_id: string;
   pinned: boolean;

@@ -252,9 +252,9 @@ export type CollaborationResponse = {
   collaboration_score: number;
   handoffs?: TeamHandoffOut[];
   decisions?: TeamDecisionOut[];
+  decision_conflicts?: TeamDecisionConflictOut[];
   pending_handoffs?: number;
   contested_decisions?: number;
-  decision_conflicts?: TeamDecisionConflictOut[];
   open_decision_conflicts?: number;
 };
 
@@ -512,6 +512,11 @@ export type FadingMemoryOut = {
   decay_factor: number;
   stability_hours: number;
   recall_count: number;
+};
+
+export type FederationPullRequest = {
+  source: string;
+  expected_node_id?: string | null;
 };
 
 export type FeedbackRequest = {
@@ -1337,15 +1342,15 @@ export type TeamHandoffOut = {
   title: string;
   summary?: string;
   memory_ids?: string[];
+  required_capabilities?: string[];
+  priority?: number;
   status: string;
   created_at: string;
   accepted_at?: string | null;
   accepted_by?: string | null;
   accepted_agent?: string | null;
-  completed_at?: string | null;
-  required_capabilities?: string[];
-  priority?: number;
   accepted_session_id?: string | null;
+  completed_at?: string | null;
 };
 
 export type TimelineGroupOut = {

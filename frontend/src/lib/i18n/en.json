@@ -805,5 +805,18 @@
   "assistant.chat.send": "Send",
   "assistant.chat.openChats": "Chats",
   "assistant.chat.closeChats": "Close chats",
-  "assistant.chat.newChatUnavailable": "New chats need LEVH_OPENGENI_API_KEY on the LEVH server."
+  "assistant.chat.newChatUnavailable": "New chats need LEVH_OPENGENI_API_KEY on the LEVH server.",
+  "settings.federation.title": "Federation",
+  "settings.federation.description": "Pull one signed envelope from a peer LEVH node and admit its memories through the local admission gate. The peer's verification key is configured on this server (LEVH_FEDERATION_KEY_PATH); the browser never sees it. Expected node id is optional — leave empty to accept any verified peer.",
+  "settings.federation.sourcePlaceholder": "Peer URL (e.g. http://peer.example:8000)",
+  "settings.federation.nodePlaceholder": "Expected node id (optional)",
+  "settings.federation.pull": "Pull from peer",
+  "settings.federation.pullFailed": "Pull failed",
+  "settings.federation.emptySource": "Enter a peer URL first",
+  "settings.federation.importedFrom": "Verified envelope from node {node} ({algorithm}). Memories admitted through the gate:",
+  "settings.federation.imported": "imported",
+  "settings.federation.redacted": "redacted",
+  "settings.federation.duplicates": "duplicates",
+  "settings.federation.held": "held for review",
+  "settings.federation.errors": "errors"
 }
