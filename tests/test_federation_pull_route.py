@@ -9,7 +9,6 @@ verification-before-import, expected node pin) must hold here too.
 
 from __future__ import annotations
 
-import asyncio
 import os
 
 import httpx
@@ -18,7 +17,6 @@ import pytest_asyncio
 from fastapi import HTTPException
 os.environ["EMBEDDER_MODE"] = "hash"
 
-from server.core import engine_provider
 from server.core.federation import sign_envelope
 from server.core.full_export import build_full_export
 from server.core.memory_engine import MemoryEngine
