@@ -6,6 +6,8 @@
 
 - TBD
 
+## 2.34.0
+
 ### federation: bring the dashboard into the pull-first transport (#498)
 
 - Added `POST /api/v1/federation/pull` — the server-side twin of the `federation-pull` CLI command. Fetches one signed envelope from an explicit peer URL, verifies it locally with `LEVH_FEDERATION_KEY_PATH` (the key never leaves the server), and admits its memories through the existing admission gate. CLI security contracts carried over verbatim: token auth requires HTTPS on remote peers, no redirects, optional `expected_node_id` pin, verification completes before any write.
