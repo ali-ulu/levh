@@ -12,12 +12,6 @@
   <a href="https://github.com/ali-ulu/levh#readme"><img src="https://img.shields.io/badge/docs-README-0D1117?logo=readme&logoColor=white" alt="LEVH documentation"></a>
 </p>
 
-<p align="center">
-  <a href="https://www.producthunt.com/products/levh?embed=true&utm_source=badge-featured&utm_medium=badge&utm_campaign=badge-levh" target="_blank"><img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1199355&theme=light" alt="Levh - Local-first memory for AI agents and workflows | Product Hunt" style="width: 250px; height: 54px;" width="250" height="54" /></a>
-</p>
-
-
-
 ---
 
 ## What is LEVH?
@@ -150,7 +144,7 @@ levh mcp init my-server --with-memory   # scaffold an MCP server on this databas
 - **74 MCP tools**, a REST API, a WebSocket feed, and a live Next.js dashboard served by the API itself — one process, one port.
 - **4 embedding modes** — OpenAI, local `all-MiniLM-L6-v2`, Ollama (fully offline), or a deterministic hash fallback. The system always works.
 - **Connectors** for Calendar, Email, transcripts, Notion, Obsidian, GitHub, Jira, Linear, Slack, local git history and local files — all routed through the admission gate. Calendar, mail and transcript files are uploaded from the dashboard; there is no filesystem path to type.
-- **Signed federation** — explicit, pull-first peer exchange of memory between two LEVH instances. The envelope is ed25519-signed and verified before a single row is opened locally, then imported through the same admission gate; there is no background polling, push, or automatic conflict merge.
+- **Signed federation** — explicit, pull-first peer exchange of memory between two LEVH instances. The envelope is ed25519-signed and verified before a single row is opened locally, then imported through the same admission gate; there is no background polling, push, or automatic conflict merge. Pull from a peer three ways: the `levh federation-pull` CLI, `POST /api/v1/federation/pull`, or the dashboard's Settings → Federation card. The dashboard endpoint builds its request URL only from the operator-approved `LEVH_FEDERATION_PEERS` allowlist, so a browser session can never point the server at an arbitrary host.
 - **Scaffold your own MCP server** — `levh mcp init my-server --with-memory` writes a working server that shares this database, optionally with a deploy config for Fly, Railway, Render or Docker.
 
 → [Full MCP tool list](docs/mcp-tools.md) · [REST API](docs/api-reference.md) · [CLI](docs/cli.md) · [Connectors](docs/connectors.md)

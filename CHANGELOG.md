@@ -6,6 +6,17 @@
 
 - TBD
 
+### federation: bring the dashboard into the pull-first transport (#498)
+
+- Added `POST /api/v1/federation/pull` — the server-side twin of the `federation-pull` CLI command. Fetches one signed envelope from an explicit peer URL, verifies it locally with `LEVH_FEDERATION_KEY_PATH` (the key never leaves the server), and admits its memories through the existing admission gate. CLI security contracts carried over verbatim: token auth requires HTTPS on remote peers, no redirects, optional `expected_node_id` pin, verification completes before any write.
+- Added a Settings → Federation dashboard card: peer URL + optional expected-node inputs, a pull button, verified-envelope provenance and the admission-gate counter grid (imported / redacted / duplicates / held / errors). Full TR/EN i18n.
+- The dashboard endpoint builds its request URL only from an operator-approved `LEVH_FEDERATION_PEERS` allowlist — a browser session can never point this server at an arbitrary host (SSRF boundary, CodeQL-flagged and fixed before merge).
+- Documented the new route in the API reference so the docs-match-code guard stays green.
+
+### chore: prune unused frontend components and stale automation prompts (#496, #497)
+
+- Removed five dead frontend components (fading-memories, memory-result-card, three unused ui primitives) and two stale LEVH automation prompt files; no behavior change.
+
 ## 2.33.0
 
 ### fix: anchor the antonym conflict signal to a shared topic
