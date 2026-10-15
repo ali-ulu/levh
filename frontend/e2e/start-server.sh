@@ -20,9 +20,24 @@ cd "$(dirname "$0")/.." # frontend/
 # `_next/` (gitignored) out of the tree, so a fresh clone has index.html that
 # references bundle hashes no process can serve. `levh serve` then answers "/"
 # with 200 and every chunk with 404 — a blank dashboard. Requiring the `_next`
-# directory is what distinguishes a usable export from those orphaned shells.
+# directory is not enough either: a checkout that once built the export keeps a
+# *stale* `_next` beside *newer* committed HTML, so the directory exists while
+# the referenced hashes are gone. Ask the server's own completeness check, which
+# reads the HTML and confirms each referenced bundle is present.
+needs_build=0
 if [ ! -f out/index.html ] || [ ! -d out/_next ]; then
-  echo "[e2e] frontend/out is missing or incomplete — building the static export" >&2
+  needs_build=1
+elif ! uv run --frozen python -c "
+import sys
+sys.path.insert(0, '..')
+from server.api import _missing_dashboard_assets
+sys.exit(1 if _missing_dashboard_assets('out') else 0)
+"; then
+  needs_build=1
+fi
+
+if [ "$needs_build" = 1 ]; then
+  echo "[e2e] frontend/out is missing, stale or incomplete — building the static export" >&2
   NEXT_TELEMETRY_DISABLED=1 npm run build >&2
 fi
 

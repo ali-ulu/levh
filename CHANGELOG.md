@@ -6,6 +6,10 @@
 
 - TBD
 
+### fix: serve the complete dashboard export, not a stale bundle-less one (#507)
+
+- `_dashboard_dir` accepted any candidate with an `index.html` and an `_next/static` directory. A checkout that built the export once keeps that `_next` beside *newer* committed HTML, so the referenced content hashes are gone: `/` answered 200 while the chunks 404'd and React never hydrated, and routes whose chunk was missing rendered "Something went wrong" — the dashboard's buttons did nothing because the page never came up. `_missing_dashboard_assets` now reads every HTML file in a candidate and confirms each referenced `_next/static` bundle is present; only a complete export is chosen, and the packaged `server/dashboard` (which always ships its bundles) is served instead of the partial one. `frontend/e2e/start-server.sh` runs the same check before deciding whether to rebuild.
+
 ## 2.34.0
 
 ### federation: bring the dashboard into the pull-first transport (#498)
