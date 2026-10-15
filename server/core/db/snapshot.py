@@ -52,8 +52,20 @@ class SnapshotQueries:
             target = backup_dir / f"stackmemory-pre-restore-{stamp}.db"
 
         target.parent.mkdir(parents=True, exist_ok=True)
-        async with aiosqlite.connect(str(target)) as destination_conn:
-            await self._db.conn.backup(destination_conn)
+        # Held while the online backup runs (issue #504 follow-up). ``backup``
+        # is not an ordinary statement: it is queued on the shared connection
+        # like every other, but its worker-thread call retries in 250 ms sleeps
+        # until SQLite reports it is done, so it can outlive the statements
+        # queued around it. A derived-state rebuild holds ``write_lock`` while
+        # it issues its reindex statements, so a backup queued in that window
+        # would sit *ahead* of the rebuild's own queued commit while the
+        # rebuild holds the lock the backup's caller is not yet waiting on —
+        # the backup never finishes, the rebuild's commit never runs, and the
+        # request hangs forever instead of failing. Taking the lock makes the
+        # two mutually exclusive rather than interleaved.
+        async with self._db.write_lock:
+            async with aiosqlite.connect(str(target)) as destination_conn:
+                await self._db.conn.backup(destination_conn)
         try:
             target.chmod(0o600)
         except OSError:
