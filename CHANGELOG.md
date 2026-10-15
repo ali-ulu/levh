@@ -14,6 +14,10 @@
 
 - Added `copyText` (`frontend/src/lib/clipboard.ts`): it prefers `navigator.clipboard.writeText` and falls back to a hidden-textarea `execCommand("copy")` when that API is missing (a plain-HTTP LAN origin) or rejects the write (`NotAllowedError`). The Settings, Projects and Onboarding copy buttons now report success truthfully instead of throwing and silently doing nothing.
 
+### fix: serialize explicit write transactions against a derived-state rebuild
+
+- Every write path shares one aiosqlite connection, and a derived-state rebuild pass holds an implicit transaction open between its first `DELETE` and its commit. A hard-delete or a snapshot restore issuing `BEGIN IMMEDIATE` in that window raised `sqlite3.OperationalError: cannot start a transaction within a transaction`. The startup warm task added in #503 made a background pass overlap a request's transaction routine, so the failure moved from rare to about one run in three. `Database.transaction` now holds a `write_lock` across an explicit transaction, and the rebuild holds the same lock for its whole pass, turning the interleave from a race into an invariant. The retry backoff sleep stays outside the lock, so a failing pass cannot hold writers off for the backoff duration.
+
 ## 2.34.0
 
 ### federation: bring the dashboard into the pull-first transport (#498)

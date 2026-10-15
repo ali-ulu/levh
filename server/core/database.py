@@ -14,10 +14,13 @@ addresses without this file re-listing them.
 
 from __future__ import annotations
 
+import asyncio
+import contextlib
 import re
 import time
+from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Optional
+from typing import AsyncIterator, Optional
 
 import aiosqlite
 
@@ -65,6 +68,15 @@ class Database:
         self.busy_timeout_ms = max(0, configured_timeout)
         self.fts5_available = False
         self.schema_version = 0
+        # Serializes every explicit multi-statement write transaction against
+        # any other writer on this connection (issue #503 follow-up). All write
+        # paths share ONE aiosqlite connection, so a `BEGIN IMMEDIATE` issued
+        # while a background derived-state pass has an implicit transaction
+        # open on that same connection raises "cannot start a transaction
+        # within a transaction" — the failure the startup warm task turned from
+        # rare to routine. The lock is what makes the interleave impossible
+        # rather than merely unlikely.
+        self.write_lock = asyncio.Lock()
 
         # The query groups, composed (issue #94). Each gets the facade so it
         # reads the live connection through ``self._db.conn``.
@@ -399,6 +411,30 @@ class Database:
             await self.conn.commit()
         finally:
             metrics.observe("levh_db_lock_wait_seconds", time.perf_counter() - started)
+
+    @asynccontextmanager
+    async def transaction(self) -> AsyncIterator[aiosqlite.Connection]:
+        """Hold :attr:`write_lock` across one explicit ``BEGIN IMMEDIATE`` block.
+
+        Every write path shares one connection, so an explicit transaction
+        must not interleave with another writer's statements — a background
+        derived-state pass with an implicit transaction open makes a
+        concurrent ``BEGIN IMMEDIATE`` raise "cannot start a transaction
+        within a transaction". Serializing on this lock turns that from a
+        race into an invariant. The commit is issued before the lock is
+        released so the next writer never inherits an open transaction, and
+        the rollback on error is suppressed because the connection may already
+        have left the transaction (a failed ``BEGIN`` itself).
+        """
+        async with self.write_lock:
+            await self.conn.execute("BEGIN IMMEDIATE")
+            try:
+                yield self.conn
+            except BaseException:
+                with contextlib.suppress(Exception):
+                    await self.conn.rollback()
+                raise
+            await self.conn.commit()
 
     def __getattr__(self, name: str):
         """Resolve former mixin methods against the composed query groups.

@@ -75,8 +75,7 @@ class SnapshotQueries:
         authorize("backup_restore", current_workspace_id())
         attachments = attachments or []
         workspace = current_workspace_id()
-        await self._db.conn.execute("BEGIN IMMEDIATE")
-        try:
+        async with self._db.transaction():
             memory_ids = [str(m["id"]) for m in memories]
             if replace:
                 # A snapshot restore is a whole-store operation and cannot be
@@ -213,7 +212,3 @@ class SnapshotQueries:
                 "DELETE FROM entities WHERE id NOT IN "
                 "(SELECT DISTINCT entity_id FROM memory_entities)"
             )
-            await self._db.commit()
-        except Exception:
-            await self._db.conn.rollback()
-            raise
