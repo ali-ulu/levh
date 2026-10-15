@@ -162,29 +162,62 @@ def similarity_expanded(
     content_terms = _content_terms(content)
     if not content_terms:
         return 0.0
+    buckets = _prefix_buckets(content_terms)
     matched = sum(
         1
         for term in query_terms
-        if _term_matches(term, content_terms, expansions)
+        if _term_matches(term, content_terms, buckets, expansions)
     )
     return matched / len(query_terms)
 
 
+def _prefix_buckets(content_terms: Set[str]) -> dict[str, list[str]]:
+    """Index the content's words by their ``_MIN_STEM_LENGTH`` opening letters.
+
+    ``_stem_matches`` accepts a pair only when it shares at least that many
+    opening characters, so every word a term can stem-match sits in the term's
+    own prefix bucket. Checking the bucket first shrinks each term's scan from
+    the whole vocabulary to the few words that could possibly match. The
+    surviving comparisons are exactly the ones the flat scan would have made,
+    so this filters the candidate set without approximating it. Words shorter
+    than the minimum are omitted: they can never pass ``_stem_matches``.
+    """
+    buckets: dict[str, list[str]] = {}
+    for word in content_terms:
+        if len(word) >= _MIN_STEM_LENGTH:
+            buckets.setdefault(word[:_MIN_STEM_LENGTH], []).append(word)
+    return buckets
+
+
+def _word_matches(term: str, content_terms: Set[str], buckets: dict[str, list[str]]) -> bool:
+    """Whether ``term`` matches any word of the content (see ``_stem_matches``)."""
+    if term in content_terms:
+        return True
+    if len(term) < _MIN_STEM_LENGTH:
+        # ``_stem_matches`` needs a shared opening of ``_MIN_STEM_LENGTH``
+        # characters, so a shorter term can only ever match by exact equality —
+        # already ruled out above. No bucket can hold it either.
+        return False
+    bucket = buckets.get(term[:_MIN_STEM_LENGTH])
+    if not bucket:
+        return False
+    return any(_stem_matches(term, word) for word in bucket)
+
+
 def _term_matches(
-    term: str, content_terms: Set[str], expansions: Mapping[str, frozenset[str]] | None
+    term: str,
+    content_terms: Set[str],
+    buckets: dict[str, list[str]],
+    expansions: Mapping[str, frozenset[str]] | None,
 ) -> bool:
-    if any(_stem_matches(term, word) for word in content_terms):
+    if _word_matches(term, content_terms, buckets):
         return True
     if not expansions:
         return False
     equivalents = expansions.get(term)
     if not equivalents:
         return False
-    return any(
-        _stem_matches(equivalent, word)
-        for equivalent in equivalents
-        for word in content_terms
-    )
+    return any(_word_matches(equivalent, content_terms, buckets) for equivalent in equivalents)
 
 
 def mutual_similarity(a: str, b: str) -> float:

@@ -6,6 +6,10 @@
 
 - TBD
 
+### perf: stop the model-free interference scan from freezing the event loop (#505)
+
+- In `hash` embedder mode `_interference_candidates` scores a new memory against every stored one, and each comparison scanned the full content vocabulary of both texts with `_stem_matches`. On a store of ~500 source documents (avg 16 KB) one `store()` spent 47 s on the event loop, so an auto-feed ingest pinned a CPU core and the dashboard stopped answering. `similarity_expanded` now indexes the content words by their `_MIN_STEM_LENGTH` opening prefix, so a term only compares against the words that can actually share its stem. The filter is exact — every comparison the flat scan would have made still runs — and a full scan drops from ~4.2 s to 0.09 s (~43×). Scores are bit-identical: differential fuzzing over 10 000 random pairs (Turkish text, short tokens, random synonym expansions) found no difference.
+
 ## 2.34.0
 
 ### federation: bring the dashboard into the pull-first transport (#498)

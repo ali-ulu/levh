@@ -128,6 +128,96 @@ def test_mutating_a_returned_set_cannot_poison_the_cache():
     assert "production" in lexical.terms(text)
 
 
+# ── the prefix bucket index: a filter, never an approximation ──────────
+#
+# ``similarity_expanded`` used to test every query term against every content
+# word. ``_stem_matches`` only accepts a pair sharing the first
+# ``_MIN_STEM_LENGTH`` characters, so indexing the content words by that prefix
+# lets a term skip the words that could never match. The scan it skips is the
+# one that made a model-free ingest of a large store pin a CPU for minutes (the
+# model-free interference scan compares each new memory against every stored
+# one, and each comparison scanned the full vocabulary in both directions).
+# These tests pin that the shorter scan returns bit-identical scores, including
+# for the short-term and synonym paths that bypass the bucket.
+
+_BUCKET_TEXTS = (
+    "",
+    "a an ab abc",
+    "config confirm the order",
+    "The production deploy branch is prod",
+    "Veritabanı migrasyonu her gece saat ikide çalışır",
+    "migrasyonlar migrasyonu deploylar deployu",
+    "CONFIG=load_test_123 code coding standards",
+    "x" * 40 + " " + "y" * 40,
+)
+
+
+def test_bucket_scores_equal_a_flat_scan_without_expansions():
+    for a in _BUCKET_TEXTS:
+        for b in _BUCKET_TEXTS:
+            assert lexical.similarity_expanded(a, b) == _reference_similarity(a, b)
+            assert mutual_similarity(a, b) == min(
+                _reference_similarity(a, b), _reference_similarity(b, a)
+            )
+
+
+def test_bucket_scores_equal_a_flat_scan_with_expansions():
+    """Expansion candidates also go through the bucket, so a synonym that is a
+    clean prefix of a longer content word must still match."""
+    expansions = {
+        "config": frozenset({"configuration", "settings"}),
+        "deploy": frozenset({"deployment", "release"}),
+        "abc": frozenset({"abcd"}),
+    }
+    for a in _BUCKET_TEXTS:
+        for b in _BUCKET_TEXTS:
+            expected = _reference_similarity_expanded(a, b, expansions)
+            assert lexical.similarity_expanded(a, b, expansions) == expected
+
+
+def _reference_similarity_expanded(query, content, expansions):
+    query_terms = _reference_terms(query)
+    if not query_terms:
+        return 0.0
+    content_terms = _reference_terms(content)
+    if not content_terms:
+        return 0.0
+    matched = sum(
+        1
+        for term in query_terms
+        if _reference_term_matches(term, content_terms, expansions)
+    )
+    return matched / len(query_terms)
+
+
+def _reference_term_matches(term, content_terms, expansions):
+    if any(lexical._stem_matches(term, word) for word in content_terms):
+        return True
+    if not expansions:
+        return False
+    equivalents = expansions.get(term)
+    if not equivalents:
+        return False
+    return any(
+        lexical._stem_matches(equivalent, word)
+        for equivalent in equivalents
+        for word in content_terms
+    )
+
+
+def test_short_terms_match_only_by_exact_equality():
+    # A term below the stem-matching minimum can only match by being present
+    # verbatim: "abc" shares three letters with "abcd" but three is coincidence,
+    # not a stem. The bucket must not change that either way. ("ab" is dropped
+    # by the tokenizer itself, so it scores 0 on both sides.)
+    assert lexical.similarity_expanded("abc", "abcd abc") == _reference_similarity(
+        "abc", "abcd abc"
+    )
+    assert lexical.similarity_expanded("abc", "abcd abc") == 1.0
+    assert lexical.similarity_expanded("abc", "abcd") == _reference_similarity("abc", "abcd")
+    assert lexical.similarity_expanded("abc", "abcd") == 0.0
+
+
 def test_the_cached_value_is_immutable():
     assert isinstance(lexical._content_terms("immutable probe"), frozenset)
 
