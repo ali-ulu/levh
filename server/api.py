@@ -13,6 +13,7 @@ import asyncio
 import contextlib
 import logging
 import os
+import re
 import sys
 from contextlib import asynccontextmanager
 
@@ -354,6 +355,42 @@ def _dashboard_candidates() -> list[str]:
     ]
 
 
+_CHUNK_REF = re.compile(r"""["'(/](_next/static/[^"'()\s?#]+\.(?:js|css))""")
+
+
+def _missing_dashboard_assets(candidate: str) -> list[str]:
+    """Assets an export's HTML references but does not ship.
+
+    ``frontend/out`` is committed as HTML shells while its content-hashed
+    ``_next`` bundles are gitignored, so a checkout that once built it keeps a
+    *stale* ``_next`` beside *newer* committed HTML. ``_next/static`` still
+    exists, but the hashes the HTML asks for are gone: ``/`` answers 200 while
+    every referenced chunk 404s and React never hydrates — the dashboard renders
+    "Something went wrong" on the routes whose chunk is missing.
+
+    Scanning every ``*.html`` is what tells that apart from a usable export. The
+    check is bounded to the export's own pages (not the whole tree) and returns
+    at most one missing asset, which is all a caller needs to reject a candidate.
+    """
+    for dirpath, dirs, files in os.walk(candidate):
+        # Bundles are never HTML; descending into them only slows the walk.
+        dirs[:] = [d for d in dirs if d != "_next"]
+        for name in files:
+            if not name.endswith(".html"):
+                continue
+            path = os.path.join(dirpath, name)
+            try:
+                with open(path, encoding="utf-8", errors="replace") as handle:
+                    markup = handle.read()
+            except OSError:
+                continue
+            for match in _CHUNK_REF.finditer(markup):
+                asset = os.path.join(candidate, *match.group(1).split("/"))
+                if not os.path.isfile(asset):
+                    return [os.path.relpath(asset, candidate)]
+    return []
+
+
 def _dashboard_dir() -> str | None:
     """Return the first available dashboard static export directory.
 
@@ -363,13 +400,16 @@ def _dashboard_dir() -> str | None:
 
     ``index.html`` alone is not enough to call an export servable. ``frontend/out``
     is committed as HTML shells while its content-hashed ``_next`` bundles are
-    gitignored and excluded from the release commits, so a fresh checkout has an
+    gitignored and excluded from the release commits, so a checkout can hold an
     ``index.html`` that points at bundles no process can serve: ``/`` answers 200
-    while every chunk 404s and React never hydrates. Preferring a candidate that
-    actually carries its bundles keeps that partial export from shadowing the
-    complete packaged copy. A candidate with neither ``_next`` nor ``index.html``
-    is still rejected; one with ``index.html`` but no ``_next`` is a last resort
-    so an intentionally bundle-less directory stays servable.
+    while every chunk 404s and React never hydrates. Checking that the referenced
+    bundles are actually present — not merely that an ``_next/static`` directory
+    exists — keeps such an export from shadowing the complete packaged copy.
+
+    A candidate that carries an ``index.html`` is remembered as a last resort, so
+    an intentionally bundle-less directory stays servable and this never returns
+    ``None`` where a directory could still be mounted. A candidate with no
+    ``index.html`` at all is rejected outright.
     """
     incomplete: str | None = None
     for candidate in _dashboard_candidates():
@@ -377,12 +417,13 @@ def _dashboard_dir() -> str | None:
             continue
         if not os.path.exists(os.path.join(candidate, "index.html")):
             continue
-        # Next writes its client bundles under `_next/static`; `_next` alone can
-        # exist as an empty directory.
-        if os.path.isdir(os.path.join(candidate, "_next", "static")):
-            return candidate
         if incomplete is None:
             incomplete = candidate
+        # Next writes its client bundles under `_next/static`; `_next` alone can
+        # exist as an empty directory, and a stale one can exist beside newer
+        # HTML. Only a candidate that ships every referenced bundle is complete.
+        if os.path.isdir(os.path.join(candidate, "_next", "static")) and not _missing_dashboard_assets(candidate):
+            return candidate
     return incomplete
 
 
