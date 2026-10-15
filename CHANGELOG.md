@@ -10,6 +10,22 @@
 
 - In `hash` embedder mode `_interference_candidates` scores a new memory against every stored one, and each comparison scanned the full content vocabulary of both texts with `_stem_matches`. On a store of ~500 source documents (avg 16 KB) one `store()` spent 47 s on the event loop, so an auto-feed ingest pinned a CPU core and the dashboard stopped answering. `similarity_expanded` now indexes the content words by their `_MIN_STEM_LENGTH` opening prefix, so a term only compares against the words that can actually share its stem. The filter is exact — every comparison the flat scan would have made still runs — and a full scan drops from ~4.2 s to 0.09 s (~43×). Scores are bit-identical: differential fuzzing over 10 000 random pairs (Turkish text, short tokens, random synonym expansions) found no difference.
 
+### fix: stop the conflict list from 500ing on a concurrent rebuild
+
+- `insert_conflict_if_absent` now uses `INSERT OR IGNORE` instead of a read-then-insert. Two freshness reads can each trigger a derived-state rebuild at once (only the background pass is coalesced), and the check-then-insert race let both see a candidate pair as absent and then collide on its primary key. The loser raised `UNIQUE constraint failed: memory_conflict_candidates.id`, turning `/api/conflicts` into a 500 that the dashboard's Conflicts page hit on load. The observable contract is unchanged: an existing row — any status — is left untouched.
+
+### fix: make the dashboard's Copy buttons work outside localhost
+
+- Added `copyText` (`frontend/src/lib/clipboard.ts`): it prefers `navigator.clipboard.writeText` and falls back to a hidden-textarea `execCommand("copy")` when that API is missing (a plain-HTTP LAN origin) or rejects the write (`NotAllowedError`). The Settings, Projects and Onboarding copy buttons now report success truthfully instead of throwing and silently doing nothing.
+
+### fix: serialize explicit write transactions against a derived-state rebuild
+
+- Every write path shares one aiosqlite connection, and a derived-state rebuild pass holds an implicit transaction open between its first `DELETE` and its commit. A hard-delete or a snapshot restore issuing `BEGIN IMMEDIATE` in that window raised `sqlite3.OperationalError: cannot start a transaction within a transaction`. The startup warm task added in #503 made a background pass overlap a request's transaction routine, so the failure moved from rare to about one run in three. `Database.transaction` now holds a `write_lock` across an explicit transaction, and the rebuild holds the same lock for its whole pass, turning the interleave from a race into an invariant. The retry backoff sleep stays outside the lock, so a failing pass cannot hold writers off for the backoff duration.
+
+### fix: stop a pre-restore safety backup from deadlocking a derived-state rebuild
+
+- `create_safety_backup` now takes `write_lock` for the duration of the SQLite online backup. `Connection.backup` is queued on the shared connection like any other statement, but its worker-thread call retries in 250 ms sleeps until SQLite reports it done, so it can outlive the statements queued around it. A backup queued while a rebuild held `write_lock` sat *ahead* of the rebuild's own queued commit, and neither could run: `/api/restore` wedged forever with no error and no timeout. A `replace` restore takes the backup on its way into the same transaction, so the two are exactly the paths that meet.
+
 ## 2.34.0
 
 ### federation: bring the dashboard into the pull-first transport (#498)

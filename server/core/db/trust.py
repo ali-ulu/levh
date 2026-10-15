@@ -133,13 +133,18 @@ class TrustQueries:
     async def insert_conflict_if_absent(self, row: dict) -> bool:
         """Insert a new candidate only if the pair isn't already recorded (so a
         re-run never resets a dismissed/confirmed candidate to open). Returns
-        True if a new row was inserted."""
-        existing = await self._db.get_conflict(row["id"])
-        if existing is not None:
-            return False
-        await self._db.conn.execute(
+        True if a new row was inserted.
+
+        ``INSERT OR IGNORE``, not a read-then-insert: two freshness reads that
+        both trigger a rebuild run concurrently (only the background pass is
+        coalesced — see ``_rebuild_derived_inline``), and the check-then-insert
+        race let both see the pair as absent and then collide on the primary
+        key, turning the second read into a 500. IGNORE keeps the exact same
+        observable contract (an existing row — any status — is left untouched)
+        while making the insert unconditional at the SQL level."""
+        cursor = await self._db.conn.execute(
             """
-            INSERT INTO memory_conflict_candidates
+            INSERT OR IGNORE INTO memory_conflict_candidates
                 (id, memory_id_a, memory_id_b, shared_entities_json, signal_type,
                  confidence, status, explanation_json, created_at, reviewed_at)
             VALUES
@@ -148,7 +153,7 @@ class TrustQueries:
             """,
             row,
         )
-        return True
+        return cursor.rowcount > 0
 
     async def upsert_attachment_conflict(self, row: dict) -> str:
         """Record the *current* physical state of an attachment.

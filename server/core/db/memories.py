@@ -479,8 +479,7 @@ class MemoryQueries:
             await cursor.close()
             return False
         await cursor.close()
-        await self._db.conn.execute("BEGIN IMMEDIATE")
-        try:
+        async with self._db.transaction():
             await self._db.conn.execute(
                 "DELETE FROM memory_conflict_candidates "
                 "WHERE memory_id_a = ? OR memory_id_b = ?",
@@ -533,11 +532,8 @@ class MemoryQueries:
                 "DELETE FROM entities WHERE id NOT IN "
                 "(SELECT DISTINCT entity_id FROM memory_entities)"
             )
-            await self._db.commit()
-            return cursor.rowcount > 0
-        except Exception:
-            await self._db.conn.rollback()
-            raise
+            deleted = cursor.rowcount > 0
+        return deleted
 
     async def memory_residue(self, memory_id: str) -> dict:
         """Return row counts for all persistent layers referencing a memory."""

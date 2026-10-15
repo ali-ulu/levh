@@ -62,3 +62,33 @@ async def test_own_writes_survive_a_concurrent_external_sync(tmp_path):
     finally:
         await mine.shutdown()
         await peer.shutdown()
+
+
+@pytest.mark.asyncio
+async def test_a_derived_rebuild_never_opens_a_transaction_under_a_delete(tmp_path):
+    """A freshness rebuild and a hard-delete must not share one open transaction.
+
+    Every write path shares one aiosqlite connection, and a rebuild pass holds
+    an implicit transaction open between its first DELETE and its commit. A
+    ``delete_memory_cascade`` landing in that window used to raise
+    ``sqlite3.OperationalError: cannot start a transaction within a
+    transaction`` — the flake the startup warm task (#503) turned routine,
+    where a background rebuild overlapped a request's ``BEGIN IMMEDIATE``.
+    ``Database.transaction`` serializes them; this pins that.
+    """
+    engine = MemoryEngine(db_path=str(tmp_path / "shared-conn.db"), embedder_mode="hash")
+    await engine.initialize()
+    try:
+        memory = await engine.store("rebuild versus delete canary", memory_type="episodic")
+        # A rebuild pass and the delete race for the one connection: the pass
+        # opens its implicit transaction mid-way, the delete asks for an
+        # explicit BEGIN IMMEDIATE. Without the lock the loser raises.
+        results = await asyncio.gather(
+            engine.recompute_derived_state(),
+            engine.forget(memory.id),
+            return_exceptions=True,
+        )
+        failures = [r for r in results if isinstance(r, BaseException)]
+        assert failures == [], failures
+    finally:
+        await engine.shutdown()

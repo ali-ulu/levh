@@ -248,14 +248,23 @@ class MemoryLifecycleMixin:
         # unconditional ``_derived_dirty = False``.
         writes_at_start = self._derived_write_count
         try:
-            await self.reindex_entities()
-            await self.detect_conflict_candidates()
-            await self.recompute_trust_scores()
-            self._derived_dirty = self._derived_write_count != writes_at_start
-            self._derived_retry_count = 0
-            # Stamp the pass: a later freshness read compares this against the
-            # live store version to tell "nothing changed" from "a peer wrote".
-            self._derived_data_version = await self.db.data_version()
+            # Held for the whole pass: every write path shares one SQLite
+            # connection, and a pass leaves an implicit transaction open
+            # between its DELETE and its commit, so a foreground
+            # ``BEGIN IMMEDIATE`` (delete/restore) landing in that window
+            # raises "cannot start a transaction within a transaction". The
+            # lock serializes the two instead of letting them interleave.
+            # The backoff sleep below stays OUTSIDE it: a failing pass must
+            # not hold writers off for the backoff duration.
+            async with self.db.write_lock:
+                await self.reindex_entities()
+                await self.detect_conflict_candidates()
+                await self.recompute_trust_scores()
+                self._derived_dirty = self._derived_write_count != writes_at_start
+                self._derived_retry_count = 0
+                # Stamp the pass: a later freshness read compares this against the
+                # live store version to tell "nothing changed" from "a peer wrote".
+                self._derived_data_version = await self.db.data_version()
             metrics.inc("levh_derived_rebuild_total", outcome="success")
         except asyncio.CancelledError:
             raise
