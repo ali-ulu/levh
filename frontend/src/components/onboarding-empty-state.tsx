@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
+import { copyText } from "@/lib/clipboard";
 import { useT } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -127,8 +128,8 @@ export function OnboardingEmptyState({ status, onChanged }: OnboardingEmptyState
 
   const handleCopy = async () => {
     if (!configText) return;
-    await navigator.clipboard.writeText(configText);
-    setMessage(t("onboarding.config.copied"));
+    const ok = await copyText(configText);
+    if (ok) setMessage(t("onboarding.config.copied"));
   };
 
   const handleCleanup = () =>

@@ -10,6 +10,22 @@
 
 - `_dashboard_dir` accepted any candidate with an `index.html` and an `_next/static` directory. A checkout that built the export once keeps that `_next` beside *newer* committed HTML, so the referenced content hashes are gone: `/` answered 200 while the chunks 404'd and React never hydrated, and routes whose chunk was missing rendered "Something went wrong" — the dashboard's buttons did nothing because the page never came up. `_missing_dashboard_assets` now reads every HTML file in a candidate and confirms each referenced `_next/static` bundle is present; only a complete export is chosen, and the packaged `server/dashboard` (which always ships its bundles) is served instead of the partial one. `frontend/e2e/start-server.sh` runs the same check before deciding whether to rebuild.
 
+### fix: stop the conflict list from 500ing on a concurrent rebuild
+
+- `insert_conflict_if_absent` now uses `INSERT OR IGNORE` instead of a read-then-insert. Two freshness reads can each trigger a derived-state rebuild at once (only the background pass is coalesced), and the check-then-insert race let both see a candidate pair as absent and then collide on its primary key. The loser raised `UNIQUE constraint failed: memory_conflict_candidates.id`, turning `/api/conflicts` into a 500 that the dashboard's Conflicts page hit on load. The observable contract is unchanged: an existing row — any status — is left untouched.
+
+### fix: make the dashboard's Copy buttons work outside localhost
+
+- Added `copyText` (`frontend/src/lib/clipboard.ts`): it prefers `navigator.clipboard.writeText` and falls back to a hidden-textarea `execCommand("copy")` when that API is missing (a plain-HTTP LAN origin) or rejects the write (`NotAllowedError`). The Settings, Projects and Onboarding copy buttons now report success truthfully instead of throwing and silently doing nothing.
+
+### fix: serialize explicit write transactions against a derived-state rebuild
+
+- Every write path shares one aiosqlite connection, and a derived-state rebuild pass holds an implicit transaction open between its first `DELETE` and its commit. A hard-delete or a snapshot restore issuing `BEGIN IMMEDIATE` in that window raised `sqlite3.OperationalError: cannot start a transaction within a transaction`. The startup warm task added in #503 made a background pass overlap a request's transaction routine, so the failure moved from rare to about one run in three. `Database.transaction` now holds a `write_lock` across an explicit transaction, and the rebuild holds the same lock for its whole pass, turning the interleave from a race into an invariant. The retry backoff sleep stays outside the lock, so a failing pass cannot hold writers off for the backoff duration.
+
+### fix: stop a pre-restore safety backup from deadlocking a derived-state rebuild
+
+- `create_safety_backup` now takes `write_lock` for the duration of the SQLite online backup. `Connection.backup` is queued on the shared connection like any other statement, but its worker-thread call retries in 250 ms sleeps until SQLite reports it done, so it can outlive the statements queued around it. A backup queued while a rebuild held `write_lock` sat *ahead* of the rebuild's own queued commit, and neither could run: `/api/restore` wedged forever with no error and no timeout. A `replace` restore takes the backup on its way into the same transaction, so the two are exactly the paths that meet.
+
 ## 2.34.0
 
 ### federation: bring the dashboard into the pull-first transport (#498)

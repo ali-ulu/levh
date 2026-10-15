@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
+import { copyText } from "@/lib/clipboard";
 import { useT } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -155,8 +156,8 @@ export default function ProjectsPage() {
   };
 
   const copy = async () => {
-    await navigator.clipboard.writeText(ctxContent);
-    setCopied(true);
+    const ok = await copyText(ctxContent);
+    setCopied(ok);
     setTimeout(() => setCopied(false), 1500);
   };
 

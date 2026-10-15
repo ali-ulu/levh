@@ -236,6 +236,42 @@ async def test_replace_restore_creates_recoverable_safety_backup(tmp_path):
 
 
 @pytest.mark.asyncio
+async def test_safety_backup_cannot_interleave_with_a_derived_rebuild(tmp_path):
+    """The pre-restore safety backup must wait for a rebuild holding write_lock.
+
+    Regression guard for a hard hang. ``Connection.backup`` is queued on the
+    shared aiosqlite connection, but its worker-thread call retries in 250 ms
+    sleeps until SQLite reports it done, so it can outlive the statements queued
+    around it. A derived-state rebuild issues its reindex statements while
+    holding ``write_lock``; a backup queued in that window sat ahead of the
+    rebuild's own queued commit, so neither the backup nor the rebuild's commit
+    could run and ``/api/restore`` never answered — no error, no timeout, just a
+    wedged request. Asserting the backup blocks while the lock is held pins the
+    mutual exclusion that makes the interleave impossible.
+    """
+    import asyncio
+
+    engine = MemoryEngine(db_path=str(tmp_path / "lock.db"), embedder_mode="hash")
+    await engine.initialize()
+    try:
+        await engine.store("state to protect", memory_type="episodic")
+
+        # Hold the lock the rebuild holds, then ask for a backup. The backup
+        # must not complete: that is exactly the window that used to hang.
+        await engine.db.write_lock.acquire()
+        backup = asyncio.create_task(engine.db.create_safety_backup())
+        done, _pending = await asyncio.wait({backup}, timeout=0.5)
+        assert not done, "safety backup ran while a rebuild held write_lock"
+        assert not backup.done()
+
+        engine.db.write_lock.release()
+        path = await asyncio.wait_for(backup, timeout=10)
+        assert path and Path(path).exists()
+    finally:
+        await engine.shutdown()
+
+
+@pytest.mark.asyncio
 async def test_replace_restore_fails_closed_when_safety_backup_fails(tmp_path, monkeypatch):
     target = MemoryEngine(db_path=str(tmp_path / "target-fail.db"), embedder_mode="hash")
     source = MemoryEngine(db_path=str(tmp_path / "source-fail.db"), embedder_mode="hash")
