@@ -8,6 +8,41 @@ import { NOAUTH_URL } from "./urls";
 // an endpoint that 500s — still ships green. These specs click the real
 // controls and assert on the effect, which is what "the buttons work" means.
 
+test("the quick-add FAB opens its dialog, not the overlapping librarian chat", async ({
+  page,
+}) => {
+  // The librarian widget is injected into every dashboard page and its FAB is
+  // position:fixed with a z-index far above the app's. Pinned to the same
+  // corner it sat exactly on the quick-add FAB, so a click on "Add new memory"
+  // opened the librarian chat instead — a working-looking button that never
+  // reached its handler. The widget loads here because the middleware injects
+  // it regardless of LEVH_LIBRARIAN (that flag gates the background watcher,
+  // not the widget), which is why the rest of the suite missed this.
+  await page.goto(`${NOAUTH_URL}/`);
+
+  const quickAdd = page.locator("button.fab-button");
+  await expect(quickAdd).toBeVisible();
+  await expect(page.locator("#lvw-fab")).toBeVisible();
+
+  // The two FABs must not share a pixel: a stacked one makes the lower
+  // unclickable no matter how the click is dispatched.
+  const [a, b] = await Promise.all([
+    quickAdd.boundingBox(),
+    page.locator("#lvw-fab").boundingBox(),
+  ]);
+  expect(a && b).toBeTruthy();
+  const overlaps =
+    a!.x < b!.x + b!.width &&
+    a!.x + a!.width > b!.x &&
+    a!.y < b!.y + b!.height &&
+    a!.y + a!.height > b!.y;
+  expect(overlaps).toBe(false);
+
+  await quickAdd.click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await expect(page.locator("#lvw")).not.toHaveClass(/open/);
+});
+
 test("the conflicts page lists a candidate and a review action persists", async ({
   page,
   request,

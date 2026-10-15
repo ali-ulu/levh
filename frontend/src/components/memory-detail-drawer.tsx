@@ -29,6 +29,7 @@ import {
   X,
 } from "lucide-react";
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { createPortal } from "react-dom";
 
 type Translator = ReturnType<typeof useT>;
 
@@ -248,7 +249,12 @@ export function MemoryDetailDrawer({
     }
   };
 
-  return (
+  // Portalled to <body>: the drawer is mounted inside the page's <main>, which
+  // is a stacking context (`relative z-10`) below the sticky header (`z-30`).
+  // Left in place its `z-50` cannot escape that context, so the header — and its
+  // Quick-capture link — painted over the drawer and swallowed clicks on its
+  // Pin/Delete/Close buttons.
+  return createPortal(
     <div className="fixed inset-0 z-50 flex justify-end">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
 
@@ -699,6 +705,7 @@ export function MemoryDetailDrawer({
           </Card>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

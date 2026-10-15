@@ -64,4 +64,17 @@ describe("MemoryDetailDrawer accessibility", () => {
     await user.keyboard("{Escape}");
     expect(onClose).toHaveBeenCalledTimes(1);
   });
+
+  it("portals out of the render container so no ancestor stacking context clips it", () => {
+    // Rendered inside <main class="relative z-10">, whose stacking context
+    // sits below the sticky header (z-30). The drawer's own z-50 cannot
+    // escape it, so the header painted over the drawer and swallowed clicks
+    // on Pin/Delete/Close. Portalling to <body> is what keeps it clickable;
+    // a future edit that drops the portal must fail here.
+    const { container } = render(<MemoryDetailDrawer memory={memory} onClose={() => {}} />);
+
+    const dialog = screen.getByRole("dialog");
+    expect(container.contains(dialog)).toBe(false);
+    expect(dialog.closest("body")).toBe(document.body);
+  });
 });

@@ -6,6 +6,11 @@
 
 - TBD
 
+### fix: keep the memory drawer and the quick-add FAB clickable
+
+- The memory detail drawer rendered inside `<main class="relative z-10">`, a stacking context that sits below the sticky header (`z-30`). Its own `z-50` could not escape it, so the header — and its Quick-capture link — painted over the drawer and swallowed clicks on Pin, Delete and Close. It is now portalled to `document.body`, which is what makes those controls reachable; `memory-detail-drawer.test.tsx` asserts the portal so a future edit cannot quietly drop it.
+- The librarian widget's FAB is `position: fixed` with `z-index: 99999` and was pinned to the same corner as the dashboard's quick-add FAB. Every click on "Add new memory" landed on the librarian button and opened its chat instead, so the quick-capture dialog never appeared. The widget FAB now sits above the quick-add one (`bottom: 96px`, `80px` on narrow screens), and `buttons.spec.ts` fails if the two overlap again.
+
 ### perf: stop the model-free interference scan from freezing the event loop (#505)
 
 - In `hash` embedder mode `_interference_candidates` scores a new memory against every stored one, and each comparison scanned the full content vocabulary of both texts with `_stem_matches`. On a store of ~500 source documents (avg 16 KB) one `store()` spent 47 s on the event loop, so an auto-feed ingest pinned a CPU core and the dashboard stopped answering. `similarity_expanded` now indexes the content words by their `_MIN_STEM_LENGTH` opening prefix, so a term only compares against the words that can actually share its stem. The filter is exact — every comparison the flat scan would have made still runs — and a full scan drops from ~4.2 s to 0.09 s (~43×). Scores are bit-identical: differential fuzzing over 10 000 random pairs (Turkish text, short tokens, random synonym expansions) found no difference.

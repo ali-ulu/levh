@@ -73,9 +73,10 @@ _WIDGET_JS = """(function () {
     '#lvw-r{display:flex;border-top:1px solid #374151}',
     '#lvw-q{flex:1;background:#111827;color:#e5e7eb;border:0;padding:10px;outline:none;border-radius:0 0 0 12px}',
     '#lvw-b{background:#2563eb;color:#fff;border:0;padding:0 16px;cursor:pointer;border-radius:0 0 12px 0}',
-    '#lvw-fab{position:fixed;right:20px;bottom:20px;width:52px;height:52px;border-radius:50%;',
+    '#lvw-fab{position:fixed;right:20px;bottom:96px;width:52px;height:52px;border-radius:50%;',
     'background:#2563eb;color:#fff;border:0;font-size:22px;cursor:pointer;z-index:99999;',
-    'box-shadow:0 4px 14px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center}'
+    'box-shadow:0 4px 14px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center}',
+    '@media (max-width:640px){#lvw-fab{bottom:80px}}'
   ].join('');
   document.head.appendChild(css);
 
