@@ -146,7 +146,7 @@ export default function Dashboard() {
         </div>
       </section>
 
-      {onboarding && (!onboarding.ready || onboarding.demo_seeded) && (
+      {onboarding && !onboarding.ready && (
         <OnboardingEmptyState status={onboarding} onChanged={load} />
       )}
 

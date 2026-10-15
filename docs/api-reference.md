@@ -128,9 +128,7 @@ because it is a read that has to POST to carry its query.
 | POST | `/api/v1/restore` | Restore from a backup file. ``content_b64`` is the base64-encoded backup bytes (encrypted or plain — auto-detected).… |
 | POST | `/api/v1/import/file` | Turn an arbitrary uploaded file into memories. Plain text, PDF, Word, Excel and zip archives are extracted to text… |
 | POST | `/api/v1/onboarding/mcp-config` | Generate a focused MCP client config without persisting secrets |
-| POST | `/api/v1/onboarding/remove-demo` | Remove only metadata.demo=true memories using the audited purge path |
 | GET | `/api/v1/onboarding/status` | Real first-run readiness derived from local storage/configuration |
-| POST | `/api/v1/seed-demo` | Populate an empty store with a deterministic demo corpus (onboarding). Refuses to run on a non-empty store unless… |
 | GET | `/api/v1/stats` | System statistics and metrics |
 | GET | `/api/v1/config` | Current server configuration (for the Settings page) |
 | GET | `/api/health` | Health |

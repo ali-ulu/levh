@@ -167,19 +167,13 @@ def cmd_eval_run(args: argparse.Namespace) -> int:
     import asyncio
     import json
 
-    from server.core.evaluation import run_evaluation, seed_demo_completion
+    from server.core.evaluation import run_evaluation
 
     async def _run() -> dict:
-        report = await run_evaluation(
+        return await run_evaluation(
             fixture_dir=args.fixtures or None,
             embedder_mode=args.embedder_mode or "hash",
         )
-        report["product"] = {
-            "seed_demo": await seed_demo_completion(
-                embedder_mode=args.embedder_mode or "hash"
-            )
-        }
-        return report
 
     report = asyncio.run(_run())
     with open(args.output, "w", encoding="utf-8") as fh:

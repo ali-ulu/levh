@@ -1,4 +1,4 @@
-"""Demo data and full exports.
+"""Full exports.
 
 A slice of the ``levh`` CLI. The parsers and the dispatch chain stay in
 server/cli.py; this module holds the implementations.
@@ -10,39 +10,6 @@ import argparse
 import sys
 
 from server.core.env import get_env
-
-
-
-def cmd_seed_demo(args: argparse.Namespace) -> int:
-    """Populate an empty store with a deterministic demo corpus so a first run
-    shows a live dashboard instead of empty states."""
-    import asyncio
-
-    from server.core import engine_provider
-
-    async def _run() -> dict:
-        engine = engine_provider.get_engine()
-        await engine.initialize()
-        try:
-            return await engine.seed_demo(force=args.force)
-        finally:
-            await engine.shutdown()
-
-    result = asyncio.run(_run())
-    if result.get("skipped"):
-        print(
-            f"  Store already has {result.get('existing', 0)} memories — nothing seeded.\n"
-            "  Re-run with --force to add the demo data anyway."
-        )
-        return 0
-    print(
-        f"  Seeded {result['seeded']} demo memories -> "
-        f"{result['entities']} entities ({result['entity_links']} links), "
-        f"{result['trust_scored']} trust-scored, "
-        f"{result['conflict_candidates']} conflict candidate(s)."
-    )
-    print("  Open the dashboard (`levh serve`) to explore it.")
-    return 0
 
 
 def cmd_export_full(args: argparse.Namespace) -> int:
@@ -295,29 +262,6 @@ def cmd_federation_pull(args: argparse.Namespace) -> int:
         return 0
 
     return asyncio.run(_run())
-
-
-def cmd_remove_demo(_args: argparse.Namespace) -> int:
-    """Remove all demo-tagged memories, leaving real data untouched."""
-    import asyncio
-
-    from server.core import engine_provider
-
-    async def _run() -> dict:
-        engine = engine_provider.get_engine()
-        await engine.initialize()
-        try:
-            return await engine.remove_demo_data()
-        finally:
-            await engine.shutdown()
-
-    result = asyncio.run(_run())
-    removed = result.get("removed", 0)
-    if removed == 0:
-        print("  No demo data found — nothing to remove.")
-    else:
-        print(f"  Removed {removed} demo memories.")
-    return 0
 
 
 def cmd_dogfood_status(args: argparse.Namespace) -> int:

@@ -29,7 +29,7 @@ from .engine.meeting import MemoryMeetingMixin
 from .engine.transfer import MemoryTransferMixin
 from .engine.ingest import MemoryIngestMixin
 from .engine.privacy import MemoryPrivacyMixin
-from .engine.demo import MemoryDemoMixin
+from .engine.onboarding import MemoryOnboardingMixin
 from .engine.graph import MemoryGraphMixin
 from .engine.dedupe import MemoryDedupeMixin
 from .engine.attachments import MemoryAttachmentsMixin
@@ -62,7 +62,7 @@ class MemoryEngine(
     MemoryTransferMixin,
     MemoryIngestMixin,
     MemoryPrivacyMixin,
-    MemoryDemoMixin,
+    MemoryOnboardingMixin,
     MemoryGraphMixin,
     MemoryDedupeMixin,
     MemoryAttachmentsMixin,

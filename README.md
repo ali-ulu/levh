@@ -94,22 +94,13 @@ Memories are ranked by an explainable multi-factor score, `H(x,ψ)` — semantic
 
 ```bash
 pip install levh
-levh setup --demo --client claude --profile work
-levh serve
-```
-
-Dashboard and API come up on <http://localhost:8000>. `--demo` loads a small
-deterministic corpus — people, organizations, decisions, and one real conflict
-candidate — so every view has something to show.
-
-Starting with your own data instead:
-
-```bash
-pip install levh
-levh setup --real --client claude --profile work
+levh setup --client claude --profile work
 levh capture "Atlas uses PostgreSQL in production."
 levh serve
 ```
+
+`setup` prepares an empty local store and a focused MCP client config. Dashboard
+and API come up on <http://localhost:8000>.
 
 Then open **Settings** in the dashboard for copy-paste MCP configs, or run
 `levh mcp config cursor` for any supported client.
@@ -155,7 +146,7 @@ levh mcp init my-server --with-memory   # scaffold an MCP server on this databas
 
 | | |
 |---|---|
-| [Getting Started](docs/getting-started.md) | First run, demo vs. real data |
+| [Getting Started](docs/getting-started.md) | First run and local setup |
 | [Memory Assistant](docs/opengeni-assistant.md) | Optional chat that answers from your store |
 | [Platform Setup](docs/mcp-client-config.md) | Claude Desktop, Claude Code, Cursor, Windsurf, VS Code (Cline), jcode, omp, opencode, Codex, Hermes |
 | [Configuration](docs/configuration.md) | Environment variables, precedence, Docker |

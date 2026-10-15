@@ -41,7 +41,6 @@ EVENT_TYPES = frozenset(
         "review_reinforce",
         "review_weaken",
         "review_forget",
-        "seed_demo_completed",
     }
 )
 
@@ -189,8 +188,6 @@ class DogfoodJournal:
                 name = review_events.get(payload.get("action", ""))
                 if name:
                     self.record(name, attrs={"memory_id": str(payload.get("memory_id", ""))})
-            elif event == "demo_seeded":
-                self.record("seed_demo_completed", attrs={"count": int(payload.get("seeded", 0))})
             elif event == "conflict_reviewed":
                 action = payload.get("action")
                 if action == "dismiss":
@@ -269,7 +266,6 @@ class DogfoodJournal:
                 if counts.get(k)
             },
             "review_total": review_total,
-            "seed_demo_completed": counts.get("seed_demo_completed", 0) > 0,
         }
 
     def export(self, output_path: str | os.PathLike) -> dict:

@@ -6,6 +6,11 @@
 
 - TBD
 
+### feat: remove the demo-data feature
+
+- Dropped the demo corpus and its whole surface: `server/core/demo_data.py`, `MemoryEngine.seed_demo`, `MemoryOnboardingMixin`'s demo helpers, `POST /api/seed-demo`, `POST /api/onboarding/remove-demo`, the `levh seed-demo` / `levh remove-demo` commands, `setup --demo` / `--real` (setup now always prepares an empty store), the `seed_demo_completed` dogfood event, and the dashboard's "Load demo data" / "Remove demo data" onboarding buttons. Onboarding readiness is now a single path: store a real memory and connect an MCP client.
+- The read-only public-instance boundary (`LEVH_PUBLIC_DEMO`) is unrelated and unchanged.
+
 ### fix: keep the memory drawer and the quick-add FAB clickable
 
 - The memory detail drawer rendered inside `<main class="relative z-10">`, a stacking context that sits below the sticky header (`z-30`). Its own `z-50` could not escape it, so the header — and its Quick-capture link — painted over the drawer and swallowed clicks on Pin, Delete and Close. It is now portalled to `document.body`, which is what makes those controls reachable; `memory-detail-drawer.test.tsx` asserts the portal so a future edit cannot quietly drop it.
@@ -2000,12 +2005,11 @@ conflict handling over LLM judgment, so the offline core stays intact).
 - **5-minute demo doc** (`docs/demo/5-minute-demo.md`): install → `seed-demo` →
   `serve` → tour of briefing / entities / trust / the one conflict / insights →
   MCP recall, all offline.
-- **Conflict-eval fixture** (`tests/test_demo_conflict_eval.py`): locks the
-  seeded demo to exactly one meaningful conflict candidate (the Atlas deadline),
-  no spurious "use/use" collision, a shared person entity, trust context
-  present, and — critically — a *candidate* not a verdict (never auto-resolved,
-  confidence < 1.0). Plus deterministic seed-count locks in `test_seed_demo.py`
-  and full profile coverage in `tests/test_mcp_profiles.py`.
+- **Conflict-eval fixture**: locked the seeded demo to exactly one meaningful
+  conflict candidate (the Atlas deadline), no spurious "use/use" collision, a
+  shared person entity, trust context present, and — critically — a *candidate*
+  not a verdict (never auto-resolved, confidence < 1.0). Plus deterministic
+  seed-count locks and full profile coverage in `tests/test_mcp_profiles.py`.
 - **README alignment**: the quickstart and the dashboard empty state now describe
   the same `install → init → seed-demo → serve` path; MCP-tools section documents
   profiles.
@@ -2037,7 +2041,7 @@ deterministic demo corpus and a "try it in 5 minutes" path.
   Conflicts.
 - New `server/core/demo_data.py` holds the corpus as pure, declarative data;
   `MemoryEngine.seed_demo()` orchestrates ingest → entity reindex → trust
-  recompute → conflict detection. Covered by `tests/test_seed_demo.py`.
+  recompute → conflict detection. Covered by deterministic seed-count locks.
 
 ## 2.23.0
 

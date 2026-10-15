@@ -26,7 +26,6 @@ import {
   ShieldCheck,
   Sparkles,
   Terminal,
-  Trash2,
 } from "lucide-react";
 
 interface OnboardingEmptyStateProps {
@@ -37,7 +36,7 @@ interface OnboardingEmptyStateProps {
 
 export function OnboardingEmptyState({ status, onChanged }: OnboardingEmptyStateProps) {
   const t = useT();
-  const [loading, setLoading] = useState<"demo" | "memory" | "config" | "cleanup" | "">("");
+  const [loading, setLoading] = useState<"memory" | "config" | "">("");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [memoryText, setMemoryText] = useState(() => t("onboarding.exampleMemory"));
@@ -69,22 +68,6 @@ export function OnboardingEmptyState({ status, onChanged }: OnboardingEmptyState
       setLoading("");
     }
   };
-
-  const handleLoadDemo = () =>
-    run("demo", async () => {
-      const result = await api.seedDemo();
-      setMessage(
-        result.skipped
-          ? t("onboarding.demo.skipped")
-          : t(
-              result.seeded === 1
-                ? "onboarding.demo.loaded.one"
-                : "onboarding.demo.loaded.other",
-              { count: result.seeded },
-            )
-      );
-      await onChanged();
-    });
 
   const handleStoreFirst = () =>
     run("memory", async () => {
@@ -132,14 +115,6 @@ export function OnboardingEmptyState({ status, onChanged }: OnboardingEmptyState
     if (ok) setMessage(t("onboarding.config.copied"));
   };
 
-  const handleCleanup = () =>
-    run("cleanup", async () => {
-      if (!window.confirm(t("onboarding.demo.cleanupConfirm"))) return;
-      const result = await api.removeDemoData();
-      setMessage(t("onboarding.demo.cleanupResult", { removed: result.removed, remaining: result.remaining }));
-      await onChanged();
-    });
-
   return (
     <Card className="border-primary/30 bg-gradient-to-b from-primary/5 to-transparent">
       <CardHeader className="pb-3">
@@ -152,45 +127,22 @@ export function OnboardingEmptyState({ status, onChanged }: OnboardingEmptyState
         </p>
       </CardHeader>
       <CardContent className="space-y-6">
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="rounded-lg border p-4 space-y-3">
-            <div className="flex items-center gap-2 font-medium">
-              <Sparkles className="h-4 w-4 text-primary" /> {t("onboarding.demo.title")}
-            </div>
-            <p className="text-sm text-muted-foreground">
-              {t("onboarding.demo.description")}
-            </p>
-            <div className="flex flex-wrap gap-2">
-              <Button onClick={handleLoadDemo} disabled={Boolean(loading) || status.demo_seeded}>
-                {loading === "demo" && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {status.demo_seeded ? t("onboarding.demo.loadedButton") : t("onboarding.demo.loadButton")}
-              </Button>
-              {status.demo_seeded && (
-                <Button variant="outline" onClick={handleCleanup} disabled={Boolean(loading)}>
-                  {loading === "cleanup" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
-                  {t("onboarding.demo.removeButton")}
-                </Button>
-              )}
-            </div>
+        <div className="rounded-lg border p-4 space-y-3">
+          <div className="flex items-center gap-2 font-medium">
+            <Database className="h-4 w-4 text-primary" /> {t("onboarding.memory.title")}
           </div>
-
-          <div className="rounded-lg border p-4 space-y-3">
-            <div className="flex items-center gap-2 font-medium">
-              <Database className="h-4 w-4 text-primary" /> {t("onboarding.memory.title")}
-            </div>
-            <p className="text-sm text-muted-foreground">
-              {t("onboarding.memory.description")}
-            </p>
-            <Label htmlFor="first-memory">{t("onboarding.memory.label")}</Label>
-            <Input id="first-memory" value={memoryText} onChange={(event) => setMemoryText(event.target.value)} />
-            <Button variant="secondary" onClick={handleStoreFirst} disabled={Boolean(loading) || !memoryText.trim()}>
-              {loading === "memory" && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {t("onboarding.memory.storeAndTest")}
-            </Button>
-            <p className="text-xs text-muted-foreground">
-              {t("onboarding.memory.meta")}
-            </p>
-          </div>
+          <p className="text-sm text-muted-foreground">
+            {t("onboarding.memory.description")}
+          </p>
+          <Label htmlFor="first-memory">{t("onboarding.memory.label")}</Label>
+          <Input id="first-memory" value={memoryText} onChange={(event) => setMemoryText(event.target.value)} />
+          <Button variant="secondary" onClick={handleStoreFirst} disabled={Boolean(loading) || !memoryText.trim()}>
+            {loading === "memory" && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {t("onboarding.memory.storeAndTest")}
+          </Button>
+          <p className="text-xs text-muted-foreground">
+            {t("onboarding.memory.meta")}
+          </p>
         </div>
 
         <div className="rounded-lg border p-4 space-y-3">
@@ -274,7 +226,7 @@ export function OnboardingEmptyState({ status, onChanged }: OnboardingEmptyState
 
         <p className="text-xs text-muted-foreground">
           {t("onboarding.terminal.prefix")}{" "}
-          <code className="rounded bg-muted px-1 py-0.5 font-mono">levh setup --demo --client claude --profile work</code>.{" "}
+          <code className="rounded bg-muted px-1 py-0.5 font-mono">levh setup --client claude --profile work</code>.{" "}
           {t("onboarding.terminal.see")}{" "}
           <Link href="/settings" className="underline underline-offset-4">{t("onboarding.terminal.settings")}</Link>{" "}
           {t("onboarding.terminal.suffix")}

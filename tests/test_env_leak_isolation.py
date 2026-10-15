@@ -294,7 +294,7 @@ def test_a_subprocess_resolves_the_store_the_suite_points_at(tmp_path):
     env["EMBEDDER_MODE"] = "hash"
 
     first = subprocess.run(
-        [sys.executable, "-m", "server.cli", "setup", "--real", "--client", "claude", "--profile", "work"],
+        [sys.executable, "-m", "server.cli", "setup", "--client", "claude", "--profile", "work"],
         cwd=str(tmp_path),
         env=env,
         capture_output=True,

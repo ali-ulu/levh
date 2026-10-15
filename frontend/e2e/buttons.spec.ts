@@ -82,37 +82,3 @@ test("the conflicts page lists a candidate and a review action persists", async 
   const res = await reviewResponse;
   expect(res.status()).toBeLessThan(400);
 });
-
-test("the onboarding demo buttons round-trip the real seed and purge endpoints", async ({
-  page,
-  request,
-}) => {
-  // The onboarding card renders while the store is not fully ready OR demo
-  // data is present. On this shared, already-populated store the plain seed
-  // would skip ("store not empty"), so force it to get demo data present — the
-  // state that keeps the card on screen regardless of the MCP receipt another
-  // spec may have written.
-  const seeded = await request.post(`${NOAUTH_URL}/api/seed-demo?force=true`);
-  expect(seeded.ok()).toBeTruthy();
-
-  page.on("dialog", (d) => d.accept());
-  await page.goto(`${NOAUTH_URL}/`);
-
-  await expect(page.getByRole("button", { name: "Demo data loaded" })).toBeVisible();
-  const removeButton = page.getByRole("button", { name: "Remove demo data" });
-  await expect(removeButton).toBeVisible();
-
-  // Remove must hit the real purge endpoint and succeed — a button whose
-  // handler throws here is invisible to the render-only suite.
-  const removeResponse = page.waitForResponse(
-    (r) => r.url().includes("/api/onboarding/remove-demo"),
-  );
-  await removeButton.click();
-  expect((await removeResponse).status()).toBeLessThan(400);
-  await expect
-    .poll(async () => {
-      const r = await request.get(`${NOAUTH_URL}/api/onboarding/status`);
-      return (await r.json()).demo_seeded;
-    })
-    .toBe(false);
-});

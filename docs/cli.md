@@ -9,7 +9,7 @@ Run `levh <command> --help` for the flags of any one of them.
 | Command | Description |
 |---------|-------------|
 | `levh doctor` | Check system health and dependencies |
-| `levh setup` | First-run setup for demo or real data |
+| `levh setup` | First-run setup: prepares an empty store and MCP config |
 | `levh init` | Create local config directory and defaults |
 | `levh serve` | Launch the API server |
 | `levh capture` | Store a memory from the command line |
@@ -43,8 +43,6 @@ Run `levh <command> --help` for the flags of any one of them.
 | `levh audit-secrets` | Scan stored memories for secrets (credentials, tokens) |
 | `levh redact-secrets` | Strip secrets from stored memories |
 | `levh purge` | Hard-delete a memory and verify it's fully gone |
-| `levh seed-demo` | Load a deterministic demo corpus so a first run has data to explore |
-| `levh remove-demo` | Remove demo-tagged memories, leaving real data untouched |
 | `levh continue` | Show context to resume work (session DNA) |
 | `levh export-full` | Export memories, entity graph, trust scores, and conflicts to one file |
 | `levh federation-export` | Sign a full export bundle into a provenance-verified federation envelope |
@@ -85,7 +83,7 @@ reason are left exactly as they are — a missing id is the one defect this repa
 ## The ones worth knowing first
 
 ```bash
-levh setup --demo --client claude --profile work   # first run, with a demo corpus
+levh setup --client claude --profile work          # first run: empty store + MCP config
 levh serve                                         # API + dashboard on :8000
 levh capture "Atlas uses PostgreSQL in production" # store a memory
 levh context -o CLAUDE.md                          # compile memory into a context file

@@ -178,10 +178,6 @@ class OnboardingMCPConfigRequest(BaseModel):
     profile: str = "work"
 
 
-class DemoCleanupRequest(BaseModel):
-    confirm: bool = False
-
-
 class BackupRequest(BaseModel):
     passphrase: str = ""
 
@@ -1443,8 +1439,6 @@ class OnboardingStatusResponse(BaseModel):
     dogfood_enabled: bool
     dogfood_journal: dict[str, str]
     dogfood_statement: str
-    demo_seeded: bool
-    demo_memory_count: int
     recommended_next_step: str
     checks: list[OnboardingCheckOut] = Field(default_factory=list)
 
@@ -1463,34 +1457,3 @@ class OnboardingMcpConfigResponse(BaseModel):
     config: dict[str, Any] = Field(default_factory=dict)
     config_text: str = ""
     config_path: Optional[str] = None
-
-
-class DemoSeedResponse(BaseModel):
-    """``POST /api/seed-demo``."""
-
-    seeded: int
-    skipped: bool
-    reason: Optional[str] = None
-    existing: Optional[int] = None
-    entities: Optional[int] = None
-    entity_links: Optional[int] = None
-    trust_scored: Optional[int] = None
-    conflict_candidates: Optional[int] = None
-
-
-class DemoCleanupAuditOut(BaseModel):
-    memory_id: Optional[str] = None
-    purged: bool
-    residue: dict[str, Any] = Field(default_factory=dict)
-
-
-class DemoCleanupResponse(BaseModel):
-    """``POST /api/onboarding/remove-demo``."""
-
-    removed: int
-    remaining: int
-    fully_purged: bool
-    audits: list[DemoCleanupAuditOut] = Field(default_factory=list)
-    entities: int
-    entity_links: int
-    trust_scored: int

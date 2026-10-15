@@ -1,37 +1,24 @@
 # LEVH — Getting Started
 
-LEVH is local-first. The database, onboarding receipt, demo corpus, and
-optional dogfood journal stay on the machine unless the user explicitly exports
-a file.
+LEVH is local-first. The database, onboarding receipt, and optional dogfood
+journal stay on the machine unless the user explicitly exports a file.
 
-## Try the deterministic demo
-
-```bash
-pip install levh
-levh setup --demo --client claude --profile work
-levh serve
-```
-
-Open `http://localhost:8000`. The setup command loads 20 demo-tagged memories,
-generates a focused Claude MCP config under `.stackmemory/mcp/`, and writes a
-privacy-safe local setup receipt. It does not overwrite a non-empty store.
-
-The demo contains people, organizations, decisions, tasks, a trust gradient,
-and one conflict candidate for review. Use **Remove demo data** in the first-run
-card to delete only `metadata.demo=true` memories. Real memories are preserved.
-
-## Start with real data
+## First run
 
 ```bash
 pip install levh
-levh setup --real --client claude --profile work
+levh setup --client claude --profile work
 levh capture "Atlas uses PostgreSQL in production."
 levh serve
 ```
 
-`setup --real` initializes local storage and the MCP config without seeding any
-demo memory. `capture` uses the normal memory store path; it does not silently
-pin or boost trust.
+Open `http://localhost:8000`. The setup command prepares an empty local store,
+generates a focused Claude MCP config under `.stackmemory/mcp/`, and writes a
+privacy-safe local setup receipt. It never seeds data and never overwrites an
+existing store.
+
+`capture` uses the normal memory store path; it does not silently pin or boost
+trust.
 
 ## Readiness and diagnostics
 
@@ -50,7 +37,7 @@ recommended next action.
 Generated configs default to `work` rather than advertising all 74 tools.
 
 ```bash
-levh setup --real --client cursor --profile minimal
+levh setup --client cursor --profile minimal
 levh mcp profiles
 ```
 

@@ -104,20 +104,6 @@ if _REPO_ROOT not in sys.path:
 
 # ── hard-delete + redaction audit ────────────────────────────────
 
-
-
-
-
-
-
-# ── seed-demo (onboarding) ───────────────────────────────────────
-
-
-
-
-
-
-
 # ── continue (autonomous session continuity) ────────────────────────
 
 
@@ -183,8 +169,6 @@ from server.commands.data import (
     cmd_federation_export,
     cmd_federation_import,
     cmd_federation_pull,
-    cmd_remove_demo,
-    cmd_seed_demo,
 )
 from server.commands.mcp import cmd_mcp_config, cmd_mcp_init, cmd_mcp_profiles, cmd_mcp_stdio
 
@@ -258,10 +242,6 @@ def main() -> int:
         return cmd_redact(args)
     elif args.command == "purge":
         return cmd_purge(args)
-    elif args.command == "seed-demo":
-        return cmd_seed_demo(args)
-    elif args.command == "remove-demo":
-        return cmd_remove_demo(args)
     elif args.command == "continue":
         return cmd_continue(args)
     elif args.command == "export-full":

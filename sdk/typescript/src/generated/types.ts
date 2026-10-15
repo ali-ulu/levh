@@ -416,37 +416,6 @@ export type DedupeResponse = {
   removed?: number | null;
 };
 
-export type DemoCleanupAuditOut = {
-  memory_id?: string | null;
-  purged: boolean;
-  residue?: Record<string, unknown>;
-};
-
-export type DemoCleanupRequest = {
-  confirm?: boolean;
-};
-
-export type DemoCleanupResponse = {
-  removed: number;
-  remaining: number;
-  fully_purged: boolean;
-  audits?: DemoCleanupAuditOut[];
-  entities: number;
-  entity_links: number;
-  trust_scored: number;
-};
-
-export type DemoSeedResponse = {
-  seeded: number;
-  skipped: boolean;
-  reason?: string | null;
-  existing?: number | null;
-  entities?: number | null;
-  entity_links?: number | null;
-  trust_scored?: number | null;
-  conflict_candidates?: number | null;
-};
-
 export type EntityGraphStatsResponse = {
   by_type: Record<string, unknown>;
 };
@@ -948,8 +917,6 @@ export type OnboardingStatusResponse = {
   dogfood_enabled: boolean;
   dogfood_journal: Record<string, unknown>;
   dogfood_statement: string;
-  demo_seeded: boolean;
-  demo_memory_count: number;
   recommended_next_step: string;
   checks?: OnboardingCheckOut[];
 };

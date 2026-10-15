@@ -539,7 +539,7 @@ def cmd_doctor(args: argparse.Namespace) -> int:
         ok = False
 
     recommendation = (
-        "run `levh setup --demo --client claude --profile work`"
+        "run `levh setup --client claude --profile work`"
         if not memory_count
         else "generate an MCP config and test recall"
     )

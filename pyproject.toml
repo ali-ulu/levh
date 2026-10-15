@@ -101,7 +101,6 @@ files = [
     "server/core/backup.py",
     "server/core/conflict.py",
     "server/core/crypto.py",
-    "server/core/demo_data.py",
     "server/core/dogfood.py",
     "server/core/entities.py",
     "server/core/env.py",

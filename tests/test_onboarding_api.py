@@ -7,7 +7,7 @@ from server.core.memory_engine import MemoryEngine
 
 
 @pytest.mark.asyncio
-async def test_onboarding_api_status_config_and_demo_cleanup(tmp_path, monkeypatch):
+async def test_onboarding_api_status_and_config(tmp_path, monkeypatch):
     import server.api as api_mod
 
     monkeypatch.chdir(tmp_path)
@@ -41,20 +41,12 @@ async def test_onboarding_api_status_config_and_demo_cleanup(tmp_path, monkeypat
             assert configured.json()["mcp_client"] == "claude"
             assert configured.json()["mcp_profile"] == "work"
 
-            seeded = await client.post("/api/seed-demo")
-            assert seeded.status_code == 200 and seeded.json()["seeded"] == 20
-
-            ready = await client.get("/api/onboarding/status")
-            assert ready.status_code == 200
-            assert ready.json()["ready"] is True
-
-            denied = await client.post("/api/onboarding/remove-demo", json={"confirm": False})
-            assert denied.status_code == 422
-
-            cleaned = await client.post("/api/onboarding/remove-demo", json={"confirm": True})
-            assert cleaned.status_code == 200
-            assert cleaned.json()["removed"] == 20
-            assert cleaned.json()["remaining"] == 0
+            # The demo-data surface is gone: neither endpoint is in the contract
+            # any more. (A POST to the path now falls through to the dashboard
+            # static mount, so the schema is the honest place to assert this.)
+            schema = api_mod.app.openapi()["paths"]
+            assert "/api/v1/seed-demo" not in schema
+            assert "/api/v1/onboarding/remove-demo" not in schema
     finally:
         await api_mod._engine.shutdown()
         api_mod._engine = None

@@ -440,20 +440,6 @@ async def test_reembed_updates_a_memory_in_another_workspace(engine):
 
 
 @pytest.mark.asyncio
-async def test_demo_purge_removes_a_memory_in_another_workspace(engine):
-    from server.core.onboarding import remove_demo_data
-
-    with workspace(OTHER):
-        mem = await engine.store("seeded demo memory", metadata={"demo": True})
-
-    result = await remove_demo_data(engine)
-    assert result["removed"] == 1
-
-    with workspace(OTHER):
-        assert await engine.episodic.get(mem.id) is None
-
-
-@pytest.mark.asyncio
 async def test_replace_restore_refuses_once_two_workspaces_exist(engine):
     """A whole-store replace cannot be scoped, so it fails loudly (#302)."""
     await engine.store("default workspace memory")

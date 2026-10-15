@@ -58,8 +58,7 @@ Each fixture file is one JSON object:
   },
   "conflicts": {"expected": N, "detected": N, "precision": ..., "recall": ..., "false_positives": N},
   "lifecycle": {"review_distribution": {...}, "fading_recovery_rate": ...},
-  "continuity": {"briefs": N, "checkpoint_surfaced": bool, "order_ok": bool, "use_ok": bool},
-  "product": {"seed_demo": {"completed": bool, "memories": N, "conflict_candidates": N}}
+  "continuity": {"briefs": N, "checkpoint_surfaced": bool, "order_ok": bool, "use_ok": bool}
 }
 ```
 
@@ -154,7 +153,7 @@ usage events (`dogfood_events.jsonl` by default, overridable with
 `DOGFOOD_JOURNAL_PATH`). Since 2.25.1 live wiring is opt-in via
 `LEVH_DOGFOOD_ENABLED=true`: the shared engine provider then attaches
 the journal (default location: next to the SQLite database) and the briefing,
-meeting-prep, trust-view, review, and seed-demo surfaces emit events
+meeting-prep, trust-view, and review surfaces emit events
 automatically; a per-engine guard makes double attach a no-op — the mechanism the Editor uses to check whether the
 product is actually helping, from real signals instead of vibes.
 
@@ -173,8 +172,7 @@ Hard rules:
 Whitelisted event types: `memory_stored`, `memory_recalled`,
 `recall_helpful`, `recall_not_helpful`, `trust_viewed`, `conflict_dismissed`,
 `conflict_confirmed`, `meeting_prep_opened`, `briefing_opened`,
-`review_keep`, `review_reinforce`, `review_weaken`, `review_forget`,
-`seed_demo_completed`.
+`review_keep`, `review_reinforce`, `review_weaken`, `review_forget`.
 
 CLI: `levh dogfood status` prints the aggregate view (event counts,
 time-to-first-value for first recall/briefing/meeting-prep after the journal

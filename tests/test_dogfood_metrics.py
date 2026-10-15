@@ -106,7 +106,6 @@ def test_export_is_aggregate_only_no_raw_lines(journal, tmp_path):
 def test_empty_journal_status_is_calm(journal):
     s = journal.status()
     assert s["total_events"] == 0
-    assert s["seed_demo_completed"] is False
     assert s["recall_feedback"]["helpful_rate"] is None
 
 

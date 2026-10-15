@@ -28,10 +28,7 @@ def _add_leaf_commands(sub: argparse._SubParsersAction) -> None:
         help="give a stored row that only lacks an id a generated one, so it can be recalled again",
     )
 
-    setup_p = sub.add_parser("setup", help="First-run setup for demo or real data")
-    setup_mode = setup_p.add_mutually_exclusive_group()
-    setup_mode.add_argument("--demo", action="store_true", help="Load deterministic demo data")
-    setup_mode.add_argument("--real", action="store_true", help="Prepare an empty real-data store")
+    setup_p = sub.add_parser("setup", help="First-run setup for a real-data store")
     setup_p.add_argument("--status", action="store_true", help="Print computed onboarding readiness")
     setup_p.add_argument("--client", type=str, default="claude", help="MCP client (default: claude)")
     setup_p.add_argument(
@@ -299,23 +296,6 @@ def _add_security_commands(sub: argparse._SubParsersAction) -> None:
     purge_p.add_argument("memory_id")
 
 
-def _add_onboarding_commands(sub: argparse._SubParsersAction) -> None:
-    """seed-demo / remove-demo (populate & strip the demo corpus)."""
-    seed_p = sub.add_parser(
-        "seed-demo",
-        help="Load a deterministic demo corpus so a first run has data to explore",
-    )
-    seed_p.add_argument(
-        "--force",
-        action="store_true",
-        help="Seed even if the store already has memories",
-    )
-    sub.add_parser(
-        "remove-demo",
-        help="Remove demo-tagged memories, leaving real data untouched",
-    )
-
-
 def _add_continuation_commands(sub: argparse._SubParsersAction) -> None:
     """continue (autonomous session continuity) + export-full."""
     continue_p = sub.add_parser("continue", help="Show context to resume work (session DNA)")
@@ -492,7 +472,6 @@ def build_parser(prog: str) -> tuple[argparse.ArgumentParser, dict[str, argparse
     dog_p = _add_dogfood_parser(sub)
     review_p = _add_review_parser(sub)
     _add_security_commands(sub)
-    _add_onboarding_commands(sub)
     _add_continuation_commands(sub)
     ent_p = _add_entities_parser(sub)
     trust_p = _add_trust_parser(sub)

@@ -20,7 +20,6 @@ from server.core.evaluation import (
     EVALUATION_VERSION,
     load_fixtures,
     run_evaluation,
-    seed_demo_completion,
 )
 
 
@@ -132,14 +131,6 @@ def test_procedure_promotion_is_measured_as_proposals_only(report):
     assert p["mismatches"] == 0
     # Nothing here promotes: the rule proposes and a human decides.
     assert "promotions" not in p
-
-
-@pytest.mark.asyncio
-async def test_seed_demo_completion_product_check():
-    result = await seed_demo_completion()
-    assert result["completed"] is True
-    assert result["memories"] > 0
-    assert result["conflict_candidates"] >= 1
 
 
 @pytest.mark.asyncio

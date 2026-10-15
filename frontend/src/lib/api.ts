@@ -471,19 +471,6 @@ export const api = {
   // Stats
   getStats: () => fetchApi<Stats>("/api/stats"),
 
-  // Onboarding: seed a deterministic demo corpus into an empty store.
-  seedDemo: (force = false) =>
-    fetchApi<{
-      seeded: number;
-      skipped: boolean;
-      reason?: string;
-      existing?: number;
-      entities?: number;
-      entity_links?: number;
-      trust_scored?: number;
-      conflict_candidates?: number;
-    }>(`/api/seed-demo${force ? "?force=true" : ""}`, { method: "POST" }),
-
   onboardingStatus: () => fetchApi<OnboardingStatus>("/api/onboarding/status"),
 
   onboardingMcpConfig: (client: string, profile = "work") =>
@@ -500,16 +487,6 @@ export const api = {
     }>("/api/onboarding/mcp-config", {
       method: "POST",
       body: JSON.stringify({ client, profile }),
-    }),
-
-  removeDemoData: () =>
-    fetchApi<{
-      removed: number;
-      remaining: number;
-      fully_purged: boolean;
-    }>("/api/onboarding/remove-demo", {
-      method: "POST",
-      body: JSON.stringify({ confirm: true }),
     }),
 
   // Score Breakdown

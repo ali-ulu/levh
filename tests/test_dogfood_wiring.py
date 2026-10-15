@@ -162,19 +162,6 @@ async def test_product_surfaces_emit_dogfood_events(engine, tmp_path, monkeypatc
     assert "quarterly planning" not in raw
 
 
-@pytest.mark.asyncio
-async def test_seed_demo_emits_completion_event(tmp_path):
-    eng = MemoryEngine(db_path=str(tmp_path / "seed.db"), embedder_mode="hash")
-    await eng.initialize()
-    try:
-        journal = DogfoodJournal(tmp_path / "j.jsonl")
-        journal.attach(eng)
-        await eng.seed_demo()
-        assert journal.status()["seed_demo_completed"] is True
-    finally:
-        await eng.shutdown()
-
-
 def test_admission_reason_codes_drive_duplicate_rate():
     from server.core.admission import evaluate
 

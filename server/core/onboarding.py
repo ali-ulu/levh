@@ -16,7 +16,6 @@ from typing import Any
 
 from server.configs import PLATFORM_ALIASES, PLATFORMS
 from server.core.env import get_env
-from server.core.tenancy import Principal, bind_principal, reset_principal
 from server.tools.profiles import DEFAULT_PROFILE, profile_counts
 
 ONBOARDING_VERSION = "onboarding-v1"
@@ -118,7 +117,6 @@ def write_receipt(
     first_memory_ready: bool,
     mcp_client: str | None,
     mcp_profile: str,
-    demo_mode: bool,
     dogfood_enabled: bool,
     path: str | os.PathLike | None = None,
     completed_at: str | None = None,
@@ -131,7 +129,6 @@ def write_receipt(
         "first_memory_ready": bool(first_memory_ready),
         "mcp_client": mcp_client,
         "mcp_profile": mcp_profile,
-        "demo_mode": bool(demo_mode),
         "dogfood_enabled": bool(dogfood_enabled),
         "completed_at": completed_at or datetime.now(timezone.utc).isoformat(),
     }
@@ -204,10 +201,6 @@ def _journal_location_summary(db_path: str | os.PathLike | None) -> dict[str, st
 async def onboarding_status(engine) -> dict[str, Any]:
     """Compute first-run readiness from real storage and local configuration."""
     memory_count = await engine.episodic.count()
-    # Counted in SQL. Reading every memory to arrive at one number made a status
-    # endpoint cost as much as the corpus it was reporting on, while the total
-    # on the line above was already an aggregate.
-    demo_count = await engine.db.count_demo_memories()
     receipt = read_receipt()
     mcp_client = receipt.get("mcp_client") if receipt else None
     mcp_profile = receipt.get("mcp_profile") if receipt else DEFAULT_PROFILE
@@ -216,7 +209,7 @@ async def onboarding_status(engine) -> dict[str, Any]:
     ready = first_memory_ready and mcp_configured
 
     if memory_count == 0:
-        next_step = "choose_demo_or_real_setup"
+        next_step = "store_first_memory"
     elif not mcp_configured:
         next_step = "configure_mcp_client"
     else:
@@ -239,7 +232,7 @@ async def onboarding_status(engine) -> dict[str, Any]:
             "message": (
                 f"{memory_count} memories available"
                 if first_memory_ready
-                else "Store, import, or seed your first memory"
+                else "Store or import your first memory"
             ),
         },
         {
@@ -276,56 +269,6 @@ async def onboarding_status(engine) -> dict[str, Any]:
             "only whitelisted aggregate events are recorded locally; raw memory "
             "and query content are not recorded, and no data is sent over the network."
         ),
-        "demo_seeded": demo_count > 0,
-        "demo_memory_count": demo_count,
         "recommended_next_step": next_step,
         "checks": checks,
-    }
-
-
-async def remove_demo_data(engine) -> dict[str, Any]:
-    """Delete only memories explicitly marked ``metadata.demo=true``.
-
-    Every deletion uses the existing purge+postcondition path. Real memories
-    are untouched. Derived entity/trust/conflict state is rebuilt afterwards.
-    """
-    # Maintenance over the whole store (#302): demo rows are marked in
-    # metadata, not scoped to one workspace, and the seed is a single-tenant
-    # operation. ``purge_memory`` is workspace-scoped, so each memory's own
-    # workspace is bound for its purge and restored afterwards.
-    memories = await engine.episodic.get_all(limit=1_000_000, across_workspaces=True)
-    demo = [m for m in memories if bool((m.metadata or {}).get("demo"))]
-    demo_ids = [m.id for m in demo]
-    audits: list[dict[str, Any]] = []
-    for memory in demo:
-        token = bind_principal(Principal(workspace_id=memory.workspace_id))
-        try:
-            audits.append(await engine.purge_memory(memory.id))
-        finally:
-            reset_principal(token)
-
-    if demo_ids:
-        await engine.db.delete_conflicts_for_memory_ids(demo_ids)
-        entities = await engine.reindex_entities()
-        trust = await engine.recompute_trust_scores()
-    else:
-        entities = {"entities": 0, "links": 0}
-        trust = {"scored": await engine.episodic.count()}
-
-    remaining = await engine.episodic.count()
-    return {
-        "removed": len(demo_ids),
-        "remaining": remaining,
-        "fully_purged": all(a.get("purged") for a in audits),
-        "audits": [
-            {
-                "memory_id": a.get("memory_id"),
-                "purged": bool(a.get("purged")),
-                "residue": a.get("residue", {}),
-            }
-            for a in audits
-        ],
-        "entities": entities.get("entities", 0),
-        "entity_links": entities.get("links", 0),
-        "trust_scored": trust.get("scored", 0),
     }

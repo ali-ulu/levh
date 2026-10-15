@@ -25,7 +25,6 @@ RECEIPT_FIELDS = dict(
     first_memory_ready=True,
     mcp_client="claude_code",
     mcp_profile="work",
-    demo_mode=False,
     dogfood_enabled=False,
 )
 

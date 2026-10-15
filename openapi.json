@@ -2504,47 +2504,6 @@
         }
       }
     },
-    "/api/v1/seed-demo": {
-      "post": {
-        "summary": "Seed Demo",
-        "description": "Populate an empty store with a deterministic demo corpus (onboarding).\nRefuses to run on a non-empty store unless ``force=true``.",
-        "operationId": "seed_demo_api_seed_demo_post_v1",
-        "parameters": [
-          {
-            "name": "force",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "boolean",
-              "default": false,
-              "title": "Force"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DemoSeedResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/v1/onboarding/status": {
       "get": {
         "summary": "Get Onboarding Status",
@@ -2586,45 +2545,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/OnboardingMcpConfigResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/onboarding/remove-demo": {
-      "post": {
-        "summary": "Remove Onboarding Demo",
-        "description": "Remove only metadata.demo=true memories using the audited purge path.",
-        "operationId": "remove_onboarding_demo_api_onboarding_remove_demo_post_v1",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DemoCleanupRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DemoCleanupResponse"
                 }
               }
             }
@@ -7355,177 +7275,6 @@
         "title": "DedupeResponse",
         "description": "``POST /api/memories/dedupe`` - dry-run groups or applied removals."
       },
-      "DemoCleanupAuditOut": {
-        "properties": {
-          "memory_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Memory Id"
-          },
-          "purged": {
-            "type": "boolean",
-            "title": "Purged"
-          },
-          "residue": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Residue"
-          }
-        },
-        "type": "object",
-        "required": [
-          "purged"
-        ],
-        "title": "DemoCleanupAuditOut"
-      },
-      "DemoCleanupRequest": {
-        "properties": {
-          "confirm": {
-            "type": "boolean",
-            "title": "Confirm",
-            "default": false
-          }
-        },
-        "type": "object",
-        "title": "DemoCleanupRequest"
-      },
-      "DemoCleanupResponse": {
-        "properties": {
-          "removed": {
-            "type": "integer",
-            "title": "Removed"
-          },
-          "remaining": {
-            "type": "integer",
-            "title": "Remaining"
-          },
-          "fully_purged": {
-            "type": "boolean",
-            "title": "Fully Purged"
-          },
-          "audits": {
-            "items": {
-              "$ref": "#/components/schemas/DemoCleanupAuditOut"
-            },
-            "type": "array",
-            "title": "Audits"
-          },
-          "entities": {
-            "type": "integer",
-            "title": "Entities"
-          },
-          "entity_links": {
-            "type": "integer",
-            "title": "Entity Links"
-          },
-          "trust_scored": {
-            "type": "integer",
-            "title": "Trust Scored"
-          }
-        },
-        "type": "object",
-        "required": [
-          "removed",
-          "remaining",
-          "fully_purged",
-          "entities",
-          "entity_links",
-          "trust_scored"
-        ],
-        "title": "DemoCleanupResponse",
-        "description": "``POST /api/onboarding/remove-demo``."
-      },
-      "DemoSeedResponse": {
-        "properties": {
-          "seeded": {
-            "type": "integer",
-            "title": "Seeded"
-          },
-          "skipped": {
-            "type": "boolean",
-            "title": "Skipped"
-          },
-          "reason": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Reason"
-          },
-          "existing": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Existing"
-          },
-          "entities": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Entities"
-          },
-          "entity_links": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Entity Links"
-          },
-          "trust_scored": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Trust Scored"
-          },
-          "conflict_candidates": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Conflict Candidates"
-          }
-        },
-        "type": "object",
-        "required": [
-          "seeded",
-          "skipped"
-        ],
-        "title": "DemoSeedResponse",
-        "description": "``POST /api/seed-demo``."
-      },
       "EntityGraphStatsResponse": {
         "properties": {
           "by_type": {
@@ -10116,14 +9865,6 @@
             "type": "string",
             "title": "Dogfood Statement"
           },
-          "demo_seeded": {
-            "type": "boolean",
-            "title": "Demo Seeded"
-          },
-          "demo_memory_count": {
-            "type": "integer",
-            "title": "Demo Memory Count"
-          },
           "recommended_next_step": {
             "type": "string",
             "title": "Recommended Next Step"
@@ -10152,8 +9893,6 @@
           "dogfood_enabled",
           "dogfood_journal",
           "dogfood_statement",
-          "demo_seeded",
-          "demo_memory_count",
           "recommended_next_step"
         ],
         "title": "OnboardingStatusResponse",

@@ -16,7 +16,7 @@ async def test_empty_database_is_first_run_not_failure(tmp_path, monkeypatch):
         assert status["database_initialized"] is True
         assert status["memory_count"] == 0
         assert status["ready"] is False
-        assert status["recommended_next_step"] == "choose_demo_or_real_setup"
+        assert status["recommended_next_step"] == "store_first_memory"
         assert next(c for c in status["checks"] if c["id"] == "memory")["status"] == "pending"
     finally:
         await eng.shutdown()

@@ -541,25 +541,3 @@ async def run_evaluation(
         # content must not leak into the report.
         "federation": await run_federation_quality(embedder_mode),
     }
-
-
-async def seed_demo_completion(embedder_mode: str = "hash") -> dict:
-    """Product-surface check: does the seeded demo complete end-to-end on a
-    fresh store? Returns counts only (no content)."""
-    db_fd, db_path = tempfile.mkstemp(suffix=".db")
-    os.close(db_fd)
-    engine = MemoryEngine(db_path=db_path, embedder_mode=embedder_mode)
-    await engine.initialize()
-    try:
-        result = await engine.seed_demo()
-        return {
-            "completed": result.get("seeded", 0) > 0 and not result.get("skipped"),
-            "memories": result.get("seeded", 0),
-            "conflict_candidates": result.get("conflict_candidates", 0),
-        }
-    finally:
-        await engine.shutdown()
-        try:
-            os.unlink(db_path)
-        except OSError:
-            pass

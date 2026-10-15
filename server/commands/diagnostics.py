@@ -46,22 +46,6 @@ def cmd_setup(args: argparse.Namespace) -> int:
         print(json.dumps(asyncio.run(_status()), indent=2, ensure_ascii=False))
         return 0
 
-    mode = "demo" if args.demo else "real" if args.real else ""
-    if not mode:
-        if sys.stdin.isatty():
-            # isatty() is a guess about whether anyone is there to answer; the
-            # read is the fact. A terminal handed to a CI runner or a test
-            # harness still reports as a tty and then hands back EOF, and an
-            # unhandled EOFError turns "you forgot a flag" into a traceback.
-            try:
-                choice = input("  Choose setup mode: [d]emo or [r]eal data? ").strip().lower()
-            except (EOFError, KeyboardInterrupt):
-                choice = ""
-            mode = "demo" if choice in {"d", "demo"} else "real" if choice in {"r", "real"} else ""
-        if not mode:
-            print("  Choose one: --demo or --real", file=sys.stderr)
-            return 1
-
     try:
         platform = normalize_platform(args.client)
         profile = resolve_profile(args.profile)
@@ -88,19 +72,15 @@ def cmd_setup(args: argparse.Namespace) -> int:
     engine_provider.set_engine(None)
     runtime = resolve_runtime_config()
 
-    async def _run() -> tuple[dict, dict]:
+    async def _run() -> dict:
         engine = engine_provider.get_engine()
         await engine.initialize()
         try:
-            seed_result = {"seeded": 0, "skipped": False}
-            if mode == "demo":
-                seed_result = await engine.seed_demo(force=False)
-            status = await engine.onboarding_status()
-            return seed_result, status
+            return await engine.onboarding_status()
         finally:
             await engine.shutdown()
 
-    seed_result, status = asyncio.run(_run())
+    status = asyncio.run(_run())
 
     generated = generate_config(
         platform,
@@ -116,27 +96,18 @@ def cmd_setup(args: argparse.Namespace) -> int:
         first_memory_ready=bool(status.get("memory_count")),
         mcp_client=args.client,
         mcp_profile=profile,
-        demo_mode=mode == "demo",
         dogfood_enabled=dogfood_enabled(),
     )
 
     print("\n  LEVH setup")
     print("  " + "=" * 50)
-    print(f"  Mode:          {mode}")
     print(f"  Database:      ready ({status.get('memory_count', 0)} memories)")
-    if mode == "demo":
-        if seed_result.get("skipped"):
-            print("  Demo data:     skipped (store already contains data)")
-        else:
-            print(f"  Demo data:     {seed_result.get('seeded', 0)} memories loaded")
-    else:
-        print("  Demo data:     not loaded")
     print(f"  MCP client:    {args.client}")
     print(f"  MCP profile:   {profile}")
     print(f"  MCP config:    {config_path}")
     print(f"  Dogfood:       {'ON' if receipt['dogfood_enabled'] else 'OFF (local default)'}")
     print("\n  MCP profiles narrow tool discovery; they are not an authorization boundary.")
-    if mode == "real" and not status.get("memory_count"):
+    if not status.get("memory_count"):
         print('  Next: levh capture "Atlas uses PostgreSQL in production."')
     print("  Next: levh serve")
     print("  Then test recall from your configured AI client.")

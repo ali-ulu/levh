@@ -364,8 +364,6 @@ export interface OnboardingStatus {
   dogfood_enabled: boolean;
   dogfood_journal: { name: string; scope: string };
   dogfood_statement: string;
-  demo_seeded: boolean;
-  demo_memory_count: number;
   recommended_next_step: string;
   checks: OnboardingCheck[];
 }

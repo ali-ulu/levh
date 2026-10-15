@@ -14,7 +14,6 @@ def test_receipt_contains_only_setup_metadata(tmp_path):
         first_memory_ready=True,
         mcp_client="claude",
         mcp_profile="work",
-        demo_mode=False,
         dogfood_enabled=False,
         path=path,
         completed_at="2026-07-11T00:00:00+00:00",
@@ -44,7 +43,6 @@ def test_onboarding_helpers_make_no_network_calls(tmp_path, monkeypatch):
         first_memory_ready=False,
         mcp_client="cursor",
         mcp_profile="minimal",
-        demo_mode=False,
         dogfood_enabled=False,
         path=path,
     )

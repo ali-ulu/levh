@@ -1,4 +1,4 @@
-"""Onboarding and demo-seed routes."""
+"""Onboarding routes."""
 
 from __future__ import annotations
 
@@ -7,22 +7,12 @@ from fastapi import Depends, APIRouter, HTTPException
 
 from server.routes.deps import get_engine
 from server.routes.models import (
-    DemoCleanupRequest,
-    DemoCleanupResponse,
-    DemoSeedResponse,
     OnboardingMCPConfigRequest,
     OnboardingMcpConfigResponse,
     OnboardingStatusResponse,
 )
 
 router = APIRouter()
-
-
-@router.post("/api/seed-demo", response_model=DemoSeedResponse)
-async def seed_demo(force: bool = False, engine=Depends(get_engine)):
-    """Populate an empty store with a deterministic demo corpus (onboarding).
-    Refuses to run on a non-empty store unless ``force=true``."""
-    return await engine.seed_demo(force=force)
 
 
 @router.get("/api/onboarding/status", response_model=OnboardingStatusResponse)
@@ -65,7 +55,6 @@ async def generate_onboarding_mcp_config(req: OnboardingMCPConfigRequest, engine
         first_memory_ready=status["memory_count"] > 0,
         mcp_client=req.client,
         mcp_profile=profile,
-        demo_mode=bool(status["demo_seeded"]),
         dogfood_enabled=dogfood_enabled(),
     )
 
@@ -87,11 +76,3 @@ async def generate_onboarding_mcp_config(req: OnboardingMCPConfigRequest, engine
         "config_text": render_config(platform, cfg),
         "config_path": PLATFORMS[platform]["file_path"],
     }
-
-
-@router.post("/api/onboarding/remove-demo", response_model=DemoCleanupResponse)
-async def remove_onboarding_demo(req: DemoCleanupRequest, engine=Depends(get_engine)):
-    """Remove only metadata.demo=true memories using the audited purge path."""
-    if not req.confirm:
-        raise HTTPException(status_code=422, detail="confirmation required")
-    return await engine.remove_demo_data()
