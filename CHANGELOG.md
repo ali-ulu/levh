@@ -6,6 +6,14 @@
 
 - TBD
 
+### fix: stop the conflict list from 500ing on a concurrent rebuild
+
+- `insert_conflict_if_absent` now uses `INSERT OR IGNORE` instead of a read-then-insert. Two freshness reads can each trigger a derived-state rebuild at once (only the background pass is coalesced), and the check-then-insert race let both see a candidate pair as absent and then collide on its primary key. The loser raised `UNIQUE constraint failed: memory_conflict_candidates.id`, turning `/api/conflicts` into a 500 that the dashboard's Conflicts page hit on load. The observable contract is unchanged: an existing row — any status — is left untouched.
+
+### fix: make the dashboard's Copy buttons work outside localhost
+
+- Added `copyText` (`frontend/src/lib/clipboard.ts`): it prefers `navigator.clipboard.writeText` and falls back to a hidden-textarea `execCommand("copy")` when that API is missing (a plain-HTTP LAN origin) or rejects the write (`NotAllowedError`). The Settings, Projects and Onboarding copy buttons now report success truthfully instead of throwing and silently doing nothing.
+
 ## 2.34.0
 
 ### federation: bring the dashboard into the pull-first transport (#498)

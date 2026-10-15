@@ -518,6 +518,31 @@ async def test_conflicts_mcp_tools_flow(engine):
     assert "dismissed" in text.lower() or "dismiss" in text.lower()
 
 
+@pytest.mark.asyncio
+async def test_concurrent_freshness_reads_do_not_collide_on_candidate_id(engine):
+    """Two concurrent freshness reads must not 500 on the candidate primary key.
+
+    Only the background rebuild is coalesced; inline ``recompute_derived_state``
+    callers run concurrently, so both scans can decide the pair is absent and
+    then both INSERT the same ``"<a>|<b>"`` id. The old read-then-insert turned
+    the loser into ``UNIQUE constraint failed: memory_conflict_candidates.id``
+    and the endpoint into a 500 — the dashboard's conflicts page hit it on
+    every load against an already-seeded store."""
+    import asyncio
+
+    await _seed_opposing(engine)
+    results = await asyncio.gather(
+        engine.list_conflict_candidates(status="open"),
+        engine.list_conflict_candidates(status="open"),
+        engine.list_conflict_candidates(status="open"),
+        return_exceptions=True,
+    )
+    failures = [r for r in results if isinstance(r, BaseException)]
+    assert failures == [], failures
+    # Exactly one row survived; the losing writers were ignored, not duplicated.
+    assert len(await engine.db.list_conflicts(status="open")) == 1
+
+
 def test_word_tokenization_is_cached_and_read_only():
     """The pair scan tokenizes both sides of every entity-overlap pair, so the
     same two contents go through `_words` thousands of times per rebuild: ~12k
