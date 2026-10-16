@@ -6,6 +6,12 @@
 
 - TBD
 
+### fix: keep the Windows listener alive after a client drops mid-accept
+
+- On Windows `levh serve` ran on uvicorn's default `ProactorEventLoop`, whose accept loop closes the listening socket on the first `OSError` from `AcceptEx`. `WinError 64` ("the specified network name is no longer available") is raised whenever a client resets its connection before it is accepted — routine for MCP clients that time out and retry — so after one such drop the process kept running but refused every connection, and every agent saw `ECONNREFUSED` until someone restarted it. `levh serve` now passes uvicorn a `SelectorEventLoop` factory on Windows (`server/core/event_loop.py`); other platforms keep uvicorn's default. Observed on CPython 3.12.10 in production (`Accept failed on a socket ... WinError 64` in the server log, then no listener) and reproduced on 3.13.13: 20 reset connections kill the proactor listener, the selector listener keeps serving. `tests/test_serve_event_loop.py` replays that scenario on both loops (the proactor half only on Windows, as a canary for a CPython fix).
+- The `uvicorn` floor rises from `>=0.30` to `>=0.36`: custom loop factories (`Config.get_loop_factory`) arrived in 0.36, and an older uvicorn would fail to start `levh serve` on Windows with this change.
+- Running `uvicorn server.api:app` by hand on Windows still gets the proactor loop; pass `--loop server.core.event_loop:selector_event_loop`.
+
 ### feat: remove the demo-data feature
 
 - Dropped the demo corpus and its whole surface: `server/core/demo_data.py`, `MemoryEngine.seed_demo`, `MemoryOnboardingMixin`'s demo helpers, `POST /api/seed-demo`, `POST /api/onboarding/remove-demo`, the `levh seed-demo` / `levh remove-demo` commands, `setup --demo` / `--real` (setup now always prepares an empty store), the `seed_demo_completed` dogfood event, and the dashboard's "Load demo data" / "Remove demo data" onboarding buttons. Onboarding readiness is now a single path: store a real memory and connect an MCP client.

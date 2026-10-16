@@ -16,6 +16,7 @@ from pathlib import Path
 from server.commands.paths import DEFAULT_CONFIG, MCP_DIR
 from server.core.runtime_config import CONFIG_DIR, CONFIG_FILE
 from server.core.env import get_env
+from server.core.event_loop import serve_loop_setting
 from server.core.log_filters import install_access_log_filters
 from server.core.logging import emit, install_logging
 from server.core.runtime_config import resolve_runtime_config, runtime_env
@@ -183,5 +184,13 @@ def cmd_serve(args: argparse.Namespace) -> int:
     )
     install_logging()
     install_access_log_filters()
-    uvicorn.run("server.api:app", host=host, port=port, reload=args.reload)
+    # Windows: the default proactor loop closes its listener on the first
+    # failed accept; see server/core/event_loop.py.
+    uvicorn.run(
+        "server.api:app",
+        host=host,
+        port=port,
+        reload=args.reload,
+        loop=serve_loop_setting(),
+    )
     return 0
