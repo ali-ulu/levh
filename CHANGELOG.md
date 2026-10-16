@@ -6,6 +6,14 @@
 
 - TBD
 
+## 2.35.0
+
+### Upgrade notes
+
+- **Windows users: upgrade.** `levh serve` could stay running while refusing every connection after one client dropped mid-accept (`WinError 64`), so every agent saw `ECONNREFUSED` until a manual restart. Fixed below; `uvicorn>=0.36` is now required.
+- **Removed:** the demo-data feature — `levh seed-demo`, `levh remove-demo`, `setup --demo` / `--real`, `POST /api/seed-demo` and `POST /api/onboarding/remove-demo`. Scripts that call them must drop those calls; `levh setup` now always prepares an empty store.
+- **New, opt-in:** `python -m server.supervisor` keeps a git-checkout install running and fast-forwards it to `main` every 6 hours (`LEVH_AUTO_UPDATE_HOURS`, `0` turns it off). Nothing changes unless you start it.
+
 ### feat: `levh update` and a supervisor that keeps the server up and current
 
 - `levh update [--check] [--remote origin] [--branch main] [--json]` fast-forwards the git checkout LEVH runs from. It refuses a tree with local edits to tracked files, another branch, a history upstream does not contain, or a directory that is not the checkout root (a wheel install nested in a versioned home directory is never "updated"). When `pyproject.toml` or `uv.lock` changed it reinstalls the checkout (pip, or `uv pip` in a uv environment without pip) and rolls back with `git reset --keep` if that fails. Git runs with prompts disabled and every call has a deadline that kills the whole process tree, so an unattended run cannot hang on a credential prompt.
