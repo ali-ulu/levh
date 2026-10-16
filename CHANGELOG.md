@@ -6,6 +6,11 @@
 
 - TBD
 
+### feat: `levh update` and a supervisor that keeps the server up and current
+
+- `levh update [--check] [--remote origin] [--branch main] [--json]` fast-forwards the git checkout LEVH runs from. It refuses a tree with local edits to tracked files, another branch, a history upstream does not contain, or a directory that is not the checkout root (a wheel install nested in a versioned home directory is never "updated"). When `pyproject.toml` or `uv.lock` changed it reinstalls the checkout (pip, or `uv pip` in a uv environment without pip) and rolls back with `git reset --keep` if that fails. Git runs with prompts disabled and every call has a deadline that kills the whole process tree, so an unattended run cannot hang on a credential prompt.
+- `python -m server.supervisor` runs `levh serve` as its child and restarts it when it exits (with crash-loop backoff), when the port actively refuses while the process lives (the Windows listener loss), or after ten failed health probes past a ten-minute boot grace. It adopts, and never kills, a server it did not start. A lock file keeps one copy, so a logon task can launch it every few minutes. Every `LEVH_AUTO_UPDATE_HOURS` (default 6, `0` off) it checks for an update and, only when behind, stops the server, updates, and starts it again. Health probes go to loopback for wildcard binds and bypass any HTTP proxy. See `docs/installation.md`.
+
 ### feat: remove the demo-data feature
 
 - Dropped the demo corpus and its whole surface: `server/core/demo_data.py`, `MemoryEngine.seed_demo`, `MemoryOnboardingMixin`'s demo helpers, `POST /api/seed-demo`, `POST /api/onboarding/remove-demo`, the `levh seed-demo` / `levh remove-demo` commands, `setup --demo` / `--real` (setup now always prepares an empty store), the `seed_demo_completed` dogfood event, and the dashboard's "Load demo data" / "Remove demo data" onboarding buttons. Onboarding readiness is now a single path: store a real memory and connect an MCP client.

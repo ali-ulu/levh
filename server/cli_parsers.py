@@ -48,6 +48,15 @@ def _add_leaf_commands(sub: argparse._SubParsersAction) -> None:
     serve_p.add_argument("--port", type=int, default=None, help="Bind port override")
     serve_p.add_argument("--reload", action="store_true", help="Enable auto-reload")
 
+    update_p = sub.add_parser(
+        "update",
+        help="Fast-forward this git checkout to its upstream branch (never merges or discards)",
+    )
+    update_p.add_argument("--check", action="store_true", help="Only report how far behind the checkout is")
+    update_p.add_argument("--remote", type=str, default="origin", help="Remote to follow (default: origin)")
+    update_p.add_argument("--branch", type=str, default="main", help="Branch to follow (default: main)")
+    update_p.add_argument("--json", action="store_true", help="Print the result as one JSON object")
+
     capture_p = sub.add_parser("capture", help="Store a memory from the command line")
     capture_p.add_argument("content", type=str, help="Memory content")
     capture_p.add_argument("--tags", type=str, default="", help="Comma-separated tags")

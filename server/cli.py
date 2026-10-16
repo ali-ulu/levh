@@ -4,6 +4,7 @@ Commands:
     levh doctor         Check system health and dependencies
     levh init           Create local config directory and defaults
     levh serve          Launch the API server (uvicorn)
+    levh update         Fast-forward this git checkout to its upstream branch
     levh capture <txt>  Store a memory from the command line
     levh context        Generate CLAUDE.md / .cursorrules from memories
     levh hook install   Install a git post-commit hook that captures commits
@@ -145,6 +146,7 @@ if _REPO_ROOT not in sys.path:
 from server.cli_parsers import build_parser
 from server.commands.doctor import cmd_doctor
 from server.commands.diagnostics import cmd_init, cmd_serve, cmd_setup
+from server.commands.update import cmd_update
 from server.commands.capture import cmd_admit, cmd_attach, cmd_capture, cmd_sync
 from server.commands.context import cmd_context, cmd_continue, cmd_summarize
 from server.commands.hooks import cmd_hook
@@ -209,6 +211,8 @@ def main() -> int:
         return cmd_init(args)
     elif args.command == "serve":
         return cmd_serve(args)
+    elif args.command == "update":
+        return cmd_update(args)
     elif args.command == "capture":
         return cmd_capture(args)
     elif args.command == "admit":

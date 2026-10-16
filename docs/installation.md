@@ -69,6 +69,46 @@ levh serve --reload
 
 The API is available at `http://127.0.0.1:8000`. The dashboard frontend can be built and served separately (see Frontend section below).
 
+### 5. Keep it running and up to date (optional)
+
+For a machine where LEVH should just be there — without Docker or a system
+service — run the supervisor from the checkout instead of `levh serve`:
+
+```bash
+cd levh
+python -m server.supervisor
+```
+
+It starts `levh serve` as its child and restarts it when it exits, when the port
+actively refuses connections while the process is still alive, or after ten
+minutes without a health answer (a young server gets a ten-minute boot grace
+first). It never kills a server it did not start: one already listening on the
+port is adopted. A lock file keeps it to one copy, so it is safe to launch on a
+timer. On Windows, a Scheduled Task that runs at logon and repeats every 5
+minutes with `pythonw.exe -m server.supervisor` (start in the checkout) is
+enough; logs go to `%LOCALAPPDATA%\LevH\supervisor.log` (elsewhere
+`~/.local/state/levh/`, or `LEVH_SUPERVISOR_LOG_DIR`).
+
+Every `LEVH_AUTO_UPDATE_HOURS` hours (default `6`, `0` disables it; the first
+check runs 15 minutes after the supervisor starts) the supervisor runs
+`levh update --check`. Only when the checkout is behind does it stop the server,
+run `levh update`, and start the server again — stopping first because on
+Windows an installer cannot replace files a running server holds open.
+
+`levh update` only fast-forwards. It skips a checkout with local edits to
+tracked files, one on another branch than `main` (`--branch` to follow
+another), or one with commits upstream does not have. It reinstalls the
+checkout (`pip install -e .`, or `uv pip install -e .` in a uv environment
+without pip) only when `pyproject.toml` or `uv.lock` changed, and if that
+install fails it moves the checkout back with `git reset --keep`, so the code on
+disk always has its dependencies (the supervisor then does not retry that same
+upstream commit; a newer push is tried normally). The reinstall resolves from
+`pyproject.toml`, not from `uv.lock` pins; a uv-managed development checkout
+should run `uv sync --frozen` by hand after a lock-only change. Git never prompts: a remote that needs
+credentials makes the update fail with an error instead of waiting for input.
+Run `levh update --check` to see how far behind a checkout is without touching
+it; the exit code is `1` only when something needs your attention.
+
 ## Frontend Build
 
 ```bash

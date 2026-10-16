@@ -92,7 +92,9 @@ follow_imports = "silent"
 # a ratchet, not a target: add modules as they are fixed, never remove one.
 # Baseline (2026-09-18, mypy 2.3.1) — zero errors on this list.
 files = [
+    "server/commands/update.py",
     "server/configs.py",
+    "server/supervisor.py",
     "server/scaffold.py",
     "server/core/action_gate.py",
     "server/core/agent_identity.py",

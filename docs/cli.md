@@ -12,6 +12,7 @@ Run `levh <command> --help` for the flags of any one of them.
 | `levh setup` | First-run setup: prepares an empty store and MCP config |
 | `levh init` | Create local config directory and defaults |
 | `levh serve` | Launch the API server |
+| `levh update` | Fast-forward this git checkout to its upstream branch (never merges or discards) |
 | `levh capture` | Store a memory from the command line |
 | `levh admit` | Store a memory through the admission gate (dedupe + secret redaction) |
 | `levh attach` | Attach a local file to a memory as evidence (reference + derived text, not blob) |
