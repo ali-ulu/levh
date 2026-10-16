@@ -21,7 +21,7 @@ classifiers = [
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.115",
-    "uvicorn>=0.30",
+    "uvicorn>=0.36",
     "aiosqlite>=0.20",
     "numpy>=2.0",
     "mcp>=1.0,<3",
@@ -95,6 +95,7 @@ files = [
     "server/commands/update.py",
     "server/configs.py",
     "server/supervisor.py",
+    "server/core/event_loop.py",
     "server/scaffold.py",
     "server/core/action_gate.py",
     "server/core/agent_identity.py",

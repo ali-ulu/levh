@@ -1539,7 +1539,7 @@ requires-dist = [
     { name = "torch", marker = "extra == 'local'", specifier = ">=2.0" },
     { name = "transformers", marker = "extra == 'local'", specifier = ">=4.40" },
     { name = "twine", marker = "extra == 'dev'" },
-    { name = "uvicorn", specifier = ">=0.30" },
+    { name = "uvicorn", specifier = ">=0.36" },
 ]
 provides-extras = ["local", "openai", "secure", "pdf", "files", "dev"]
 
