@@ -16,6 +16,10 @@ Rules, each learned from a real outage:
 * A port that actively *refuses* while the child is alive means the listener is
   gone (the Windows proactor accept bug, see server/core/event_loop.py), which
   is proof rather than slowness: that case restarts within two probes.
+* A flapping server (a few good probes between runs of bad ones) is as
+  unusable as a dead one, so one good probe does not wipe the evidence: the
+  child is restarted once ``flap_miss_threshold`` of the last
+  ``flap_window_probes`` probes were missed, however they are interleaved.
 
 Auto-update: every ``LEVH_AUTO_UPDATE_HOURS`` hours (default 6, ``0`` turns it
 off; the first check runs 15 minutes after start) the supervisor asks
@@ -40,6 +44,7 @@ import subprocess
 import sys
 import time
 import urllib.request
+from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -86,6 +91,8 @@ class SupervisorConfig:
     probe_timeout_s: float = 20.0     # RAM thrash makes even /api/health slow
     boot_grace_s: float = 600.0       # no health judgement for the first 10 minutes
     max_failed_probes: int = 10       # consecutive slow/failed probes before a restart
+    flap_window_probes: int = 10      # recent probes remembered for the flapping rule
+    flap_miss_threshold: int = 6      # misses within that window = flapping, restart
     refused_grace_s: float = 180.0    # boot window in which a closed port is expected
     max_refused_probes: int = 2       # refused twice = the listener is gone
     adopt_poll_s: float = 30.0        # recheck interval while someone else holds the port
@@ -320,6 +327,7 @@ class Supervisor:
         cfg = self.cfg
         started = time.monotonic()
         misses = refused = 0
+        recent: deque[bool] = deque(maxlen=cfg.flap_window_probes)  # True = missed
         while True:
             try:
                 child.wait(timeout=cfg.poll_s)
@@ -341,13 +349,22 @@ class Supervisor:
                     return age
                 continue
             refused = 0
-            if age < cfg.boot_grace_s or self.healthy():
+            if age < cfg.boot_grace_s:
+                continue
+            if self.healthy():
+                recent.append(False)
                 if misses:
                     self.log(f"child pid={child.pid} healthy again after {misses} missed probe(s)")
                 misses = 0
                 continue
             misses += 1
+            recent.append(True)
             self.log(f"child pid={child.pid} health probe missed ({misses}/{cfg.max_failed_probes})")
+            if sum(recent) >= cfg.flap_miss_threshold and misses < cfg.max_failed_probes:
+                self.log(f"child pid={child.pid} flapping: {sum(recent)} of the last "
+                         f"{len(recent)} probes missed - restarting it")
+                self.stop_child(child)
+                return time.monotonic() - started
             if misses >= cfg.max_failed_probes:
                 self.log(f"child pid={child.pid} unresponsive - restarting it")
                 self.stop_child(child)
