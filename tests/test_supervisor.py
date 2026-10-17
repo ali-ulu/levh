@@ -239,12 +239,31 @@ def test_flapping_child_is_restarted_even_though_good_probes_interleave(cfg, mak
     assert "flapping" in _log(cfg)
 
 
-def test_one_isolated_slow_probe_among_healthy_ones_does_not_restart(cfg, make, monkeypatch):
-    supervisor = make(cfg, command=QUICK_EXIT)
-    _scripted(supervisor, monkeypatch, [True, True, False, True, True, True, True, True])
-    supervisor.watch_child(supervisor.start_child())
+def test_one_isolated_slow_probe_among_healthy_ones_does_not_restart(cfg, make):
+    supervisor = make(cfg, command=SLEEPER)
+    child = supervisor.start_child()
+    script = [True, True, False, True, True, True, True, True]
+
+    def probe() -> bool:
+        if not script:
+            child.kill()  # script over: end the watch without any restart verdict
+            return True
+        return script.pop(0)
+
+    supervisor.healthy = probe  # type: ignore[method-assign]
+    supervisor.watch_child(child)
     log = _log(cfg)
     assert "flapping" not in log and "unresponsive" not in log
+    assert "EXITED" in log
+
+
+def test_consecutive_misses_without_a_good_probe_are_not_flapping(cfg, make):
+    supervisor = make(replace(cfg, max_failed_probes=8), command=SLEEPER, healthy=False)
+    child = supervisor.start_child()
+    supervisor.watch_child(child)
+    log = _log(cfg)
+    assert "missed (7/8)" in log and "flapping" not in log
+    assert "unresponsive" in log
 
 
 def test_young_child_is_not_judged_during_boot_grace(cfg, make):

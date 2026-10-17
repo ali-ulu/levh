@@ -16,10 +16,11 @@ Rules, each learned from a real outage:
 * A port that actively *refuses* while the child is alive means the listener is
   gone (the Windows proactor accept bug, see server/core/event_loop.py), which
   is proof rather than slowness: that case restarts within two probes.
-* A flapping server (a few good probes between runs of bad ones) is as
-  unusable as a dead one, so one good probe does not wipe the evidence: the
-  child is restarted once ``flap_miss_threshold`` of the last
-  ``flap_window_probes`` probes were missed, however they are interleaved.
+* A flapping server (good probes between runs of bad ones) is as unusable as
+  a dead one, so one good probe does not wipe the evidence: when the last
+  ``flap_window_probes`` probes hold at least ``flap_miss_threshold`` misses
+  *and* at least one good probe, the child is restarted. A run of misses with
+  no good probe at all is plain slowness and keeps the full ten-probe patience.
 
 Auto-update: every ``LEVH_AUTO_UPDATE_HOURS`` hours (default 6, ``0`` turns it
 off; the first check runs 15 minutes after start) the supervisor asks
@@ -360,7 +361,7 @@ class Supervisor:
             misses += 1
             recent.append(True)
             self.log(f"child pid={child.pid} health probe missed ({misses}/{cfg.max_failed_probes})")
-            if sum(recent) >= cfg.flap_miss_threshold and misses < cfg.max_failed_probes:
+            if sum(recent) >= cfg.flap_miss_threshold and False in recent:
                 self.log(f"child pid={child.pid} flapping: {sum(recent)} of the last "
                          f"{len(recent)} probes missed - restarting it")
                 self.stop_child(child)
