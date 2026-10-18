@@ -23,6 +23,7 @@ function readConfig(raw) {
 	return {
 		baseUrl: typeof c.baseUrl === "string" && c.baseUrl ? c.baseUrl : "http://127.0.0.1:8000",
 		defaultProject: typeof c.defaultProject === "string" ? c.defaultProject : "",
+		preflightAsk: c.preflightAsk !== false,
 		agentName: typeof c.agentName === "string" && c.agentName ? c.agentName : "dsh-levh-agent",
 		timeoutMs: Number.isInteger(c.timeoutMs) ? c.timeoutMs : 8000,
 		token: typeof c.token === "string" ? c.token : "",
@@ -173,7 +174,7 @@ function makeDecideTool(cfg) {
 	return {
 		name: "levh_decide",
 		description:
-			"Make a structured, auditable decision: score options against weighted criteria (deterministic math), get the ranking, margin, and a sensitivity check, and record the decision to LEVH so a conflicting decision by another agent is flagged (contested). Use before committing to any non-obvious choice.",
+			"Make a structured, auditable decision: score options against weighted criteria (deterministic math), get the ranking, margin, and a sensitivity check, and record the decision to LEVH so a conflicting decision by another agent is flagged (contested). Before recording it first asks the shared LEVH memory about the question (preflight) and cites prior context in the rationale. Use before committing to any non-obvious choice.",
 		parameters: {
 			type: "object",
 			additionalProperties: false,
@@ -232,6 +233,11 @@ function makeDecideTool(cfg) {
 						additionalProperties: true,
 						description: "Recording outcome: recorded, contested, conflicts count, optional error.",
 					},
+					preflight: {
+						type: "object",
+						additionalProperties: true,
+						description: "Preflight memory consult: asked, answer, sources count, optional error.",
+					},
 				},
 			},
 			render: (_args, value) => [
@@ -247,7 +253,12 @@ function makeDecideTool(cfg) {
 								: "Recorded in LEVH."
 							: value.levh.error
 								? `Not recorded: ${value.levh.error}`
-								: "Not recorded."),
+								: "Not recorded.") +
+						(value.preflight && value.preflight.asked
+							? value.preflight.error
+								? " Preflight memory consult failed."
+								: ` Preflight: ${value.preflight.sources} memory source(s) consulted.`
+							: ""),
 				},
 			],
 		},
@@ -265,6 +276,19 @@ function makeDecideTool(cfg) {
 			];
 			if (args.rationale) rationaleParts.push(String(args.rationale));
 			const project = args.project !== undefined ? String(args.project) : cfg.defaultProject;
+			const preflight = { asked: false };
+			if (cfg.preflightAsk && project) {
+				try {
+					const answer = await levh(cfg, "/api/v1/ask", { body: { question: String(args.question), top_k: 3, project } });
+					preflight.asked = true;
+					preflight.answer = typeof answer.answer === "string" ? answer.answer.slice(0, 500) : "";
+					preflight.sources = Array.isArray(answer.sources) ? answer.sources.length : 0;
+					rationaleParts.push(`Preflight memory (${preflight.sources} source(s)): ${preflight.answer.slice(0, 300)}`);
+				} catch (error) {
+					preflight.asked = true;
+					preflight.error = String((error && error.message) || error);
+				}
+			}
 			const levhOutcome = { recorded: false, contested: false, conflicts: 0 };
 			if (args.record !== false) {
 				if (!project) {
@@ -289,7 +313,7 @@ function makeDecideTool(cfg) {
 					}
 				}
 			}
-			return { winner: best, ranking, margin, sensitivity, statement, levh: levhOutcome };
+			return { winner: best, ranking, margin, sensitivity, statement, levh: levhOutcome, preflight };
 		},
 	};
 }

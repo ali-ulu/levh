@@ -1,0 +1,10 @@
+{
+  "name": "@local/cog-engine",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Deterministic cognitive tools for agents: deduction with contradiction detection, Bayesian hypothesis testing, pruned deliberation, decisions under uncertainty, and a reflection loop backed by LEVH.",
+  "exports": { ".": "./index.js", "./locale/*.json": "./locale/*.json", "./icon": "./icon.svg" },
+  "files": ["index.js", "cordis.patch.yml", "locale/en.json", "locale/tr.json", "icon.svg"],
+  "dsh": { "bundle": { "patch": "./cordis.patch.yml" } }
+}

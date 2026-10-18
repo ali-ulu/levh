@@ -9,6 +9,9 @@ existing REST API. No server changes, no build step, no npm dependencies.
   math (ranking, margin, single-criterion sensitivity) and records the decision
   with `POST /api/v1/team/decisions`. When another agent later records a
   conflicting decision for the same project, LEVH flags it as **contested**.
+  Before recording it runs a **preflight consult**: `POST /api/v1/ask` on the
+  decision question, with the prior context cited in the rationale (opt out
+  with `preflightAsk: false`).
 - **`levh_guard_check`** — checks a proposed action against recorded guard
   rules (`POST /api/v1/guard/check`) *before* it runs. Advisory only: it
   returns `warn` when a rule overlaps the action and never hard-blocks.
@@ -69,3 +72,14 @@ every field is optional and falls back to a default:
   `record: false` is passed (dry-run ranking).
 
 Full documentation: [`docs/dsh-plugin.md`](../../docs/dsh-plugin.md).
+
+## Sibling bundle: Cognition Engine
+
+[`cog-engine/`](cog-engine/README.md) is the deliberate-thinking half of this
+integration set: eight deterministic tools (`cog_think`, `cog_deduce`,
+`cog_hypothesize`, `cog_deliberate`, `cog_decide`, `cog_bias_check`,
+`cog_analogize`, `cog_reflect`) covering deduction, Bayesian hypothesis
+testing, pruned deliberation, decisions under uncertainty, bias scanning,
+structure mapping, and a reflection loop. Only `cog_reflect` talks to LEVH;
+the rest are pure computation. See
+[`docs/cog-engine.md`](../../docs/cog-engine.md).

@@ -1,0 +1,4 @@
+- insert:
+    - id: cog-engine
+      name: '@local/cog-engine'
+      config: {}

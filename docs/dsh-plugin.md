@@ -38,13 +38,21 @@ table. With `LEVH_TOKEN` set on the server, put the same value in `token`.
 - `levh_decide` performs the arithmetic; the agent performs the judgment. It
   validates that every criterion carries a positive weight and every option
   scores every criterion in `[0, 10]`, and fails loudly otherwise.
-- `levh_decide` passes `record: false` for a dry-run ranking that touches
-  nothing; otherwise the decision is recorded under the resolved project with
+- `levh_decide` runs a **preflight consult** before recording: it asks
+  `POST /api/v1/ask` about the decision question and cites the prior context
+  in the recorded rationale. Opt out with `preflightAsk: false` in the row
+  config.
+- `levh_decide` passes `record: false` for a dry-run ranking that records
+  nothing (the preflight consult still runs when a project scope resolves);
+  otherwise the decision is recorded under the resolved project with
   a slug of the question as its `decision_key` (override with `decision_key`).
 - `levh_guard_check` is advisory by design: a `warn` is an instruction the
   agent should heed, and the caller decides what to do.
 - Every request times out after `timeoutMs` and reports the failure to the
   agent instead of hanging the session.
+- For the reasoning half of the integration set — deduction, hypothesis
+  testing, deliberation, bias scanning, and reflection — see the
+  [Cognition Engine plugin](cog-engine.md).
 
 ## Security
 

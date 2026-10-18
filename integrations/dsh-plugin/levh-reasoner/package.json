@@ -1,10 +1,24 @@
 {
-  "name": "@local/levh-reasoner",
-  "version": "1.0.0",
-  "private": true,
-  "type": "module",
-  "description": "Structured decision-making, guard checks, and memory-grounded reasoning tools backed by the local LEVH API.",
-  "exports": { ".": "./index.js", "./locale/*.json": "./locale/*.json", "./icon": "./icon.svg" },
-  "files": ["index.js", "cordis.patch.yml", "locale/en.json", "locale/tr.json", "icon.svg"],
-  "dsh": { "bundle": { "patch": "./cordis.patch.yml" } }
+    "name":  "@local/levh-reasoner",
+    "version":  "1.1.0",
+    "private":  true,
+    "type":  "module",
+    "description":  "Structured decision-making, guard checks, and memory-grounded reasoning tools backed by the local LEVH API.",
+    "exports":  {
+                    ".":  "./index.js",
+                    "./locale/*.json":  "./locale/*.json",
+                    "./icon":  "./icon.svg"
+                },
+    "files":  [
+                  "index.js",
+                  "cordis.patch.yml",
+                  "locale/en.json",
+                  "locale/tr.json",
+                  "icon.svg"
+              ],
+    "dsh":  {
+                "bundle":  {
+                               "patch":  "./cordis.patch.yml"
+                           }
+            }
 }

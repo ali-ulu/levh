@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <linearGradient id="cbg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#312e81"/>
+      <stop offset="1" stop-color="#0e7490"/>
+    </linearGradient>
+  </defs>
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="url(#cbg)"/>
+  <g fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round">
+    <path d="M22 47 C14 45 12 37 15 32 C11 28 13 20 19 17 C19 11 26 8 30 11 C33 7 41 7 44 12 C51 12 54 19 51 24 C55 28 54 36 49 39 C50 45 44 49 39 47 C36 51 27 51 22 47 Z"/>
+  </g>
+  <g fill="#fbbf24">
+    <circle cx="24" cy="22" r="2.6"/>
+    <circle cx="38" cy="18" r="2.6"/>
+    <circle cx="44" cy="30" r="2.6"/>
+    <circle cx="30" cy="34" r="2.6"/>
+    <circle cx="22" cy="40" r="2.6"/>
+  </g>
+  <g stroke="#fbbf24" stroke-width="1.6" fill="none">
+    <line x1="24" y1="22" x2="38" y2="18"/>
+    <line x1="38" y1="18" x2="44" y2="30"/>
+    <line x1="44" y1="30" x2="30" y2="34"/>
+    <line x1="30" y1="34" x2="24" y2="22"/>
+    <line x1="30" y1="34" x2="22" y2="40"/>
+    <line x1="44" y1="30" x2="30" y2="34"/>
+  </g>
+</svg>

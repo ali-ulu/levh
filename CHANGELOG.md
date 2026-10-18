@@ -12,6 +12,12 @@
 - Optional row config: `baseUrl` (default loopback `http://127.0.0.1:8000`), `defaultProject`, `agentName`, `timeoutMs`, and `token` for `LEVH_TOKEN`-protected installs.
 - Documented in `docs/dsh-plugin.md` and `integrations/dsh-plugin/README.md`.
 
+### feat: Cognition Engine plugin and a preflight-ask decision flow (#517)
+
+- Added `integrations/dsh-plugin/cog-engine/`, a dependency-free DSH plugin with eight deterministic cognitive tools: `cog_think` (dual-process router mandating a deliberation protocol), `cog_deduce` (forward chaining with a proof trace and paraconsistent contradiction detection), `cog_hypothesize` (Bayesian hypothesis testing with flip analysis), `cog_deliberate` (pruned thought tree with near-duplicate detection), `cog_decide` (decisions under uncertainty with risk profiles, regret, and dominance), `cog_bias_check` (deterministic bias scan with debiasing actions), `cog_analogize` (structure mapping with transfer hypotheses), and `cog_reflect` (learning loop that stores a structured lesson into memory with error-scaled importance). Only `cog_reflect` touches LEVH; the rest are pure computation.
+- `levh_decide` now runs a preflight flow: before recording, it asks `POST /api/v1/ask` about the decision question and cites the prior context in the recorded rationale (opt out with `preflightAsk: false`).
+- Documented in `docs/cog-engine.md`, `docs/dsh-plugin.md`, and `integrations/dsh-plugin/README.md`.
+
 ## 2.35.0
 
 ### Upgrade notes
