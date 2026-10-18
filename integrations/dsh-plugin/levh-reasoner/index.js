@@ -42,7 +42,11 @@ async function levh(cfg, path, { method = "POST", body, query } = {}) {
 	const controller = new AbortController();
 	const timer = setTimeout(() => controller.abort(), cfg.timeoutMs);
 	try {
-		const response = await fetch(cfg.baseUrl.replace(/\/+$/, "") + path + qs, {
+	/** No regex here: CodeQL flags polynomial-ReDoS patterns on plugin-fed
+	 * strings; a linear trim is equivalent to `\/+$`. */
+	let base = cfg.baseUrl;
+	while (base.endsWith("/")) base = base.slice(0, -1);
+	const response = await fetch(base + path + qs, {
 			method,
 			headers: {
 				...(body === undefined ? {} : { "content-type": "application/json" }),
