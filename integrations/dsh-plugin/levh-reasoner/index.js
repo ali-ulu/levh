@@ -66,14 +66,26 @@ function round2(value) {
 	return Math.round(value * 100) / 100;
 }
 
+/** Linear-scan slug (no regex): agent input is uncontrolled, and CodeQL
+ * flags polynomial-ReDoS patterns on it. Same output as the old
+ * lowercase/NFKD/collapse/trim pipeline. */
 function slugKey(text) {
-	const s = String(text)
-		.toLowerCase()
-		.normalize("NFKD")
-		.replace(/[^a-z0-9]+/g, "-")
-		.replace(/^-+|-+$/g, "")
-		.slice(0, 64);
-	return s || "decision";
+	let out = "";
+	let lastDash = false;
+	for (const ch of String(text).toLowerCase().normalize("NFKD")) {
+		const ok = (ch >= "a" && ch <= "z") || (ch >= "0" && ch <= "9");
+		if (ok) {
+			out += ch;
+			lastDash = false;
+		} else if (!lastDash && out.length > 0) {
+			out += "-";
+			lastDash = true;
+		}
+	}
+	while (out.endsWith("-")) out = out.slice(0, -1);
+	out = out.slice(0, 64);
+	while (out.endsWith("-")) out = out.slice(0, -1);
+	return out || "decision";
 }
 
 /** Deterministic weighted scoring: the judgment is the agent's, the math is not.
