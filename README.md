@@ -154,6 +154,7 @@ levh mcp init my-server --with-memory   # scaffold an MCP server on this databas
 | [MCP Tools](docs/mcp-tools.md) | All 74 tools and the profile bands |
 | [REST API](docs/api-reference.md) | Every endpoint |
 | [TypeScript SDK](docs/typescript-sdk.md) | Typed client, generated from the contract |
+| [DeepSeek Harness plugin](docs/dsh-plugin.md) | Decision, guard, and memory tools for DSH agents |
 | [CLI](docs/cli.md) | Every command |
 | [Evaluation](docs/memory-evaluation.md) | Recall benchmark, golden fixtures, dogfood |
 | [Testing](docs/testing.md) | Running the suite |

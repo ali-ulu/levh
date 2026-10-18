@@ -6,6 +6,12 @@
 
 - TBD
 
+### feat: DeepSeek Harness plugin for guard checks, memory ask, and team decisions (#515)
+
+- Added `integrations/dsh-plugin/levh-reasoner/`, a dependency-free DeepSeek Harness (DSH) plugin that registers four agent tools over the existing REST API: `levh_guard_check` (advisory guard check before a risky action), `levh_ask_memory` (cited answers from the store), `levh_decide` (deterministic weighted-criteria scoring recorded to `team/decisions`, with later conflicting decisions surfaced as contested), and `levh_decision_conflicts` (open-conflict scan). No `server/` changes.
+- Optional row config: `baseUrl` (default loopback `http://127.0.0.1:8000`), `defaultProject`, `agentName`, `timeoutMs`, and `token` for `LEVH_TOKEN`-protected installs.
+- Documented in `docs/dsh-plugin.md` and `integrations/dsh-plugin/README.md`.
+
 ## 2.35.0
 
 ### Upgrade notes
