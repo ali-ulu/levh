@@ -136,6 +136,27 @@ async def test_source_state_change_is_a_new_revision_even_when_body_is_unchanged
 
 
 @pytest.mark.asyncio
+async def test_stale_source_revision_cannot_replace_newer_current_memory(engine):
+    await engine.ingest_items(
+        [_source_item(CONTENT_2, REVISION_2, state="closed")],
+        connector="github",
+    )
+
+    stale_result = await engine.ingest_items(
+        [_source_item(CONTENT_1, REVISION_1, state="open")],
+        connector="github",
+    )
+
+    current = await engine.list_memories(source="connector:github", limit=100)
+    assert len(current) == 1
+    assert current[0].content == CONTENT_2
+    assert current[0].metadata["source_revision"] == REVISION_2
+    assert current[0].metadata["state"] == "closed"
+    assert stale_result["stored"] == 0
+    assert stale_result["errors"] == 0
+
+
+@pytest.mark.asyncio
 async def test_github_issue_metadata_contains_stable_identity_and_revision():
     class Response:
         status_code = 200
