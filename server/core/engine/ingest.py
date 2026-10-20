@@ -508,9 +508,13 @@ class MemoryIngestMixin:
                         item, connector, project, use_gate
                     )
                     if source_result.get("handled"):
-                        errors += int(source_result.get("errors", 0))
+                        source_errors = int(source_result.get("errors", 0))
                         if source_result.get("rejected"):
-                            errors += 1
+                            errors += max(1, source_errors)
+                        else:
+                            errors += source_errors
+                        if source_result.get("rejected"):
+                            pass
                         elif source_result.get("duplicate"):
                             duplicates += 1
                         elif source_result.get("stored"):
