@@ -11,6 +11,7 @@ from __future__ import annotations
 import hashlib
 import json
 import time
+from datetime import datetime, timezone
 
 from .. import metrics
 from ..tenancy import authorize, current_workspace_id
@@ -365,6 +366,41 @@ class MemoryIngestMixin:
 
         versions = await self._connector_source_versions(source, source_identity)
         current_versions = [memory for memory in versions if memory.valid_to is None]
+
+        def source_updated_at(value: dict) -> datetime | None:
+            """Parse only comparable upstream timestamps; opaque revisions stay opaque."""
+            raw_time = value.get("updated_at")
+            if not isinstance(raw_time, str) or not raw_time.strip():
+                return None
+            try:
+                parsed = datetime.fromisoformat(raw_time.strip().replace("Z", "+00:00"))
+            except ValueError:
+                return None
+            if parsed.tzinfo is None:
+                parsed = parsed.replace(tzinfo=timezone.utc)
+            return parsed.astimezone(timezone.utc)
+
+        incoming_time = source_updated_at(source_metadata)
+        current_times = [
+            source_updated_at(memory.metadata or {})
+            for memory in current_versions
+        ]
+        comparable_current_times = [value for value in current_times if value is not None]
+        if incoming_time is not None and comparable_current_times:
+            latest_time = max(comparable_current_times)
+            if incoming_time < latest_time:
+                # Connector snapshots can arrive out of order after retries or
+                # overlapping sync runs. Never let an older upstream revision
+                # replace a newer one merely because it arrived later.
+                return {
+                    "handled": True,
+                    "stored": False,
+                    "duplicate": True,
+                    "stale_revision": True,
+                    "redacted": False,
+                    "errors": 0,
+                }
+
         matching_current = [
             memory
             for memory in current_versions
@@ -385,9 +421,9 @@ class MemoryIngestMixin:
                         previous.id, valid_to, canonical.id
                     )
                     if won:
-                        previous.valid_to = valid_to
-                        previous.superseded_by = canonical.id
-                        self._refresh_memory_caches(previous)
+                        fresh = await self.episodic.get(previous.id)
+                        if fresh is not None:
+                            self._refresh_memory_caches(fresh)
                     else:
                         fresh = await self.episodic.get(previous.id)
                         if fresh is not None:
@@ -445,9 +481,9 @@ class MemoryIngestMixin:
                 valid_to = _retirement_instant(previous.valid_from)
                 won = await self.db.retire_if_current(previous.id, valid_to, new_id)
                 if won:
-                    previous.valid_to = valid_to
-                    previous.superseded_by = new_id
-                    self._refresh_memory_caches(previous)
+                    fresh = await self.episodic.get(previous.id)
+                    if fresh is not None:
+                        self._refresh_memory_caches(fresh)
                 else:
                     fresh = await self.episodic.get(previous.id)
                     if fresh is not None:
