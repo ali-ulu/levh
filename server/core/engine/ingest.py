@@ -8,6 +8,8 @@ the split verifiable.
 
 from __future__ import annotations
 
+import hashlib
+import json
 import time
 
 from .. import metrics
@@ -271,6 +273,197 @@ class MemoryIngestMixin:
             return {"ok": False, "error": "already_decided", "status": held["status"]}
         return {"ok": True, "held_id": held_id}
 
+    async def _connector_source_versions(
+        self, source: str, source_identity: str
+    ) -> list[Memory]:
+        """Return every stored version of one connector object.
+
+        The source column narrows the query to the connector; metadata carries
+        the connector-neutral external identity. Read old versions too, because
+        they are the reconciliation lineage and repeated source revisions must
+        not create duplicates after an intervening revision.
+        """
+        versions: list[Memory] = []
+        offset = 0
+        page_size = 500
+        while True:
+            batch = await self.episodic.search(
+                source=source,
+                include_superseded=True,
+                limit=page_size,
+                offset=offset,
+                fetch_embeddings=True,
+            )
+            versions.extend(
+                memory
+                for memory in batch
+                if (memory.metadata or {}).get("source_identity") == source_identity
+            )
+            if len(batch) < page_size:
+                break
+            offset += len(batch)
+        return versions
+
+    async def _ingest_connector_source_version(
+        self,
+        item: dict,
+        connector: str,
+        project: str | None,
+        use_gate: bool,
+    ) -> dict:
+        """Idempotently ingest one identified external source revision.
+
+        A stable source identity is authoritative for version matching; fuzzy
+        dedupe is not allowed to discard a changed upstream record. The normal
+        admission path still redacts secrets. Each changed snapshot becomes a
+        new memory version, and the previous current version stays queryable
+        through the temporal-history APIs.
+        """
+        from ..admission import redact_secrets
+        from .write import _retirement_instant
+
+        content = str((item or {}).get("content", "") or "")
+        metadata = dict((item or {}).get("metadata", {}) or {})
+        source_identity = str(metadata.get("source_identity", "") or "").strip()
+        if not source_identity:
+            return {"handled": False}
+        if len(content.strip()) < 3:
+            return {"handled": True, "rejected": True, "errors": 1}
+
+        source = f"connector:{connector}"
+        metadata["imported_via"] = connector
+        fingerprint_content = redact_secrets(content)[0] if use_gate else content
+
+        # Do not hash engine-generated metadata. Hash the source snapshot,
+        # including upstream revision/state/labels, so state-only changes are
+        # detectable even when the rendered text is identical.
+        engine_metadata = {
+            "imported_via",
+            "admission",
+            "embedding_provenance",
+            "source_snapshot_sha256",
+            "source_superseded_at",
+            "source_superseded_by",
+        }
+        source_metadata = {
+            key: value
+            for key, value in metadata.items()
+            if key not in engine_metadata
+        }
+        upstream_revision = str(source_metadata.get("source_revision", "") or "").strip()
+        snapshot_payload = json.dumps(
+            {"content": fingerprint_content, "metadata": source_metadata},
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+            default=str,
+        )
+        snapshot_hash = hashlib.sha256(snapshot_payload.encode("utf-8")).hexdigest()
+        revision = upstream_revision or snapshot_hash
+        metadata["source_revision"] = revision
+        metadata["source_snapshot_sha256"] = snapshot_hash
+
+        versions = await self._connector_source_versions(source, source_identity)
+        current_versions = [memory for memory in versions if memory.valid_to is None]
+        matching_current = [
+            memory
+            for memory in current_versions
+            if (memory.metadata or {}).get("source_snapshot_sha256") == snapshot_hash
+        ]
+
+        if matching_current:
+            # In case a prior interrupted run left more than one current row,
+            # converge on the newest identical snapshot without creating another.
+            canonical = max(matching_current, key=lambda memory: memory.created_at)
+            retirement_errors = 0
+            for previous in current_versions:
+                if previous.id == canonical.id:
+                    continue
+                try:
+                    valid_to = _retirement_instant(previous.valid_from)
+                    won = await self.db.retire_if_current(
+                        previous.id, valid_to, canonical.id
+                    )
+                    if won:
+                        previous.valid_to = valid_to
+                        previous.superseded_by = canonical.id
+                        self._refresh_memory_caches(previous)
+                    else:
+                        fresh = await self.episodic.get(previous.id)
+                        if fresh is not None:
+                            self._refresh_memory_caches(fresh)
+                            if fresh.valid_to is None:
+                                retirement_errors += 1
+                except Exception:  # noqa: BLE001 - preserve the source item; report repair failure
+                    retirement_errors += 1
+            return {
+                "handled": True,
+                "stored": False,
+                "duplicate": True,
+                "redacted": False,
+                "errors": retirement_errors,
+            }
+
+        tags = (item or {}).get("tags", []) or []
+        importance = float((item or {}).get("importance", 0.5))
+        if use_gate:
+            result = await self.admit_memory(
+                content=content,
+                importance=importance,
+                tags=tags,
+                project=project,
+                source=source,
+                memory_type="episodic",
+                metadata=metadata,
+                force=True,
+            )
+            if not result["stored"]:
+                return {"handled": True, "rejected": True, "errors": 1}
+            stored_memory = result.get("memory") or {}
+            was_redacted = bool(result["decision"].get("redacted"))
+        else:
+            stored_memory = (
+                await self.store(
+                    content=content,
+                    importance=importance,
+                    tags=tags,
+                    project=project,
+                    source=source,
+                    memory_type="episodic",
+                    metadata=metadata,
+                )
+            ).model_dump(exclude={"embedding"})
+            was_redacted = False
+
+        new_id = stored_memory.get("id")
+        if not new_id:
+            return {"handled": True, "rejected": True, "errors": 1}
+
+        retirement_errors = 0
+        for previous in current_versions:
+            try:
+                valid_to = _retirement_instant(previous.valid_from)
+                won = await self.db.retire_if_current(previous.id, valid_to, new_id)
+                if won:
+                    previous.valid_to = valid_to
+                    previous.superseded_by = new_id
+                    self._refresh_memory_caches(previous)
+                else:
+                    fresh = await self.episodic.get(previous.id)
+                    if fresh is not None:
+                        self._refresh_memory_caches(fresh)
+                        if fresh.valid_to is None:
+                            retirement_errors += 1
+            except Exception:  # noqa: BLE001 - the new snapshot stays stored and can be reconciled on retry
+                retirement_errors += 1
+
+        return {
+            "handled": True,
+            "stored": True,
+            "redacted": was_redacted,
+            "errors": retirement_errors,
+        }
+
     async def ingest_items(
         self,
         items: list[dict],
@@ -310,6 +503,21 @@ class MemoryIngestMixin:
             importance = float(item.get("importance", 0.5))
             item_start = time.perf_counter()
             try:
+                if metadata.get("source_identity"):
+                    source_result = await self._ingest_connector_source_version(
+                        item, connector, project, use_gate
+                    )
+                    if source_result.get("handled"):
+                        errors += int(source_result.get("errors", 0))
+                        if source_result.get("rejected"):
+                            errors += 1
+                        elif source_result.get("duplicate"):
+                            duplicates += 1
+                        elif source_result.get("stored"):
+                            stored += 1
+                            if source_result.get("redacted"):
+                                redacted += 1
+                        continue
                 if use_gate:
                     result = await self.admit_memory(
                         content=content,
