@@ -254,101 +254,165 @@ class GitHubConnector(BaseConnector):
         }
 
     async def _fetch_issues(self, client: Any, repo: str) -> list[dict]:
-        """Fetch open issues from a repo."""
+        """Fetch bounded, paginated issues across all states.
+
+        All states are included so an issue closing/reopening is an observed
+        source revision, not an object that silently disappears from the next
+        open-only snapshot. A failed page raises; it is never represented as a
+        valid empty list that could later be used to retire source memories.
+        """
         import httpx
 
         issues: list[dict] = []
-        try:
-            resp = await client.get(
-                f"{GITHUB_API}/repos/{repo}/issues",
-                headers=self._headers,
-                params={"state": "open", "per_page": self._max_issues},
-                timeout=30,
-            )
-            if resp.status_code != 200:
-                return issues
-            data = resp.json()
-        except httpx.HTTPError:
-            return issues
+        page = 1
+        while len(issues) < self._max_issues:
+            page_size = min(100, self._max_issues - len(issues))
+            try:
+                resp = await client.get(
+                    f"{GITHUB_API}/repos/{repo}/issues",
+                    headers=self._headers,
+                    params={"state": "all", "per_page": page_size, "page": page},
+                    timeout=30,
+                )
+                if resp.status_code != 200:
+                    raise ConnectionError(
+                        f"GitHub issue fetch failed: HTTP {resp.status_code} for {repo}"
+                    )
+                data = resp.json()
+            except httpx.HTTPError as exc:
+                raise ConnectionError(
+                    f"GitHub issue fetch failed for {repo}: {exc}"
+                ) from exc
 
-        for issue in data:
-            # Skip PRs (they show up in issues API)
-            if "pull_request" in issue:
-                continue
+            if not isinstance(data, list):
+                raise ConnectionError(
+                    f"GitHub issue fetch failed for {repo}: expected a list response"
+                )
+            raw_count = len(data)
+            for issue in data:
+                if not isinstance(issue, dict):
+                    raise ConnectionError(
+                        f"GitHub issue fetch failed for {repo}: malformed issue record"
+                    )
+                # Pull requests appear in the issues endpoint too.
+                if "pull_request" in issue:
+                    continue
 
-            title = issue.get("title", "")
-            body = issue.get("body", "") or ""
-            labels = [lbl.get("name", "") for lbl in issue.get("labels", [])]
+                number = issue.get("number")
+                title = issue.get("title", "")
+                body = issue.get("body", "") or ""
+                labels = [lbl.get("name", "") for lbl in issue.get("labels", [])]
+                updated_at = issue.get("updated_at", "") or ""
+                content = f"Issue #{number if number is not None else '?'}: {title}\n\n{body}".strip()
+                if len(content) > 4000:
+                    content = content[:4000] + "\n... (truncated)"
 
-            content = f"Issue #{issue.get('number', '?')}: {title}\n\n{body}".strip()
-
-            tags = ["github", "issue", f"repo:{repo}"] + labels
-            if len(content) > 4000:
-                content = content[:4000] + "\n... (truncated)"
-
-            issues.append(
-                {
-                    "content": content,
-                    "tags": tags,
-                    "metadata": {
-                        "source": "github",
-                        "repo": repo,
-                        "type": "issue",
-                        "issue_number": issue.get("number"),
-                        "url": issue.get("html_url", ""),
-                        "state": issue.get("state", ""),
-                        "labels": labels,
-                        "created_at": issue.get("created_at", ""),
-                    },
+                metadata = {
+                    "source": "github",
+                    "repo": repo,
+                    "type": "issue",
+                    "issue_number": number,
+                    "url": issue.get("html_url", ""),
+                    "state": issue.get("state", ""),
+                    "labels": labels,
+                    "created_at": issue.get("created_at", ""),
+                    "updated_at": updated_at,
                 }
-            )
+                if number is not None:
+                    metadata["source_identity"] = f"github:{repo.lower()}:issue:{number}"
+                    if updated_at:
+                        metadata["source_revision"] = updated_at
+
+                issues.append(
+                    {
+                        "content": content,
+                        "tags": ["github", "issue", f"repo:{repo}"] + labels,
+                        "metadata": metadata,
+                    }
+                )
+                if len(issues) >= self._max_issues:
+                    break
+
+            if raw_count < page_size:
+                break
+            page += 1
 
         return issues
 
     async def _fetch_prs(self, client: Any, repo: str) -> list[dict]:
-        """Fetch open pull requests from a repo."""
+        """Fetch bounded, paginated pull requests across all states."""
         import httpx
 
         prs: list[dict] = []
-        try:
-            resp = await client.get(
-                f"{GITHUB_API}/repos/{repo}/pulls",
-                headers=self._headers,
-                params={"state": "open", "per_page": self._max_prs},
-                timeout=30,
-            )
-            if resp.status_code != 200:
-                return prs
-            data = resp.json()
-        except httpx.HTTPError:
-            return prs
+        page = 1
+        while len(prs) < self._max_prs:
+            page_size = min(100, self._max_prs - len(prs))
+            try:
+                resp = await client.get(
+                    f"{GITHUB_API}/repos/{repo}/pulls",
+                    headers=self._headers,
+                    params={"state": "all", "per_page": page_size, "page": page},
+                    timeout=30,
+                )
+                if resp.status_code != 200:
+                    raise ConnectionError(
+                        f"GitHub pull request fetch failed: HTTP {resp.status_code} for {repo}"
+                    )
+                data = resp.json()
+            except httpx.HTTPError as exc:
+                raise ConnectionError(
+                    f"GitHub pull request fetch failed for {repo}: {exc}"
+                ) from exc
 
-        for pr in data:
-            title = pr.get("title", "")
-            body = pr.get("body", "") or ""
-            labels = [lbl.get("name", "") for lbl in pr.get("labels", [])]
+            if not isinstance(data, list):
+                raise ConnectionError(
+                    f"GitHub pull request fetch failed for {repo}: expected a list response"
+                )
+            raw_count = len(data)
+            for pr in data:
+                if not isinstance(pr, dict):
+                    raise ConnectionError(
+                        f"GitHub pull request fetch failed for {repo}: malformed record"
+                    )
+                number = pr.get("number")
+                title = pr.get("title", "")
+                body = pr.get("body", "") or ""
+                labels = [lbl.get("name", "") for lbl in pr.get("labels", [])]
+                updated_at = pr.get("updated_at", "") or ""
+                content = f"PR #{number if number is not None else '?'}: {title}\n\n{body}".strip()
+                if len(content) > 4000:
+                    content = content[:4000] + "\n... (truncated)"
 
-            content = f"PR #{pr.get('number', '?')}: {title}\n\n{body}".strip()
-
-            tags = ["github", "pull-request", f"repo:{repo}"] + labels
-            if len(content) > 4000:
-                content = content[:4000] + "\n... (truncated)"
-
-            prs.append({
-                "content": content,
-                "tags": tags,
-                "metadata": {
+                metadata = {
                     "source": "github",
                     "repo": repo,
                     "type": "pull_request",
-                    "pr_number": pr.get("number"),
+                    "pr_number": number,
                     "url": pr.get("html_url", ""),
                     "state": pr.get("state", ""),
-                    "author": pr.get("user", {}).get("login", ""),
+                    "author": (pr.get("user") or {}).get("login", ""),
                     "labels": labels,
                     "created_at": pr.get("created_at", ""),
-                },
-            })
+                    "updated_at": updated_at,
+                }
+                if number is not None:
+                    metadata["source_identity"] = f"github:{repo.lower()}:pull_request:{number}"
+                    if updated_at:
+                        metadata["source_revision"] = updated_at
+
+                prs.append(
+                    {
+                        "content": content,
+                        "tags": ["github", "pull-request", f"repo:{repo}"] + labels,
+                        "metadata": metadata,
+                    }
+                )
+                if len(prs) >= self._max_prs:
+                    break
+
+            if raw_count < page_size:
+                break
+            page += 1
 
         return prs
 
