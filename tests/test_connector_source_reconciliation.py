@@ -157,6 +157,7 @@ async def test_github_issue_metadata_contains_stable_identity_and_revision():
     class Client:
         async def get(self, url, **kwargs):
             assert url.endswith(f"/repos/{REPO}/issues")
+            assert kwargs["params"]["state"] == "all"
             return Response()
 
     connector = GitHubConnector()
