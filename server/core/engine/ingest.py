@@ -513,14 +513,12 @@ class MemoryIngestMixin:
                             errors += max(1, source_errors)
                         else:
                             errors += source_errors
-                        if source_result.get("rejected"):
-                            pass
-                        elif source_result.get("duplicate"):
-                            duplicates += 1
-                        elif source_result.get("stored"):
-                            stored += 1
-                            if source_result.get("redacted"):
-                                redacted += 1
+                            if source_result.get("duplicate"):
+                                duplicates += 1
+                            elif source_result.get("stored"):
+                                stored += 1
+                                if source_result.get("redacted"):
+                                    redacted += 1
                         continue
                 if use_gate:
                     result = await self.admit_memory(
