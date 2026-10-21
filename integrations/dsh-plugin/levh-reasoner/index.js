@@ -51,7 +51,7 @@ async function levh(cfg, path, { method = "POST", body, query } = {}) {
 			method,
 			headers: {
 				...(body === undefined ? {} : { "content-type": "application/json" }),
-				...(cfg.token ? { authorization: `Bearer ${cfg.token}` } : {}),
+				...(cfg.token ? { "X-LEVH-Token": cfg.token } : {}),
 			},
 			body: body === undefined ? undefined : JSON.stringify(body),
 			signal: controller.signal,
