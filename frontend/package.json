@@ -12,7 +12,7 @@
     "test:e2e:ui": "playwright test --ui"
   },
   "dependencies": {
-    "@opengeni/react": "^1.4.4",
+    "@opengeni/react": "^3.4.0",
     "@opengeni/sdk": "^3.4.0",
     "@radix-ui/react-dialog": "^1.2.0",
     "@radix-ui/react-dropdown-menu": "^2.1.25",
