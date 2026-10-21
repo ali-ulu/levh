@@ -36,7 +36,7 @@ async function postJson(cfg, path, body) {
 			method: "POST",
 			headers: {
 				"content-type": "application/json",
-				...(cfg.token ? { authorization: `Bearer ${cfg.token}` } : {}),
+				...(cfg.token ? { "X-LEVH-Token": cfg.token } : {}),
 			},
 			body: JSON.stringify(body),
 			signal: controller.signal,
