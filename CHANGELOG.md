@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### fix: state that consolidation permanently deletes the originals (#531)
+
+- `consolidate_memories` / `consolidate_similar` described the originals as "preserved inside the consolidated memory's `metadata.consolidated_from` so nothing is lost — they can be recovered". They were not preserved: each original was hard-deleted (the same delete `forget` performs) from the `memories` table, the full-text index and the vector store, and only `id`, `created_at` and a one-way `content_sha256` digest survived. The recovery path the prose promised did not exist, so an operator could compress a cluster believing a backup was implicit and lose the text.
+- The retention contract is now explicit and consistent across every surface that describes it: the engine docstring, the MCP tool description and result text, the route and request/response model docstrings (and therefore `openapi.json`), `docs/ARCHITECTURE.md` (new "Retention and deletion contract" table), `docs/mcp-tools.md`, `docs/api-reference.md`, and the dashboard's English and Turkish help text. Consolidation is an irreversible compression, not an archive: the digest proves which records were compressed and detects later tampering, but the text cannot be reconstructed from it. Take a backup (`create_backup` / `POST /api/v1/backup`, or `levh export-full`) first if the originals matter.
+- The JSON response key `archived` is unchanged for backward compatibility, but its description now states that it counts permanent deletions, not retained records.
+- `tests/test_consolidation.py` proves the contract against the store: no `memories` or `memories_fts` row for an original survives, no archive/trash table exists, the lineage digest matches the original bytes while the text is absent, and a dry run deletes nothing. A drift guard fails if any describing surface drops the contract or restores the withdrawn "nothing is lost" claim.
+
 ### Placeholder for future changes (#103)
 
 - TBD
@@ -11,6 +18,20 @@
 - An interrupted `levh update` (a killed supervisor, a reboot, a locked file) can leave `~`-prefixed remnants in the interpreter's `site-packages`, which wedges `pip install`, `pip uninstall` and `pip show` in that interpreter — so the documented recovery step (a `pip install`) was itself blocked by the breakage. `levh doctor` already reported the remnants (with the move command) and `levh update` clears them before installing.
 - `levh doctor --fix-debris` now performs that move itself: the remnants go to a `levh-pip-debris-backup-*` directory beside `site-packages`, nothing is deleted, and the report names where they went. This needs no working pip, which is the point.
 - Documented in `docs/installation.md` ("pip is wedged after an interrupted update") and `docs/cli.md`.
+### fix: surface a stalled auto-update instead of only logging it (#522)
+
+- The supervisor skipped an update it could not apply safely (a checkout on another branch, local edits, a diverged history) and recorded that only in its own log, so the server ran an increasingly stale commit while `/api/health`, `levh doctor` and the dashboard all reported healthy. Each cycle is now written to `update-state.json` in the supervisor log directory and read back by every surface.
+- `/api/health` and `/api/readyz` carry an `auto_update` block (`present`, `status`, `behind`, `reason`, `action`, `needs_attention`, `stale`, `checked_at`). A skip adds a `not_ready` reason to `/api/readyz` — the server still serves reads and writes, so it is a reason, not a 503.
+- `levh doctor` reports the state (PASS / WARN) with the command that resumes updates, and treats a never-run supervisor as normal rather than a fault.
+- `levh update` no longer refuses every off-branch checkout: when the current branch has no work of its own (its tip is an ancestor of upstream, and it does not track its own remote), the fast-forward runs and moves the branch pointer with HEAD. A detached HEAD or a branch tracking its own upstream still refuses, with the branch named in the reason.
+- The dashboard Settings page gained an Auto-update section that names the skip and the command that fixes it.
+
+### fix: report the source of the effective embedder mode and env-over-config conflicts (#523)
+
+- A process environment variable silently outranks `.stackmemory/config.json`, so an operator who edited the file back to `auto` after the #78 workaround saw no change and no explanation — `EMBEDDER_MODE=hash` was winning. `GET /api/config` now carries `embedder_mode_source` (the env var, config path, default or explicit argument that supplied the mode) and `env_overrides` (every setting where an env var overrode a *different* file value).
+- `levh doctor` names the layer that supplied the embedder mode and warns (WARN, exit 1) when an env var disagrees with a conflicting config value, with the fix in the line.
+- The Settings page shows the source under the embedder value and a warning banner listing each env-over-config override.
+- The precedence itself is unchanged; this only makes the winning layer visible.
 
 ### feat: DeepSeek Harness plugin for guard checks, memory ask, and team decisions (#515)
 

@@ -1,4 +1,5 @@
 import type {
+  AutoUpdateStatus,
   BenchmarkResult,
   Briefing,
   Connector,
@@ -105,7 +106,12 @@ export function wsUrl(): string {
 export const api = {
   // Health — never gated; auth_required reflects whether the server needs a token.
   health: () =>
-    fetchApi<{ status: string; service?: string; auth_required?: boolean }>("/api/health"),
+    fetchApi<{
+      status: string;
+      service?: string;
+      auth_required?: boolean;
+      auto_update?: AutoUpdateStatus;
+    }>("/api/health"),
   config: () => fetchApi<ServerConfig>("/api/config"),
 
   // Memories

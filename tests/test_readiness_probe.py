@@ -59,6 +59,48 @@ def test_ready_reports_each_dependency(client):
     assert body["reasons"] == []
 
 
+# -- auto-update visibility on the probes (issue #522) ------------------------
+
+
+def test_health_reports_auto_update_state(client, monkeypatch, tmp_path):
+    """A skipped auto-update must be visible where the dashboard looks."""
+    monkeypatch.setenv("LEVH_SUPERVISOR_LOG_DIR", str(tmp_path))
+    from server.core import update_state
+
+    update_state.write_update_state(
+        {"status": "skipped", "reason": "checkout is on 'fix/x', auto-update only follows 'main'"},
+        path=tmp_path / "update-state.json",
+    )
+    body = client.get("/api/health").json()
+    assert body["auto_update"]["present"] is True
+    assert body["auto_update"]["needs_attention"] is True
+    assert "fix/x" in body["auto_update"]["reason"]
+
+
+def test_health_auto_update_is_absent_and_harmless_without_a_supervisor(client, monkeypatch, tmp_path):
+    monkeypatch.setenv("LEVH_SUPERVISOR_LOG_DIR", str(tmp_path))
+    body = client.get("/api/health").json()
+    assert body["auto_update"]["present"] is False
+    assert body["auto_update"]["needs_attention"] is False
+
+
+def test_readyz_stays_ready_but_names_a_skipped_auto_update(client, monkeypatch, tmp_path):
+    """The server serves fine; it is only running older code than upstream."""
+    monkeypatch.setenv("LEVH_SUPERVISOR_LOG_DIR", str(tmp_path))
+    from server.core import update_state
+
+    update_state.write_update_state(
+        {"status": "skipped", "reason": "checkout is on 'fix/x', auto-update only follows 'main'"},
+        path=tmp_path / "update-state.json",
+    )
+    response = client.get("/api/readyz")
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["status"] == "ready"
+    assert body["auto_update"]["needs_attention"] is True
+    assert any("auto-update" in reason for reason in body["reasons"])
+
+
 def test_ready_is_served_under_the_versioned_contract_too(client):
     assert client.get("/api/v1/readyz").status_code == 200
 

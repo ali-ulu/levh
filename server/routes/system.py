@@ -7,6 +7,7 @@ from fastapi import Depends, APIRouter, HTTPException
 from fastapi.responses import JSONResponse, PlainTextResponse
 
 from server.core import llm_policy, metrics
+from server.core import runtime_config as runtime_config_mod
 from server.core.embedder import probe_embedder_status
 from server.auth import unauthenticated_remote_access_enabled
 from server.core.runtime_config import configured_bind_host
@@ -24,6 +25,24 @@ async def get_stats(engine=Depends(get_engine)):
     return stats.model_dump()
 
 
+def _embedder_mode_source(engine_mode: str) -> str:
+    """Which layer supplied the embedder mode the engine is running (#523).
+
+    The engine resolves its mode from the canonical runtime config unless a
+    caller passed one explicitly, so compare against the resolved value: a
+    mismatch means an explicit argument won, otherwise report the config
+    layer's own provenance. Tolerates a malformed config — a provenance
+    question must not fail the whole payload.
+    """
+    try:
+        runtime = runtime_config_mod.resolve_runtime_config()
+    except runtime_config_mod.RuntimeConfigError:
+        return "unknown"
+    if str(engine_mode or "").strip().lower() != runtime.embedder_mode:
+        return "explicit argument"
+    return runtime_config_mod.value_source(runtime, "embedder_mode")
+
+
 @router.get("/api/config", response_model=ServerConfigResponse)
 async def get_config(engine=Depends(get_engine)):
     """Current server configuration (for the Settings page)."""
@@ -38,6 +57,12 @@ async def get_config(engine=Depends(get_engine)):
     embedder_fallback_reason = (
         embedder.fallback_reason if embedder else probed["fallback_reason"]
     )
+    # Where the *requested* mode came from (#523): the effective value alone
+    # could not explain why editing config.json back to "auto" changed nothing,
+    # because a process env var was winning. Name the layer, and surface any
+    # env-over-config disagreement in the same payload.
+    embedder_mode_source = _embedder_mode_source(engine._embedder_mode)
+    env_conflicts = runtime_config_mod.env_over_config_conflicts()
     recall_log_enabled, recall_log_days = engine._recall_log_config()
     return {
         "db_path": engine.db.db_path,
@@ -47,6 +72,13 @@ async def get_config(engine=Depends(get_engine)):
         # scoring gave no visible signal before this (#78).
         "requested_embedder_mode": embedder.requested_mode if embedder else probed["requested_mode"],
         "embedder_fallback_reason": embedder_fallback_reason,
+        # Which layer supplied the requested mode: an env var, config.json, a
+        # default, or an explicit argument (#523).
+        "embedder_mode_source": embedder_mode_source,
+        # Every setting where a process env var overrode a conflicting
+        # config.json value, so a precedence footgun is visible rather than
+        # silent. Empty when the layers agree or only one is set.
+        "env_overrides": env_conflicts,
         "embedder_dimension": engine._embedder.dimension if engine._embedder else None,
         "short_term_max": engine.short_term.max_size,
         "weights": {
@@ -95,6 +127,9 @@ def _liveness_report() -> dict:
     (#151): `levh doctor` and any operator can ask the running server what
     boundary it actually enforces instead of trusting a startup log line.
     """
+    from server.core import update_state as update_state_mod
+
+    auto_update = update_state_mod.summarize(update_state_mod.read_update_state())
     return {
         "status": "ok",
         "service": "levh",
@@ -105,6 +140,12 @@ def _liveness_report() -> dict:
         # has instead of inferring it. `cmd_serve` publishes its resolved
         # `--host` here, so argv and this field agree (issue #156).
         "api_host": configured_bind_host(),
+        # Auto-update health (#522): the supervisor skips an update it cannot
+        # apply safely, and used to say so only in its own log while the server
+        # ran an increasingly stale commit. A dashboard that only shows
+        # online/offline is exactly the silence the issue names, so liveness —
+        # the one thing the dashboard polls — carries the fact too.
+        "auto_update": auto_update,
     }
 
 
@@ -218,6 +259,16 @@ async def ready(engine=Depends(get_engine)):
         reasons.append("derived-state schema is behind")
 
     ready_state = db_ok and embedder_ready and not derived_stale
+    from server.core import update_state as update_state_mod
+
+    auto_update = update_state_mod.summarize(update_state_mod.read_update_state())
+    if auto_update["needs_attention"]:
+        # A skipped auto-update is a reason to be *not ready*, not a 503: the
+        # server serves reads and writes fine, it is just running older code
+        # than upstream. An orchestrator that routes on the status code keeps
+        # sending traffic, and an operator who reads `reasons` learns why the
+        # checkout is stuck (#522).
+        reasons.append(f"auto-update: {auto_update['reason'] or auto_update['status']}")
     payload = {
         "status": "ready" if ready_state else "not_ready",
         "service": "levh",
@@ -225,6 +276,7 @@ async def ready(engine=Depends(get_engine)):
         "embedder_mode": embedder_mode,
         "embedder_ready": embedder_ready,
         "derived_state_current": not derived_stale,
+        "auto_update": auto_update,
         "reasons": reasons,
     }
     if not ready_state:

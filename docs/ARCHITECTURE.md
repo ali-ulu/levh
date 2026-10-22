@@ -104,6 +104,31 @@ SQLite schema, indexes, and in-place `ALTER TABLE` migrations live in
 `core/database.py` (`_SCHEMA`, `_INDEXES`, `_MIGRATIONS`). Older DBs upgrade
 automatically on `connect()`.
 
+### Retention and deletion contract
+
+LEVH deletes; it does not hide. There is no trash, archive or recycle table
+behind the write path, so "removed from active memory" means the row is gone
+from every layer it lived in — `memories`, the FTS index, the vector store and
+the short-term deque.
+
+| Operation | What happens to the record | Recoverable? |
+|---|---|---|
+| `forget(id)` / `DELETE /api/memories/{id}` | Hard delete: row, FTS entry, vector, entity/trust/conflict links removed in one transaction | No |
+| `purge_memory` | Hard delete plus a residue report across tracked layers | No |
+| `dedupe` | Near-identical duplicates (≥0.95 similarity) deleted; one verbatim survivor kept per group | The survivor only |
+| `consolidate_memories` / `consolidate_similar` | Every original in a cluster is hard-deleted; the cluster is replaced by one summary carrying lineage (`id`, `created_at`, `content_sha256`) | **No** — provenance is not a copy |
+
+Consolidation is therefore an **irreversible compression**, not an archive.
+The `content_sha256` in `metadata.consolidated_from` is a one-way digest: it
+proves which records were compressed and lets a reader detect later tampering,
+but the original text cannot be reconstructed from it. An extractive summary
+may echo a fragment of an original because it keeps important lines — that is
+the summary's content, not a retained copy of the record. Take a backup
+(`create_backup` / `POST /api/v1/backup`, or `levh export-full`) before
+consolidating if the originals matter.
+The response field is still named `archived` for backward compatibility; it
+counts permanent deletions, not retained records.
+
 ---
 
 ## 4. The memory math (`core/hscore.py`)

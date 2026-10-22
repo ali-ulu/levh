@@ -805,7 +805,7 @@
     "/api/v1/memories/consolidate-similar": {
       "post": {
         "summary": "Consolidate Similar Memories",
-        "description": "Preview (dry_run) or apply sleep-like consolidation: cluster related\nolder memories and compress each cluster into one consolidated memory,\narchiving the originals inside it.",
+        "description": "Preview (dry_run) or apply sleep-like consolidation: cluster related\nolder memories and compress each cluster into one consolidated memory.\n\nCompression is irreversible: each original is permanently deleted (not\narchived), and only its id, timestamp and content hash survive as lineage,\nso the original text cannot be recovered afterwards.",
         "operationId": "consolidate_similar_memories_api_memories_consolidate_similar_post_v1",
         "requestBody": {
           "content": {
@@ -6152,6 +6152,61 @@
         "title": "AttachmentVerifyResponse",
         "description": "``POST /api/attachments/{id}/verify`` - the row with its post-check\nstatus (``ok`` / ``missing`` / ``changed``)."
       },
+      "AutoUpdateStatus": {
+        "properties": {
+          "present": {
+            "type": "boolean",
+            "title": "Present"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "behind": {
+            "type": "integer",
+            "title": "Behind",
+            "default": 0
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason",
+            "default": ""
+          },
+          "action": {
+            "type": "string",
+            "title": "Action",
+            "default": ""
+          },
+          "needs_attention": {
+            "type": "boolean",
+            "title": "Needs Attention",
+            "default": false
+          },
+          "stale": {
+            "type": "boolean",
+            "title": "Stale",
+            "default": false
+          },
+          "checked_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checked At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "present",
+          "status"
+        ],
+        "title": "AutoUpdateStatus",
+        "description": "Auto-update health on the liveness report (issue #522).\n\n``present`` is false for an install that never ran the supervisor, which is\nthe common case and not a problem. ``needs_attention`` is the field a\nreader acts on: a skipped or stalled update means the server is running\nolder code than upstream, and ``action`` is the command that fixes it."
+      },
       "BackupRequest": {
         "properties": {
           "passphrase": {
@@ -7011,7 +7066,8 @@
           }
         },
         "type": "object",
-        "title": "ConsolidateRequest"
+        "title": "ConsolidateRequest",
+        "description": "``POST /api/memories/consolidate-similar`` request.\n\nApplying consolidation (``dry_run=false``) permanently deletes each\noriginal in a cluster; only its id, timestamp and content hash are kept as\nlineage on the summary, so the original text cannot be recovered."
       },
       "ConsolidateResponse": {
         "properties": {
@@ -7042,7 +7098,8 @@
           },
           "archived": {
             "type": "integer",
-            "title": "Archived"
+            "title": "Archived",
+            "description": "Number of original memories permanently deleted by this run. They are not archived and cannot be recovered; only their ids, timestamps and content hashes remain as lineage on the summary."
           },
           "clusters": {
             "items": {
@@ -7061,7 +7118,7 @@
           "archived"
         ],
         "title": "ConsolidateSimilarResponse",
-        "description": "``POST /api/memories/consolidate-similar``."
+        "description": "``POST /api/memories/consolidate-similar``.\n\nConsolidation is irreversible: ``archived`` counts originals that were\npermanently deleted, not records kept in an archive. Only provenance (id,\ntimestamp, content hash) is retained on the consolidated memory."
       },
       "ContextFileRequest": {
         "properties": {
@@ -8484,6 +8541,9 @@
           "api_host": {
             "type": "string",
             "title": "Api Host"
+          },
+          "auto_update": {
+            "$ref": "#/components/schemas/AutoUpdateStatus"
           }
         },
         "type": "object",
@@ -8492,7 +8552,8 @@
           "service",
           "auth_required",
           "unauthenticated_remote_access",
-          "api_host"
+          "api_host",
+          "auto_update"
         ],
         "title": "HealthResponse",
         "description": "``/api/health`` - the unauthenticated boundary and liveness report."
@@ -10145,6 +10206,9 @@
             "type": "boolean",
             "title": "Derived State Current"
           },
+          "auto_update": {
+            "$ref": "#/components/schemas/AutoUpdateStatus"
+          },
           "reasons": {
             "items": {
               "type": "string"
@@ -10160,7 +10224,8 @@
           "database",
           "embedder_mode",
           "embedder_ready",
-          "derived_state_current"
+          "derived_state_current",
+          "auto_update"
         ],
         "title": "ReadyzResponse",
         "description": "``GET /api/readyz`` - the same body for 200 and 503."
@@ -10815,6 +10880,21 @@
               }
             ],
             "title": "Embedder Fallback Reason"
+          },
+          "embedder_mode_source": {
+            "type": "string",
+            "title": "Embedder Mode Source",
+            "default": "default"
+          },
+          "env_overrides": {
+            "items": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Env Overrides"
           },
           "embedder_dimension": {
             "anyOf": [

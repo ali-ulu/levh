@@ -5,6 +5,7 @@ import { api } from "@/lib/api";
 import type { ServerConfig } from "@/types";
 import { AccessToken } from "./_sections/access-token";
 import { AdmissionGate } from "./_sections/admission-gate";
+import { AutoUpdate } from "./_sections/auto-update";
 import { BackupRestore } from "./_sections/backup-restore";
 import { ConnectClient } from "./_sections/connect-client";
 import { Connectors } from "./_sections/connectors";
@@ -43,6 +44,7 @@ export default function SettingsPage() {
       </div>
 
       <ServerConfiguration config={config} />
+      <AutoUpdate />
       <AccessToken />
       <RecallQuality config={config} />
       <AdmissionGate />

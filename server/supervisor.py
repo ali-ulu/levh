@@ -51,6 +51,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import IO, Callable
 
+from server.core import update_state
+
 REPO = Path(__file__).resolve().parents[1]
 CREATE_NO_WINDOW = 0x08000000 if sys.platform == "win32" else 0
 LOG_MAX_BYTES = 1_000_000
@@ -102,6 +104,7 @@ class SupervisorConfig:
     backoff_max_s: float = 300.0
     update_interval_s: float = field(default_factory=lambda: _update_hours_from_env() * 3600)
     first_update_delay_s: float = FIRST_UPDATE_DELAY_S
+    update_branch: str = "main"
 
 
 def next_backoff(previous: float, uptime: float, cfg: SupervisorConfig) -> float:
@@ -167,6 +170,7 @@ class Supervisor:
         self.out_log = cfg.log_dir / "serve.out.log"
         self.err_log = cfg.log_dir / "serve.err.log"
         self.lock_path = cfg.log_dir / "supervisor.lock"
+        self.update_state_path = cfg.log_dir / update_state.UPDATE_STATE_FILE
         self._lock: IO[str] | None = None
         self._opener = _no_proxy_opener()
         first_due = min(cfg.update_interval_s, cfg.first_update_delay_s)
@@ -298,6 +302,15 @@ class Supervisor:
         except (OSError, RuntimeError, subprocess.SubprocessError) as exc:
             result = {"status": "error", "reason": f"update could not run: {exc!r}"}
         self.log(describe_update(result))
+        # The record every other surface reads (#522): a skip that only ever
+        # reached this log was invisible everywhere a user looks, so the
+        # checkout went stale in silence.
+        update_state.write_update_state(
+            result,
+            path=self.update_state_path,
+            branch=self.cfg.update_branch,
+            interval_hours=self.cfg.update_interval_s / 3600.0,
+        )
         return result
 
     def update_cycle(self, child: subprocess.Popen[bytes] | None) -> bool:

@@ -90,6 +90,25 @@ class ReviewQueueResponse(BaseModel):
     review: list[ReviewQueueItem] = Field(default_factory=list)
 
 
+class AutoUpdateStatus(BaseModel):
+    """Auto-update health on the liveness report (issue #522).
+
+    ``present`` is false for an install that never ran the supervisor, which is
+    the common case and not a problem. ``needs_attention`` is the field a
+    reader acts on: a skipped or stalled update means the server is running
+    older code than upstream, and ``action`` is the command that fixes it.
+    """
+
+    present: bool
+    status: str
+    behind: int = 0
+    reason: str = ""
+    action: str = ""
+    needs_attention: bool = False
+    stale: bool = False
+    checked_at: Optional[str] = None
+
+
 class HealthResponse(BaseModel):
     """``/api/health`` - the unauthenticated boundary and liveness report."""
 
@@ -98,6 +117,7 @@ class HealthResponse(BaseModel):
     auth_required: bool
     unauthenticated_remote_access: bool
     api_host: str
+    auto_update: AutoUpdateStatus
 
 
 class ConsolidateResponse(BaseModel):
@@ -222,6 +242,12 @@ class DedupeRequest(BaseModel):
 
 
 class ConsolidateRequest(BaseModel):
+    """``POST /api/memories/consolidate-similar`` request.
+
+    Applying consolidation (``dry_run=false``) permanently deletes each
+    original in a cluster; only its id, timestamp and content hash are kept as
+    lineage on the summary, so the original text cannot be recovered."""
+
     similarity_threshold: float = 0.82
     min_age_days: int = 7
     min_cluster_size: int = 2
@@ -357,6 +383,11 @@ class ServerConfigResponse(BaseModel):
     embedder_mode: str
     requested_embedder_mode: str
     embedder_fallback_reason: Optional[str] = None
+    # Which layer supplied the requested mode (env var / config file / default
+    # / explicit argument), and any setting where a process env var overrode a
+    # conflicting config.json value (#523).
+    embedder_mode_source: str = "default"
+    env_overrides: list[dict[str, str]] = Field(default_factory=list)
     embedder_dimension: Optional[int] = None
     short_term_max: int
     weights: dict[str, float]
@@ -1261,12 +1292,22 @@ class DedupeResponse(BaseModel):
 
 
 class ConsolidateSimilarResponse(BaseModel):
-    """``POST /api/memories/consolidate-similar``."""
+    """``POST /api/memories/consolidate-similar``.
+
+    Consolidation is irreversible: ``archived`` counts originals that were
+    permanently deleted, not records kept in an archive. Only provenance (id,
+    timestamp, content hash) is retained on the consolidated memory."""
 
     dry_run: bool
     clusters_found: int
     consolidated: int
-    archived: int
+    archived: int = Field(
+        description=(
+            "Number of original memories permanently deleted by this run. They "
+            "are not archived and cannot be recovered; only their ids, "
+            "timestamps and content hashes remain as lineage on the summary."
+        )
+    )
     clusters: list[dict[str, Any]] = Field(default_factory=list)
 
 
@@ -1347,6 +1388,7 @@ class ReadyzResponse(BaseModel):
     embedder_mode: str
     embedder_ready: bool
     derived_state_current: bool
+    auto_update: AutoUpdateStatus
     reasons: list[str] = Field(default_factory=list)
 
 

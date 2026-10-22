@@ -724,6 +724,49 @@ async def test_api_config_reports_embedder_fallback_state(api_client):
 
 
 @pytest.mark.asyncio
+async def test_api_config_reports_embedder_mode_source(api_client):
+    # #523: the effective/requested values alone could not explain why editing
+    # config.json back to "auto" changed nothing. The payload must name the
+    # layer that supplied the mode.
+    r = await api_client.get("/api/config")
+    body = r.json()
+    assert "embedder_mode_source" in body
+    assert body["embedder_mode_source"] != ""
+    assert "env_overrides" in body
+
+
+@pytest.mark.asyncio
+async def test_api_config_surfaces_env_over_config_conflict(api_client, tmp_path, monkeypatch):
+    # The exact #523 scenario: config.json says "auto", a process env var says
+    # "hash". The disagreement must be visible in /api/config, not silent.
+    cfg_dir = tmp_path / ".stackmemory"
+    cfg_dir.mkdir(parents=True)
+    (cfg_dir / "config.json").write_text('{"embedder_mode": "auto"}', encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("EMBEDDER_MODE", "hash")
+
+    r = await api_client.get("/api/config")
+    body = r.json()
+    assert body["embedder_mode_source"] == "environment variable EMBEDDER_MODE"
+    overrides = body["env_overrides"]
+    assert [o["key"] for o in overrides] == ["embedder_mode"]
+    assert overrides[0]["env_value"] == "hash"
+    assert overrides[0]["file_value"] == "auto"
+
+
+@pytest.mark.asyncio
+async def test_api_config_has_no_conflict_when_layers_agree(api_client, tmp_path, monkeypatch):
+    cfg_dir = tmp_path / ".stackmemory"
+    cfg_dir.mkdir(parents=True)
+    (cfg_dir / "config.json").write_text('{"embedder_mode": "hash"}', encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("EMBEDDER_MODE", "hash")
+
+    body = (await api_client.get("/api/config")).json()
+    assert body["env_overrides"] == []
+
+
+@pytest.mark.asyncio
 async def test_api_feedback_endpoint(api_client):
     r = await api_client.post("/api/memories", json={"content": "feedback via api", "memory_type": "episodic"})
     body = r.json()

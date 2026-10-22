@@ -129,15 +129,72 @@ def test_untracked_files_do_not_block_the_update(repos):
     assert (local / "server.log").exists()
 
 
-def test_other_branch_is_never_moved(repos):
+def test_other_branch_with_local_commits_is_never_moved(repos):
+    """A branch carrying its own work is left alone, and the reason names it."""
     upstream, local = repos
     _git(local, "checkout", "-q", "-b", "experiment")
-    before = _git(local, "rev-parse", "HEAD")
+    before = _commit(local, "mine.py", "local only\n")
     _push_new_commit(upstream)
     result = update_checkout(local)
     assert result.status == "skipped"
     assert "experiment" in result.reason
     assert _git(local, "rev-parse", "HEAD") == before
+
+
+def test_other_branch_without_local_commits_is_fast_forwarded(repos):
+    """Issue #522 item 3: an idle feature branch advances instead of blocking.
+
+    The branch has no commits of its own, so its tip is an ancestor of upstream
+    and advancing it discards nothing. Refusing here is what left a checkout
+    stuck for days while the supervisor skipped in silence.
+    """
+    upstream, local = repos
+    _git(local, "checkout", "-q", "-b", "experiment")
+    new_head = _push_new_commit(upstream)
+    result = update_checkout(local)
+    assert result.status == "updated"
+    assert _git(local, "rev-parse", "HEAD") == new_head
+    # The branch pointer moved with HEAD: still on the feature branch, now at
+    # upstream's tip rather than a detached checkout.
+    assert _git(local, "rev-parse", "--abbrev-ref", "HEAD") == "experiment"
+
+
+def test_other_branch_that_tracks_its_own_remote_is_never_moved(repos):
+    """A branch following ``origin/<its own name>`` is not following main."""
+    upstream, local = repos
+    _git(local, "checkout", "-q", "-b", "release")
+    _git(local, "push", "-q", "-u", "origin", "release")
+    before = _git(local, "rev-parse", "HEAD")
+    _push_new_commit(upstream)
+    result = update_checkout(local)
+    assert result.status == "skipped"
+    assert "release" in result.reason
+    assert _git(local, "rev-parse", "HEAD") == before
+
+
+def test_detached_head_is_reported_as_detached(repos):
+    upstream, local = repos
+    _git(local, "checkout", "-q", "--detach")
+    _push_new_commit(upstream)
+    result = update_checkout(local)
+    assert result.status == "skipped"
+    assert "detached" in result.reason
+
+
+def test_every_skip_reason_classifies_to_an_action(repos):
+    """Issue #522: a skip reason must come with the alternative, end to end.
+
+    ``update_checkout`` drives real git, so this catches a reason string that
+    was reworded in the command but not in the classifier that turns it into a
+    next step for the user.
+    """
+    from server.core import update_state
+
+    upstream, local = repos
+    (local / "app.py").write_text("local edit\n", encoding="utf-8")
+    dirty = update_checkout(local)
+    assert dirty.status == "skipped"
+    assert update_state.action_for(dirty.reason, branch="main"), dirty.reason
 
 
 def test_diverged_history_is_not_merged(repos):

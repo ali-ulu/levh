@@ -192,7 +192,7 @@ def repo_root() -> Path:
     return Path(__file__).resolve().parents[2]
 
 
-def _precheck(repo: Path, branch: str) -> UpdateResult | str:
+def _precheck(repo: Path) -> UpdateResult | str:
     """The current HEAD when the checkout may be updated, else the verdict."""
     probe = git(repo, "rev-parse", "--show-toplevel", check=False)
     if probe.returncode != 0:
@@ -208,13 +208,28 @@ def _precheck(repo: Path, branch: str) -> UpdateResult | str:
         return UpdateResult("skipped", "", "", "not a git checkout root (a wheel install updates with "
                             "`pip install -U levh`)")
     head = git(repo, "rev-parse", "HEAD").stdout.strip()
-    current = git(repo, "rev-parse", "--abbrev-ref", "HEAD").stdout.strip()
-    if current != branch:
-        return UpdateResult("skipped", head, head, f"checkout is on '{current}', auto-update only "
-                            f"follows '{branch}'")
     if git(repo, "status", "--porcelain", "--untracked-files=no").stdout.strip():
         return UpdateResult("skipped", head, head, "local changes to tracked files; commit or discard them first")
     return head
+
+
+def _current_branch(repo: Path) -> str:
+    """The branch HEAD points at, or ``""`` when detached."""
+    name = git(repo, "rev-parse", "--abbrev-ref", "HEAD").stdout.strip()
+    return "" if name == "HEAD" else name
+
+
+def _branch_refusal(head: str, branch: str, current: str) -> UpdateResult:
+    """The verdict for a checkout that is not on the branch auto-update follows.
+
+    Refusing outright is how a checkout got stuck on a feature branch for days
+    (issue #522): the supervisor kept skipping and nobody could see it. The
+    reason names the branch the user has to move, which is the actionable fact.
+    """
+    if not current:
+        return UpdateResult("skipped", head, head, f"HEAD is detached, auto-update only follows '{branch}'")
+    return UpdateResult("skipped", head, head, f"checkout is on '{current}', auto-update only "
+                        f"follows '{branch}'")
 
 
 def _fetch_target(repo: Path, remote: str, branch: str, head: str) -> UpdateResult | str:
@@ -252,6 +267,28 @@ def _apply(repo: Path, head: str, target: str,
                         behind=behind, deps_synced=False)
 
 
+def _branch_own_upstream(repo: Path, current: str) -> str:
+    """``current``'s own upstream (``origin/foo``), or ``""`` when it has none."""
+    out = git(repo, "rev-parse", "--abbrev-ref", f"{current}@{{upstream}}", check=False)
+    return out.stdout.strip() if out.returncode == 0 else ""
+
+
+def _off_branch_guard(repo: Path, branch: str, current: str, remote: str) -> str | None:
+    """``None`` when an off-branch fast-forward is safe, else the extra refusal.
+
+    Two cases must not be moved unattended. A detached HEAD has no branch to
+    advance, and a branch that tracks its *own* remote (``origin/foo``) is not
+    following the branch auto-update follows, so pulling ``origin/main`` into it
+    would be a surprise the user did not ask for.
+    """
+    if not current:
+        return "detached"
+    own = _branch_own_upstream(repo, current)
+    if own and own not in (f"{remote}/{branch}", branch):
+        return f"checkout is on '{current}' which tracks '{own}'; auto-update only follows '{remote}/{branch}'"
+    return None
+
+
 def update_checkout(
     repo: Path,
     *,
@@ -260,16 +297,36 @@ def update_checkout(
     check_only: bool = False,
     sync_deps: Callable[[Path], tuple[bool, str]] = install_editable,
 ) -> UpdateResult:
-    """Fast-forward ``repo`` to ``remote/branch`` when that is provably safe."""
+    """Fast-forward ``repo`` to ``remote/branch`` when that is provably safe.
+
+    When the checkout sits on another branch, the update still runs if that
+    branch has no work of its own: its tip is an ancestor of upstream, so
+    advancing it is the same fast-forward, and the branch pointer moves with
+    HEAD. Refusing every off-branch checkout is what let one get stuck for days
+    (issue #522).
+    """
     head = ""
     try:
-        checked = _precheck(repo, branch)
+        checked = _precheck(repo)
         if isinstance(checked, UpdateResult):
             return checked
         head = checked
+        current = _current_branch(repo)
+        off_branch = current != branch
         fetched = _fetch_target(repo, remote, branch, head)
         if isinstance(fetched, UpdateResult):
+            # ``up_to_date`` is unambiguous wherever the checkout sits; a
+            # history verdict on another branch is reported as a branch verdict
+            # so the reason names the branch the user has to move.
+            if off_branch and fetched.status != "up_to_date":
+                return _branch_refusal(head, branch, current)
             return fetched
+        if off_branch:
+            refusal = _off_branch_guard(repo, branch, current, remote)
+            if refusal == "detached":
+                return _branch_refusal(head, branch, "")
+            if refusal is not None:
+                return UpdateResult("skipped", head, head, refusal)
         if check_only:
             behind = int(git(repo, "rev-list", "--count", f"{head}..{fetched}").stdout.strip())
             return UpdateResult("behind", head, fetched, behind=behind)

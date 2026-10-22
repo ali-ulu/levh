@@ -245,9 +245,23 @@ export interface Finding {
   external_ref: string | null;
 }
 
+export interface EnvOverride {
+  key: string;
+  env_name: string;
+  env_value: string;
+  file_value: string;
+  config_path: string;
+}
+
 export interface ServerConfig {
   db_path: string;
   embedder_mode: string;
+  requested_embedder_mode: string;
+  embedder_fallback_reason: string | null;
+  // Which layer supplied the requested embedder mode, and every setting where
+  // a process env var silently beat a conflicting config.json value (#523).
+  embedder_mode_source: string;
+  env_overrides: EnvOverride[];
   embedder_dimension: number | null;
   short_term_max: number;
   weights: { alpha: number; beta: number; gamma: number; delta: number };
@@ -256,6 +270,21 @@ export interface ServerConfig {
   max_stability_hours: number;
   auto_summarize_sessions: boolean;
   version: string;
+}
+
+// The supervisor's last auto-update cycle, surfaced by /api/health so the
+// dashboard can show a checkout that has quietly stopped updating (#522).
+// `present` is false on an install that never ran the supervisor — normal,
+// not a problem. `action` is the copy-pasteable alternative to `reason`.
+export interface AutoUpdateStatus {
+  present: boolean;
+  status: string;
+  behind: number;
+  reason: string;
+  action: string;
+  needs_attention: boolean;
+  stale: boolean;
+  checked_at: string | null;
 }
 
 // Result of a peer federation pull: which node it came from (from the
