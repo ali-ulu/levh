@@ -538,6 +538,34 @@ def cmd_doctor(args: argparse.Namespace) -> int:
         checks.append(("Remote access", "FAIL", str(e)))
         ok = False
 
+    # 17. pip rename debris (issue #521). An interrupted install or uninstall
+    # leaves `~`-prefixed remnants that pip reads as invalid distributions, and
+    # the interpreter's pip wedges — by then the error names one remnant, not
+    # what happened or how many. Report every remnant with the command that
+    # moves it aside; `levh update` makes the same move on its next run,
+    # before it installs anything.
+    try:
+        from server.core import pip_debris
+
+        debris_root = pip_debris.target_site_packages()
+        debris = pip_debris.find_rename_debris(debris_root)
+        if debris:
+            names = ", ".join(path.name for path in debris)
+            checks.append(
+                (
+                    "Pip debris",
+                    "FAIL",
+                    f"{len(debris)} remnant(s): {names}; pip is wedged until moved - "
+                    f"{pip_debris.recovery_command(debris, debris_root)}",
+                )
+            )
+            ok = False
+        else:
+            checks.append(("Pip debris", "PASS", ""))
+    except Exception as e:  # noqa: BLE001 - a failed check is reported as FAIL, never fatal
+        checks.append(("Pip debris", "FAIL", str(e)))
+        ok = False
+
     recommendation = (
         "run `levh setup --client claude --profile work`"
         if not memory_count

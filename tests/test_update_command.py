@@ -24,6 +24,7 @@ from server.commands.update import (
     run_bounded,
     update_checkout,
 )
+from server.core import pip_debris
 
 
 @pytest.fixture(autouse=True)
@@ -240,6 +241,83 @@ def test_install_failure_detail_is_kept(monkeypatch, tmp_path):
     ok, detail = update_mod.install_editable(tmp_path)
     assert ok is False
     assert "resolver exploded" in detail
+
+
+# -- pip rename debris (issue #521) -----------------------------------------
+
+
+def _debris_site(tmp_path):
+    root = tmp_path / "site-packages"
+    root.mkdir()
+    (root / "~evh-2.32.0.dist-info").mkdir()
+    (root / "~umpy").mkdir()
+    return root
+
+
+def test_install_moves_debris_aside_before_pip_runs(monkeypatch, tmp_path):
+    """The wedge is gone before pip starts — not rediscovered by pip."""
+    root = _debris_site(tmp_path)
+    monkeypatch.setattr(pip_debris, "target_site_packages", lambda: root)
+    # The stand-in installer fails if a `~` remnant is still visible when it
+    # runs, so this pins the ORDER of the cleanup, not just the end state.
+    probe = (
+        "import os, sys; "
+        f"bad = [n for n in os.listdir({str(root)!r}) if n.startswith('~')]; "
+        "sys.exit(1 if bad else 0)"
+    )
+    monkeypatch.setattr(update_mod, "_installer_command", lambda repo: [sys.executable, "-c", probe])
+
+    ok, detail = update_mod.install_editable(tmp_path)
+
+    assert ok is True, detail
+    assert pip_debris.find_rename_debris(root) == []
+    backups = [p for p in tmp_path.iterdir() if p.name.startswith(pip_debris.BACKUP_DIR_PREFIX)]
+    assert backups
+    assert {p.name for p in backups[0].iterdir()} == {"~evh-2.32.0.dist-info", "~umpy"}
+
+
+def test_install_warns_loudly_when_debris_cannot_be_moved(monkeypatch, tmp_path, capsys):
+    """Unmovable debris must be named loudly, never left silently wedged."""
+    root = _debris_site(tmp_path)
+    monkeypatch.setattr(pip_debris, "target_site_packages", lambda: root)
+
+    def _blocked(src, dst, *args, **kwargs):
+        raise PermissionError("file in use by another process")
+
+    monkeypatch.setattr(pip_debris.shutil, "move", _blocked)
+    monkeypatch.setattr(update_mod, "_installer_command", lambda repo: [sys.executable, "-c", "pass"])
+
+    ok, detail = update_mod.install_editable(tmp_path)
+
+    # The warning does not fail an install that can still be attempted.
+    assert ok is True, detail
+    err = capsys.readouterr().err
+    assert "WARNING" in err
+    assert "~evh-2.32.0.dist-info" in err and "~umpy" in err  # offending directories, by name
+    assert "file in use by another process" in err  # why each one stayed
+    assert pip_debris.BACKUP_DIR_PREFIX in err  # the recovery command
+    # Nothing was destroyed: the remnants are still there to recover.
+    remaining = [p.name for p in pip_debris.find_rename_debris(root)]
+    assert remaining == ["~evh-2.32.0.dist-info", "~umpy"]
+
+
+def test_failed_install_names_debris_pip_left_behind(monkeypatch, tmp_path):
+    """A run that breaks partway must not walk away from its own casualties."""
+    root = tmp_path / "site-packages"
+    root.mkdir()
+    monkeypatch.setattr(pip_debris, "target_site_packages", lambda: root)
+    litter = f"import os; os.mkdir(os.path.join({str(root)!r}, '~exploded'))"
+    monkeypatch.setattr(
+        update_mod,
+        "_installer_command",
+        lambda repo: [sys.executable, "-c", f"{litter}; import sys; sys.stderr.write('boom\\n'); sys.exit(1)"],
+    )
+
+    ok, detail = update_mod.install_editable(tmp_path)
+
+    assert ok is False
+    assert "install failed: boom" in detail
+    assert "pip left rename debris behind (~exploded)" in detail
 
 
 # -- bounded execution --------------------------------------------------------

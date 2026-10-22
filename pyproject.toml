@@ -119,6 +119,7 @@ files = [
     "server/core/onboarding.py",
     "server/core/organizations.py",
     "server/core/people.py",
+    "server/core/pip_debris.py",
     "server/core/procedure.py",
     "server/core/rate_limit.py",
     "server/core/restore_service.py",

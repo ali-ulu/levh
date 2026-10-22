@@ -31,6 +31,8 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Callable, Literal, Sequence
 
+from server.core import pip_debris
+
 UpdateStatus = Literal["up_to_date", "updated", "behind", "skipped", "error"]
 
 # A change to either file can change what must be installed for the new code.
@@ -144,8 +146,28 @@ def _installer_command(repo: Path) -> list[str] | None:
     return None
 
 
+def _clear_rename_debris() -> None:
+    """Move pip's interrupted-rename remnants aside before installing (issue #521).
+
+    A ``~``-prefixed leftover wedges every pip command in this interpreter, so
+    an install walking into one could not finish anyway — it is cleaned first,
+    not reported after. When the move itself cannot run (no permission, a
+    process holding a file), the warning names the offending directories and
+    the recovery command instead of leaving the tree silently wedged for the
+    next person to discover.
+    """
+    root = pip_debris.target_site_packages()
+    debris = pip_debris.find_rename_debris(root)
+    if not debris:
+        return
+    _moved, failed = pip_debris.move_aside(debris, root)
+    if failed:
+        print(f"WARNING: {pip_debris.debris_advice(failed, root)}", file=sys.stderr)
+
+
 def install_editable(repo: Path) -> tuple[bool, str]:
     """Reinstall the checkout into the running interpreter: (ok, detail)."""
+    _clear_rename_debris()
     cmd = _installer_command(repo)
     if cmd is None:
         return False, "neither pip nor uv is available to install dependencies"
@@ -154,7 +176,14 @@ def install_editable(repo: Path) -> tuple[bool, str]:
     except (OSError, CommandError) as exc:
         return False, str(exc)
     if out.returncode != 0:
-        return False, f"install failed: {_last_line(out.stderr or out.stdout)}"
+        detail = f"install failed: {_last_line(out.stderr or out.stdout)}"
+        # A run that broke partway can rename its own casualties on the way
+        # out; naming them here beats leaving them for the next pip to trip on.
+        leftover = pip_debris.find_rename_debris(pip_debris.target_site_packages())
+        if leftover:
+            names = ", ".join(path.name for path in leftover)
+            detail += f"; pip left rename debris behind ({names})"
+        return False, detail
     return True, ""
 
 
