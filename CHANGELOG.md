@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### fix: warn when many stdio servers each hold a local embedder (#526)
+
+- Every `levh mcp stdio` process builds its own engine through `engine_provider`, so with a local embedder each process loads its own copy of `all-MiniLM-L6-v2` — ~600 MB resident, 974 MB private after the first embed. A handful of agents each keeping a stdio session open pushes a small machine past its commit limit; the reporting box starved with 14 sessions at 89% commit charge. Sharing one model across stdio processes (the issue's main proposal) is a larger change, so this lands the narrow, verifiable half: `levh doctor` now names the footprint instead of leaving it to a post-mortem.
+- New `server/core/process_inventory.py` counts live `mcp stdio` processes from the OS — `/proc/<pid>/cmdline` on Linux, `ps -Ao command=` on macOS/BSD, PowerShell's `Win32_Process.CommandLine` on Windows — because LEVH's own `agent_sessions` cannot see a stdio process that has not embedded *yet*, and that process is the next one to pay. A platform that cannot be read returns `None` (distinct from `0`), so a failed look is never reported as "no stdio servers".
+- Doctor's new `Stdio embedder` check warns at `LEVH_DOCTOR_STDIO_WARN_THRESHOLD` (default 3) running stdio servers, but only when the *effective* embedder is local: `hash` and remote providers hold no per-process model, so the count is informational there and the check passes. The threshold is a documented knob (`.env.example`, `docs/configuration.md`), and a malformed value falls back to the default rather than failing the check.
+
 ### chore: bump opentelemetry-api for CVE-2026-114603
 
 - `fastmcp` (a runtime dependency) pulls `opentelemetry-api`, pinned at 1.44.0, which the `pip-audit` CI gate now flags for CVE-2026-114603 (fixed in 1.45.1). The lock is regenerated so the audit job — which reads the committed lockfile, not the installed environment — stays green. No code depends on the package directly.

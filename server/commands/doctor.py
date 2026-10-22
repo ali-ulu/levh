@@ -30,6 +30,28 @@ _DB_BUSY_TIMEOUT_SECONDS = 5.0
 NO_LIVE_PROBE_ENV = "LEVH_DOCTOR_NO_LIVE_PROBE"
 
 
+def _stdio_warn_threshold() -> int:
+    """How many stdio servers with a local model to warn at (issue #526).
+
+    A malformed override falls back to the default rather than failing the
+    check: the operator asked for a different sensitivity, not for doctor to
+    stop working.
+    """
+    from server.core.process_inventory import (
+        DEFAULT_STDIO_WARN_THRESHOLD,
+        STDIO_WARN_THRESHOLD_ENV,
+    )
+
+    raw = get_env(STDIO_WARN_THRESHOLD_ENV, "").strip()
+    if not raw:
+        return DEFAULT_STDIO_WARN_THRESHOLD
+    try:
+        parsed = int(raw)
+    except ValueError:
+        return DEFAULT_STDIO_WARN_THRESHOLD
+    return parsed if parsed > 0 else DEFAULT_STDIO_WARN_THRESHOLD
+
+
 def _running_bind_host(runtime) -> str | None:
     """Ask a live server what address it is bound to, or ``None`` if silent.
 
@@ -253,6 +275,10 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     # 4. Embedder mode
     requested_embedder_mode = runtime.embedder_mode
     mode_source = value_source(runtime, "embedder_mode")
+    #: The mode that actually runs, resolved below. The stdio-footprint check
+    #: reads this, not the request: ``auto`` that degrades to hash holds no
+    #: per-process model, so warning on the request would be wrong.
+    effective_embedder_provider = ""
     try:
         from server.core.embedder import Embedder
 
@@ -264,6 +290,7 @@ def cmd_doctor(args: argparse.Namespace) -> int:
         embedder = Embedder(requested_embedder_mode, defer_local_load=True)
         identity = embedder.identity()
         provider = identity["provider"]
+        effective_embedder_provider = provider
         if provider == "openai":
             route = "remote api.openai.com (explicit mode)"
         elif provider == "ollama":
@@ -648,6 +675,44 @@ def cmd_doctor(args: argparse.Namespace) -> int:
             checks.append(("Auto-update", "PASS", detail))
     except Exception as e:  # noqa: BLE001 - a failed check is reported as FAIL, never fatal
         checks.append(("Auto-update", "FAIL", str(e)))
+        ok = False
+
+    # 18b. Stdio embedder footprint (issue #526). Each `levh mcp stdio`
+    # process builds its own engine, so with a local embedder each loads its
+    # own ~600 MB copy of the model. On the machine that filed the issue, 14
+    # open sessions took the commit charge to 89% and starved the box. The
+    # count comes from the OS, not from agent_sessions: a stdio process that
+    # has not embedded yet has no session row, and it is the next one to pay.
+    # Only a local mode is a problem — hash and a remote provider hold no
+    # per-process model.
+    try:
+        from server.core import process_inventory
+
+        threshold = _stdio_warn_threshold()
+        stdio_count = process_inventory.count_mcp_stdio_processes()
+        if stdio_count is None:
+            checks.append(("Stdio embedder", "PASS", "process list unavailable; skipped"))
+        elif effective_embedder_provider != "local":
+            checks.append(
+                (
+                    "Stdio embedder",
+                    "PASS",
+                    f"{stdio_count} `mcp stdio` process(es); "
+                    f"effective={effective_embedder_provider or requested_embedder_mode} "
+                    f"holds no per-process model",
+                )
+            )
+        elif stdio_count == 0:
+            checks.append(("Stdio embedder", "PASS", "no `mcp stdio` processes running"))
+        else:
+            detail = process_inventory.describe_stdio_load(stdio_count)
+            if stdio_count >= threshold:
+                checks.append(("Stdio embedder", "WARN", detail))
+                ok = False
+            else:
+                checks.append(("Stdio embedder", "PASS", detail))
+    except Exception as e:  # noqa: BLE001 - a failed check is reported as FAIL, never fatal
+        checks.append(("Stdio embedder", "FAIL", str(e)))
         ok = False
 
     recommendation = (

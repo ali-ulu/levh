@@ -862,3 +862,169 @@ def test_api_module_builds_no_second_rate_limiter():
     # One source of truth, and it is the one the middleware reads.
     assert deps.auth_limiter is shared_auth_limiter
     assert isinstance(deps.api_limiter, SlidingWindowRateLimiter)
+
+
+# ── Stdio embedder footprint (issue #526) ────────────────────────────
+
+
+def test_looks_like_mcp_stdio_matches_every_launch_shape():
+    """The matcher reads a whole command line, because ``ps`` and PowerShell
+    hand back one string and re-splitting it would mangle a quoted Windows
+    interpreter path (the ``paths.py`` bug). Each documented way to start the
+    transport must count; an unrelated ``mcp`` word must not."""
+    from server.core.process_inventory import looks_like_mcp_stdio
+
+    positives = [
+        "/usr/local/bin/python -m server.mcp_stdio",
+        "/usr/bin/python3 -m server.mcp_stdio --debug",
+        "levh mcp stdio",
+        "/opt/levh/bin/python -m server.cli mcp stdio",
+        r"C:\Python311\python.exe -m server.mcp_stdio",
+        "/usr/bin/python /home/me/levh/server/mcp_stdio.py",
+    ]
+    negatives = [
+        "python -m server.api",
+        "levh serve --port 8000",
+        "grep -r mcp stdio",
+        "/usr/bin/python -m server.cli doctor",
+        "ps -Ao command=",
+    ]
+    for command in positives:
+        assert looks_like_mcp_stdio(command), command
+    for command in negatives:
+        assert not looks_like_mcp_stdio(command), command
+
+
+def test_count_mcp_stdio_processes_uses_the_platform_listing(monkeypatch):
+    """The count is derived from the listing, and a listing we cannot read is
+    ``None`` — distinct from ``0``, so a failed look is never reported as
+    "no stdio servers"."""
+    from server.core import process_inventory
+
+    listing = [
+        "/usr/local/bin/python -m server.mcp_stdio",
+        "levh serve --port 8000",
+        "/usr/bin/python3 -m server.mcp_stdio --profile minimal",
+        "node /usr/lib/code-server/out/server-main.js",
+    ]
+    monkeypatch.setattr(process_inventory, "_command_lines", lambda: listing)
+    assert process_inventory.count_mcp_stdio_processes() == 2
+
+    monkeypatch.setattr(process_inventory, "_command_lines", lambda: None)
+    assert process_inventory.count_mcp_stdio_processes() is None
+
+
+def test_linux_listing_reads_proc_cmdline(tmp_path):
+    """``/proc/<pid>/cmdline`` is NUL-separated; joining on spaces rebuilds the
+    command without the shell quoting ``ps`` would add. A non-pid directory and
+    an empty cmdline (a kernel thread) are both skipped, not counted."""
+    from server.core import process_inventory
+
+    proc = tmp_path / "proc"
+    (proc / "1234").mkdir(parents=True)
+    (proc / "1234" / "cmdline").write_bytes(b"python\0-m\0server.mcp_stdio\0")
+    (proc / "not-a-pid").mkdir()
+    (proc / "5678").mkdir()
+    (proc / "5678" / "cmdline").write_bytes(b"")
+
+    assert process_inventory._linux_command_lines(str(proc)) == ["python -m server.mcp_stdio"]
+
+
+def test_linux_listing_returns_none_when_proc_is_absent(tmp_path):
+    """A missing ``/proc`` (a locked-down container) is ``None``, not an empty
+    list: doctor must not report "no stdio servers" when it could not look."""
+    from server.core import process_inventory
+
+    assert process_inventory._linux_command_lines(str(tmp_path / "nope")) is None
+
+
+def test_doctor_warns_when_many_stdio_servers_hold_a_local_model(tmp_path, monkeypatch, capsys):
+    """Issue #526: each ``mcp stdio`` process loads its own local model.
+
+    The warning has to come from the OS, not from ``agent_sessions``: a process
+    that has not embedded yet has no session row and is the next one to pay.
+    """
+    from server.cli import cmd_doctor
+    from server.commands.doctor import NO_LIVE_PROBE_ENV
+    from server.core import process_inventory
+
+    monkeypatch.setenv("SQLITE_DB_PATH", str(tmp_path / "doctor-stdio.db"))
+    monkeypatch.setenv("EMBEDDER_MODE", "local")
+    monkeypatch.setenv(NO_LIVE_PROBE_ENV, "1")
+    monkeypatch.setenv("LEVH_SUPERVISOR_LOG_DIR", str(tmp_path / "stdio-logs"))
+    # A local model resolves to ``local`` only when sentence-transformers is
+    # importable; force the provider so the check is exercised regardless.
+    monkeypatch.setattr(process_inventory, "count_mcp_stdio_processes", lambda: 5)
+    from server.core.embedder import Embedder
+
+    monkeypatch.setattr(
+        Embedder, "identity", lambda self: {"provider": "local", "model": "all-MiniLM-L6-v2"}
+    )
+
+    assert cmd_doctor(argparse.Namespace()) == 1
+    output = capsys.readouterr().out
+    assert "Stdio embedder" in output
+    assert "5 `mcp stdio` process(es)" in output
+    assert "#526" in output
+
+
+def test_doctor_passes_stdio_check_under_a_model_free_mode(tmp_path, monkeypatch, capsys):
+    """Hash and remote providers hold no per-process model, so the count is
+    informational: doctor must not fail a machine that is configured safely."""
+    from server.cli import cmd_doctor
+    from server.commands.doctor import NO_LIVE_PROBE_ENV
+    from server.core import process_inventory
+
+    monkeypatch.setenv("SQLITE_DB_PATH", str(tmp_path / "doctor-stdio-hash.db"))
+    monkeypatch.setenv("EMBEDDER_MODE", "hash")
+    monkeypatch.setenv(NO_LIVE_PROBE_ENV, "1")
+    monkeypatch.setenv("LEVH_SUPERVISOR_LOG_DIR", str(tmp_path / "stdio-hash-logs"))
+    monkeypatch.setattr(process_inventory, "count_mcp_stdio_processes", lambda: 9)
+
+    assert cmd_doctor(argparse.Namespace()) == 0
+    output = capsys.readouterr().out
+    assert "Stdio embedder" in output
+    assert "holds no per-process model" in output
+
+
+def test_doctor_passes_stdio_check_when_local_but_no_sessions_run(tmp_path, monkeypatch, capsys):
+    """A local store with no stdio server running holds no per-process model, so
+    the check passes and must not claim a cost that is not being paid."""
+    from server.cli import cmd_doctor
+    from server.commands.doctor import NO_LIVE_PROBE_ENV
+    from server.core import process_inventory
+
+    monkeypatch.setenv("SQLITE_DB_PATH", str(tmp_path / "doctor-stdio-zero.db"))
+    monkeypatch.setenv("EMBEDDER_MODE", "local")
+    monkeypatch.setenv(NO_LIVE_PROBE_ENV, "1")
+    monkeypatch.setenv("LEVH_SUPERVISOR_LOG_DIR", str(tmp_path / "stdio-zero-logs"))
+    monkeypatch.setattr(process_inventory, "count_mcp_stdio_processes", lambda: 0)
+    from server.core.embedder import Embedder
+
+    monkeypatch.setattr(
+        Embedder, "identity", lambda self: {"provider": "local", "model": "all-MiniLM-L6-v2"}
+    )
+
+    assert cmd_doctor(argparse.Namespace()) == 0
+    output = capsys.readouterr().out
+    assert "Stdio embedder" in output
+    assert "no `mcp stdio` processes running" in output
+
+
+def test_doctor_stdio_threshold_override_is_read_and_clamped(tmp_path, monkeypatch):
+    """The threshold is a knob, and a malformed value falls back to the default
+    rather than failing the check."""
+    from server.commands.doctor import _stdio_warn_threshold
+    from server.core.process_inventory import (
+        DEFAULT_STDIO_WARN_THRESHOLD,
+        STDIO_WARN_THRESHOLD_ENV,
+    )
+
+    monkeypatch.delenv(STDIO_WARN_THRESHOLD_ENV, raising=False)
+    assert _stdio_warn_threshold() == DEFAULT_STDIO_WARN_THRESHOLD
+    monkeypatch.setenv(STDIO_WARN_THRESHOLD_ENV, "7")
+    assert _stdio_warn_threshold() == 7
+    monkeypatch.setenv(STDIO_WARN_THRESHOLD_ENV, "not-a-number")
+    assert _stdio_warn_threshold() == DEFAULT_STDIO_WARN_THRESHOLD
+    monkeypatch.setenv(STDIO_WARN_THRESHOLD_ENV, "0")
+    assert _stdio_warn_threshold() == DEFAULT_STDIO_WARN_THRESHOLD
