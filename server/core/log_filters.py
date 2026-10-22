@@ -9,7 +9,11 @@ from __future__ import annotations
 
 import logging
 
-HEALTH_PATH = "/api/health"
+#: The published probe path plus the conventional alias it answers under
+#: (#520). Monitors poll both on timers, so *successful* polls of either are
+#: dropped by exact path — the alias included, or fixing the 404 storm just
+#: replaces it with a 200 storm.
+HEALTH_PATHS = frozenset({"/api/health", "/health"})
 
 # uvicorn.access logs with args = (client_addr, method, path, http_version, status)
 _ACCESS_ARG_COUNT = 5
@@ -21,10 +25,11 @@ class HealthCheckAccessFilter(logging.Filter):
     """Drop access-log lines for *successful* health polls.
 
     The dashboard header polls ``/api/health`` on a timer to drive its online
-    badge, so at any real observation window the access log is mostly that one
-    endpoint repeating. Only 2xx/3xx responses are dropped — a health check
-    that starts failing is exactly the line worth seeing, and hiding it would
-    trade log noise for a blind spot.
+    badge, and monitors reach for the ``/health`` alias, so at any real
+    observation window the access log is mostly those two paths repeating.
+    Only 2xx/3xx responses are dropped — a health check that starts failing
+    is exactly the line worth seeing, and hiding it would trade log noise
+    for a blind spot.
     """
 
     def filter(self, record: logging.LogRecord) -> bool:
@@ -32,7 +37,7 @@ class HealthCheckAccessFilter(logging.Filter):
         if not isinstance(args, tuple) or len(args) < _ACCESS_ARG_COUNT:
             return True
         path = str(args[_PATH_INDEX]).split("?", 1)[0]
-        if path != HEALTH_PATH:
+        if path not in HEALTH_PATHS:
             return True
         try:
             status = int(args[_STATUS_INDEX])

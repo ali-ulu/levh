@@ -9,6 +9,7 @@
     "/api/health": {
       "get": {
         "summary": "Health",
+        "description": "Liveness: this process is up and answering (issue #520).\n\nLives beside ``/api/readyz`` on purpose \u2014 readiness pings SQLite and\nreports the embedder actually running, liveness answers from the\nprocess's own state. The two are not interchangeable and are never\ncollapsed into one.",
         "operationId": "health_api_health_get",
         "responses": {
           "200": {

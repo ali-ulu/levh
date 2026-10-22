@@ -1,9 +1,10 @@
 """Access-log filtering for the health-check poll.
 
-The dashboard header polls /api/health to drive its online badge, which buries
-every other access-log line under a steady drip of 200s. These tests pin the
-two halves of the rule: successful health polls are dropped, and anything that
-is not a successful health poll still reaches the log.
+The dashboard header polls /api/health to drive its online badge, and a
+monitor may poll the conventional /health alias, which together bury every
+other access-log line under a steady drip of 200s. These tests pin the two
+halves of the rule: successful health polls are dropped, and anything that is
+not a successful health poll still reaches the log.
 """
 
 import logging
@@ -25,7 +26,12 @@ def _access_record(path: str, status: int) -> logging.LogRecord:
 
 
 def test_drops_successful_health_poll():
-    assert HealthCheckAccessFilter().filter(_access_record("/api/health", 200)) is False
+    flt = HealthCheckAccessFilter()
+    assert flt.filter(_access_record("/api/health", 200)) is False
+    # The /health alias (#520) is polled on the same timer; fixing the 404
+    # storm must not leave a 200 storm behind in the log.
+    assert flt.filter(_access_record("/health", 200)) is False
+    assert flt.filter(_access_record("/health?t=1", 200)) is False
 
 
 def test_keeps_failing_health_check():
@@ -33,12 +39,15 @@ def test_keeps_failing_health_check():
     flt = HealthCheckAccessFilter()
     assert flt.filter(_access_record("/api/health", 500)) is True
     assert flt.filter(_access_record("/api/health", 404)) is True
+    assert flt.filter(_access_record("/health", 404)) is True
+    assert flt.filter(_access_record("/health", 500)) is True
 
 
 def test_keeps_other_endpoints():
     flt = HealthCheckAccessFilter()
     assert flt.filter(_access_record("/api/stats", 200)) is True
     assert flt.filter(_access_record("/api/health/deep", 200)) is True
+    assert flt.filter(_access_record("/health/deep", 200)) is True
 
 
 def test_ignores_query_string_on_health():

@@ -83,16 +83,18 @@ async def get_config(engine=Depends(get_engine)):
     }
 
 
-@router.get("/api/health", response_model=HealthResponse)
-async def health():
-    # Unauthenticated (exempt from the token gate) so the dashboard can learn
-    # up-front whether it must ask the user for a token before any /api/* call.
-    #
-    # The override warning fires once per process and scrolls away, so the
-    # tokenless state it describes would vanish from every later observation.
-    # Reporting it here keeps the fact observable for as long as it holds
-    # (#151): `levh doctor` and any operator can ask the running server what
-    # boundary it actually enforces instead of trusting a startup log line.
+def _liveness_report() -> dict:
+    """The liveness report this process answers with, whoever asked.
+
+    Unauthenticated (exempt from the token gate) so the dashboard can learn
+    up-front whether it must ask the user for a token before any /api/* call.
+
+    The override warning fires once per process and scrolls away, so the
+    tokenless state it describes would vanish from every later observation.
+    Reporting it here keeps the fact observable for as long as it holds
+    (#151): `levh doctor` and any operator can ask the running server what
+    boundary it actually enforces instead of trusting a startup log line.
+    """
     return {
         "status": "ok",
         "service": "levh",
@@ -104,6 +106,41 @@ async def health():
         # `--host` here, so argv and this field agree (issue #156).
         "api_host": configured_bind_host(),
     }
+
+
+@router.get("/api/health", response_model=HealthResponse)
+async def health():
+    """Liveness: this process is up and answering (issue #520).
+
+    Lives beside ``/api/readyz`` on purpose — readiness pings SQLite and
+    reports the embedder actually running, liveness answers from the
+    process's own state. The two are not interchangeable and are never
+    collapsed into one.
+    """
+    return _liveness_report()
+
+
+@router.get("/health", response_model=HealthResponse, include_in_schema=False)
+async def health_alias():
+    """The conventional liveness path, aliased onto ``/api/health``.
+
+    A monitor that polls ``/health`` — the path uptime tooling and container
+    health checks reach for by default — used to get a 404 on every single
+    request, and a health checker that always sees the server down is worse
+    than no checker: it triggers restarts and recovery churn against a
+    perfectly healthy process (issue #520).
+
+    The alias is hidden from the schema on purpose. ``/api/health`` is the
+    published, unversioned liveness contract (see
+    ``server/api_versioning.UNVERSIONED_PATHS``); this is a compatibility
+    spelling, not a second documented surface, and publishing it would put
+    two liveness paths in the frozen contract for no gain.
+
+    It stays unauthenticated and out of ``/api/*``, so the token gate and the
+    remote-access boundary keep treating it exactly like the probe it is: a
+    report on this process, never a path to memory content.
+    """
+    return _liveness_report()
 
 
 @router.get("/api/metrics", response_class=PlainTextResponse)

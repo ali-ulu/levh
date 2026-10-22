@@ -245,6 +245,47 @@ def test_config_reports_would_be_fallback_before_first_use(monkeypatch):
     assert body["embedder_fallback_reason"]
 
 
+def test_health_alias_serves_the_same_liveness_report(client):
+    """``/health`` must answer, not 404 — a poller that always sees the
+    server down is worse than no poller (issue #520)."""
+    alias = client.get("/health")
+    canonical = client.get("/api/health")
+
+    assert alias.status_code == 200, alias.text
+    assert alias.json() == canonical.json()
+
+
+def test_health_alias_is_exempt_from_the_token_gate(monkeypatch, tmp_path):
+    """A monitor polling the conventional path carries no token."""
+    monkeypatch.setenv("EMBEDDER_MODE", "hash")
+    monkeypatch.setenv("SQLITE_DB_PATH", str(tmp_path / "levh.db"))
+    monkeypatch.setenv("LEVH_TOKEN", "s3cret-token")
+    from server import api
+    from server.core import engine_provider
+
+    api._engine = None
+    api._initialized = False
+    engine_provider.set_engine(None)
+
+    with TestClient(api.app, client=("127.0.0.1", 51234)) as c:
+        assert c.get("/health").status_code == 200
+        # The gate itself is untouched: a protected path still fails closed.
+        assert c.get("/api/stats").status_code == 401
+
+    api._engine = None
+    api._initialized = False
+    engine_provider.set_engine(None)
+
+
+def test_health_alias_is_not_published_in_the_contract(client):
+    """``/health`` is a compatibility spelling, not a second contract
+    surface — ``/api/health`` stays the one published liveness path."""
+    schema = client.get("/openapi.json").json()
+
+    assert "/api/health" in schema["paths"]
+    assert "/health" not in schema["paths"]
+
+
 def test_request_id_is_generated_and_echoed(client):
     response = client.get("/api/health")
 

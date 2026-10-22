@@ -8,15 +8,21 @@ them; ``server.api`` calls it once while building the app.
 
 from __future__ import annotations
 
+import logging
+
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from starlette.requests import ClientDisconnect
+from starlette.staticfiles import StaticFiles
 
 from server.core.env import get_env
 from server.core import request_context
+from server.core.rate_limit import SlidingWindowRateLimiter
 from server.core.tenancy import LOCAL_PRINCIPAL, bind_principal, reset_principal
 from server.routes import deps
 from server.routes.deps import constant_time_token_matches, public_demo
+
+logger = logging.getLogger("levh.middleware")
 
 # The limiters are reached through the module (deps.auth_limiter) rather than
 # imported by value: they are swapped at runtime by tests, and a by-value
@@ -56,6 +62,93 @@ MAX_REQUEST_BODY_BYTES_ENV = "LEVH_MAX_REQUEST_BODY_BYTES"
 # is exempt so the global guard cannot reject what the endpoint accepts.
 _BODY_LIMIT_EXEMPT_PATHS = {"/api/connectors/upload"}
 _BODY_LIMIT_METHODS = {"POST", "PUT", "PATCH"}
+
+
+#: An unknown path, logged by name so the next 404 storm is findable.
+#:
+#: The dashboard mount answers every path the routers do not own, so a
+#: misconfigured monitor or a stale client asking for a path this version
+#: never served looks exactly like any other missing asset. The access log
+#: records the status but not the reason, so nothing said *why* the path was
+#: unexpected — a 404 that returns 404 forever is invisible until somebody
+#: counts the lines by hand (issue #520). Naming the path turns that hunt
+#: into a grep.
+#:
+#: The dashboard's own assets 404 legitimately (a stale build asks for a chunk
+#: that was replaced), and they arrive by the same route — the StaticFiles
+#: mount's 404 — so the report below tells them apart by shape: a path that
+#: looks like a file the dashboard could own is left to the access log, and
+#: only an application-looking path is named.
+_UNKNOWN_PATH_LOG_LIMIT = 5
+_UNKNOWN_PATH_LOG_WINDOW_SECONDS = 60.0
+#: Keyed per path, so one chatty client cannot silence the report for
+#: another path that also 404s.
+_unknown_path_limiter = SlidingWindowRateLimiter(
+    _UNKNOWN_PATH_LOG_LIMIT, _UNKNOWN_PATH_LOG_WINDOW_SECONDS
+)
+#: Log every unknown path once, then only when the count changes, so a
+#: poller that asks every second does not bury the log it was meant to
+#: make findable.
+_unknown_path_seen: dict[str, int] = {}
+
+
+def _log_unknown_path(request: Request) -> None:
+    """Report a path that matched no route, naming it (issue #520)."""
+    path = request.url.path
+    allowed, _ = _unknown_path_limiter.allow(path)
+    if not allowed:
+        return
+    count = _unknown_path_seen.get(path, 0) + 1
+    _unknown_path_seen[path] = count
+    structured = {"event": "route.not_found", "path": path, "count": count}
+    request_id = request_context.current_request_id()
+    if request_id:
+        structured["request_id"] = request_id
+    logger.warning(
+        "no route matched %s %s from %s (404) - the path is not served by this "
+        "version; if a monitor polls it, point it at /api/health (liveness) "
+        "or /api/readyz (readiness)",
+        request.method,
+        path,
+        _client_key(request),
+        extra={"structured": structured},
+    )
+
+
+def _is_dashboard_asset(path: str) -> bool:
+    """Does *path* look like a file the dashboard could legitimately own?
+
+    The dashboard is a static Next.js export mounted at the root: its build
+    artifacts live under ``/_next/`` and everything else it serves carries a
+    file extension (``favicon.ico``, ``manifest.webmanifest``). Its *routes*
+    do not 404 at the mount — each is prerendered as a directory with its own
+    ``index.html`` — so an application-looking path such as ``/health`` or
+    ``/api/typo`` has neither marker and is reported.
+    """
+    if path.startswith("/_next/"):
+        return True
+    last_segment = path.rstrip("/").rsplit("/", 1)[-1]
+    return "." in last_segment
+
+
+def _path_never_claimed(request: Request) -> bool:
+    """Was *request*'s 404 produced by the route table having no answer?
+
+    Three shapes reach the report and only the first two are unknown paths:
+    ``endpoint`` is ``None`` when nothing matched at all (no dashboard
+    mounted); it is the StaticFiles mount when the dashboard answered — the
+    mount matches every path, so it cannot vouch for any of them, and
+    ``_is_dashboard_asset`` separates its legitimate asset misses from an
+    application-looking path; and it is the handler itself when a route
+    answered its own 404 for a missing resource, which is a normal answer,
+    not a deployment mystery.
+    """
+    endpoint = request.scope.get("endpoint")
+    if endpoint is None:
+        return True
+    if isinstance(endpoint, StaticFiles):
+        return not _is_dashboard_asset(request.url.path)
+    return False
 
 
 def _body_limit_exempt(request: Request) -> bool:
@@ -227,16 +320,38 @@ def install(app: FastAPI) -> None:
     """
 
     @app.middleware("http")
+    async def report_unknown_path(request: Request, call_next):
+        """Name a path that matched no route, so a 404 storm is findable.
+
+        Registered first and therefore just inside the request-id middleware
+        (registration order is reversed at request time), so the report
+        carries the same correlation id as the request it describes. It
+        watches the *outcome* rather than the route table: a response that
+        came back 404 with no route having claimed the path is a path this
+        version does not serve.
+
+        The dashboard's own assets 404 legitimately — a stale build asking
+        for a replaced chunk — and they are excluded by shape (see
+        ``_is_dashboard_asset``): reporting them would drown the one report
+        that matters under a stream of expected misses, and the access log
+        already records those.
+        """
+        response = await call_next(request)
+        if response.status_code == 404 and _path_never_claimed(request):
+            _log_unknown_path(request)
+        return response
+
+    @app.middleware("http")
     async def request_id_middleware(request: Request, call_next):
         """Bind a correlation id for everything logged while serving *request*.
 
-        Registered first and therefore outermost: even a gate refusal below is
-        logged under the same id, and the header is set on every response
-        (including the 401/403/429 ones) so a client can quote it in a bug
-        report. A caller-supplied ``X-Request-ID`` is reused when it is
-        plausible — it lets a proxy stitch its own tracing id to ours — but the
-        value ends up in log lines and a response header, so it is sanitized
-        rather than trusted verbatim.
+        Runs inside the auth gates and the body guards: every request that
+        reaches the router is logged under this id, and the response carries
+        it as a header so a client can quote it in a bug report. A
+        caller-supplied ``X-Request-ID`` is reused when it is plausible — it
+        lets a proxy stitch its own tracing id to ours — but the value ends
+        up in log lines and a response header, so it is sanitized rather
+        than trusted verbatim.
         """
         supplied = (request.headers.get(request_context.REQUEST_ID_HEADER) or "").strip()
         request_id = supplied if _plausible_request_id(supplied) else request_context.new_request_id()
