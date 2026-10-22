@@ -5,6 +5,8 @@ consolidate_memories MCP tool. Offline & deterministic — EMBEDDER_MODE=hash.
 The hash embedder is deterministic: identical content → identical embedding
 (cosine 1.0), so identical-text memories form a cluster reliably."""
 
+import hashlib
+import json
 import os
 import sys
 import tempfile
@@ -65,12 +67,14 @@ async def test_dry_run_previews_without_changing(engine):
 
 
 @pytest.mark.asyncio
-async def test_apply_consolidates_and_archives(engine):
+async def test_apply_consolidates_and_deletes_originals(engine):
     ids = await _seed_cluster(engine, 3)
     await engine.store(LUNCH, memory_type="episodic")
 
     result = await engine.consolidate_memories(min_age_days=0, dry_run=False)
     assert result["consolidated"] == 1
+    # `archived` is the backward-compatible name for a permanent deletion
+    # count; nothing is retained under it (issue #531).
     assert result["archived"] == 3
 
     # originals are gone from active recall
@@ -86,6 +90,89 @@ async def test_apply_consolidates_and_archives(engine):
     assert isinstance(archived, list) and len(archived) == 3
     assert all("id" in a and "content_sha256" in a for a in archived)
     assert all("content" not in a for a in archived)
+
+
+# ── retention contract (issue #531) ──────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_originals_are_permanently_deleted_not_archived(engine):
+    """Consolidation is an irreversible compression: every original row is
+    hard-deleted from the store and its full-text index entry with it. There is
+    no archive table holding a recoverable copy."""
+    ids = await _seed_cluster(engine, 3)
+    await engine.consolidate_memories(min_age_days=0, dry_run=False)
+
+    conn = engine.db.conn
+    placeholders = ",".join("?" * len(ids))
+    rows = await (
+        await conn.execute(
+            f"SELECT id FROM memories WHERE id IN ({placeholders})", ids
+        )
+    ).fetchall()
+    assert rows == [], "consolidated originals must not survive as memory rows"
+
+    fts = await (
+        await conn.execute(
+            f"SELECT memory_id FROM memories_fts WHERE memory_id IN ({placeholders})",
+            ids,
+        )
+    ).fetchall()
+    assert fts == [], "a deleted original must not survive in the FTS index"
+
+    # No archive/trash/recycle table exists to hold a second copy.
+    tables = {
+        r[0]
+        for r in await (
+            await conn.execute("SELECT name FROM sqlite_master WHERE type = 'table'")
+        ).fetchall()
+    }
+    assert not {t for t in tables if "archive" in t or "trash" in t or "recycle" in t}
+
+
+@pytest.mark.asyncio
+async def test_lineage_hash_cannot_reconstruct_the_original(engine):
+    """Lineage keeps a one-way digest, not the text: the stored SHA-256 matches
+    the original bytes (so the reader can verify what was compressed) while the
+    text itself is absent, which is why recovery is impossible."""
+    ids = await _seed_cluster(engine, 3)
+    await engine.consolidate_memories(min_age_days=0, dry_run=False)
+
+    c = (await engine.list_memories(source="consolidation"))[0]
+    lineage = c.metadata["consolidated_from"]
+    expected = hashlib.sha256(DEPLOY.encode("utf-8")).hexdigest()
+    assert {a["id"] for a in lineage} == set(ids)
+    assert all(a["content_sha256"] == expected for a in lineage)
+    # The record itself is not present in the lineage payload.
+    assert DEPLOY not in json.dumps(lineage)
+
+
+@pytest.mark.asyncio
+async def test_dry_run_never_deletes(engine):
+    """A preview must leave every original intact — the contract only bites on
+    apply."""
+    ids = await _seed_cluster(engine, 3)
+    await engine.consolidate_memories(min_age_days=0, dry_run=True)
+    for mid in ids:
+        assert await engine.episodic.get(mid) is not None
+
+
+@pytest.mark.asyncio
+async def test_repeated_apply_is_idempotent_and_deletes_nothing_further(engine):
+    """A second pass finds no new clusters, so it deletes nothing: the already
+    deleted originals cannot be deleted twice and no new summary is written."""
+    ids = await _seed_cluster(engine, 3)
+    await engine.consolidate_memories(min_age_days=0, dry_run=False)
+
+    second = await engine.consolidate_memories(min_age_days=0, dry_run=False)
+    assert second["clusters_found"] == 0
+    assert second["consolidated"] == 0
+    assert second["archived"] == 0
+
+    summaries = await engine.list_memories(source="consolidation")
+    assert len(summaries) == 1
+    for mid in ids:
+        assert await engine.episodic.get(mid) is None
 
 
 @pytest.mark.asyncio
@@ -231,3 +318,48 @@ async def test_consolidate_mcp_tool_nothing(engine):
     reg(mcp, engine)
     text = _tool_text(await mcp.call_tool("consolidate_similar", {"min_age_days": 0}))
     assert "No consolidatable clusters" in text
+
+
+# ── the contract is stated everywhere it is promised (issue #531) ─────
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+# Each surface that describes consolidation must name the irreversibility, and
+# none of them may still promise a recovery path that the code does not have.
+_CONTRACT_ANCHORS = [
+    ("server/core/engine/dedupe.py", "compression is irreversible"),
+    ("server/tools/consolidate_memories.py", "permanently deleted, not archived"),
+    ("server/routes/memories.py", "Compression is irreversible"),
+    ("server/routes/models.py", "permanently deleted, not records kept in an archive"),
+    ("docs/ARCHITECTURE.md", "irreversible compression"),
+    ("docs/mcp-tools.md", "originals are permanently deleted, not archived"),
+    ("docs/api-reference.md", "permanently deleted, not archived"),
+    ("frontend/src/lib/i18n/en.json", "Originals are permanently deleted, not archived"),
+    ("frontend/src/lib/i18n/tr.json", "kalıcı olarak silinir, arşivlenmez"),
+]
+
+_WITHDRAWN_CLAIMS = [
+    "nothing is lost",
+    "they can be recovered",
+    "archived inside the summary, not lost",
+    "preserved inside the consolidated memory's",
+]
+
+
+@pytest.mark.parametrize("relative_path,anchor", _CONTRACT_ANCHORS)
+def test_consolidation_contract_is_stated(relative_path, anchor):
+    text = open(os.path.join(ROOT, relative_path), encoding="utf-8").read()
+    assert anchor.lower() in text.lower(), (
+        f"{relative_path} no longer states the consolidation retention contract "
+        f"(missing: {anchor!r})"
+    )
+
+
+@pytest.mark.parametrize("relative_path,_anchor", _CONTRACT_ANCHORS)
+def test_consolidation_recoverability_claim_is_withdrawn(relative_path, _anchor):
+    text = open(os.path.join(ROOT, relative_path), encoding="utf-8").read().lower()
+    for claim in _WITHDRAWN_CLAIMS:
+        assert claim not in text, (
+            f"{relative_path} still claims consolidation preserves the originals "
+            f"({claim!r}); issue #531 established that they are permanently deleted"
+        )

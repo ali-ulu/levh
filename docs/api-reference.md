@@ -38,7 +38,7 @@ because it is a read that has to POST to carry its query.
 | POST | `/api/v1/memories/admit` | Store a candidate memory through the admission gate: dedupe + secret redaction. reject/review are not stored unless… |
 | GET | `/api/v1/memories/audit-secrets` | Read-only scan for secrets (credentials, tokens) that slipped into stored memories before the admission gate existed |
 | POST | `/api/v1/memories/consolidate` | Promote short-term memories to episodic |
-| POST | `/api/v1/memories/consolidate-similar` | Preview (dry_run) or apply sleep-like consolidation: cluster related older memories and compress each cluster into… |
+| POST | `/api/v1/memories/consolidate-similar` | Preview (dry_run) or apply sleep-like consolidation: cluster related older memories and compress each cluster into one consolidated memory. Irreversible — originals are permanently deleted, not archived; only id/timestamp/hash lineage remains… |
 | POST | `/api/v1/memories/dedupe` | Find (dry_run) or remove near-duplicate memories |
 | POST | `/api/v1/memories/evaluate-admission` | Preview the admission gate's verdict for a candidate memory WITHOUT storing it: admit / review / redact / reject |
 | POST | `/api/v1/memories/export` | Export every memory as JSON |

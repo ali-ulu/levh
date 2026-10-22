@@ -283,8 +283,11 @@ async def dedupe_memories(req: DedupeRequest, engine=Depends(get_engine)):
 @router.post("/api/memories/consolidate-similar", response_model=ConsolidateSimilarResponse)
 async def consolidate_similar_memories(req: ConsolidateRequest, engine=Depends(get_engine)):
     """Preview (dry_run) or apply sleep-like consolidation: cluster related
-    older memories and compress each cluster into one consolidated memory,
-    archiving the originals inside it."""
+    older memories and compress each cluster into one consolidated memory.
+
+    Compression is irreversible: each original is permanently deleted (not
+    archived), and only its id, timestamp and content hash survive as lineage,
+    so the original text cannot be recovered afterwards."""
     return await engine.consolidate_memories(
         similarity_threshold=req.similarity_threshold,
         min_age_days=req.min_age_days,

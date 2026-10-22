@@ -222,6 +222,12 @@ class DedupeRequest(BaseModel):
 
 
 class ConsolidateRequest(BaseModel):
+    """``POST /api/memories/consolidate-similar`` request.
+
+    Applying consolidation (``dry_run=false``) permanently deletes each
+    original in a cluster; only its id, timestamp and content hash are kept as
+    lineage on the summary, so the original text cannot be recovered."""
+
     similarity_threshold: float = 0.82
     min_age_days: int = 7
     min_cluster_size: int = 2
@@ -1261,12 +1267,22 @@ class DedupeResponse(BaseModel):
 
 
 class ConsolidateSimilarResponse(BaseModel):
-    """``POST /api/memories/consolidate-similar``."""
+    """``POST /api/memories/consolidate-similar``.
+
+    Consolidation is irreversible: ``archived`` counts originals that were
+    permanently deleted, not records kept in an archive. Only provenance (id,
+    timestamp, content hash) is retained on the consolidated memory."""
 
     dry_run: bool
     clusters_found: int
     consolidated: int
-    archived: int
+    archived: int = Field(
+        description=(
+            "Number of original memories permanently deleted by this run. They "
+            "are not archived and cannot be recovered; only their ids, "
+            "timestamps and content hashes remain as lineage on the summary."
+        )
+    )
     clusters: list[dict[str, Any]] = Field(default_factory=list)
 
 

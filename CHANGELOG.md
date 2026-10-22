@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### fix: state that consolidation permanently deletes the originals (#531)
+
+- `consolidate_memories` / `consolidate_similar` described the originals as "preserved inside the consolidated memory's `metadata.consolidated_from` so nothing is lost — they can be recovered". They were not preserved: each original was hard-deleted (the same delete `forget` performs) from the `memories` table, the full-text index and the vector store, and only `id`, `created_at` and a one-way `content_sha256` digest survived. The recovery path the prose promised did not exist, so an operator could compress a cluster believing a backup was implicit and lose the text.
+- The retention contract is now explicit and consistent across every surface that describes it: the engine docstring, the MCP tool description and result text, the route and request/response model docstrings (and therefore `openapi.json`), `docs/ARCHITECTURE.md` (new "Retention and deletion contract" table), `docs/mcp-tools.md`, `docs/api-reference.md`, and the dashboard's English and Turkish help text. Consolidation is an irreversible compression, not an archive: the digest proves which records were compressed and detects later tampering, but the text cannot be reconstructed from it. Take a backup (`create_backup` / `POST /api/v1/backup`, or `levh export-full`) first if the originals matter.
+- The JSON response key `archived` is unchanged for backward compatibility, but its description now states that it counts permanent deletions, not retained records.
+- `tests/test_consolidation.py` proves the contract against the store: no `memories` or `memories_fts` row for an original survives, no archive/trash table exists, the lineage digest matches the original bytes while the text is absent, and a dry run deletes nothing. A drift guard fails if any describing surface drops the contract or restores the withdrawn "nothing is lost" claim.
+
 ### Placeholder for future changes (#103)
 
 - TBD
