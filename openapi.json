@@ -805,7 +805,7 @@
     "/api/v1/memories/consolidate-similar": {
       "post": {
         "summary": "Consolidate Similar Memories",
-        "description": "Preview (dry_run) or apply sleep-like consolidation: cluster related\nolder memories and compress each cluster into one consolidated memory,\narchiving the originals inside it.",
+        "description": "Preview (dry_run) or apply sleep-like consolidation: cluster related\nolder memories and compress each cluster into one consolidated memory.\n\nCompression is irreversible: each original is permanently deleted (not\narchived), and only its id, timestamp and content hash survive as lineage,\nso the original text cannot be recovered afterwards.",
         "operationId": "consolidate_similar_memories_api_memories_consolidate_similar_post_v1",
         "requestBody": {
           "content": {
@@ -7066,7 +7066,8 @@
           }
         },
         "type": "object",
-        "title": "ConsolidateRequest"
+        "title": "ConsolidateRequest",
+        "description": "``POST /api/memories/consolidate-similar`` request.\n\nApplying consolidation (``dry_run=false``) permanently deletes each\noriginal in a cluster; only its id, timestamp and content hash are kept as\nlineage on the summary, so the original text cannot be recovered."
       },
       "ConsolidateResponse": {
         "properties": {
@@ -7097,7 +7098,8 @@
           },
           "archived": {
             "type": "integer",
-            "title": "Archived"
+            "title": "Archived",
+            "description": "Number of original memories permanently deleted by this run. They are not archived and cannot be recovered; only their ids, timestamps and content hashes remain as lineage on the summary."
           },
           "clusters": {
             "items": {
@@ -7116,7 +7118,7 @@
           "archived"
         ],
         "title": "ConsolidateSimilarResponse",
-        "description": "``POST /api/memories/consolidate-similar``."
+        "description": "``POST /api/memories/consolidate-similar``.\n\nConsolidation is irreversible: ``archived`` counts originals that were\npermanently deleted, not records kept in an archive. Only provenance (id,\ntimestamp, content hash) is retained on the consolidated memory."
       },
       "ContextFileRequest": {
         "properties": {

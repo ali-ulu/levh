@@ -92,9 +92,21 @@ class MemoryDedupeMixin:
         Unlike ``dedupe`` (which only removes near-identical duplicates at a
         high threshold and keeps one verbatim), this uses a lower similarity
         threshold to group *related* memories and replaces the whole cluster
-        with an LLM/extractive summary. The raw originals are preserved inside
-        the consolidated memory's ``metadata.consolidated_from`` so nothing is
-        lost — they can be recovered — but they stop cluttering active recall.
+        with an LLM/extractive summary.
+
+        **Retention contract — compression is irreversible.** Each original is
+        permanently deleted, by the same hard delete ``forget`` performs, so
+        its row, its full-text index entry and its vector are gone; it stops
+        appearing in active recall and no archive holds it. What survives is
+        provenance only, in the consolidated memory's
+        ``metadata.consolidated_from``: each original's id, ``created_at`` and a
+        ``content_sha256`` digest of its text. The digest lets a reader verify
+        which records were compressed and detect later tampering, but a hash is
+        one-way — the original text cannot be reconstructed from it, so an
+        original cannot be recovered after consolidation. (An extractive
+        summary may echo a fragment of an original because it keeps important
+        lines; that is the summary's content, not a retained copy of the
+        record.) Back up the store first if the originals matter.
 
         Safeguards: pinned memories are never consolidated, and only memories
         older than ``min_age_days`` are eligible so recent working memory is
@@ -102,7 +114,9 @@ class MemoryDedupeMixin:
         changing anything.
 
         Returns a dict with the clusters found and, when applied, how many
-        consolidated memories were created and how many originals archived.
+        consolidated memories were created and how many originals were
+        permanently deleted (reported under ``archived`` for backward
+        compatibility; nothing is archived in the sense of retained).
         """
         from datetime import datetime, timedelta, timezone
 
@@ -162,8 +176,10 @@ class MemoryDedupeMixin:
                     source="consolidation",
                     memory_type="episodic",
                     metadata={
-                        # Lineage proves which records were compressed without
-                        # retaining a second undeletable copy of their content.
+                        # Provenance, not a recoverable copy: the id and digest
+                        # prove which records were compressed and detect later
+                        # tampering, while the records themselves are hard-deleted
+                        # below and cannot be restored from this metadata.
                         "consolidated_from": [
                             {
                                 "id": m.id,

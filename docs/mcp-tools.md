@@ -54,7 +54,7 @@ The complete MCP tool surface. See the [README](../README.md) for an overview.
 | 39 | `end_session` | End session + consolidate its memories |
 | 40 | `summarize_session` | Distill a session's memories into one durable summary memory |
 | 41 | `consolidate_memories` | Promote short-term → episodic |
-| 42 | `consolidate_similar` | Compress clusters of related aged memories into durable summaries (sleep-like) |
+| 42 | `consolidate_similar` | Compress clusters of related aged memories into durable summaries (sleep-like). Irreversible: originals are permanently deleted, not archived |
 | 43 | `clear_short_term` | Clear the live FIFO deque |
 | 44 | `dedupe_memories` | Find/remove near-duplicates (dry-run by default) |
 | 45 | `generate_context_file` | Compile memories into CLAUDE.md / .cursorrules |

@@ -1,6 +1,7 @@
 """Tool: consolidate_memories — sleep-like compression of related older
-memories into a single durable "gist" memory, archiving the originals inside
-it. Distinct from dedupe (which only removes near-identical duplicates)."""
+memories into a single durable "gist" memory, permanently deleting the
+originals. Distinct from dedupe (which only removes near-identical
+duplicates)."""
 
 from __future__ import annotations
 
@@ -19,8 +20,10 @@ def register(mcp: FastMCP, engine: MemoryEngine) -> None:
     ) -> str:
         """Consolidate clusters of related older memories into one summary each
         — like how sleep compresses many episodes into a durable gist. The raw
-        originals are preserved inside the consolidated memory's metadata, so
-        nothing is lost. Pinned and recent memories are never touched.
+        originals are permanently deleted, not archived: the summary keeps only
+        their ids, timestamps and content hashes as provenance, so the original
+        text cannot be recovered afterwards. Back up the store first if the
+        originals matter. Pinned and recent memories are never touched.
 
         Args:
             dry_run: If true (default), only preview the clusters that would be
@@ -51,6 +54,7 @@ def register(mcp: FastMCP, engine: MemoryEngine) -> None:
             return "\n".join(lines)
 
         return (
-            f"Consolidated {result['consolidated']} cluster(s), archiving "
-            f"{result['archived']} original memories into durable summaries."
+            f"Consolidated {result['consolidated']} cluster(s), permanently "
+            f"deleting {result['archived']} original memories into durable "
+            "summaries (originals are not recoverable)."
         )
