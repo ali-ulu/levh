@@ -12,7 +12,7 @@ from server.commands.paths import _REPO_ROOT
 from server.core.db.aggregates import AggregateQueries
 from server.core.env import get_env
 from server.core.runtime_config import configured_api_port
-from server.core.runtime_config import resolve_runtime_config
+from server.core.runtime_config import resolve_runtime_config, value_source
 from server.core.runtime_config import configured_bind_host
 
 
@@ -252,6 +252,7 @@ def cmd_doctor(args: argparse.Namespace) -> int:
 
     # 4. Embedder mode
     requested_embedder_mode = runtime.embedder_mode
+    mode_source = value_source(runtime, "embedder_mode")
     try:
         from server.core.embedder import Embedder
 
@@ -265,8 +266,8 @@ def cmd_doctor(args: argparse.Namespace) -> int:
         else:
             route = "local/offline"
         detail = (
-            f"requested={requested_embedder_mode}, effective={provider}, "
-            f"model={identity['model']}, route={route}"
+            f"requested={requested_embedder_mode} (from {mode_source}), "
+            f"effective={provider}, model={identity['model']}, route={route}"
         )
         if embedder.fallback_reason:
             checks.append(("Embedder mode", "WARN", f"{detail}; {embedder.fallback_reason}"))
@@ -274,6 +275,33 @@ def cmd_doctor(args: argparse.Namespace) -> int:
             checks.append(("Embedder mode", "PASS", detail))
     except Exception as e:  # noqa: BLE001 - a failed check is reported as FAIL, never fatal
         checks.append(("Embedder mode", "FAIL", str(e)))
+        ok = False
+
+    # 4b. Env-over-config precedence conflicts (issue #523). A process env var
+    # silently beats a *different* value in config.json, so an operator who
+    # edits the file back sees no change and no explanation — the multi-hour
+    # forensic pass this issue describes. Name each disagreement and the fix.
+    try:
+        from server.core.runtime_config import env_over_config_conflicts
+
+        conflicts = env_over_config_conflicts()
+        if conflicts:
+            for conflict in conflicts:
+                checks.append(
+                    (
+                        "Config precedence",
+                        "WARN",
+                        f"{conflict['env_name']}={conflict['env_value']} overrides "
+                        f"{conflict['key']}={conflict['file_value']} in "
+                        f"{conflict['config_path']}; unset the env var (or set it "
+                        f"to the file value) for config.json to take effect",
+                    )
+                )
+            ok = False
+        else:
+            checks.append(("Config precedence", "PASS", "no env/config conflicts"))
+    except Exception as e:  # noqa: BLE001 - a failed check is reported as FAIL, never fatal
+        checks.append(("Config precedence", "FAIL", str(e)))
         ok = False
 
     # 5. API module import
@@ -564,6 +592,33 @@ def cmd_doctor(args: argparse.Namespace) -> int:
             checks.append(("Pip debris", "PASS", ""))
     except Exception as e:  # noqa: BLE001 - a failed check is reported as FAIL, never fatal
         checks.append(("Pip debris", "FAIL", str(e)))
+        ok = False
+
+    # 18. Auto-update state (issue #522). The supervisor skips an update it
+    # cannot apply safely (another branch, local edits, diverged history) and
+    # says so only in its own log — so the server runs an increasingly stale
+    # commit while doctor, /api/health and the dashboard all report healthy.
+    # The supervisor now records each cycle; report a skip or a stalled timer
+    # here, with the command that resumes updates.
+    try:
+        from server.core import update_state as update_state_mod
+
+        auto = update_state_mod.summarize(update_state_mod.read_update_state())
+        if not auto["present"]:
+            checks.append(("Auto-update", "PASS", "no supervisor state (auto-update not running)"))
+        elif auto["needs_attention"]:
+            detail = f"{auto['status']}: {auto['reason']}" if auto["reason"] else str(auto["status"])
+            if auto["action"]:
+                detail += f" - {auto['action']}"
+            checks.append(("Auto-update", "WARN", detail))
+            ok = False
+        else:
+            detail = str(auto["status"])
+            if auto["behind"]:
+                detail += f", {auto['behind']} commit(s) behind"
+            checks.append(("Auto-update", "PASS", detail))
+    except Exception as e:  # noqa: BLE001 - a failed check is reported as FAIL, never fatal
+        checks.append(("Auto-update", "FAIL", str(e)))
         ok = False
 
     recommendation = (

@@ -11,14 +11,14 @@ The resolver is side-effect free. It never writes config files, never loads a
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import json
 import os
 import sys
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
-from server.core.env import get_env
+from server.core.env import get_env, resolve_env
 
 CONFIG_DIR = ".stackmemory"
 CONFIG_FILE = "config.json"
@@ -56,6 +56,28 @@ class RuntimeConfig:
     api_port: int
     mcp_transport: str
     config_path: str | None
+    # Where each resolved value came from, keyed by config key. A token is one
+    # of ``"argument"``, ``"environment:<VAR>"``, ``"config:<path>"`` or
+    # ``"default"``. Reported so a surface can name the *source* of a setting
+    # instead of only its value: an operator who edits config.json back and
+    # sees no change needs to learn that a process env var is winning (#523).
+    sources: dict[str, str] = field(default_factory=dict)
+
+    def source_of(self, key: str) -> str:
+        """The provenance token for ``key`` (``"default"`` when unrecorded)."""
+        return self.sources.get(key, "default")
+
+
+def value_source(config: RuntimeConfig, key: str) -> str:
+    """A human-readable source for one resolved setting (issue #523)."""
+    token = config.source_of(key)
+    if token.startswith("environment:"):
+        return f"environment variable {token.partition(':')[2]}"
+    if token.startswith("config:"):
+        return f"config file {token.partition(':')[2]}"
+    if token == "argument":
+        return "explicit argument"
+    return "default"
 
 
 def _config_path(*, cwd: str | os.PathLike[str] | None, environ: Mapping[str, str]) -> Path:
@@ -124,18 +146,27 @@ def resolve_runtime_config(
     root = Path(cwd or os.getcwd()).resolve(strict=False)
     file_cfg, path = load_config_file(cwd=root, environ=env)
 
+    # Track where each value came from as the layers are applied, so a surface
+    # can explain a surprising effective value instead of only reporting it
+    # (#523). Every layer below overwrites the token along with the value.
+    config_token = f"config:{path.resolve(strict=False)}" if path is not None else "config"
+    sources: dict[str, str] = {key: "default" for key in DEFAULTS}
+
     merged: dict[str, Any] = dict(DEFAULTS)
     for key in DEFAULTS:
         if key in file_cfg and file_cfg[key] is not None:
             merged[key] = file_cfg[key]
+            sources[key] = config_token
     for env_name, key in _ENV_TO_KEY.items():
-        value = get_env(env_name, None, environ=env)
+        value, matched = resolve_env(env_name, None, environ=env)
         if value is not None and str(value).strip() != "":
             merged[key] = value
+            sources[key] = f"environment:{matched or env_name}"
     if explicit:
         for key, value in explicit.items():
             if key in DEFAULTS and value is not None:
                 merged[key] = value
+                sources[key] = "argument"
 
     database_path = _resolve_database_path(merged["database_path"], cwd=root)
     embedder_mode = str(merged["embedder_mode"] or "").strip().lower()
@@ -160,7 +191,57 @@ def resolve_runtime_config(
         api_port=api_port,
         mcp_transport=mcp_transport,
         config_path=str(path.resolve(strict=False)) if path is not None else None,
+        sources=sources,
     )
+
+
+def env_over_config_conflicts(
+    *,
+    cwd: str | os.PathLike[str] | None = None,
+    environ: Mapping[str, str] | None = None,
+) -> list[dict[str, str]]:
+    """Settings where a process env var silently overrode a *different* file value.
+
+    This is the footgun in #523: ``EMBEDDER_MODE=hash`` in the process
+    environment beats ``"embedder_mode": "auto"`` in ``config.json``, so an
+    operator who edits the file back sees no change and no explanation. The
+    resolver already knows both layers, so report the disagreement rather than
+    let a surface guess it from the effective value alone.
+
+    Only a *differing* value counts: an env var that restates the file is
+    redundant, not a conflict. Returns one entry per conflicting key with
+    ``key``, ``env_name``, ``env_value``, ``file_value`` and ``config_path``.
+    """
+    env = os.environ if environ is None else environ
+    root = Path(cwd or os.getcwd()).resolve(strict=False)
+    try:
+        file_cfg, path = load_config_file(cwd=root, environ=env)
+    except RuntimeConfigError:
+        # A malformed config is reported by the caller that reads it; a
+        # provenance check must not become a second failure path.
+        return []
+    if path is None:
+        return []
+
+    conflicts: list[dict[str, str]] = []
+    for env_name, key in _ENV_TO_KEY.items():
+        if key not in file_cfg or file_cfg[key] is None:
+            continue
+        value, matched = resolve_env(env_name, None, environ=env)
+        if value is None or str(value).strip() == "":
+            continue
+        if str(value).strip().lower() == str(file_cfg[key]).strip().lower():
+            continue
+        conflicts.append(
+            {
+                "key": key,
+                "env_name": matched or env_name,
+                "env_value": str(value).strip(),
+                "file_value": str(file_cfg[key]).strip(),
+                "config_path": str(path.resolve(strict=False)),
+            }
+        )
+    return conflicts
 
 
 def runtime_env(config: RuntimeConfig) -> dict[str, str]:

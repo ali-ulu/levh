@@ -349,6 +349,39 @@ def test_auto_update_off_never_calls_the_updater(cfg, make):
     assert calls == []
 
 
+def test_skipped_update_is_recorded_for_other_surfaces(cfg, make):
+    """Issue #522: a skip that only reached the log was invisible everywhere.
+
+    The supervisor now records each cycle beside its log, and the record names
+    the alternative so `levh doctor`, `/api/health` and `/api/readyz` can show
+    a user why the checkout is not moving.
+    """
+    skipped = {"status": "skipped", "reason": "checkout is on 'fix/x', auto-update only follows 'main'",
+               **HEADS}
+    run, _ = _update_runner("behind", skipped)
+    config = replace(cfg, update_interval_s=1e-9)
+    supervisor = make(config, command=SLEEPER, run_update=run)
+    supervisor.update_cycle(None)
+
+    state = json.loads((cfg.log_dir / "update-state.json").read_text(encoding="utf-8"))
+    assert state["status"] == "skipped"
+    assert state["needs_attention"] is True
+    assert state["current_branch"] == "fix/x"
+    assert "levh update --branch fix/x" in state["action"]
+
+
+def test_up_to_date_cycle_is_recorded_without_attention(cfg, make):
+    run, _ = _update_runner("up_to_date")
+    config = replace(cfg, update_interval_s=1e-9)
+    supervisor = make(config, command=SLEEPER, run_update=run)
+    supervisor.update_cycle(None)
+
+    state = json.loads((cfg.log_dir / "update-state.json").read_text(encoding="utf-8"))
+    assert state["status"] == "up_to_date"
+    assert state["needs_attention"] is False
+    assert state["action"] == ""
+
+
 def test_log_rotation_keeps_one_previous_file(cfg, monkeypatch):
     monkeypatch.setattr(sup, "LOG_MAX_BYTES", 10)
     supervisor = Supervisor(cfg)

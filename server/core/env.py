@@ -40,6 +40,30 @@ def accepted_env_var_names(name: str) -> tuple[str, ...]:
     return ("LEVH_" + name, name, "STACKMEMORY_" + name)
 
 
+def resolve_env(
+    name: str,
+    default: Any = None,
+    *,
+    environ: Mapping[str, str] | None = None,
+) -> tuple[Any, str | None]:
+    """Like :func:`get_env`, but also reports *which* spelling supplied the value.
+
+    A caller that has to explain where a setting came from (``/api/config``,
+    ``levh doctor``) cannot learn the spelling from the value alone: ``get_env``
+    accepts a canonical ``LEVH_*`` name, the bare name and the legacy
+    ``STACKMEMORY_*`` name, and only one of them was actually set. Returns
+    ``(value, matched_name)`` with ``matched_name`` ``None`` when none matched.
+    """
+    env = os.environ if environ is None else environ
+    candidates = accepted_env_var_names(name)
+    for candidate in candidates:
+        if candidate in env and str(env[candidate]).strip() != "":
+            if candidate.startswith("STACKMEMORY_"):
+                _warn_legacy(candidate, candidates[0])
+            return env[candidate], candidate
+    return default, None
+
+
 def get_env(
     name: str,
     default: Any = None,
@@ -52,14 +76,8 @@ def get_env(
     remain supported for existing installations and emit one warning per
     process when used.
     """
-    env = os.environ if environ is None else environ
-    candidates = accepted_env_var_names(name)
-    for candidate in candidates:
-        if candidate in env and str(env[candidate]).strip() != "":
-            if candidate.startswith("STACKMEMORY_"):
-                _warn_legacy(candidate, candidates[0])
-            return env[candidate]
-    return default
+    value, _ = resolve_env(name, default, environ=environ)
+    return value
 
 
 def _warn_legacy(candidate: str, name: str) -> None:

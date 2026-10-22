@@ -6,6 +6,21 @@
 
 - TBD
 
+### fix: surface a stalled auto-update instead of only logging it (#522)
+
+- The supervisor skipped an update it could not apply safely (a checkout on another branch, local edits, a diverged history) and recorded that only in its own log, so the server ran an increasingly stale commit while `/api/health`, `levh doctor` and the dashboard all reported healthy. Each cycle is now written to `update-state.json` in the supervisor log directory and read back by every surface.
+- `/api/health` and `/api/readyz` carry an `auto_update` block (`present`, `status`, `behind`, `reason`, `action`, `needs_attention`, `stale`, `checked_at`). A skip adds a `not_ready` reason to `/api/readyz` — the server still serves reads and writes, so it is a reason, not a 503.
+- `levh doctor` reports the state (PASS / WARN) with the command that resumes updates, and treats a never-run supervisor as normal rather than a fault.
+- `levh update` no longer refuses every off-branch checkout: when the current branch has no work of its own (its tip is an ancestor of upstream, and it does not track its own remote), the fast-forward runs and moves the branch pointer with HEAD. A detached HEAD or a branch tracking its own upstream still refuses, with the branch named in the reason.
+- The dashboard Settings page gained an Auto-update section that names the skip and the command that fixes it.
+
+### fix: report the source of the effective embedder mode and env-over-config conflicts (#523)
+
+- A process environment variable silently outranks `.stackmemory/config.json`, so an operator who edited the file back to `auto` after the #78 workaround saw no change and no explanation — `EMBEDDER_MODE=hash` was winning. `GET /api/config` now carries `embedder_mode_source` (the env var, config path, default or explicit argument that supplied the mode) and `env_overrides` (every setting where an env var overrode a *different* file value).
+- `levh doctor` names the layer that supplied the embedder mode and warns (WARN, exit 1) when an env var disagrees with a conflicting config value, with the fix in the line.
+- The Settings page shows the source under the embedder value and a warning banner listing each env-over-config override.
+- The precedence itself is unchanged; this only makes the winning layer visible.
+
 ### feat: DeepSeek Harness plugin for guard checks, memory ask, and team decisions (#515)
 
 - Added `integrations/dsh-plugin/levh-reasoner/`, a dependency-free DeepSeek Harness (DSH) plugin that registers four agent tools over the existing REST API: `levh_guard_check` (advisory guard check before a risky action), `levh_ask_memory` (cited answers from the store), `levh_decide` (deterministic weighted-criteria scoring recorded to `team/decisions`, with later conflicting decisions surfaced as contested), and `levh_decision_conflicts` (open-conflict scan). No `server/` changes.

@@ -475,6 +475,135 @@ def test_doctor_fails_on_tokenless_override_with_non_loopback_bind(tmp_path, mon
     assert "FAIL" not in capsys.readouterr().out
 
 
+def test_doctor_warns_when_auto_update_is_stuck_on_another_branch(tmp_path, monkeypatch, capsys):
+    """Issue #522: the skip that used to live only in the supervisor's log.
+
+    A checkout on a feature branch skipped every cycle for days while doctor,
+    ``/api/health`` and the dashboard all reported healthy. Doctor now names the
+    skip and the command that resumes updates.
+    """
+    from server.cli import cmd_doctor
+    from server.commands.doctor import NO_LIVE_PROBE_ENV
+    from server.core import update_state
+
+    monkeypatch.setenv("SQLITE_DB_PATH", str(tmp_path / "doctor-update.db"))
+    monkeypatch.setenv("EMBEDDER_MODE", "hash")
+    monkeypatch.setenv(NO_LIVE_PROBE_ENV, "1")
+    log_dir = tmp_path / "suplogs"
+    monkeypatch.setenv("LEVH_SUPERVISOR_LOG_DIR", str(log_dir))
+    log_dir.mkdir()
+    update_state.write_update_state(
+        {"status": "skipped", "reason": "checkout is on 'fix/x', auto-update only follows 'main'"},
+        path=log_dir / "update-state.json",
+        interval_hours=6.0,
+    )
+
+    assert cmd_doctor(argparse.Namespace()) == 1
+    output = capsys.readouterr().out
+    assert "Auto-update" in output
+    assert "WARN" in output
+    assert "fix/x" in output
+    assert "levh update --branch fix/x" in output
+
+
+def test_doctor_passes_auto_update_when_nothing_is_stuck(tmp_path, monkeypatch, capsys):
+    from server.cli import cmd_doctor
+    from server.commands.doctor import NO_LIVE_PROBE_ENV
+    from server.core import update_state
+
+    monkeypatch.setenv("SQLITE_DB_PATH", str(tmp_path / "doctor-update-ok.db"))
+    monkeypatch.setenv("EMBEDDER_MODE", "hash")
+    monkeypatch.setenv(NO_LIVE_PROBE_ENV, "1")
+    log_dir = tmp_path / "suplogs-ok"
+    monkeypatch.setenv("LEVH_SUPERVISOR_LOG_DIR", str(log_dir))
+    log_dir.mkdir()
+    update_state.write_update_state(
+        {"status": "up_to_date"}, path=log_dir / "update-state.json", interval_hours=6.0
+    )
+
+    assert cmd_doctor(argparse.Namespace()) == 0
+    output = capsys.readouterr().out
+    assert "Auto-update" in output
+    assert "Verdict: OK" in output
+
+
+def test_doctor_does_not_warn_when_no_supervisor_ever_ran(tmp_path, monkeypatch, capsys):
+    """A wheel install has no supervisor state; that is normal, not a problem."""
+    from server.cli import cmd_doctor
+    from server.commands.doctor import NO_LIVE_PROBE_ENV
+
+    monkeypatch.setenv("SQLITE_DB_PATH", str(tmp_path / "doctor-no-sup.db"))
+    monkeypatch.setenv("EMBEDDER_MODE", "hash")
+    monkeypatch.setenv(NO_LIVE_PROBE_ENV, "1")
+    monkeypatch.setenv("LEVH_SUPERVISOR_LOG_DIR", str(tmp_path / "empty-logs"))
+
+    assert cmd_doctor(argparse.Namespace()) == 0
+    assert "Verdict: OK" in capsys.readouterr().out
+
+
+def test_doctor_warns_when_env_overrides_a_conflicting_config_value(tmp_path, monkeypatch, capsys):
+    """Issue #523: the precedence footgun that hid for a multi-hour forensic pass.
+
+    ``config.json`` says ``embedder_mode: auto`` while a process env var says
+    ``hash``. Doctor must name the disagreement, not just the effective value.
+    """
+    from server.cli import cmd_doctor
+    from server.commands.doctor import NO_LIVE_PROBE_ENV
+
+    monkeypatch.setenv("SQLITE_DB_PATH", str(tmp_path / "doctor-precedence.db"))
+    monkeypatch.setenv(NO_LIVE_PROBE_ENV, "1")
+    monkeypatch.setenv("LEVH_SUPERVISOR_LOG_DIR", str(tmp_path / "prec-logs"))
+    monkeypatch.chdir(tmp_path)
+    cfg_dir = tmp_path / ".stackmemory"
+    cfg_dir.mkdir()
+    (cfg_dir / "config.json").write_text('{"embedder_mode": "auto"}', encoding="utf-8")
+    monkeypatch.setenv("EMBEDDER_MODE", "hash")
+
+    assert cmd_doctor(argparse.Namespace()) == 1
+    output = capsys.readouterr().out
+    assert "Config precedence" in output
+    assert "WARN" in output
+    assert "EMBEDDER_MODE=hash" in output
+    assert "embedder_mode=auto" in output
+    # The embedder line names the layer that actually supplied the mode.
+    assert "requested=hash (from environment variable EMBEDDER_MODE)" in output
+
+
+def test_doctor_reports_no_precedence_conflict_when_layers_agree(tmp_path, monkeypatch, capsys):
+    from server.cli import cmd_doctor
+    from server.commands.doctor import NO_LIVE_PROBE_ENV
+
+    monkeypatch.setenv("SQLITE_DB_PATH", str(tmp_path / "doctor-precedence-ok.db"))
+    monkeypatch.setenv(NO_LIVE_PROBE_ENV, "1")
+    monkeypatch.setenv("LEVH_SUPERVISOR_LOG_DIR", str(tmp_path / "prec-ok-logs"))
+    monkeypatch.chdir(tmp_path)
+    cfg_dir = tmp_path / ".stackmemory"
+    cfg_dir.mkdir()
+    (cfg_dir / "config.json").write_text('{"embedder_mode": "hash"}', encoding="utf-8")
+    monkeypatch.setenv("EMBEDDER_MODE", "hash")
+
+    assert cmd_doctor(argparse.Namespace()) == 0
+    output = capsys.readouterr().out
+    assert "Config precedence" in output
+    assert "no env/config conflicts" in output
+
+
+def test_doctor_reports_default_embedder_source_without_env_or_config(tmp_path, monkeypatch, capsys):
+    from server.cli import cmd_doctor
+    from server.commands.doctor import NO_LIVE_PROBE_ENV
+
+    monkeypatch.setenv("SQLITE_DB_PATH", str(tmp_path / "doctor-default-source.db"))
+    monkeypatch.setenv(NO_LIVE_PROBE_ENV, "1")
+    monkeypatch.setenv("LEVH_SUPERVISOR_LOG_DIR", str(tmp_path / "def-logs"))
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("EMBEDDER_MODE", raising=False)
+    monkeypatch.delenv("LEVH_EMBEDDER_MODE", raising=False)
+    monkeypatch.delenv("STACKMEMORY_EMBEDDER_MODE", raising=False)
+
+    assert cmd_doctor(argparse.Namespace()) == 0
+    assert "requested=auto (from default)" in capsys.readouterr().out
+
+
 def test_api_module_builds_no_second_rate_limiter():
     """server.api used to keep its own limiter/settings block, a leftover from
     before they moved to server.routes.deps. Nothing read it, and a stray use

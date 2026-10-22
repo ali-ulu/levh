@@ -176,6 +176,17 @@ export type AttachmentVerifyResponse = {
   verified_at?: string | null;
 };
 
+export type AutoUpdateStatus = {
+  present: boolean;
+  status: string;
+  behind?: number;
+  reason?: string;
+  action?: string;
+  needs_attention?: boolean;
+  stale?: boolean;
+  checked_at?: string | null;
+};
+
 export type BackupRequest = {
   passphrase?: string;
 };
@@ -660,6 +671,7 @@ export type HealthResponse = {
   auth_required: boolean;
   unauthenticated_remote_access: boolean;
   api_host: string;
+  auto_update: AutoUpdateStatus;
 };
 
 export type HeldAdmitResponse = {
@@ -981,6 +993,7 @@ export type ReadyzResponse = {
   embedder_mode: string;
   embedder_ready: boolean;
   derived_state_current: boolean;
+  auto_update: AutoUpdateStatus;
   reasons?: string[];
 };
 
@@ -1104,6 +1117,8 @@ export type ServerConfigResponse = {
   embedder_mode: string;
   requested_embedder_mode: string;
   embedder_fallback_reason?: string | null;
+  embedder_mode_source?: string;
+  env_overrides?: Record<string, unknown>[];
   embedder_dimension?: number | null;
   short_term_max: number;
   weights: Record<string, unknown>;

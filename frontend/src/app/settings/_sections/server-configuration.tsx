@@ -33,6 +33,9 @@ export function ServerConfiguration({ config }: ServerConfigurationProps) {
                     <Badge variant="outline" className="text-[11px]">{config.embedder_dimension}-d</Badge>
                   )}
                 </div>
+                <div className="text-[11px] text-muted-foreground mt-0.5">
+                  {t("settings.serverConfiguration.embedderSource", { source: config.embedder_mode_source })}
+                </div>
               </div>
               <div>
                 <div className="text-xs text-muted-foreground">{t("settings.serverConfiguration.database")}</div>
@@ -70,6 +73,24 @@ export function ServerConfiguration({ config }: ServerConfigurationProps) {
                 <div className="text-xs text-muted-foreground">{t("settings.serverConfiguration.version")}</div>
                 <div>{config.version}</div>
               </div>
+            </div>
+          )}
+          {config && config.env_overrides.length > 0 && (
+            <div className="mt-3 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-xs">
+              <div className="font-medium text-amber-700 dark:text-amber-400">
+                {t("settings.serverConfiguration.envOverrideTitle")}
+              </div>
+              <p className="text-muted-foreground mt-1">
+                {t("settings.serverConfiguration.envOverrideHelp")}
+              </p>
+              <ul className="mt-2 space-y-1 font-mono">
+                {config.env_overrides.map((o) => (
+                  <li key={o.key}>
+                    {o.env_name}={o.env_value} {t("settings.serverConfiguration.envOverrideOver")}{" "}
+                    {o.key}={o.file_value}
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
           <p className="text-xs text-muted-foreground mt-3">
