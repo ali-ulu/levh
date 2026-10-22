@@ -13,6 +13,8 @@ Modes:
 from __future__ import annotations
 
 import asyncio
+import importlib.util
+import logging
 import os
 
 import httpx
@@ -21,8 +23,72 @@ import numpy as np
 from server.core import metrics
 from server.core.env import get_env
 
+logger = logging.getLogger("levh.embedder")
+
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "nomic-embed-text")
+
+LOCAL_UNAVAILABLE_REASON = (
+    "Local embedder unavailable; install with: "
+    'pip install "levh[local]"'
+)
+
+#: Reasons this process has already warned about from the model-free probe.
+#:
+#: Readiness polls every 30 seconds (Docker ``HEALTHCHECK``) and the probe
+#: sees the same would-be fallback on every one of them. The issue asked for
+#: *one* warning line in ``serve.err.log``, not a second log flood — so the
+#: report is emitted once per distinct reason per process (issue #519).
+_PROBE_WARNED: set[str] = set()
+
+
+def local_embedder_available() -> bool:
+    """Cheap availability check — does not import torch or load a model."""
+    try:
+        return importlib.util.find_spec("sentence_transformers") is not None
+    except (ImportError, ValueError):
+        return False
+
+
+def probe_embedder_status(mode: str) -> dict:
+    """Resolve an embedder mode to its effective status without loading a model.
+
+    ``Embedder.__init__`` answers the same question, but only after paying
+    for it — and the engine creates the embedder lazily, on the first store
+    or recall. A health probe that ran before that point used to report the
+    *requested* mode (``auto``) as if it were the effective one, so a server
+    whose first embed would silently land on hash answered ``ready`` right
+    up until the degradation actually happened (#519). This check is cheap
+    enough to run on every probe: it inspects availability, never imports
+    torch and never loads a model.
+
+    It cannot see runtime failures (an Ollama endpoint that is down, a
+    model download that fails); those are recorded on the instance by the
+    real initialization path and reported the same way.
+    """
+    requested = (mode or "auto").strip().lower() or "auto"
+    effective = "local" if requested == "auto" else requested
+    reason: str | None = None
+    if effective == "local" and not local_embedder_available():
+        effective = "hash"
+        reason = LOCAL_UNAVAILABLE_REASON
+    # A fallback is a *semantic* request that resolved to hash. Asking for
+    # hash explicitly is a choice and never reported as degraded.
+    fallback = effective == "hash" and requested != "hash"
+    reason = reason if fallback else None
+    if reason and reason not in _PROBE_WARNED:
+        _PROBE_WARNED.add(reason)
+        logger.warning(
+            "Embedder requested=%s would resolve to non-semantic hash: %s",
+            requested,
+            reason,
+        )
+    return {
+        "requested_mode": requested,
+        "effective_mode": effective,
+        "fallback": fallback,
+        "fallback_reason": reason,
+    }
 
 
 class Embedder:
@@ -46,6 +112,19 @@ class Embedder:
 
         if mode == "local":
             self._init_local()
+
+    @property
+    def fallback(self) -> bool:
+        """Whether a semantic request silently resolved to non-semantic hash.
+
+        An explicit ``hash`` request is a choice, not a fallback, and reports
+        ``False``: the operator asked for exactly what is running.
+        """
+        return (
+            bool(self.fallback_reason)
+            and self.mode == "hash"
+            and self.requested_mode != "hash"
+        )
 
     def _client(self) -> httpx.AsyncClient:
         """Reuse one AsyncClient across calls so every embed doesn't pay for a
@@ -74,10 +153,7 @@ class Embedder:
             test = self._model.encode("test")
             self.dimension = len(test)
         except Exception as exc:  # noqa: BLE001 - no model is a supported mode; record why and degrade
-            self.fallback_reason = (
-                "Local embedder unavailable; install with: "
-                'pip install "levh[local]"'
-            )
+            self.fallback_reason = LOCAL_UNAVAILABLE_REASON
             if get_env("LEVH_EMBEDDER_DEBUG", "").strip():
                 self.fallback_reason += f" ({exc.__class__.__name__}: {exc})"
             self.mode = "hash"
@@ -184,9 +260,22 @@ class Embedder:
         except (httpx.HTTPError, KeyError):
             # Ollama not running or model missing — degrade to hash so the
             # memory system keeps working instead of erroring every store.
+            # The reason is recorded and logged exactly like the local
+            # degrade: a fallback nobody can see is a fallback nobody can
+            # fix (#519), and a health probe must not report ready while
+            # ranking has quietly become non-semantic.
+            self.fallback_reason = (
+                "Ollama embedder unavailable; falling back to hash"
+            )
             self.mode = "hash"
             self.dimension = 384
             metrics.inc("levh_embedder_fallback_total")
+            logger.warning(
+                "Ollama embedder unreachable at %s; degrading to hash "
+                "embeddings: %s",
+                OLLAMA_URL,
+                self.fallback_reason,
+            )
             return self.hash_embed(text, self.dimension)
 
     # ── Local ────────────────────────────────────────────────────

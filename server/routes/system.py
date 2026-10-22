@@ -7,6 +7,7 @@ from fastapi import Depends, APIRouter, HTTPException
 from fastapi.responses import JSONResponse, PlainTextResponse
 
 from server.core import llm_policy, metrics
+from server.core.embedder import probe_embedder_status
 from server.auth import unauthenticated_remote_access_enabled
 from server.core.runtime_config import configured_bind_host
 from server.core.types import MemoryStats
@@ -26,7 +27,17 @@ async def get_stats(engine=Depends(get_engine)):
 @router.get("/api/config", response_model=ServerConfigResponse)
 async def get_config(engine=Depends(get_engine)):
     """Current server configuration (for the Settings page)."""
-    embedder_mode = engine._embedder.mode if engine._embedder else engine._embedder_mode
+    # The engine creates its embedder lazily, so before the first store or
+    # recall there is no instance to ask. Probe the resolution cheaply
+    # instead of reporting the *requested* mode as if it were effective —
+    # a page showing "auto" while the first embed will actually land on
+    # hash is the same silence #519 is about.
+    probed = probe_embedder_status(engine._embedder_mode)
+    embedder = engine._embedder
+    embedder_mode = embedder.mode if embedder else probed["effective_mode"]
+    embedder_fallback_reason = (
+        embedder.fallback_reason if embedder else probed["fallback_reason"]
+    )
     recall_log_enabled, recall_log_days = engine._recall_log_config()
     return {
         "db_path": engine.db.db_path,
@@ -34,8 +45,8 @@ async def get_config(engine=Depends(get_engine)):
         # The mode actually asked for (config/env) vs what's running, plus why
         # they differ when they do -- silently degrading to non-semantic hash
         # scoring gave no visible signal before this (#78).
-        "requested_embedder_mode": engine._embedder.requested_mode if engine._embedder else engine._embedder_mode,
-        "embedder_fallback_reason": engine._embedder.fallback_reason if engine._embedder else None,
+        "requested_embedder_mode": embedder.requested_mode if embedder else probed["requested_mode"],
+        "embedder_fallback_reason": embedder_fallback_reason,
         "embedder_dimension": engine._embedder.dimension if engine._embedder else None,
         "short_term_max": engine.short_term.max_size,
         "weights": {
@@ -139,7 +150,15 @@ async def ready(engine=Depends(get_engine)):
         reasons.append("database ping failed")
 
     embedder = engine._embedder
-    embedder_mode = embedder.mode if embedder else engine._embedder_mode
+    # The embedder is created lazily on first use, so a probe that arrives
+    # before any store/recall has nothing to inspect. Reporting the
+    # requested mode as the effective one there made a server whose first
+    # embed would silently land on hash answer ``ready`` — exactly the
+    # false readiness #519 describes. Resolve the same question without
+    # loading a model: if the resolution *would* fall back, readiness says
+    # so now, not after the degradation has already changed ranking.
+    probed = probe_embedder_status(engine._embedder_mode)
+    embedder_mode = embedder.mode if embedder else probed["effective_mode"]
     # A *requested* semantic embedder that fell back to hash is degraded, not
     # ready: recall quality changed silently (#78), and a load balancer should
     # not keep sending traffic to it as if nothing happened.
@@ -147,6 +166,9 @@ async def ready(engine=Depends(get_engine)):
     if embedder is not None and embedder.fallback_reason:
         embedder_ready = False
         reasons.append(f"embedder: {embedder.fallback_reason}")
+    elif embedder is None and probed["fallback_reason"]:
+        embedder_ready = False
+        reasons.append(f"embedder: {probed['fallback_reason']}")
 
     derived = None
     derived_stale = False

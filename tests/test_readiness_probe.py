@@ -16,9 +16,20 @@ import logging
 import pytest
 from fastapi.testclient import TestClient
 
+from server.core.env import accepted_env_var_names
+
 
 @pytest.fixture()
 def client(monkeypatch, tmp_path):
+    # The canonical spelling is not the only one ``get_env`` reads:
+    # a machine-level ``LEVH_EMBEDDER_MODE`` (or ``STACKMEMORY_`` legacy)
+    # outranks ``EMBEDDER_MODE`` and would silently defeat the setenv
+    # below — reddening these tests locally while CI, which exports only
+    # the plain spelling, stays green. Scrub every accepted spelling
+    # first, then pin the one this suite means (issue #519 made readyz
+    # sensitive to the resolved mode, so the pin must actually stick).
+    for spelling in accepted_env_var_names("EMBEDDER_MODE"):
+        monkeypatch.delenv(spelling, raising=False)
     monkeypatch.setenv("EMBEDDER_MODE", "hash")
     monkeypatch.setenv("SQLITE_DB_PATH", str(tmp_path / "levh.db"))
     monkeypatch.delenv("LEVH_TOKEN", raising=False)
@@ -54,6 +65,8 @@ def test_ready_is_served_under_the_versioned_contract_too(client):
 
 def test_ready_is_exempt_from_the_token_gate(monkeypatch, tmp_path):
     """A container healthcheck carries no token; it must still get an answer."""
+    for spelling in accepted_env_var_names("EMBEDDER_MODE"):
+        monkeypatch.delenv(spelling, raising=False)
     monkeypatch.setenv("EMBEDDER_MODE", "hash")
     monkeypatch.setenv("SQLITE_DB_PATH", str(tmp_path / "levh.db"))
     monkeypatch.setenv("LEVH_TOKEN", "s3cret-token")
@@ -136,6 +149,100 @@ def test_not_ready_when_embedder_fell_back():
     body = json.loads(response.body)
     assert body["embedder_ready"] is False
     assert any("embedder" in reason for reason in body["reasons"])
+
+
+class _LazyEngine:
+    """An engine whose embedder has not been created yet.
+
+    The engine creates it on first store/recall, so every probe that
+    arrives before that point sees ``_embedder = None`` (issue #519).
+    """
+
+    def __init__(self, *, mode: str):
+        self.db = _FakeDb(broken=False)
+        self._embedder = None
+        self._embedder_mode = mode
+
+
+def test_readyz_reports_pending_hash_fallback_before_first_use(monkeypatch):
+    """A probe before first embed must not bless a would-be hash fallback.
+
+    ``auto`` resolving to hash is a degraded server; readiness used to
+    answer ``ready`` for it until the first store/recall actually paid
+    for the fallback — the exact false readiness of issue #519.
+    """
+    from server.core import embedder as embedder_module
+    from server.routes.system import ready
+
+    monkeypatch.setattr(embedder_module, "local_embedder_available", lambda: False)
+
+    response = asyncio.run(ready(engine=_LazyEngine(mode="auto")))
+
+    assert response.status_code == 503
+    body = json.loads(response.body)
+    assert body["embedder_mode"] == "hash"
+    assert body["embedder_ready"] is False
+    assert any("embedder" in reason for reason in body["reasons"])
+
+
+def test_readyz_explicit_hash_before_first_use_stays_ready(monkeypatch):
+    """Asking for hash is a choice: a hash server is not a degraded server."""
+    from server.core import embedder as embedder_module
+    from server.routes.system import ready
+
+    monkeypatch.setattr(embedder_module, "local_embedder_available", lambda: False)
+
+    response = asyncio.run(ready(engine=_LazyEngine(mode="hash")))
+
+    # A ready probe returns the payload dict directly; only a degraded one
+    # is wrapped in a 503 JSONResponse.
+    assert response["status"] == "ready", response
+    assert response["embedder_ready"] is True
+    assert response["reasons"] == []
+
+
+def test_config_reports_would_be_fallback_before_first_use(monkeypatch):
+    """The Settings page must show the truth before anything embeds, too."""
+    from server.core import embedder as embedder_module
+
+    monkeypatch.setattr(embedder_module, "local_embedder_available", lambda: False)
+
+    async def _empty_stats():
+        return {}
+
+    class _Continuity:
+        async def continuity_stats(self):
+            return {}
+
+    class _ConfigEngine(_LazyEngine):
+        def __init__(self, mode: str):
+            super().__init__(mode=mode)
+            self.db.db_path = ":memory:"
+            self.db.recall_log_stats = _empty_stats
+            self.db.continuity_log = _Continuity()
+            self.short_term = type("S", (), {"max_size": 50})()
+            self.scorer = type(
+                "C",
+                (),
+                {
+                    "w": type("W", (), {"alpha": 1, "beta": 1, "gamma": 1, "delta": 1})(),
+                    "half_life_hours": 168.0,
+                    "reinforcement_gain": 1.5,
+                    "max_stability_hours": 168,
+                },
+            )()
+            self.auto_summarize = True
+
+        def _recall_log_config(self):
+            return False, 7
+
+    from server.routes.system import get_config
+
+    body = asyncio.run(get_config(engine=_ConfigEngine(mode="auto")))
+
+    assert body["requested_embedder_mode"] == "auto"
+    assert body["embedder_mode"] == "hash"
+    assert body["embedder_fallback_reason"]
 
 
 def test_request_id_is_generated_and_echoed(client):
