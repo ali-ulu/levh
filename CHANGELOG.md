@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### chore: bump opentelemetry-api for CVE-2026-114603
+
+- `fastmcp` (a runtime dependency) pulls `opentelemetry-api`, pinned at 1.44.0, which the `pip-audit` CI gate now flags for CVE-2026-114603 (fixed in 1.45.1). The lock is regenerated so the audit job — which reads the committed lockfile, not the installed environment — stays green. No code depends on the package directly.
+
 ### fix: load the local embedder off the request path (#525)
 
 - Constructing a `local`/`auto` embedder imported torch and built `all-MiniLM-L6-v2` inline — ~145 s of import plus ~9 s of model build, measured on the reporting machine. That ran on the *request path* (the `engine.embedder` property, reached by the first store/recall after a restart), so it blocked the event loop for roughly 2.5 minutes: HTTP requests hung, `levh doctor`'s 2 s probe timed out, the supervisor's `/api/health` probe missed, and an operator reasonably concluded the server was dead and restarted it — paying the same cost again. The second layer of #78, now with numbers.
