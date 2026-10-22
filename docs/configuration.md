@@ -61,7 +61,7 @@ that reads like a broken change.
 | `LEVH_CONFIG_PATH` | `<cwd>/.stackmemory/config.json` | Redirect where the JSON config file is read from |
 | `LEVH_SYNONYMS_PATH` | packaged vocabulary | JSON file of equivalent terms used to expand recall queries (see below). Unset means `server/data/synonyms.json`, shipped with the package; set it to use a store's own vocabulary |
 | `LEVH_PUBLIC_DEMO` | `false` | When `true`, mutating API calls are refused so the process can serve a read-only public instance |
-| `LEVH_MCP_PROFILE` | `full` | MCP tool surface: `minimal`, `work`, `admin` or `full`. Written into generated client configs by `levh mcp config --profile <name>` |
+| `LEVH_MCP_PROFILE` | `work` | MCP tool surface: `read_only`, `minimal`, `work`, `admin` or `full`. `read_only` is server-enforced (no write tool runs); the others only narrow discovery. Written into generated client configs by `levh mcp config --profile <name>` |
 | `LEVH_AGENT` | — | Agent identity recorded with presence/heartbeat rows. Falls back to `AGENT_NAME`, `CLAUDE_AGENT`, `CURSOR_AGENT`, then `auto-connect` |
 | `LEVH_AUTO_HEARTBEAT` | `1` | Auto-heartbeat while an MCP stdio session is open. `0`/`false`/`no` disables it |
 | `LEVH_AUTO_CONNECT` | `1` | MCP stdio startup: detect the agent/project and open a session. `0` disables it |

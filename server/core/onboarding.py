@@ -259,8 +259,9 @@ async def onboarding_status(engine) -> dict[str, Any]:
         "clients": public_client_options(),
         "profiles_are_security_boundary": False,
         "profile_warning": (
-            "MCP profiles reduce the advertised tool surface; they are not an "
-            "authorization or security boundary."
+            "MCP size profiles reduce the advertised tool surface; they are "
+            "not an authorization or security boundary. The read_only profile "
+            "is the exception: it is enforced server-side and permits no writes."
         ),
         "dogfood_enabled": dogfood,
         "dogfood_journal": _journal_location_summary(db_path),

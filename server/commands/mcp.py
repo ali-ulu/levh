@@ -53,7 +53,7 @@ def cmd_mcp_config(args: argparse.Namespace) -> int:
     n = len(tools_for_profile(profile))
     print(
         f"  MCP profile '{profile}' → {n} tools advertised "
-        f"(change with --profile minimal|work|admin|full)",
+        f"(change with --profile read_only|minimal|work|admin|full)",
         file=sys.stderr,
     )
     return 0
@@ -113,12 +113,17 @@ def cmd_mcp_profiles(_args: argparse.Namespace) -> int:
     print("  " + "=" * 52)
     for name, count in counts.items():
         marker = "  (default)" if name == DEFAULT_PROFILE else ""
-        print(f"  {name:8s} {count:3d} tools{marker}")
+        print(f"  {name:10s} {count:3d} tools{marker}")
     print("  " + "=" * 52)
-    print("  minimal ⊂ work ⊂ admin ⊂ full")
+    print("  size ladder:  minimal ⊂ work ⊂ admin ⊂ full")
+    print("  read_only:    server-enforced read allowlist; no writes")
     print("  Set LEVH_MCP_PROFILE or `mcp config --profile <name>`.\n")
     # Show the minimal set explicitly — it's short and clarifies the core loop.
     print("  minimal tools: " + ", ".join(sorted(tools_for_profile("minimal"))))
+    print(
+        "  read_only tools: "
+        + ", ".join(sorted(tools_for_profile("read_only")))
+    )
     return 0
 
 

@@ -15,8 +15,11 @@ from mcp.server.fastmcp import FastMCP
 
 from server.core.memory_engine import MemoryEngine
 from server.tools.profiles import (
+    ALL_PROFILES,
     DEFAULT_PROFILE,
     PROFILE_ORDER,
+    READ_ONLY_PROFILE,
+    READ_ONLY_TOOLS,
     TOOL_TIERS,
     UnknownProfileError,
     profile_counts,
@@ -28,8 +31,15 @@ from server.tools.register import register_all_tools
 
 # ── pure profile logic ────────────────────────────────────────────
 def test_counts_are_the_expected_bands():
-    # Small minimal, tight work, broad admin, complete full.
-    assert profile_counts() == {"minimal": 6, "work": 29, "admin": 69, "full": 74}
+    # The permission profile, then small minimal, tight work, broad admin,
+    # complete full.
+    assert profile_counts() == {
+        "read_only": 36,
+        "minimal": 6,
+        "work": 29,
+        "admin": 69,
+        "full": 74,
+    }
 
 
 def test_default_profile_is_work():
@@ -38,10 +48,21 @@ def test_default_profile_is_work():
     assert resolve_profile("") == "work"
 
 
-def test_profiles_are_cumulative_subsets():
+def test_size_profiles_are_cumulative_subsets():
     sets = [tools_for_profile(p) for p in PROFILE_ORDER]
     for smaller, larger in zip(sets, sets[1:]):
         assert smaller < larger, "each profile must strictly contain the previous"
+
+
+def test_read_only_is_not_part_of_the_size_ladder():
+    """Its tool count says nothing about how many tools a size profile shows."""
+    assert READ_ONLY_PROFILE not in PROFILE_ORDER
+    assert ALL_PROFILES[0] == READ_ONLY_PROFILE
+
+
+def test_read_only_returns_its_explicit_allowlist():
+    assert tools_for_profile("read_only") == set(READ_ONLY_TOOLS)
+    assert resolve_profile(" READ_ONLY ") == READ_ONLY_PROFILE
 
 
 def test_full_is_every_known_tool():
@@ -92,7 +113,7 @@ async def _advertised(mcp: FastMCP) -> set[str]:
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("profile", list(PROFILE_ORDER))
+@pytest.mark.parametrize("profile", [READ_ONLY_PROFILE, *PROFILE_ORDER])
 async def test_register_advertises_exactly_the_profile(engine, profile):
     mcp = FastMCP("test")
     returned = register_all_tools(mcp, engine, profile=profile)

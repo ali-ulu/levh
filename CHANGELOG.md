@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### feat: add a server-enforced read-only MCP profile for external agents (#530)
+
+- New `read_only` MCP profile for external/cloud agents that may read memory but must never write it. It is an explicit allowlist of 36 recall/search/context/metadata reads, and it is enforced **server-side at call time**: `server/tools/access.py` wraps the FastMCP dispatcher, so a client that invokes a hidden write tool by name gets `ToolAccessDenied` instead of executing it. The size profiles (`minimal`/`work`/`admin`/`full`) still only narrow discovery; `read_only` is the one permission profile.
+- `LEVH_MCP_PROFILE` now defaults to `work` on both stdio and standalone SSE, matching the profile generated client configs already write. `full` and `admin` remain explicit opt-ins; `minimal` still means the local capture/recall loop.
+- A read-only server does not write on the reader's behalf: startup skips auto-connect and auto-checkpoint, the continuity brief is built without an emission row, and recall/search run with `reinforce=False`. The recall audit log and derived caches can still update, as they do for any read API.
+- `levh mcp profiles`, `levh mcp config`, the onboarding status/config responses, and `docs/mcp-client-config.md` now name the profile and state the boundary accurately: no token / wrong token / valid token is covered for read-only SSE, and the stdio black-box test proves a write call is refused.
+
 ### fix: warn when many stdio servers each hold a local embedder (#526)
 
 - Every `levh mcp stdio` process builds its own engine through `engine_provider`, so with a local embedder each process loads its own copy of `all-MiniLM-L6-v2` — ~600 MB resident, 974 MB private after the first embed. A handful of agents each keeping a stdio session open pushes a small machine past its commit limit; the reporting box starved with 14 sessions at 89% commit charge. Sharing one model across stdio processes (the issue's main proposal) is a larger change, so this lands the narrow, verifiable half: `levh doctor` now names the footprint instead of leaving it to a post-mortem.

@@ -201,10 +201,15 @@ LEVH_MCP_PROFILE=work uvicorn server.mcp_sse:app --host 127.0.0.1 --port 8001
 
 Or via the FastAPI mount at `/api/mcp/sse` when using the main API server.
 
-MCP profiles limit which tools are advertised; they are not an authentication
-boundary. The standalone server keeps the backward-compatible `full` profile
-when `LEVH_MCP_PROFILE` is unset, so explicitly choose `work` or `minimal` when
-that is all the client needs.
+MCP *size* profiles (`minimal`/`work`/`admin`/`full`) limit which tools are
+advertised; they are not an authentication boundary. Unset `LEVH_MCP_PROFILE`
+defaults to `work` on stdio and SSE, matching the generated client configs, so
+a manually launched server and a generated one advertise the same surface.
+
+`read_only` is the exception: it is a server-enforced permission profile for
+external/cloud agents that may read memory but must never write it. Use it when
+the transport or the agent is outside the local trust boundary — see
+[Read-only external agents](#read-only-external-agents).
 
 ### Continuous brief & auto-checkpoint (agent memory loop)
 
@@ -272,6 +277,60 @@ LEVH_TOKEN='replace-with-a-strong-random-token' \
 LEVH_MCP_PROFILE=work \
 uvicorn server.mcp_sse:app --host 0.0.0.0 --port 8001 --no-access-log
 ```
+
+## Read-only external agents
+
+An external or cloud agent that only needs to read memory should mount the
+`read_only` profile, not `full` or `work`. It advertises the recall/search/
+context/metadata reads and **no** write tools:
+
+```bash
+# stdio (the agent is a separate local process)
+LEVH_MCP_PROFILE=read_only levh mcp stdio
+
+# SSE (a remote or web client)
+LEVH_TOKEN='replace-with-a-strong-random-token' \
+LEVH_MCP_PROFILE=read_only \
+uvicorn server.mcp_sse:app --host 0.0.0.0 --port 8001
+```
+
+This is not an advertisement trick. `server/tools/access.py` wraps the MCP
+dispatcher and re-checks every `tools/call` against the read-only allowlist, so
+a client that invokes a hidden write tool directly is refused with
+`ToolAccessDenied` instead of executing it. Discovery and authorization agree:
+`levh mcp profiles` prints the same allowlist the guard enforces.
+
+What the profile refuses: `store_memory`, `update_memory`, `forget_memory`,
+`purge_memory`, pin/importance changes, session and checkpoint writes,
+consolidation/dedupe, import/export, backup/restore, connector sync/import,
+agent presence writes, and the other mutating tools listed in
+`MUTATING_TOOLS`. Bulk `export_memories`, `audit_secrets` and
+`evaluate_admission` are admin reads and stay off the external allowlist too.
+
+What it still writes: the server's own recall audit log (a row describing the
+query and ranked ids, not a change to a memory) and derived caches such as a
+trust score. Recall/search run with `reinforce=False`, the continuity brief is
+built without an emission row, and startup skips auto-connect/auto-checkpoint,
+so a read cannot keep a memory alive or create a session.
+
+### Authentication semantics
+
+| Transport | Local client | Remote client |
+| --- | --- | --- |
+| stdio | Inherits the OS user's filesystem access; the read-only profile is the tool boundary | Not applicable — stdio is a local process |
+| standalone SSE (`server.mcp_sse:app`) | Loopback is accepted without a token when `LEVH_TOKEN` is unset | Non-loopback requires `LEVH_TOKEN`; no token and a wrong token both return `401`, a valid token returns `200` |
+| `/api/mcp` mount | Protected by the main API's `LEVH_TOKEN` gate on `/api/*` | Same gate; the process profile still limits the tool surface |
+
+`LEVH_ALLOW_REMOTE_WITHOUT_TOKEN=true` is the documented advanced override for
+a deployment whose network boundary already authenticates callers; it does not
+change the read-only profile's tool authority. Header authentication is
+preferred; browser `EventSource` may use `?token=` because it cannot set custom
+headers, and a supplied header is authoritative even when wrong.
+
+The profile and the token are independent layers: a valid token says *who may
+connect*, `read_only` says *what that connection may do*. Do not expose a
+`full`-profile remote server as a shortcut, and keep the bind on loopback when
+the agent runs on the same machine.
 
 ## Troubleshooting
 

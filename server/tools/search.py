@@ -5,6 +5,7 @@ from __future__ import annotations
 from mcp.server.fastmcp import FastMCP
 
 from server.core.memory_engine import MemoryEngine
+from server.tools.access import read_only_active
 
 
 def register(mcp: FastMCP, engine: MemoryEngine) -> None:
@@ -21,7 +22,12 @@ def register(mcp: FastMCP, engine: MemoryEngine) -> None:
             query: Search query.
             top_k: Number of results (1-20). Default 5.
         """
-        result = await engine.recall(query=query, top_k=min(max(top_k, 1), 20))
+        result = await engine.recall(
+            query=query,
+            top_k=min(max(top_k, 1), 20),
+            # Search is a read path; do not reinforce from an external reader.
+            reinforce=not read_only_active(),
+        )
 
         if not result.memories:
             return "No results found."

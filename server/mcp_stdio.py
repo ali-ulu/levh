@@ -45,6 +45,8 @@ from server.core.agent_heartbeat import (
 from server.core.env import get_env
 from server.core.continuity_instructions import MCP_CONTINUITY_INSTRUCTIONS
 from server.core.onboarding import levh_version
+from server.tools.access import bind_active_profile, read_only_active
+from server.tools.profiles import DEFAULT_PROFILE
 from server.tools.register import register_all_tools
 
 logger = logging.getLogger("levh.mcp_stdio")
@@ -75,7 +77,10 @@ async def _lifespan(_server: FastMCP) -> AsyncIterator[None]:
         # Auto-connect presence: detect the agent/project from the environment
         # and git remote, create a tracking session, and start the heartbeat
         # loop. Opt-out via LEVH_AUTO_CONNECT=0.
-        if _env_bool("LEVH_AUTO_CONNECT", True):
+        # Presence is a write (a session row, then heartbeats). A read-only
+        # server must not perform it on behalf of an external reader, even
+        # though the env flag defaults on for ordinary local installs.
+        if _env_bool("LEVH_AUTO_CONNECT", True) and not read_only_active():
             try:
                 await smart_auto_connect(engine)
             except Exception:
@@ -85,7 +90,7 @@ async def _lifespan(_server: FastMCP) -> AsyncIterator[None]:
         # seconds fold everything new since the last checkpoint into a
         # meaningful (non-repeating) summary. Off by default to keep the
         # surface inert until the user opts in.
-        if _env_bool("LEVH_AUTO_CHECKPOINT", False):
+        if _env_bool("LEVH_AUTO_CHECKPOINT", False) and not read_only_active():
             try:
                 _project = detect_project_from_git()
             except Exception:  # noqa: BLE001 - no git repo means no project context
@@ -110,12 +115,20 @@ async def _lifespan(_server: FastMCP) -> AsyncIterator[None]:
                 # is what turns this hand-off into a counted emission (#378).
                 # The counter is named "emitted" for a reason — this line
                 # proves the brief was handed out, nothing about whether the
-                # agent read it.
-                _brief = await engine.emit_continuity_brief(
-                    channel="stderr_bridge",
-                    project=detect_project_from_git() or None,
-                    limit=5,
-                )
+                # agent read it. The read-only profile keeps the text and
+                # drops the emission row, like the tool path does.
+                _project = detect_project_from_git() or None
+                if read_only_active():
+                    _brief = await engine.get_continuity_context(
+                        project=_project,
+                        limit=5,
+                    )
+                else:
+                    _brief = await engine.emit_continuity_brief(
+                        channel="stderr_bridge",
+                        project=_project,
+                        limit=5,
+                    )
                 if _brief and _brief.strip():
                     print(f"[levh] Continuity brief for this session:\n{_brief}", file=sys.stderr)
             except Exception:
@@ -138,13 +151,16 @@ mcp = FastMCP("LEVH", instructions=MCP_CONTINUITY_INSTRUCTIONS, lifespan=_lifesp
 mcp._mcp_server.version = levh_version()
 
 # Register tools at import time so they are advertised on initialize. The tool
-# *surface* is controlled by LEVH_MCP_PROFILE (minimal / work / admin /
-# full). Unset defaults to "full" here so existing installs keep every tool;
-# generated configs set it explicitly to "work" to keep the advertised surface
-# small (better tool-selection accuracy). The engine is created here but its DB
-# connection is opened by the lifespan above; the embedder stays lazy until the
-# first tool call.
-_MCP_PROFILE = get_env("LEVH_MCP_PROFILE", "full")
+# *surface* is controlled by LEVH_MCP_PROFILE (read_only / minimal / work /
+# admin / full). Unset defaults to DEFAULT_PROFILE ("work"), the same profile
+# generated client configs write, so a manually launched stdio server and a
+# generated one advertise the same surface. "full" stays an explicit opt-in.
+# The engine is created here but its DB connection is opened by the lifespan
+# above; the embedder stays lazy until the first tool call.
+_MCP_PROFILE = get_env("LEVH_MCP_PROFILE", DEFAULT_PROFILE)
+# The lifespan runs before any tool call and must know whether startup
+# behaviours (auto-connect, auto-brief emission, auto-checkpoint) may write.
+bind_active_profile(_MCP_PROFILE)
 _registered = register_all_tools(mcp, engine_provider.get_engine(), profile=_MCP_PROFILE)
 # Announce on stderr (stdout is the stdio protocol channel — never write there).
 print(

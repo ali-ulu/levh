@@ -16,6 +16,7 @@ from mcp.client.sse import sse_client
 from mcp.client.stdio import stdio_client
 
 from server.core.continuity_instructions import MCP_CONTINUITY_INSTRUCTIONS
+from server.tools.profiles import READ_ONLY_TOOLS
 
 ROOT = Path(__file__).resolve().parents[1]
 LEVH_VERSION = package_version("levh")
@@ -26,7 +27,12 @@ def _env(db_path: Path) -> dict[str, str]:
     env.update(
         {
             "SQLITE_DB_PATH": str(db_path),
+            # Both spellings: LEVH_EMBEDDER_MODE outranks the plain name, and a
+            # developer who exported `local` made these subprocess tests load
+            # torch before the first assertion instead of using the hash
+            # fallback the suite promises to run under.
             "EMBEDDER_MODE": "hash",
+            "LEVH_EMBEDDER_MODE": "hash",
             "LEVH_MCP_PROFILE": "minimal",
             "PYTHONPATH": str(ROOT),
         }
@@ -155,6 +161,121 @@ async def test_mcp_sse_protocol_blackbox(tmp_path):
                 assert "SSE protocol black-box memory" in _tool_text(recalled)
                 assert "MemoryType." not in _tool_text(recalled)
                 assert "Type: episodic" in _tool_text(recalled)
+    finally:
+        if process.returncode is None:
+            process.terminate()
+            try:
+                await asyncio.wait_for(process.wait(), timeout=5)
+            except asyncio.TimeoutError:
+                process.kill()
+                await process.wait()
+
+
+@pytest.mark.asyncio
+async def test_mcp_stdio_read_only_profile_denies_writes(tmp_path):
+    """The protocol surface is the allowlist, and a write tool invoked by name
+    is an error — not just omitted from discovery."""
+    env = _env(tmp_path / "read-only-stdio.db")
+    env["LEVH_MCP_PROFILE"] = "read_only"
+    params = StdioServerParameters(
+        command=sys.executable,
+        args=["-m", "server.mcp_stdio"],
+        env=env,
+        cwd=str(ROOT),
+    )
+    with open(os.devnull, "w", encoding="utf-8") as errlog:
+        async with stdio_client(params, errlog=errlog) as (read, write):
+            async with ClientSession(read, write) as session:
+                await session.initialize()
+                tools = await session.list_tools()
+                assert {tool.name for tool in tools.tools} == set(READ_ONLY_TOOLS)
+
+                denied = await session.call_tool(
+                    "store_memory",
+                    {"content": "read-only must not land", "memory_type": "episodic"},
+                )
+                assert denied.isError is True
+
+                stats = await session.call_tool("get_memory_stats", {})
+                assert stats.isError is False
+                assert "Total memories:     0" in _tool_text(stats)
+
+                recalled = await session.call_tool(
+                    "recall_memory", {"query": "anything", "top_k": 3}
+                )
+                assert recalled.isError is False
+                assert "No matching memories found" in _tool_text(recalled)
+
+
+@pytest.mark.asyncio
+async def test_mcp_sse_read_only_auth_and_tool_denial(tmp_path):
+    """No token / wrong token / valid token, with the read-only profile active,
+    plus the protocol-level proof that a valid token still cannot write."""
+    token = "read-only-sse-token"
+    with socket.socket() as sock:
+        sock.bind(("127.0.0.1", 0))
+        port = sock.getsockname()[1]
+
+    env = _env(tmp_path / "read-only-sse.db")
+    env["LEVH_MCP_PROFILE"] = "read_only"
+    env["LEVH_TOKEN"] = token
+    process = await asyncio.create_subprocess_exec(
+        sys.executable,
+        "-m",
+        "uvicorn",
+        "server.mcp_sse:app",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        str(port),
+        cwd=str(ROOT),
+        env=env,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    try:
+        base = f"http://127.0.0.1:{port}"
+        async with httpx.AsyncClient(timeout=1.0) as client:
+            for _ in range(50):
+                try:
+                    response = await client.get(
+                        f"{base}/", headers={"X-LEVH-Token": token}
+                    )
+                    if response.status_code in (200, 404):
+                        break
+                except httpx.HTTPError:
+                    pass
+                await asyncio.sleep(0.1)
+            else:
+                raise AssertionError("SSE MCP server did not become ready")
+
+            assert (await client.get(f"{base}/sse")).status_code == 401
+            assert (
+                await client.get(
+                    f"{base}/sse", headers={"X-LEVH-Token": "wrong-token"}
+                )
+            ).status_code == 401
+
+        async with sse_client(
+            f"{base}/sse",
+            headers={"X-LEVH-Token": token},
+            timeout=5,
+            sse_read_timeout=20,
+        ) as (read, write):
+            async with ClientSession(read, write) as session:
+                init_result = await session.initialize()
+                assert init_result.serverInfo.version == LEVH_VERSION
+                tools = await session.list_tools()
+                assert {tool.name for tool in tools.tools} == set(READ_ONLY_TOOLS)
+
+                denied = await session.call_tool(
+                    "store_memory",
+                    {"content": "token must not buy a write", "memory_type": "episodic"},
+                )
+                assert denied.isError is True
+                stats = await session.call_tool("get_memory_stats", {})
+                assert stats.isError is False
+                assert "Total memories:     0" in _tool_text(stats)
     finally:
         if process.returncode is None:
             process.terminate()

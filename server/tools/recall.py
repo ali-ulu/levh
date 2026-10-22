@@ -5,6 +5,7 @@ from __future__ import annotations
 from mcp.server.fastmcp import FastMCP
 
 from server.core.memory_engine import MemoryEngine
+from server.tools.access import read_only_active
 
 
 def register(mcp: FastMCP, engine: MemoryEngine) -> None:
@@ -43,6 +44,10 @@ def register(mcp: FastMCP, engine: MemoryEngine) -> None:
             session_id=session_id or None,
             project=project or None,
             min_importance=min_importance,
+            # A read-only server must not let a read keep a memory alive by
+            # resetting its decay clock. External agents get the result, not
+            # the side effect.
+            reinforce=not read_only_active(),
             explain=explain,
             as_of=as_of or None,
             include_superseded=include_superseded,

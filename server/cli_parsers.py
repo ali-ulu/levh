@@ -40,7 +40,7 @@ def _add_leaf_commands(sub: argparse._SubParsersAction) -> None:
         "--profile",
         type=str,
         default="work",
-        help="MCP profile: minimal | work (default) | admin | full",
+        help="MCP profile: read_only | minimal | work (default) | admin | full",
     )
 
     init_p = sub.add_parser("init", help="Create local config directory and defaults")
@@ -210,7 +210,7 @@ def _add_mcp_parser(sub: argparse._SubParsersAction) -> argparse.ArgumentParser:
         "--profile",
         type=str,
         default="work",
-        help="MCP tool profile: minimal | work (default) | admin | full",
+        help="MCP tool profile: read_only | minimal | work (default) | admin | full",
     )
 
     init_srv_p = mcp_sub.add_parser(
@@ -229,7 +229,7 @@ def _add_mcp_parser(sub: argparse._SubParsersAction) -> argparse.ArgumentParser:
         "--profile",
         type=str,
         default="work",
-        help="MCP tool profile for the mounted memory tools (with --with-memory)",
+        help="MCP tool profile for the mounted memory tools (read_only | minimal | work | admin | full; with --with-memory)",
     )
     init_srv_p.add_argument(
         "--deploy",

@@ -3,13 +3,19 @@
 The complete MCP tool surface. See the [README](../README.md) for an overview.
 
 > **Tool profiles.** Advertising all 74 tools to a client hurts tool-selection
-> accuracy, so LEVH groups them into cumulative profiles —
+> accuracy, so LEVH groups them into cumulative size profiles —
 > `minimal` (6) ⊂ `work` (29) ⊂ `admin` (69) ⊂ `full` (74). Generated configs
 > default to **`work`**; run `levh mcp profiles` to see the bands, or set
 > `LEVH_MCP_PROFILE` / `mcp config --profile <name>` to change it. The
-> full table below is the `full` surface. Profiles only filter which tools a
-> client sees — they are **not** an authentication or authorization boundary;
-> every profile talks to the same engine instance with the same access.
+> full table below is the `full` surface.
+>
+> **`read_only` is a different kind of profile.** It is an explicit allowlist
+> of recall/search/context/metadata reads for an external or cloud agent that
+> must never write. It is enforced **server-side at call time**: a write tool is
+> refused even if a client invokes a hidden name directly. The size profiles
+> (`minimal`/`work`/`admin`/`full`) still only filter discovery; only
+> `read_only` is an authorization boundary. See
+> [MCP client configuration](mcp-client-config.md#read-only-external-agents).
 
 | # | Tool | Description |
 |---|------|-------------|

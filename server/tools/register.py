@@ -15,6 +15,7 @@ import importlib
 from mcp.server.fastmcp import FastMCP
 
 from server.core.memory_engine import MemoryEngine
+from server.tools.access import install_tool_access_guard
 from server.tools.profiles import resolve_profile, tools_for_profile
 
 # Every tool module, by import path. One line per tool module; the order is
@@ -105,10 +106,16 @@ def register_all_tools(
     ``profile`` selects which subset of tools to advertise — see
     :mod:`server.tools.profiles`. ``None`` (a bare programmatic call) means
     **full**: expose every tool, backward-compatible with pre-profile callers.
-    Profile-limiting is always an explicit opt-in. Returns the sorted list of
-    tool names actually registered.
+    Profile-limiting is always an explicit opt-in.
+
+    The profile is also installed as a call-time guard, so ``read_only`` is a
+    real authorization boundary rather than an advertisement filter. A transport
+    that needs the profile during startup (stdio's auto-connect/brief) binds it
+    with :func:`server.tools.access.bind_active_profile`. Returns the sorted
+    list of tool names actually registered.
     """
     resolved = "full" if profile is None else resolve_profile(profile)
+    install_tool_access_guard(mcp, resolved)
     if resolved == "full":
         # Fast path: no filtering, register every decorated tool directly.
         _register(mcp, engine)

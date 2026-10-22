@@ -35,6 +35,8 @@ from server.core import engine_provider
 from server.core.env import get_env
 from server.core.continuity_instructions import MCP_CONTINUITY_INSTRUCTIONS
 from server.core.onboarding import levh_version
+from server.tools.access import bind_active_profile
+from server.tools.profiles import DEFAULT_PROFILE
 from server.tools.register import register_all_tools
 
 # ── Lifecycle: open/close the DB around the server's run ────────────
@@ -60,9 +62,11 @@ mcp_sse = FastMCP("LEVH", instructions=MCP_CONTINUITY_INSTRUCTIONS, lifespan=_li
 mcp_sse._mcp_server.version = levh_version()
 
 # Register tools at import time so they are advertised on initialize. Tool
-# surface is controlled by LEVH_MCP_PROFILE (minimal / work / admin /
-# full); unset defaults to "full" for backward compatibility.
-_MCP_PROFILE = get_env("LEVH_MCP_PROFILE", "full")
+# surface is controlled by LEVH_MCP_PROFILE (read_only / minimal / work /
+# admin / full); unset defaults to DEFAULT_PROFILE ("work"), matching stdio and
+# the generated client configs. Use "read_only" for an external/cloud agent.
+_MCP_PROFILE = get_env("LEVH_MCP_PROFILE", DEFAULT_PROFILE)
+bind_active_profile(_MCP_PROFILE)
 _registered = register_all_tools(mcp_sse, engine_provider.get_engine(), profile=_MCP_PROFILE)
 
 # Auto-inject: Log continuity brief hint for agents.

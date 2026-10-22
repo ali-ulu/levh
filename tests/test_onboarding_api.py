@@ -47,6 +47,17 @@ async def test_onboarding_api_status_and_config(tmp_path, monkeypatch):
             schema = api_mod.app.openapi()["paths"]
             assert "/api/v1/seed-demo" not in schema
             assert "/api/v1/onboarding/remove-demo" not in schema
+
+            read_only = await client.post(
+                "/api/onboarding/mcp-config",
+                json={"client": "claude", "profile": "read_only"},
+            )
+            assert read_only.status_code == 200
+            ro_body = read_only.json()
+            assert ro_body["profile"] == "read_only"
+            assert ro_body["tool_count"] == 36
+            assert ro_body["profiles_are_security_boundary"] is True
+            assert "server-enforced" in ro_body["warning"]
     finally:
         await api_mod._engine.shutdown()
         api_mod._engine = None

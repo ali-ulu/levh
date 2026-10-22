@@ -25,7 +25,12 @@ async def get_onboarding_status(engine=Depends(get_engine)):
 async def generate_onboarding_mcp_config(req: OnboardingMCPConfigRequest, engine=Depends(get_engine)):
     """Generate a focused MCP client config without persisting secrets."""
     from server.configs import PLATFORMS, generate_config, normalize_platform, render_config
-    from server.tools.profiles import UnknownProfileError, profile_counts, resolve_profile
+    from server.tools.profiles import (
+        READ_ONLY_PROFILE,
+        UnknownProfileError,
+        profile_counts,
+        resolve_profile,
+    )
 
     try:
         platform = normalize_platform(req.client)
@@ -63,10 +68,16 @@ async def generate_onboarding_mcp_config(req: OnboardingMCPConfigRequest, engine
         "platform": platform,
         "profile": profile,
         "tool_count": profile_counts()[profile],
-        "profiles_are_security_boundary": False,
+        "profiles_are_security_boundary": profile == READ_ONLY_PROFILE,
         "warning": (
-            "MCP profiles reduce the advertised tool surface; they are not "
-            "an authorization or security boundary."
+            "The read_only profile is server-enforced: write tools are "
+            "refused at the call site, not merely hidden from discovery."
+            if profile == READ_ONLY_PROFILE
+            else (
+                "MCP size profiles reduce the advertised tool surface; they "
+                "are not an authorization or security boundary. Use the "
+                "read_only profile for an external agent that must not write."
+            )
         ),
         "onboarding_receipt_written": True,
         "onboarding_ready": receipt["first_memory_ready"],
