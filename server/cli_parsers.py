@@ -27,6 +27,11 @@ def _add_leaf_commands(sub: argparse._SubParsersAction) -> None:
         action="store_true",
         help="give a stored row that only lacks an id a generated one, so it can be recalled again",
     )
+    doctor_p.add_argument(
+        "--fix-debris",
+        action="store_true",
+        help="move pip rename debris aside (reversible) so the interpreter's pip works again",
+    )
 
     setup_p = sub.add_parser("setup", help="First-run setup for a real-data store")
     setup_p.add_argument("--status", action="store_true", help="Print computed onboarding readiness")

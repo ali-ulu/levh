@@ -71,7 +71,8 @@ Run `levh <command> --help` for the flags of any one of them.
 `levh doctor` diagnoses and does not touch the store — except when asked:
 
 ```bash
-levh doctor --fix-ids   # give a stored row that only lacks an id a generated one
+levh doctor --fix-ids      # give a stored row that only lacks an id a generated one
+levh doctor --fix-debris   # move pip rename debris aside so the interpreter's pip works again
 ```
 
 A row written before the write-time integrity triggers existed can arrive with no
@@ -80,6 +81,15 @@ invisible to recall, and every deletion path takes an id it does not have.
 `--fix-ids` assigns an id and changes nothing else, which makes the memory
 recallable again and reachable by `levh purge`. Rows quarantined for any other
 reason are left exactly as they are — a missing id is the one defect this repairs.
+
+`--fix-debris` moves `~`-prefixed remnants an interrupted `pip install` or
+uninstall left in the interpreter's `site-packages` into a `levh-pip-debris-backup-*`
+directory beside it. pip reads those remnants as invalid distributions and the
+interpreter's whole `pip` wedges — install, uninstall and show all fail — which
+is a problem when the documented recovery step is itself a `pip install`. The
+move is reversible on purpose: a remnant may be the only copy of what it holds,
+so nothing is deleted. `levh update` makes the same move on its next run before
+it installs anything.
 
 ## The ones worth knowing first
 

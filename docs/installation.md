@@ -178,3 +178,22 @@ pip install mcp fastmcp
 ```bash
 levh serve --port 8001
 ```
+
+### pip is wedged after an interrupted update
+
+An interrupted `levh update` (a killed supervisor, a reboot, a locked file) can
+leave `~`-prefixed remnants in the interpreter's `site-packages` — `~evh`,
+`~erver`, `~umpy`, and the like. pip reads them as invalid distributions, so
+`pip install`, `pip uninstall` and `pip show` all fail in that interpreter, and
+every pip command prints `Ignoring invalid distribution ~...`.
+
+Move the remnants aside without using pip:
+
+```bash
+levh doctor --fix-debris
+```
+
+Nothing is deleted: the remnants go to a `levh-pip-debris-backup-*` directory
+beside `site-packages`, so a remnant that held the only copy of something can be
+recovered. `levh doctor` reports the remnants and this command even when pip
+cannot run; `levh update` also clears them before it installs anything.

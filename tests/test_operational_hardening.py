@@ -475,6 +475,76 @@ def test_doctor_fails_on_tokenless_override_with_non_loopback_bind(tmp_path, mon
     assert "FAIL" not in capsys.readouterr().out
 
 
+def test_doctor_reports_pip_debris_and_offers_the_repair(tmp_path, monkeypatch, capsys):
+    """Issue #524: an interrupted update leaves pip wedged in this interpreter.
+
+    The documented recovery step is itself a pip command, so doctor has to
+    report the remnants with a way out that does not need pip.
+    """
+    from server.cli import cmd_doctor
+    from server.commands.doctor import NO_LIVE_PROBE_ENV
+    from server.core import pip_debris
+
+    site = tmp_path / "site-packages"
+    site.mkdir()
+    (site / "~evh").mkdir()
+    (site / "~umpy.libs").mkdir()
+    monkeypatch.setattr(pip_debris, "target_site_packages", lambda: site)
+    monkeypatch.setenv("SQLITE_DB_PATH", str(tmp_path / "doctor-debris.db"))
+    monkeypatch.setenv("EMBEDDER_MODE", "hash")
+    monkeypatch.setenv(NO_LIVE_PROBE_ENV, "1")
+    monkeypatch.setenv("LEVH_SUPERVISOR_LOG_DIR", str(tmp_path / "debris-logs"))
+
+    assert cmd_doctor(argparse.Namespace()) == 1
+    output = capsys.readouterr().out
+    assert "Pip debris" in output
+    assert "~evh" in output and "~umpy.libs" in output
+    assert "--fix-debris" in output
+
+
+def test_doctor_fix_debris_moves_remnants_aside_reversibly(tmp_path, monkeypatch, capsys):
+    from server.cli import cmd_doctor
+    from server.commands.doctor import NO_LIVE_PROBE_ENV
+    from server.core import pip_debris
+
+    site = tmp_path / "site-packages"
+    site.mkdir()
+    (site / "~evh").mkdir()
+    (site / "~evh" / "payload.txt").write_text("only copy", encoding="utf-8")
+    monkeypatch.setattr(pip_debris, "target_site_packages", lambda: site)
+    monkeypatch.setenv("SQLITE_DB_PATH", str(tmp_path / "doctor-fix-debris.db"))
+    monkeypatch.setenv("EMBEDDER_MODE", "hash")
+    monkeypatch.setenv(NO_LIVE_PROBE_ENV, "1")
+    monkeypatch.setenv("LEVH_SUPERVISOR_LOG_DIR", str(tmp_path / "fix-logs"))
+
+    assert cmd_doctor(argparse.Namespace(fix_debris=True)) == 0
+    output = capsys.readouterr().out
+    assert "Pip debris" in output
+    assert "moved 1 remnant(s) aside" in output
+    # Nothing deleted: the remnant, and what it held, survive in the backup.
+    assert not (site / "~evh").exists()
+    backups = [p for p in tmp_path.iterdir() if p.name.startswith(pip_debris.BACKUP_DIR_PREFIX)]
+    assert len(backups) == 1
+    assert (backups[0] / "~evh" / "payload.txt").read_text(encoding="utf-8") == "only copy"
+
+
+def test_doctor_fix_debris_is_clean_when_there_is_nothing_to_move(tmp_path, monkeypatch, capsys):
+    from server.cli import cmd_doctor
+    from server.commands.doctor import NO_LIVE_PROBE_ENV
+    from server.core import pip_debris
+
+    site = tmp_path / "site-packages"
+    site.mkdir()
+    monkeypatch.setattr(pip_debris, "target_site_packages", lambda: site)
+    monkeypatch.setenv("SQLITE_DB_PATH", str(tmp_path / "doctor-clean-debris.db"))
+    monkeypatch.setenv("EMBEDDER_MODE", "hash")
+    monkeypatch.setenv(NO_LIVE_PROBE_ENV, "1")
+    monkeypatch.setenv("LEVH_SUPERVISOR_LOG_DIR", str(tmp_path / "clean-logs"))
+
+    assert cmd_doctor(argparse.Namespace(fix_debris=True)) == 0
+    assert "Pip debris" in capsys.readouterr().out
+
+
 def test_api_module_builds_no_second_rate_limiter():
     """server.api used to keep its own limiter/settings block, a leftover from
     before they moved to server.routes.deps. Nothing read it, and a stray use

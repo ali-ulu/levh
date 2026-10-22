@@ -6,6 +6,12 @@
 
 - TBD
 
+### fix: make the pip-debris recovery reachable without a working pip (#524)
+
+- An interrupted `levh update` (a killed supervisor, a reboot, a locked file) can leave `~`-prefixed remnants in the interpreter's `site-packages`, which wedges `pip install`, `pip uninstall` and `pip show` in that interpreter — so the documented recovery step (a `pip install`) was itself blocked by the breakage. `levh doctor` already reported the remnants (with the move command) and `levh update` clears them before installing.
+- `levh doctor --fix-debris` now performs that move itself: the remnants go to a `levh-pip-debris-backup-*` directory beside `site-packages`, nothing is deleted, and the report names where they went. This needs no working pip, which is the point.
+- Documented in `docs/installation.md` ("pip is wedged after an interrupted update") and `docs/cli.md`.
+
 ### feat: DeepSeek Harness plugin for guard checks, memory ask, and team decisions (#515)
 
 - Added `integrations/dsh-plugin/levh-reasoner/`, a dependency-free DeepSeek Harness (DSH) plugin that registers four agent tools over the existing REST API: `levh_guard_check` (advisory guard check before a risky action), `levh_ask_memory` (cited answers from the store), `levh_decide` (deterministic weighted-criteria scoring recorded to `team/decisions`, with later conflicting decisions surfaced as contested), and `levh_decision_conflicts` (open-conflict scan). No `server/` changes.

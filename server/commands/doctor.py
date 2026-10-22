@@ -543,20 +543,39 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     # the interpreter's pip wedges — by then the error names one remnant, not
     # what happened or how many. Report every remnant with the command that
     # moves it aside; `levh update` makes the same move on its next run,
-    # before it installs anything.
+    # before it installs anything. `--fix-debris` (issue #524) makes that move
+    # here, reversibly, so an operator whose documented recovery step is itself
+    # blocked by the wedged pip has a way out that does not need pip.
     try:
         from server.core import pip_debris
 
         debris_root = pip_debris.target_site_packages()
         debris = pip_debris.find_rename_debris(debris_root)
-        if debris:
+        if debris and getattr(args, "fix_debris", False):
+            moved, failed = pip_debris.move_aside(debris, debris_root)
+            if failed:
+                checks.append(
+                    ("Pip debris", "FAIL", pip_debris.debris_advice(failed, debris_root))
+                )
+                ok = False
+            else:
+                checks.append(
+                    (
+                        "Pip debris",
+                        "PASS",
+                        f"moved {len(moved)} remnant(s) aside "
+                        f"(recoverable from ../{pip_debris.BACKUP_DIR_PREFIX})",
+                    )
+                )
+        elif debris:
             names = ", ".join(path.name for path in debris)
             checks.append(
                 (
                     "Pip debris",
                     "FAIL",
                     f"{len(debris)} remnant(s): {names}; pip is wedged until moved - "
-                    f"{pip_debris.recovery_command(debris, debris_root)}",
+                    f"{pip_debris.recovery_command(debris, debris_root)} "
+                    f"(or rerun with --fix-debris)",
                 )
             )
             ok = False
