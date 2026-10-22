@@ -32,6 +32,11 @@ export function ServerConfiguration({ config }: ServerConfigurationProps) {
                   {config.embedder_dimension && (
                     <Badge variant="outline" className="text-[11px]">{config.embedder_dimension}-d</Badge>
                   )}
+                  {(config.embedder_state === "cold" || config.embedder_state === "warming") && (
+                    <Badge variant="secondary" className="text-[11px]">
+                      {t("settings.serverConfiguration.embedderWarming")}
+                    </Badge>
+                  )}
                 </div>
                 <div className="text-[11px] text-muted-foreground mt-0.5">
                   {t("settings.serverConfiguration.embedderSource", { source: config.embedder_mode_source })}

@@ -672,6 +672,7 @@ export type HealthResponse = {
   unauthenticated_remote_access: boolean;
   api_host: string;
   auto_update: AutoUpdateStatus;
+  embedder_state?: string;
 };
 
 export type HeldAdmitResponse = {
@@ -992,6 +993,7 @@ export type ReadyzResponse = {
   database: string;
   embedder_mode: string;
   embedder_ready: boolean;
+  embedder_state?: string;
   derived_state_current: boolean;
   auto_update: AutoUpdateStatus;
   reasons?: string[];
@@ -1120,6 +1122,7 @@ export type ServerConfigResponse = {
   embedder_mode_source?: string;
   env_overrides?: Record<string, unknown>[];
   embedder_dimension?: number | null;
+  embedder_state?: string;
   short_term_max: number;
   weights: Record<string, unknown>;
   decay_half_life_hours: number;

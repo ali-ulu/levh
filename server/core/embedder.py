@@ -16,6 +16,7 @@ import asyncio
 import importlib.util
 import logging
 import os
+import time
 
 import httpx
 import numpy as np
@@ -88,17 +89,38 @@ def probe_embedder_status(mode: str) -> dict:
         "effective_mode": effective,
         "fallback": fallback,
         "fallback_reason": reason,
+        # A semantic request that is *not* a fallback still has to load its
+        # model before it can embed. The probe cannot see whether that load has
+        # happened (that state lives on the instance), so it reports the
+        # resolution as ready and the caller overlays the instance's own
+        # ``warm_state`` when one exists (issue #525).
+        "warm_state": "ready",
     }
 
 
 class Embedder:
-    """Produces text embeddings via OpenAI API, Ollama, or local model."""
+    """Produces text embeddings via OpenAI API, Ollama, or local model.
 
-    def __init__(self, mode: str = "auto", dimension: int = 384):
+    ``warm_state`` tracks whether a local model has been loaded, so a surface
+    can say *warming* instead of looking hung: importing torch and building
+    ``all-MiniLM-L6-v2`` blocks for ~2.5 minutes on a cold machine, and the
+    engine used to pay that inline on the first store/recall (issue #525).
+    """
+
+    def __init__(self, mode: str = "auto", dimension: int = 384, *, defer_local_load: bool = False):
         self._model = None
         self._http: httpx.AsyncClient | None = None
+        self._warm_lock: asyncio.Lock | None = None
         self.requested_mode = mode
         self.fallback_reason: str | None = None
+        #: ``"ready"`` (nothing to load, or loaded), ``"cold"`` (a local model
+        #: is available but not loaded yet), ``"warming"`` (load in flight) or
+        #: ``"unavailable"`` (the local model could not be used; hash fallback).
+        self.warm_state = "ready"
+        #: How long the local load took, once it has run. The machine-specific
+        #: number a user needs in order to file this kind of report instead of
+        #: guessing (issue #525).
+        self.warm_seconds: float | None = None
 
         if mode == "auto":
             # Privacy invariant: ambient credentials must never silently turn
@@ -111,7 +133,83 @@ class Embedder:
         self.dimension = 1536 if mode == "openai" else dimension
 
         if mode == "local":
-            self._init_local()
+            if defer_local_load:
+                # Resolve availability cheaply now (so ``mode``/``is_semantic``
+                # are stable from construction) and load the model later, off
+                # the event loop, via ``warm()``.
+                self._defer_local()
+            else:
+                self._init_local()
+                self.warm_state = "ready" if self.mode == "local" else "unavailable"
+
+    def needs_warm(self) -> bool:
+        """Whether a local model is available but not loaded yet."""
+        return self.mode == "local" and self._model is None
+
+    async def warm(self) -> None:
+        """Load the local model off the event loop, once (issue #525).
+
+        The import-and-build cost is paid in a worker thread so the loop keeps
+        serving other requests, and concurrent callers coalesce on the lock
+        instead of each paying for a second copy of the model. A no-op once
+        the model is loaded, and the load itself records why on failure, so
+        this never raises.
+        """
+        if not self.needs_warm():
+            return
+        if self._warm_lock is None:
+            self._warm_lock = asyncio.Lock()
+        async with self._warm_lock:
+            if not self.needs_warm():
+                return
+            self.warm_state = "warming"
+            try:
+                await asyncio.to_thread(self._init_local)
+            except Exception as exc:  # noqa: BLE001 - a failed load degrades, it never escapes
+                # ``_init_local`` already records its own failures, but a raise
+                # that escapes it (a worker-thread or import-time failure) must
+                # not reach the request path: ``embed`` awaits this, and the
+                # documented contract is a hash fallback, not a 500.
+                self._degrade_to_hash(f"{exc.__class__.__name__}: {exc}")
+            if self.mode == "local":
+                self.warm_state = "ready"
+            else:
+                self.warm_state = "unavailable"
+                # The deferred load resolved to hash: the operator-visible
+                # signal that semantic search silently became non-semantic.
+                # The eager construction path logs the same line; this covers
+                # the deferred load, which is where the failure now lands
+                # (issue #525).
+                logger.warning(
+                    "Embedder requested=%s resolved=hash: %s",
+                    self.requested_mode,
+                    self.fallback_reason,
+                )
+
+    def _degrade_to_hash(self, detail: str) -> None:
+        """Record why a semantic embedder could not load and switch to hash."""
+        reason = LOCAL_UNAVAILABLE_REASON
+        if detail and get_env("LEVH_EMBEDDER_DEBUG", "").strip():
+            reason += f" ({detail})"
+        self.fallback_reason = reason
+        self.mode = "hash"
+        self._model = None
+        self.dimension = 384
+        metrics.inc("levh_embedder_fallback_total")
+
+    def _defer_local(self) -> None:
+        """Resolve local availability without importing torch (issue #525).
+
+        Mirrors what the eager path would decide — a missing
+        sentence-transformers is a hash fallback, recorded immediately — but
+        never touches the heavy import, so construction stays cheap and the
+        engine can publish the instance before any request needs it.
+        """
+        if local_embedder_available():
+            self.warm_state = "cold"
+            return
+        self._degrade_to_hash("")
+        self.warm_state = "unavailable"
 
     @property
     def fallback(self) -> bool:
@@ -144,7 +242,12 @@ class Embedder:
         Falls back to a deterministic hash embedding when the library or
         model is unavailable (no torch, no internet). This keeps the
         system fully working with zero heavy dependencies and no API key.
+
+        Blocking by design: it imports torch and builds the model, ~2.5
+        minutes cold (issue #525). Callers on the event loop reach it through
+        :meth:`warm`, which runs it in a worker thread.
         """
+        start = time.perf_counter()
         try:
             from sentence_transformers import SentenceTransformer
 
@@ -152,18 +255,18 @@ class Embedder:
             self._model = SentenceTransformer(model_name)
             test = self._model.encode("test")
             self.dimension = len(test)
+            # The machine-specific cost, logged once so an operator filing a
+            # "the server hung on the first write" report has the number
+            # instead of a guess (issue #525).
+            self.warm_seconds = time.perf_counter() - start
+            logger.info(
+                "embedder ready after %.1fs (model=%s, dimension=%d)",
+                self.warm_seconds,
+                model_name,
+                int(self.dimension),
+            )
         except Exception as exc:  # noqa: BLE001 - no model is a supported mode; record why and degrade
-            self.fallback_reason = LOCAL_UNAVAILABLE_REASON
-            if get_env("LEVH_EMBEDDER_DEBUG", "").strip():
-                self.fallback_reason += f" ({exc.__class__.__name__}: {exc})"
-            self.mode = "hash"
-            self._model = None
-            self.dimension = 384
-            # The operator-visible signal that semantic search silently became
-            # non-semantic. The reason string is only logged when
-            # LEVH_EMBEDDER_DEBUG is set, so without a counter a hash fallback
-            # in production is invisible (issue #145).
-            metrics.inc("levh_embedder_fallback_total")
+            self._degrade_to_hash(f"{exc.__class__.__name__}: {exc}")
 
     # ── Public API ────────────────────────────────────────────────
 
@@ -203,6 +306,13 @@ class Embedder:
             return await self._openai_embed(text)
         if self.mode == "ollama":
             return await self._ollama_embed(text)
+        if self.mode == "hash":
+            return self.hash_embed(text, self.dimension)
+        # A deferred local model: the first embed pays for the load, but in a
+        # worker thread, so a concurrent request is not frozen behind it
+        # (issue #525). ``warm()`` is a no-op once the model is loaded, and a
+        # failed load has already flipped ``mode`` to hash.
+        await self.warm()
         if self.mode == "hash":
             return self.hash_embed(text, self.dimension)
         return self._local_embed(text)

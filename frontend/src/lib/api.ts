@@ -111,6 +111,10 @@ export const api = {
       service?: string;
       auth_required?: boolean;
       auto_update?: AutoUpdateStatus;
+      // The local embedder's load lifecycle (#525): "warming"/"cold" while the
+      // model loads, "ready" once usable. Lets the dashboard say "loading"
+      // instead of showing a server that looks hung.
+      embedder_state?: string;
     }>("/api/health"),
   config: () => fetchApi<ServerConfig>("/api/config"),
 

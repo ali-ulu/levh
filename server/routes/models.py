@@ -118,6 +118,12 @@ class HealthResponse(BaseModel):
     unauthenticated_remote_access: bool
     api_host: str
     auto_update: AutoUpdateStatus
+    # The local embedder's load lifecycle (issue #525): "ready", "cold"
+    # (available but not loaded), "warming" (load in flight) or "unavailable".
+    # A cold local model used to stall the first store/recall for ~2.5 minutes
+    # while every probe reported a healthy server; naming the state here makes
+    # a warming server visible instead of looking hung.
+    embedder_state: str = "ready"
 
 
 class ConsolidateResponse(BaseModel):
@@ -389,6 +395,10 @@ class ServerConfigResponse(BaseModel):
     embedder_mode_source: str = "default"
     env_overrides: list[dict[str, str]] = Field(default_factory=list)
     embedder_dimension: Optional[int] = None
+    # The local embedder's load lifecycle (#525): "ready", "cold", "warming" or
+    # "unavailable". A Settings page that shows the mode but not the load state
+    # cannot explain why the first search is slow on a fresh install.
+    embedder_state: str = "ready"
     short_term_max: int
     weights: dict[str, float]
     decay_half_life_hours: float
@@ -1387,6 +1397,12 @@ class ReadyzResponse(BaseModel):
     database: str
     embedder_mode: str
     embedder_ready: bool
+    # Load lifecycle of a local embedder (issue #525), beside ``embedder_ready``
+    # (which reports a *degradation* to hash). A ``warming``/``cold`` state is
+    # reported as a reason, not a 503: the server serves reads and writes, it is
+    # only still loading the model, and a 503 here would make an orchestrator
+    # restart a server that is doing exactly what it should.
+    embedder_state: str = "ready"
     derived_state_current: bool
     auto_update: AutoUpdateStatus
     reasons: list[str] = Field(default_factory=list)

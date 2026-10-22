@@ -362,6 +362,7 @@
   "settings.serverConfiguration.off": "kapalı",
   "settings.serverConfiguration.version": "Sürüm",
   "settings.serverConfiguration.embedderSource": "{source} kaynağından",
+  "settings.serverConfiguration.embedderWarming": "yükleniyor…",
   "settings.serverConfiguration.envOverrideTitle": "Ortam değişkenleri config.json'u geçersiz kılıyor",
   "settings.serverConfiguration.envOverrideHelp": "Bu ayarlar süreç ortamından geliyor ve config dosyasından önce gelir. Yalnızca config.json'u düzenlemek onları değiştirmez — değişkeni kaldırın veya dosyadaki değere eşitleyin.",
   "settings.serverConfiguration.envOverrideOver": "şunu geçersiz kılıyor:",

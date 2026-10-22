@@ -17,6 +17,7 @@ function config(overrides: Partial<ServerConfig> = {}): ServerConfig {
     embedder_mode_source: "environment variable EMBEDDER_MODE",
     env_overrides: [],
     embedder_dimension: 384,
+    embedder_state: "ready",
     short_term_max: 50,
     weights: { alpha: 1, beta: 1, gamma: 1, delta: 1 },
     decay_half_life_hours: 24,
@@ -27,6 +28,41 @@ function config(overrides: Partial<ServerConfig> = {}): ServerConfig {
     ...overrides,
   };
 }
+
+// Issue #525: a local embedder loads on first use (~2.5 min cold), so the
+// Settings page must show it is still loading rather than implying the first
+// search will be instant. The server reports the load state as `embedder_state`.
+describe("ServerConfiguration embedder load state", () => {
+  it("badges a warming embedder", () => {
+    render(
+      <ServerConfiguration
+        config={config({ embedder_mode: "local", embedder_state: "warming" })}
+      />,
+    );
+
+    expect(screen.getByText("loading…")).toBeDefined();
+  });
+
+  it("badges a cold embedder (available, not loading yet)", () => {
+    render(
+      <ServerConfiguration
+        config={config({ embedder_mode: "local", embedder_state: "cold" })}
+      />,
+    );
+
+    expect(screen.getByText("loading…")).toBeDefined();
+  });
+
+  it("shows no loading badge once the embedder is ready", () => {
+    render(
+      <ServerConfiguration
+        config={config({ embedder_mode: "local", embedder_state: "ready" })}
+      />,
+    );
+
+    expect(screen.queryByText("loading…")).toBeNull();
+  });
+});
 
 describe("ServerConfiguration", () => {
   it("names the layer that supplied the embedder mode", () => {

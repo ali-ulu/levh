@@ -98,7 +98,14 @@ class MemoryEngine(
     @property
     def embedder(self) -> Embedder:
         if self._embedder is None:
-            self._embedder = Embedder(mode=self._embedder_mode)
+            # ``defer_local_load``: constructing the local embedder used to
+            # import torch and build the model inline, and this property is
+            # reached from the request path — so the first store/recall after a
+            # restart blocked the event loop for ~2.5 minutes on a cold machine
+            # (issue #525). Construction now resolves availability cheaply and
+            # the model loads in a worker thread via ``warm()`` (called by
+            # ``warm_embedder`` at startup, or by ``embed()`` on first use).
+            self._embedder = Embedder(mode=self._embedder_mode, defer_local_load=True)
             self.vector_store.dimension = self._embedder.dimension
             if self._embedder.fallback_reason:
                 # `auto`/`local` silently degrading to hash embeddings is not
@@ -113,3 +120,15 @@ class MemoryEngine(
                     self._embedder.fallback_reason,
                 )
         return self._embedder
+
+    async def warm_embedder(self) -> None:
+        """Load a local embedder off the request path (issue #525).
+
+        Called from a startup background task so the ~2.5-minute cold cost is
+        paid before the first store/recall, and while ``/api/health`` and
+        ``/api/readyz`` can report ``warming`` instead of a server that looks
+        hung. A no-op for hash/openai/ollama and for a local embedder already
+        loaded, and it never raises — a failed load records its own reason and
+        degrades to hash.
+        """
+        await self.embedder.warm()

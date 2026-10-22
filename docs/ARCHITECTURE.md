@@ -319,6 +319,19 @@ the hash embedder, revisit `tests/test_v2_features.py::test_interference_*`.
   mutates cached objects in place. Single-writer local use is safe; a
   high-concurrency multi-writer deployment would want a connection pool +
   per-memory locking.
+- **The local embedder loads off the request path.** `Embedder._init_local`
+  imports torch and builds `all-MiniLM-L6-v2`, ~2.5 minutes cold (issue #525).
+  The engine no longer pays that inline: `engine.embedder` constructs the
+  instance cheaply (`defer_local_load=True`), the lifespan warms it in a
+  background task (`_warm_embedder`), and a request that arrives first pays the
+  same cost through `embed()` in a worker thread (`asyncio.to_thread`) instead
+  of blocking the loop. The load state (`warm_state`: `ready` / `cold` /
+  `warming` / `unavailable`) is on `Embedder` and surfaced as `embedder_state`
+  on `/api/health`, `/api/readyz` and `/api/config`; `warming`/`cold` is a
+  *reason* on readiness, never a 503 — the server serves fine while it loads.
+  `levh doctor` uses `defer_local_load=True` too, so the check does not pay the
+  import it exists to explain. `tests/test_operational_hardening.py` pins both
+  properties (construction is cheap; the load runs off the loop).
 - **WebSocket fan-out is in-process** — fine for one server, not for a
   horizontally-scaled cluster (would need Redis pub/sub).
 - **Librarian:** the watchdog runs the scan in a worker thread

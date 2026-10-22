@@ -356,6 +356,7 @@
   "settings.serverConfiguration.off": "off",
   "settings.serverConfiguration.version": "Version",
   "settings.serverConfiguration.embedderSource": "from {source}",
+  "settings.serverConfiguration.embedderWarming": "loading…",
   "settings.serverConfiguration.envOverrideTitle": "Environment variables override config.json",
   "settings.serverConfiguration.envOverrideHelp": "These settings come from the process environment, which outranks the config file. Editing config.json alone will not change them — unset the variable or set it to the file value.",
   "settings.serverConfiguration.envOverrideOver": "overrides",

@@ -93,6 +93,38 @@ async def _warm_derived_state(engine: MemoryEngine) -> None:
         logger.exception("derived-state warmup failed; reads rebuild inline")
 
 
+async def _warm_embedder(engine: MemoryEngine) -> None:
+    """Load a local embedder at startup, off the request path (issue #525).
+
+    ``Embedder._init_local`` imports torch and builds ``all-MiniLM-L6-v2``; on
+    a cold machine that is ~2.5 minutes. The engine used to pay it inline on
+    the first store/recall — via the ``embedder`` property — which blocked the
+    event loop for the whole process and looked like a hang. Warming here means
+    the model is usually loaded before the first write arrives, and the probes
+    can report ``warming`` while it is not.
+
+    Failures are logged, never raised: ``warm()`` records its own reason and
+    degrades to hash, and a request that arrives first simply pays the same
+    cost in a worker thread instead.
+    """
+    try:
+        if engine.embedder.needs_warm():
+            # The startup line issue #525 asks for: without it the only signal
+            # that a 2.5-minute load is under way is the silence of the first
+            # request, and an operator restarts the server — paying it again.
+            logger.info(
+                "warming local embedder in the background (requested=%s); "
+                "/api/health reports embedder_state=warming until it is ready",
+                engine.embedder.requested_mode,
+            )
+        await engine.warm_embedder()
+        logger.info("embedder warmup complete")
+    except asyncio.CancelledError:
+        raise
+    except Exception:
+        logger.exception("embedder warmup failed; the first embed will retry it")
+
+
 # ── App lifespan ─────────────────────────────────────────────────────
 
 
@@ -112,6 +144,7 @@ async def lifespan(_app: FastAPI):
     librarian_task = None
     auto_sync_task = None
     warm_task = None
+    warm_embedder_task = None
     try:
         engine = await get_engine()
         # Off the request path: see _warm_derived_state for why the first
@@ -119,6 +152,15 @@ async def lifespan(_app: FastAPI):
         if engine is not None and not deps.public_demo():
             warm_task = asyncio.get_running_loop().create_task(
                 _warm_derived_state(engine)
+            )
+        # A local embedder imports torch and builds its model on first use —
+        # ~2.5 minutes cold. Doing it here means the first store/recall does not
+        # stall, and /api/health reports `embedder_state: warming` while it
+        # runs, so the wait is visible instead of looking like a hang (#525).
+        # A no-op for hash/openai/ollama, so this costs nothing on the default.
+        if engine is not None and not deps.public_demo():
+            warm_embedder_task = asyncio.get_running_loop().create_task(
+                _warm_embedder(engine)
             )
         # Librarian bekçi ajanı — sunucu açılınca başlar, kapanırken durur.
         # Public demo'da çalışmaz: orada her yazma zaten reddedilir ve bekçinin
@@ -141,6 +183,13 @@ async def lifespan(_app: FastAPI):
             # engine's own shutdown below.
             with contextlib.suppress(asyncio.CancelledError):
                 await warm_task
+        if warm_embedder_task:
+            # The load runs in a worker thread, so cancelling stops waiting on
+            # it but cannot interrupt the import; the engine's shutdown below
+            # closes whatever the embedder already opened.
+            warm_embedder_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await warm_embedder_task
         if auto_sync_task:
             auto_sync_task.cancel()
             with contextlib.suppress(asyncio.CancelledError):

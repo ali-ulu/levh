@@ -63,6 +63,12 @@ async def get_config(engine=Depends(get_engine)):
     # env-over-config disagreement in the same payload.
     embedder_mode_source = _embedder_mode_source(engine._embedder_mode)
     env_conflicts = runtime_config_mod.env_over_config_conflicts()
+    # The load lifecycle of a local embedder (#525), so the Settings page can
+    # say "warming" while the model loads instead of implying the first search
+    # will be instant.
+    embedder_state = (
+        getattr(embedder, "warm_state", None) or probed.get("warm_state", "ready")
+    )
     recall_log_enabled, recall_log_days = engine._recall_log_config()
     return {
         "db_path": engine.db.db_path,
@@ -80,6 +86,7 @@ async def get_config(engine=Depends(get_engine)):
         # silent. Empty when the layers agree or only one is set.
         "env_overrides": env_conflicts,
         "embedder_dimension": engine._embedder.dimension if engine._embedder else None,
+        "embedder_state": embedder_state,
         "short_term_max": engine.short_term.max_size,
         "weights": {
             "alpha": engine.scorer.w.alpha,
@@ -115,6 +122,23 @@ async def get_config(engine=Depends(get_engine)):
     }
 
 
+def _published_embedder_state() -> str:
+    """The local embedder's load lifecycle, read from the published engine.
+
+    Liveness must answer before the engine exists, so this reads the engine the
+    app already published and never creates one (issue #525). No engine, or a
+    non-local embedder, reads as ``"ready"`` — nothing is loading, so a
+    ``warming`` server is the only thing worth naming here.
+    """
+    from server import api
+
+    engine = getattr(api, "_engine", None)
+    embedder = getattr(engine, "_embedder", None)
+    if embedder is None:
+        return "ready"
+    return getattr(embedder, "warm_state", "ready")
+
+
 def _liveness_report() -> dict:
     """The liveness report this process answers with, whoever asked.
 
@@ -146,6 +170,11 @@ def _liveness_report() -> dict:
         # online/offline is exactly the silence the issue names, so liveness —
         # the one thing the dashboard polls — carries the fact too.
         "auto_update": auto_update,
+        # The local embedder's load lifecycle (#525): a cold local model used to
+        # stall the first store/recall for ~2.5 minutes while every probe
+        # reported a healthy server. Naming ``warming``/``cold`` here makes the
+        # cost visible instead of looking like a hang.
+        "embedder_state": _published_embedder_state(),
     }
 
 
@@ -237,6 +266,12 @@ async def ready(engine=Depends(get_engine)):
     # so now, not after the degradation has already changed ranking.
     probed = probe_embedder_status(engine._embedder_mode)
     embedder_mode = embedder.mode if embedder else probed["effective_mode"]
+    # The load lifecycle of a local embedder (#525). A cold/warming model is
+    # *not* a failure: the server serves reads and writes, it is only still
+    # loading. It is reported as a reason (so an operator learns why the first
+    # embed is slow) but never flips readiness to 503 — an orchestrator must not
+    # restart a server that is doing exactly what it should.
+    embedder_state = getattr(embedder, "warm_state", None) or probed.get("warm_state", "ready")
     # A *requested* semantic embedder that fell back to hash is degraded, not
     # ready: recall quality changed silently (#78), and a load balancer should
     # not keep sending traffic to it as if nothing happened.
@@ -247,6 +282,8 @@ async def ready(engine=Depends(get_engine)):
     elif embedder is None and probed["fallback_reason"]:
         embedder_ready = False
         reasons.append(f"embedder: {probed['fallback_reason']}")
+    elif embedder_state in ("cold", "warming"):
+        reasons.append(f"embedder: {embedder_state} (loading the local model)")
 
     derived = None
     derived_stale = False
@@ -275,6 +312,7 @@ async def ready(engine=Depends(get_engine)):
         "database": "ok" if db_ok else "unavailable",
         "embedder_mode": embedder_mode,
         "embedder_ready": embedder_ready,
+        "embedder_state": embedder_state,
         "derived_state_current": not derived_stale,
         "auto_update": auto_update,
         "reasons": reasons,

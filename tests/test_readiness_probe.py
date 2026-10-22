@@ -287,6 +287,102 @@ def test_config_reports_would_be_fallback_before_first_use(monkeypatch):
     assert body["embedder_fallback_reason"]
 
 
+# ── Deferred local-embedder load, surfaced on the probes (issue #525) ─
+
+
+def test_readyz_names_a_warming_embedder_without_failing():
+    """A server still loading its model serves fine; it must not read as 503.
+
+    The whole point of #525 is that a cold local embedder used to stall the
+    first request for ~2.5 minutes while every probe said "ready". The fix
+    reports ``warming`` as a *reason* — visible, but not a failure an
+    orchestrator would restart the server over.
+    """
+    from server.routes.system import ready
+
+    class _WarmingEmbedder:
+        mode = "local"
+        fallback_reason = None
+        warm_state = "warming"
+
+    class _WarmingEngine(_LazyEngine):
+        def __init__(self):
+            super().__init__(mode="local")
+            self._embedder = _WarmingEmbedder()
+
+    response = asyncio.run(ready(engine=_WarmingEngine()))
+
+    assert response["status"] == "ready", response
+    assert response["embedder_ready"] is True
+    assert response["embedder_state"] == "warming"
+    assert any("warming" in reason for reason in response["reasons"])
+
+
+def test_readyz_reports_a_cold_embedder_before_the_load_starts():
+    """A cold model (available, not loading yet) is named too."""
+    from server.routes.system import ready
+
+    class _ColdEmbedder:
+        mode = "local"
+        fallback_reason = None
+        warm_state = "cold"
+
+    class _ColdEngine(_LazyEngine):
+        def __init__(self):
+            super().__init__(mode="local")
+            self._embedder = _ColdEmbedder()
+
+    response = asyncio.run(ready(engine=_ColdEngine()))
+
+    assert response["status"] == "ready", response
+    assert response["embedder_state"] == "cold"
+    assert any("cold" in reason for reason in response["reasons"])
+
+
+def test_readyz_has_no_embedder_reason_once_ready():
+    """A loaded embedder adds nothing to ``reasons`` — no false alarm."""
+    from server.routes.system import ready
+
+    class _ReadyEmbedder:
+        mode = "local"
+        fallback_reason = None
+        warm_state = "ready"
+
+    class _ReadyEngine(_LazyEngine):
+        def __init__(self):
+            super().__init__(mode="local")
+            self._embedder = _ReadyEmbedder()
+
+    response = asyncio.run(ready(engine=_ReadyEngine()))
+
+    assert response["embedder_state"] == "ready"
+    assert not any("embedder" in reason for reason in response["reasons"])
+
+
+def test_health_reports_embedder_state_from_the_published_engine(client):
+    """Liveness names the load lifecycle so a warming server is not "hung"."""
+    body = client.get("/api/health").json()
+
+    assert body["embedder_state"] == "ready"
+
+
+def test_health_embedder_state_is_ready_without_an_engine(monkeypatch, tmp_path):
+    """Liveness must answer before any engine exists, and not create one."""
+    from server import api
+    from server.core import engine_provider
+
+    monkeypatch.setenv("EMBEDDER_MODE", "hash")
+    monkeypatch.setenv("SQLITE_DB_PATH", str(tmp_path / "levh.db"))
+    api._engine = None
+    api._initialized = False
+    engine_provider.set_engine(None)
+
+    from server.routes.system import _liveness_report
+
+    assert _liveness_report()["embedder_state"] == "ready"
+    assert api._engine is None, "liveness must not build an engine"
+
+
 def test_health_alias_serves_the_same_liveness_report(client):
     """``/health`` must answer, not 404 — a poller that always sees the
     server down is worse than no poller (issue #520)."""

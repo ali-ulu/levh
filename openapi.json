@@ -8544,6 +8544,11 @@
           },
           "auto_update": {
             "$ref": "#/components/schemas/AutoUpdateStatus"
+          },
+          "embedder_state": {
+            "type": "string",
+            "title": "Embedder State",
+            "default": "ready"
           }
         },
         "type": "object",
@@ -10202,6 +10207,11 @@
             "type": "boolean",
             "title": "Embedder Ready"
           },
+          "embedder_state": {
+            "type": "string",
+            "title": "Embedder State",
+            "default": "ready"
+          },
           "derived_state_current": {
             "type": "boolean",
             "title": "Derived State Current"
@@ -10906,6 +10916,11 @@
               }
             ],
             "title": "Embedder Dimension"
+          },
+          "embedder_state": {
+            "type": "string",
+            "title": "Embedder State",
+            "default": "ready"
           },
           "short_term_max": {
             "type": "integer",

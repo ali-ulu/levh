@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### fix: load the local embedder off the request path (#525)
+
+- Constructing a `local`/`auto` embedder imported torch and built `all-MiniLM-L6-v2` inline — ~145 s of import plus ~9 s of model build, measured on the reporting machine. That ran on the *request path* (the `engine.embedder` property, reached by the first store/recall after a restart), so it blocked the event loop for roughly 2.5 minutes: HTTP requests hung, `levh doctor`'s 2 s probe timed out, the supervisor's `/api/health` probe missed, and an operator reasonably concluded the server was dead and restarted it — paying the same cost again. The second layer of #78, now with numbers.
+- `Embedder` gains a `defer_local_load` construction mode: it resolves local availability cheaply (`local_embedder_available()`) and leaves the model unloaded, and a `warm()` coroutine loads it via `asyncio.to_thread`, coalescing concurrent callers on a lock. `engine.embedder` uses that mode, so building the instance never imports torch; the first `embed()` that beats startup warmup pays the load in a worker thread rather than on the loop.
+- The server warms the embedder at startup in a background task (`_warm_embedder`), so the cost is usually paid before the first write arrives, and logs `warming local embedder in the background` / `embedder ready after Ns` — the machine-specific number a user needs in order to file this kind of report instead of guessing. `warm()` also records its own failures and degrades to hash, so the documented contract holds even if a load raises.
+- New `embedder_state` (`ready` / `cold` / `warming` / `unavailable`) on `Embedder`, surfaced on `/api/health`, `/api/readyz` and `/api/config` (and typed in the dashboard, which badges a warming embedder on the Settings page). On readiness a `warming`/`cold` model is reported as a *reason*, never a 503: the server serves reads and writes while it loads, and a 503 would make an orchestrator restart a server that is doing exactly what it should.
+- `levh doctor` constructs its embedder with `defer_local_load=True` too, so the check no longer pays the ~2.5-minute import it exists to explain, and its PASS line for a local model now says the model loads on first use.
+
 ### fix: state that consolidation permanently deletes the originals (#531)
 
 - `consolidate_memories` / `consolidate_similar` described the originals as "preserved inside the consolidated memory's `metadata.consolidated_from` so nothing is lost — they can be recovered". They were not preserved: each original was hard-deleted (the same delete `forget` performs) from the `memories` table, the full-text index and the vector store, and only `id`, `created_at` and a one-way `content_sha256` digest survived. The recovery path the prose promised did not exist, so an operator could compress a cluster believing a backup was implicit and lose the text.

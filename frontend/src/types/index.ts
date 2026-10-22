@@ -263,6 +263,10 @@ export interface ServerConfig {
   embedder_mode_source: string;
   env_overrides: EnvOverride[];
   embedder_dimension: number | null;
+  // Load lifecycle of a local embedder (#525): "ready" | "cold" | "warming" |
+  // "unavailable". A local model loads on first use (~2.5 min cold), so the
+  // Settings page shows this rather than implying the first search is instant.
+  embedder_state: string;
   short_term_max: number;
   weights: { alpha: number; beta: number; gamma: number; delta: number };
   decay_half_life_hours: number;

@@ -256,7 +256,12 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     try:
         from server.core.embedder import Embedder
 
-        embedder = Embedder(requested_embedder_mode)
+        # ``defer_local_load``: this check must not import torch. The mode and
+        # its provenance are what doctor verifies; loading the model here would
+        # make `levh doctor` pay the same ~2.5-minute cost it exists to explain
+        # (issue #525), and the 2s live probe would report a healthy server as
+        # dead while it happened.
+        embedder = Embedder(requested_embedder_mode, defer_local_load=True)
         identity = embedder.identity()
         provider = identity["provider"]
         if provider == "openai":
@@ -269,6 +274,11 @@ def cmd_doctor(args: argparse.Namespace) -> int:
             f"requested={requested_embedder_mode} (from {mode_source}), "
             f"effective={provider}, model={identity['model']}, route={route}"
         )
+        if provider == "local" and not embedder.fallback_reason:
+            # A local model loads on first use (~2.5 min cold, #525). Saying so
+            # here is the whole point: an operator who reads "PASS local" and
+            # then sees the first request stall has been misled by omission.
+            detail += " (loads on first use; /api/health reports embedder_state)"
         if embedder.fallback_reason:
             checks.append(("Embedder mode", "WARN", f"{detail}; {embedder.fallback_reason}"))
         else:

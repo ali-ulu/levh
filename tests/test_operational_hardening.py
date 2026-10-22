@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import os
 import sqlite3
+import threading
 from pathlib import Path
 
 import pytest
@@ -53,6 +54,175 @@ def test_auto_embedder_is_local_first_even_with_openai_key(monkeypatch):
     assert embedder.resolved_mode == "local"
     assert embedder.mode == "hash"
     assert embedder.identity()["provider"] != "openai"
+
+
+# ── Deferred local-embedder load (issue #525) ────────────────────────
+#
+# Constructing a local embedder imports torch and builds all-MiniLM-L6-v2,
+# ~2.5 minutes on a cold machine. That used to happen inline on the request
+# path (the ``engine.embedder`` property), freezing the whole event loop for
+# the first store/recall after a restart with no readiness signal. These tests
+# pin the two properties that fix it: construction must not load the model,
+# and the load must run off the loop and be reported while it runs.
+
+
+def test_deferred_construction_does_not_import_torch(monkeypatch):
+    """Building the instance must be cheap even when a local model is present."""
+    monkeypatch.setattr(
+        "server.core.embedder.local_embedder_available", lambda: True
+    )
+    loaded: list[str] = []
+    monkeypatch.setattr(
+        Embedder, "_init_local", lambda self: loaded.append("loaded")
+    )
+
+    embedder = Embedder("auto", defer_local_load=True)
+
+    assert loaded == []
+    assert embedder.mode == "local"
+    assert embedder.warm_state == "cold"
+    assert embedder.needs_warm() is True
+    assert embedder.is_semantic is True
+
+
+def test_deferred_construction_without_local_falls_back_immediately(monkeypatch):
+    """A missing sentence-transformers is a hash fallback, known up front."""
+    monkeypatch.setattr(
+        "server.core.embedder.local_embedder_available", lambda: False
+    )
+
+    embedder = Embedder("auto", defer_local_load=True)
+
+    assert embedder.mode == "hash"
+    assert embedder.warm_state == "unavailable"
+    assert embedder.needs_warm() is False
+    assert embedder.fallback is True
+    assert "levh[local]" in embedder.fallback_reason
+
+
+@pytest.mark.asyncio
+async def test_warm_runs_the_load_off_the_event_loop(monkeypatch):
+    """``warm()`` must not run the blocking load on the calling thread."""
+    monkeypatch.setattr(
+        "server.core.embedder.local_embedder_available", lambda: True
+    )
+    threads: list[str] = []
+
+    def _fake_local(self: Embedder) -> None:
+        threads.append(threading.current_thread().name)
+        self._model = object()
+        self.dimension = 384
+
+    monkeypatch.setattr(Embedder, "_init_local", _fake_local)
+    embedder = Embedder("local", defer_local_load=True)
+
+    loop_thread = threading.current_thread().name
+    await embedder.warm()
+
+    assert embedder.warm_state == "ready"
+    assert embedder.needs_warm() is False
+    assert threads and threads[0] != loop_thread
+
+
+@pytest.mark.asyncio
+async def test_warm_is_idempotent_and_never_loads_twice(monkeypatch):
+    monkeypatch.setattr(
+        "server.core.embedder.local_embedder_available", lambda: True
+    )
+    calls: list[int] = []
+
+    def _fake_local(self: Embedder) -> None:
+        calls.append(1)
+        self._model = object()
+
+    monkeypatch.setattr(Embedder, "_init_local", _fake_local)
+    embedder = Embedder("local", defer_local_load=True)
+
+    await embedder.warm()
+    await embedder.warm()
+
+    assert calls == [1]
+
+
+@pytest.mark.asyncio
+async def test_warm_records_a_failed_load_and_degrades_to_hash(monkeypatch, caplog):
+    """A failed deferred load must degrade loudly, not leave a dead embedder."""
+    monkeypatch.setattr(
+        "server.core.embedder.local_embedder_available", lambda: True
+    )
+
+    def _explode(self: Embedder) -> None:
+        raise RuntimeError("no torch for you")
+
+    monkeypatch.setattr(Embedder, "_init_local", _explode)
+    embedder = Embedder("local", defer_local_load=True)
+
+    with caplog.at_level("WARNING", logger="levh.embedder"):
+        await embedder.warm()
+
+    assert embedder.mode == "hash"
+    assert embedder.warm_state == "unavailable"
+    assert embedder.fallback_reason
+    assert embedder.fallback is True
+    assert any("resolved=hash" in record.message for record in caplog.records)
+
+
+@pytest.mark.asyncio
+async def test_embed_warms_a_deferred_model_before_using_it(monkeypatch):
+    """A request that beats startup warmup still works, via ``embed``."""
+    monkeypatch.setattr(
+        "server.core.embedder.local_embedder_available", lambda: True
+    )
+
+    class _Model:
+        def encode(self, text, convert_to_numpy=True):
+            import numpy as np
+
+            return np.ones(8)
+
+    def _fake_local(self: Embedder) -> None:
+        self._model = _Model()
+        self.dimension = 8
+
+    monkeypatch.setattr(Embedder, "_init_local", _fake_local)
+    embedder = Embedder("local", defer_local_load=True)
+
+    vector = await embedder.embed("hello")
+
+    assert embedder.warm_state == "ready"
+    assert len(vector) == 8
+
+
+@pytest.mark.asyncio
+async def test_engine_warm_embedder_is_a_noop_for_hash(monkeypatch, tmp_path):
+    """The default (hash) install must not pay a thread hop at startup."""
+    monkeypatch.setenv("EMBEDDER_MODE", "hash")
+    engine = MemoryEngine(
+        db_path=str(tmp_path / "levh.db"), embedder_mode="hash", short_term_max=10
+    )
+
+    await engine.warm_embedder()
+
+    assert engine._embedder is not None
+    assert engine._embedder.warm_state == "ready"
+
+
+@pytest.mark.asyncio
+async def test_engine_embedder_property_does_not_block_on_local_load(monkeypatch, tmp_path):
+    """Reading ``engine.embedder`` must not import torch inline (#525)."""
+    monkeypatch.setattr(
+        "server.core.embedder.local_embedder_available", lambda: True
+    )
+    loaded: list[str] = []
+    monkeypatch.setattr(Embedder, "_init_local", lambda self: loaded.append("x"))
+    engine = MemoryEngine(
+        db_path=str(tmp_path / "levh.db"), embedder_mode="local", short_term_max=10
+    )
+
+    embedder = engine.embedder
+
+    assert loaded == []
+    assert embedder.warm_state == "cold"
 
 
 def test_explicit_openai_mode_still_selects_openai(monkeypatch):
