@@ -181,4 +181,9 @@ if "get_continuity_brief" in _registered:
 # ── Run ─────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
+    if sys.platform == "win32":
+        # On Windows, loading torch/scipy's DLLs deadlocks while the stdio
+        # transport has a thread blocked reading stdin, so the first recall
+        # hung forever. Load the local model before that reader exists.
+        asyncio.run(engine_provider.get_engine().embedder.warm())
     mcp.run(transport="stdio")

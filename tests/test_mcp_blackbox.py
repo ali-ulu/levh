@@ -284,3 +284,32 @@ async def test_mcp_sse_read_only_auth_and_tool_denial(tmp_path):
             except asyncio.TimeoutError:
                 process.kill()
                 await process.wait()
+
+
+def test_mcp_stdio_loads_the_embedder_before_reading_stdin_on_windows(tmp_path):
+    """On Windows a DLL load deadlocks once the stdio reader blocks on stdin,
+    so the model must be warmed before ``mcp.run`` starts that reader."""
+    probe = (
+        "import runpy, sys\n"
+        "import server.mcp_stdio\n"
+        "from mcp.server.fastmcp import FastMCP\n"
+        "from server.core.embedder import Embedder\n"
+        "calls = []\n"
+        "async def _warm(self):\n"
+        "    calls.append('warm')\n"
+        "Embedder.warm = _warm\n"
+        "FastMCP.run = lambda self, transport='stdio': calls.append('run')\n"
+        "sys.platform = 'win32'\n"
+        "runpy.run_module('server.mcp_stdio', run_name='__main__')\n"
+        "print(calls)\n"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", probe],
+        env=_env(tmp_path / "warm-order.db"),
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip().splitlines()[-1] == "['warm', 'run']"
