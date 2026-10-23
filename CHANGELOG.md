@@ -2,9 +2,10 @@
 
 ## Unreleased
 
-### Placeholder for future changes (#103)
+### fix: load the local embedder before the stdio reader starts on Windows
 
-- TBD
+- On Windows, `levh mcp stdio` hung forever on the first recall or store with a local embedder. Loading torch/scipy's DLLs deadlocks while another thread is blocked in a synchronous read on the stdin pipe, and the stdio transport keeps exactly such a thread. `py-spy --native` showed the process at 0% CPU inside `LoadLibraryExW(libscipy_openblas…)`. A plain `import scipy.linalg` with a thread blocked on piped stdin reproduces it, with or without the C runtime's `read` and with `OPENBLAS_NUM_THREADS=1`. Moving the load into a worker thread (#525) does not avoid it.
+- On Windows the stdio server now runs `embedder.warm()` before `mcp.run` starts the reader. The model cost (~15-20 s on the reporting machine) moves from the first tool call to startup, so the client's MCP startup timeout must cover it. Other platforms stay lazy, and a `hash` or remote embedder is unchanged because `warm()` is a no-op there.
 
 ## 2.36.0
 
