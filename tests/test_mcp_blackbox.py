@@ -313,3 +313,25 @@ def test_mcp_stdio_loads_the_embedder_before_reading_stdin_on_windows(tmp_path):
     )
     assert result.returncode == 0, result.stderr
     assert result.stdout.strip().splitlines()[-1] == "['warm', 'run']"
+
+
+def test_warm_embedder_before_stdio_runs_only_on_windows(monkeypatch):
+    import server.mcp_stdio as stdio
+
+    calls: list[str] = []
+
+    class _Embedder:
+        async def warm(self) -> None:
+            calls.append("warm")
+
+    class _Engine:
+        embedder = _Embedder()
+
+    monkeypatch.setattr(stdio.engine_provider, "get_engine", lambda: _Engine())
+    monkeypatch.setattr(stdio.sys, "platform", "linux")
+    stdio._warm_embedder_before_stdio()
+    assert calls == []
+
+    monkeypatch.setattr(stdio.sys, "platform", "win32")
+    stdio._warm_embedder_before_stdio()
+    assert calls == ["warm"]
