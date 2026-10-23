@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+### Placeholder for future changes (#103)
+
+- TBD
+
+## 2.36.0
+
+### Upgrade notes
+
+- **MCP clients now see a smaller tool list by default.** `levh mcp stdio` and the standalone SSE server defaulted to the `full` profile — every one of the 74 tools — while the client config LEVH generates already asked for `work`. An unset `LEVH_MCP_PROFILE` now means `work` (29 tools) on both transports. A client that depended on the implicit full surface must set `LEVH_MCP_PROFILE=full` explicitly; `admin` stays available and `minimal` is unchanged. `levh mcp profiles` and `levh mcp config` name the effective profile.
+- **New `read_only` profile for external agents.** An explicit allowlist of 36 recall/search/context/metadata reads, enforced server-side at call time, so a client that invokes a hidden write tool by name is refused (`ToolAccessDenied`) instead of executing it. Opt in with `LEVH_MCP_PROFILE=read_only`; see `docs/mcp-client-config.md`.
+
 ### feat: add a server-enforced read-only MCP profile for external agents (#530)
 
 - New `read_only` MCP profile for external/cloud agents that may read memory but must never write it. It is an explicit allowlist of 36 recall/search/context/metadata reads, and it is enforced **server-side at call time**: `server/tools/access.py` wraps the FastMCP dispatcher, so a client that invokes a hidden write tool by name gets `ToolAccessDenied` instead of executing it. The size profiles (`minimal`/`work`/`admin`/`full`) still only narrow discovery; `read_only` is the one permission profile.
@@ -34,10 +45,6 @@
 - The JSON response key `archived` is unchanged for backward compatibility, but its description now states that it counts permanent deletions, not retained records.
 - `tests/test_consolidation.py` proves the contract against the store: no `memories` or `memories_fts` row for an original survives, no archive/trash table exists, the lineage digest matches the original bytes while the text is absent, and a dry run deletes nothing. A drift guard fails if any describing surface drops the contract or restores the withdrawn "nothing is lost" claim.
 
-### Placeholder for future changes (#103)
-
-- TBD
-
 ### fix: make the pip-debris recovery reachable without a working pip (#524)
 
 - An interrupted `levh update` (a killed supervisor, a reboot, a locked file) can leave `~`-prefixed remnants in the interpreter's `site-packages`, which wedges `pip install`, `pip uninstall` and `pip show` in that interpreter — so the documented recovery step (a `pip install`) was itself blocked by the breakage. `levh doctor` already reported the remnants (with the move command) and `levh update` clears them before installing.
@@ -57,6 +64,28 @@
 - `levh doctor` names the layer that supplied the embedder mode and warns (WARN, exit 1) when an env var disagrees with a conflicting config value, with the fix in the line.
 - The Settings page shows the source under the embedder value and a warning banner listing each env-over-config override.
 - The precedence itself is unchanged; this only makes the winning layer visible.
+
+### fix: report the embedder fallback everywhere readiness can be read (#519)
+
+- A server whose config asked for `auto` could silently run the non-semantic hash embedder while `/api/readyz` answered `ready` with `reasons: []`. The engine creates its embedder lazily, so a probe arriving before the first store/recall had nothing to inspect and readiness and `/api/config` reported the *requested* mode as if it were effective. A model-free probe (`probe_embedder_status`) now resolves the same question without importing torch or loading a model, so a would-be hash fallback is visible from the first poll, with the reason recorded.
+- The Ollama degrade path set no reason at all; it now records why and emits one warning line, matching the local-model path. The probe's warning is emitted once per distinct reason per process, so a 30 s healthcheck poll cannot turn the report into a log flood.
+- An explicit `hash` request stays a choice, not a fallback: it reports ready with no reason.
+
+### fix: answer `/health` and name unknown paths in the log (#520)
+
+- Something polled `/health` and every request answered 404, invisibly: the access log recorded the status but never the reason. `/health` is now an alias of the `/api/health` liveness report (kept out of the OpenAPI schema, where `/api/health` stays the one published path), so a monitor that reaches for the conventional path gets a real answer instead of a 404 that looks like a dead server.
+- A middleware report names any path that matched no route, rate-limited per path and excluding the two legitimate 404 shapes (a dashboard asset miss from a stale build, and a route answering its own 404 for a missing resource). The report carries the request id. Successful `/health` polls join `/api/health` in the access-log filter, so the 404 storm cannot come back as a 200 storm.
+
+### fix: clean up pip rename debris in install and update, and report it (#521)
+
+- An interrupted install left `~`-prefixed remnants in `site-packages`; pip reads them as invalid distributions, so the whole interpreter's pip wedges — install, uninstall and show all fail — and nothing said why. `levh update`'s install path moves the remnants aside first, into a backup directory beside `site-packages` (never deleted: a remnant may be the only copy of what it holds), so an install no longer walks into the wedge it is meant to fix.
+- When a remnant cannot be moved (permission, a process holding the file), the warning on stderr names each directory with the reason and prints the recovery command instead of leaving the tree silently wedged; a failed install also names any debris pip created on the way out.
+- `levh doctor` reports debris as a failing check with the same recovery command, so the wedge is visible before anybody runs pip.
+
+### fix: restart a flapping server instead of resetting the miss count on one good probe (#514)
+
+- The supervisor only restarted after ten consecutive missed health probes, and a single good probe zeroed the count, so a half-alive server flapping 6 missed / 1 ok was never restarted. It now keeps a sliding window of the last 10 probes and restarts when 6 of them were missed.
+- A run of misses with no good probe is RAM-thrash slowness and keeps the 10-consecutive patience; the window rule needs at least one good probe among the recent ones.
 
 ### feat: DeepSeek Harness plugin for guard checks, memory ask, and team decisions (#515)
 
