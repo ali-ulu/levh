@@ -137,6 +137,38 @@ async def test_list_entities_graph_filters_by_type(engine):
 
 
 @pytest.mark.asyncio
+async def test_list_entities_graph_filters_by_query(engine):
+    await _seed(engine)
+    await engine.reindex_entities()
+
+    hits = await engine.list_entities_graph(query="alice")
+    assert len(hits) >= 1
+    assert all("alice" in (h["name"] or "").lower() or "alice" in (h["ekey"] or "").lower() for h in hits)
+
+    # A query that matches nothing returns an empty list, not the full graph.
+    assert await engine.list_entities_graph(query="zzz-no-such-entity") == []
+
+    # Query and type filter compose.
+    typed = await engine.list_entities_graph(entity_type="person", query="alice")
+    assert all(h["type"] == "person" for h in typed)
+
+
+@pytest.mark.asyncio
+async def test_list_entities_graph_paginates(engine):
+    await _seed(engine)
+    await engine.reindex_entities()
+
+    everything = await engine.list_entities_graph(limit=200)
+    assert len(everything) > 1
+
+    first = await engine.list_entities_graph(limit=1, offset=0)
+    second = await engine.list_entities_graph(limit=1, offset=1)
+    assert len(first) == 1 and len(second) == 1
+    assert first[0]["id"] == everything[0]["id"]
+    assert second[0]["id"] == everything[1]["id"]
+
+
+@pytest.mark.asyncio
 async def test_get_entity_alice_has_memories_and_related(engine):
     await _seed(engine)
     await engine.reindex_entities()
@@ -237,6 +269,40 @@ async def test_api_entities_flow(api_client):
     r = await api_client.get("/api/entities/stats")
     assert r.status_code == 200
     assert "by_type" in r.json()
+
+
+@pytest.mark.asyncio
+async def test_api_entities_search_endpoint(api_client):
+    await api_client.post("/api/memories", json={
+        "content": "Kickoff for Q3", "memory_type": "episodic",
+        "source": "connector:calendar",
+        "metadata": {
+            "title": "Q3 Planning",
+            "captured_at": "2026-01-01T10:00:00+00:00",
+            "attendees": ["Alice <alice@acme.com>", "bob@acme.com"],
+        },
+    })
+    await api_client.post("/api/entities/reindex")
+
+    # The search route must win over the {entity_id:path} catch-all.
+    r = await api_client.get("/api/entities/search?q=alice")
+    assert r.status_code == 200
+    entities = r.json()["entities"]
+    assert len(entities) >= 1
+    assert all(
+        "alice" in e["name"].lower() or "alice" in (e["ekey"] or "").lower()
+        for e in entities
+    )
+
+    # Type filter composes with the query.
+    r = await api_client.get("/api/entities/search?q=alice&type=person")
+    assert r.status_code == 200
+    assert all(e["type"] == "person" for e in r.json()["entities"])
+
+    # No match is an empty list, not a 404 or the whole graph.
+    r = await api_client.get("/api/entities/search?q=zzz-no-such-entity")
+    assert r.status_code == 200
+    assert r.json()["entities"] == []
 
 
 # ── MCP tools ──────────────────────────────────────────────────────

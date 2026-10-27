@@ -21,16 +21,23 @@ class MemoryGraphMixin:
         return await self.entity_index.reindex_entities()
 
     async def list_entities_graph(
-        self, entity_type: str | None = None, limit: int = 200
+        self,
+        entity_type: str | None = None,
+        limit: int = 200,
+        offset: int = 0,
+        query: str | None = None,
     ) -> list[dict]:
-        """List persisted entities (optionally filtered by type), most-mentioned
-        first. Distinct from ``list_people`` — this reads the persistent graph.
+        """List persisted entities (optionally filtered by type and name
+        substring), most-mentioned first. Distinct from ``list_people`` — this
+        reads the persistent graph.
 
         Stale-ok is NOT safe here: the background rebuild clears the graph
         before repopulating, so a read racing it can see a half-empty index.
         Freshness-required."""
         await self.recompute_derived_state()
-        return await self.entity_index.list_entities_graph(entity_type=entity_type, limit=limit)
+        return await self.entity_index.list_entities_graph(
+            entity_type=entity_type, limit=limit, offset=offset, query=query
+        )
 
     async def get_entity(self, query: str, entity_type: str | None = None) -> dict | None:
         """Resolve a query to a persisted entity and return its profile: the

@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { axe } from "jest-axe";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type {
@@ -34,6 +34,7 @@ const mocks = vi.hoisted(() => ({
   listFindings: vi.fn(),
   entityStats: vi.fn(),
   listEntities: vi.fn(),
+  searchEntities: vi.fn(),
   getEntity: vi.fn(),
 }));
 
@@ -48,6 +49,7 @@ vi.mock("@/lib/api", () => ({
     listFindings: mocks.listFindings,
     entityStats: mocks.entityStats,
     listEntities: mocks.listEntities,
+    searchEntities: mocks.searchEntities,
     getEntity: mocks.getEntity,
     // The drawer is reachable from several of these pages; leaving its loaders
     // pending keeps the assertion on the page, not on drawer internals.
@@ -179,6 +181,24 @@ describe("Page shells are accessible", () => {
 
     expect(await screen.findByText("Ali")).toBeInTheDocument();
     expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it("graph, the search box queries the entity index (#560)", async () => {
+    mocks.entityStats.mockResolvedValue({ by_type: { person: 1 } });
+    mocks.listEntities.mockResolvedValue({ entities: [entity] });
+    mocks.searchEntities.mockResolvedValue({ entities: [entity] });
+    const { container } = render(<GraphPage />);
+
+    const box = await screen.findByRole("searchbox", { name: "Search entities" });
+    expect(await axe(container)).toHaveNoViolations();
+
+    fireEvent.change(box, { target: { value: "ali" } });
+
+    // The query is debounced, so the request lands after the timer, not on the
+    // keystroke. `searchEntities` carries the filter; the plain list call must
+    // not be the one that answers a typed query.
+    await waitFor(() => expect(mocks.searchEntities).toHaveBeenCalledWith("ali", ""));
+    expect(mocks.searchEntities).toHaveBeenCalledTimes(1);
   });
 
   it("catches an unnamed control on a page shell", async () => {

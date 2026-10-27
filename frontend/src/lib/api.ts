@@ -345,6 +345,16 @@ export const api = {
     qs.set("limit", String(limit));
     return fetchApi<{ entities: EntityRow[] }>(`/api/entities?${qs}`);
   },
+  // Debounced name search for the graph page (#560). A separate call site from
+  // `listEntities` so the page reads as a search when a query is present, but
+  // it is the same underlying query.
+  searchEntities: (q: string, type = "", limit = 50) => {
+    const qs = new URLSearchParams();
+    qs.set("q", q);
+    if (type) qs.set("type", type);
+    qs.set("limit", String(limit));
+    return fetchApi<{ entities: EntityRow[] }>(`/api/entities/search?${qs}`);
+  },
   getEntity: (id: string) =>
     fetchApi<{ entity: EntityRow; memories: Memory[]; related: { id: string; type: string; name: string; shared: number }[] }>(
       `/api/entities/${encodeURIComponent(id)}`

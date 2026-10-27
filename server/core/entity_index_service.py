@@ -85,12 +85,18 @@ class EntityIndexService:
         }
 
     async def list_entities_graph(
-        self, entity_type: str | None = None, limit: int = 200
+        self,
+        entity_type: str | None = None,
+        limit: int = 200,
+        offset: int = 0,
+        query: str | None = None,
     ) -> list[dict]:
-        """List persisted entities, optionally filtered by type."""
+        """List persisted entities, optionally filtered by type and name query."""
         return await self.db.list_entities(
             etype=entity_type,
             limit=min(max(limit, 1), 2000),
+            offset=max(offset, 0),
+            query=query or None,
         )
 
     async def get_entity(self, query: str, entity_type: str | None = None) -> dict | None:

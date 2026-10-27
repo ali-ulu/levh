@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+### feat: add cross-entity search to the command palette (#564)
+
+- The ⌘K palette searched memories only, so an entity, project or session the user knew by name was unreachable from the keyboard. A query now fans out across four sources — memories (recall), entities (`/api/entities/search`), projects and sessions — and each hit is grouped under a labelled section. An entity row deep-links to `/graph/?q=<name>`, a project row to `/memories/?project=<name>`, a session row to `/memories/?session=<id>`; memory rows keep the existing content-query link. The calls settle independently (`Promise.allSettled`), so a missing entity index does not blank the memory hits, and the "search failed" state only appears when every source rejected.
+
+### feat: search entities by name on the graph page (#560)
+
+- The graph page offered a type filter and nothing else, so finding one entity in a large graph meant scrolling. A debounced search box now narrows the list by name and carries the query in the URL (`/graph/?q=…&type=…`), so a filtered view can be shared and survives a reload. A query that matches nothing shows a "no match" message naming the term rather than the generic empty state.
+
+### feat: add GET /api/entities/search for the graph page (#569)
+
+- `GET /api/entities` gains `offset` and `q` (case-insensitive substring over the name or entity key), and a thin alias `GET /api/entities/search` exposes the same query under a search-shaped path for the graph page. The literal path is registered above the `/api/entities/{entity_id}` catch-all for the same reason `/stats` is. Existing callers are unchanged: `offset` defaults to 0 and an absent `q` filters nothing.
+
 ### fix: load the local embedder before the stdio reader starts on Windows
 
 - On Windows, `levh mcp stdio` hung forever on the first recall or store with a local embedder. Loading torch/scipy's DLLs deadlocks while another thread is blocked in a synchronous read on the stdin pipe, and the stdio transport keeps exactly such a thread. `py-spy --native` showed the process at 0% CPU inside `LoadLibraryExW(libscipy_openblas…)`. A plain `import scipy.linalg` with a thread blocked on piped stdin reproduces it, with or without the C runtime's `read` and with `OPENBLAS_NUM_THREADS=1`. Moving the load into a worker thread (#525) does not avoid it.

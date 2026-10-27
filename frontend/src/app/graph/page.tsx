@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MemoryDetailDrawer } from "@/components/memory-detail-drawer";
+import { Input } from "@/components/ui/input";
 import type { EntityRow, Memory } from "@/types";
 import {
   ArrowLeft,
@@ -17,6 +18,7 @@ import {
   Loader2,
   Network,
   RefreshCw,
+  Search,
   User,
 } from "lucide-react";
 
@@ -148,6 +150,7 @@ export default function GraphPage() {
   const [entities, setEntities] = useState<EntityRow[]>([]);
   const [byType, setByType] = useState<Record<string, number>>({});
   const [typeFilter, setTypeFilter] = useState<string>("");
+  const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [reindexing, setReindexing] = useState(false);
 
@@ -157,12 +160,14 @@ export default function GraphPage() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [drawerMemory, setDrawerMemory] = useState<Memory | null>(null);
 
-  const load = useCallback(async (type: string) => {
+  const load = useCallback(async (type: string, query: string) => {
     setLoading(true);
     try {
       const [statsRes, entitiesRes] = await Promise.all([
         api.entityStats(),
-        api.listEntities(type),
+        query.trim()
+          ? api.searchEntities(query.trim(), type)
+          : api.listEntities(type),
       ]);
       setByType(statsRes.by_type);
       setEntities(entitiesRes.entities);
@@ -170,15 +175,38 @@ export default function GraphPage() {
     setLoading(false);
   }, []);
 
+  // Deep link: /graph/?q=...&type=... survives a reload and can be shared.
+  // Read once on mount (the static export has no server-side searchParams),
+  // then keep the URL in step as the user filters.
   useEffect(() => {
-    load(typeFilter);
-  }, [load, typeFilter]);
+    const params = new URLSearchParams(window.location.search);
+    const q = params.get("q");
+    const type = params.get("type");
+    if (q) setSearch(q);
+    if (type) setTypeFilter(type);
+  }, []);
+
+  // Debounce the query so a fast typist issues one request, not one per key.
+  useEffect(() => {
+    const timer = setTimeout(() => load(typeFilter, search), 300);
+    return () => clearTimeout(timer);
+  }, [load, typeFilter, search]);
+
+  // Reflect the current filters into the URL without a navigation, so a
+  // deep-linked page matches what is on screen without re-running the effect.
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (search.trim()) params.set("q", search.trim());
+    if (typeFilter) params.set("type", typeFilter);
+    const qs = params.toString();
+    window.history.replaceState(null, "", qs ? `?${qs}` : window.location.pathname);
+  }, [search, typeFilter]);
 
   const reindex = async () => {
     setReindexing(true);
     try {
       await api.reindexEntities();
-      await load(typeFilter);
+      await load(typeFilter, search);
     } catch {}
     setReindexing(false);
   };
@@ -351,6 +379,21 @@ export default function GraphPage() {
         </Button>
       </div>
 
+      <div className="relative">
+        <Search
+          className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+          aria-hidden="true"
+        />
+        <Input
+          type="search"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          aria-label={t("app.graph.searchLabel")}
+          placeholder={t("app.graph.searchPlaceholder")}
+          className="pl-9"
+        />
+      </div>
+
       <div className="flex flex-wrap gap-2">
         <button
           onClick={() => setTypeFilter("")}
@@ -381,8 +424,14 @@ export default function GraphPage() {
         <Card>
           <CardContent className="py-12 text-center text-sm text-muted-foreground space-y-2">
             <Network className="h-8 w-8 mx-auto opacity-40" />
-            <p>{t("app.graph.empty.title")}</p>
-            <p>{t("app.graph.empty.hint")}</p>
+            {search.trim() ? (
+              <p>{t("app.graph.noMatch", { query: search.trim() })}</p>
+            ) : (
+              <>
+                <p>{t("app.graph.empty.title")}</p>
+                <p>{t("app.graph.empty.hint")}</p>
+              </>
+            )}
           </CardContent>
         </Card>
       ) : (

@@ -29,9 +29,43 @@ async def entity_graph_stats(engine=Depends(get_engine)):
 
 
 @router.get("/api/entities", response_model=EntityListResponse)
-async def list_entities_graph(type: str = "", limit: int = 200, engine=Depends(get_engine)):
-    """Persisted entities (optionally filtered by type), most-mentioned first."""
-    return {"entities": await engine.list_entities_graph(entity_type=type or None, limit=limit)}
+async def list_entities_graph(
+    type: str = "",
+    limit: int = 200,
+    offset: int = 0,
+    q: str = "",
+    engine=Depends(get_engine),
+):
+    """Persisted entities (optionally filtered by type and name substring),
+    most-mentioned first."""
+    return {
+        "entities": await engine.list_entities_graph(
+            entity_type=type or None, limit=limit, offset=offset, query=q or None
+        )
+    }
+
+
+@router.get("/api/entities/search", response_model=EntityListResponse)
+async def search_entities(
+    q: str = "",
+    type: str = "",
+    limit: int = 20,
+    offset: int = 0,
+    engine=Depends(get_engine),
+):
+    """Search persisted entities by name or key, for the graph page's search
+    box (#569). A thin alias over ``GET /api/entities`` with the query named
+    ``q`` and a smaller default page, kept as its own path because the page's
+    call site reads as a search, not a list.
+
+    Registered **before** ``/api/entities/{entity_id:path}`` so the literal
+    path is not swallowed by the catch-all (the same reason ``/stats`` sits
+    above it)."""
+    return {
+        "entities": await engine.list_entities_graph(
+            entity_type=type or None, limit=limit, offset=offset, query=q or None
+        )
+    }
 
 
 @router.get("/api/entities/{entity_id:path}", response_model=EntityProfileResponse)

@@ -213,7 +213,7 @@
   "commandPalette.results.one": "{count} result",
   "commandPalette.results.other": "{count} results",
   "commandPalette.searchFailed": "Search failed. Try again.",
-  "commandPalette.noMatch": "No memories match “{query}”.",
+  "commandPalette.noMatch": "Nothing matches “{query}”.",
   "commandPalette.empty": "Type to search your memory store.",
   "app.meetingPrep.title": "Meeting Prep",
   "app.meetingPrep.subtitle": "Your proactive “before you walk in” brief — the next meeting, who's attending, what you last discussed with each of them, and the open commitments and decisions that matter. Deterministic, offline.",
@@ -817,5 +817,15 @@
   "settings.federation.redacted": "redacted",
   "settings.federation.duplicates": "duplicates",
   "settings.federation.held": "held for review",
-  "settings.federation.errors": "errors"
+  "settings.federation.errors": "errors",
+  "app.graph.searchPlaceholder": "Search entities…",
+  "app.graph.searchLabel": "Search entities",
+  "app.graph.noMatch": "No entities match “{query}”.",
+  "commandPalette.group.entities": "Entities",
+  "commandPalette.group.projects": "Projects",
+  "commandPalette.group.sessions": "Sessions",
+  "commandPalette.group.memories": "Memories",
+  "commandPalette.entityHint": "Open in the graph",
+  "commandPalette.projectHint": "Browse memories in this project",
+  "commandPalette.sessionHint": "Browse memories in this session"
 }

@@ -82,22 +82,39 @@ class EntityQueries:
         )
 
     async def list_entities(
-        self, etype: Optional[str] = None, limit: int = 200
+        self,
+        etype: Optional[str] = None,
+        limit: int = 200,
+        offset: int = 0,
+        query: Optional[str] = None,
     ) -> list[dict]:
-        """Entities with their memory mention counts, most-mentioned first."""
+        """Entities with their memory mention counts, most-mentioned first.
+
+        ``query`` narrows to a case-insensitive substring of the name or the
+        entity key — the same match ``find_entity`` resolves, but returning
+        every hit instead of the single best one, so the graph page can offer a
+        list while the user types (#569).
+        """
         base = """
             SELECT e.id, e.type, e.ekey, e.name, e.updated_at,
                    COUNT(me.memory_id) AS mentions
             FROM entities e
             LEFT JOIN memory_entities me ON me.entity_id = e.id
         """
-        params: tuple = ()
+        clauses: list[str] = []
+        params: list = []
         if etype:
-            base += " WHERE e.type = ?"
-            params = (etype,)
-        base += " GROUP BY e.id ORDER BY mentions DESC, e.name ASC LIMIT ?"
-        params = params + (limit,)
-        cursor = await self._db.conn.execute(base, params)
+            clauses.append("e.type = ?")
+            params.append(etype)
+        if query:
+            clauses.append("(lower(e.name) LIKE ? OR lower(e.ekey) LIKE ?)")
+            needle = f"%{query.strip().lower()}%"
+            params.extend((needle, needle))
+        if clauses:
+            base += " WHERE " + " AND ".join(clauses)
+        base += " GROUP BY e.id ORDER BY mentions DESC, e.name ASC LIMIT ? OFFSET ?"
+        params.extend((limit, offset))
+        cursor = await self._db.conn.execute(base, tuple(params))
         rows = await cursor.fetchall()
         await cursor.close()
         return [dict(r) for r in rows]

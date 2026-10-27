@@ -3756,7 +3756,7 @@
     "/api/v1/entities": {
       "get": {
         "summary": "List Entities Graph",
-        "description": "Persisted entities (optionally filtered by type), most-mentioned first.",
+        "description": "Persisted entities (optionally filtered by type and name substring),\nmost-mentioned first.",
         "operationId": "list_entities_graph_api_entities_get_v1",
         "parameters": [
           {
@@ -3777,6 +3777,97 @@
               "type": "integer",
               "default": 200,
               "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "title": "Offset"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Q"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntityListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/entities/search": {
+      "get": {
+        "summary": "Search Entities",
+        "description": "Search persisted entities by name or key, for the graph page's search\nbox (#569). A thin alias over ``GET /api/entities`` with the query named\n``q`` and a smaller default page, kept as its own path because the page's\ncall site reads as a search, not a list.\n\nRegistered **before** ``/api/entities/{entity_id:path}`` so the literal\npath is not swallowed by the catch-all (the same reason ``/stats`` sits\nabove it).",
+        "operationId": "search_entities_api_entities_search_get_v1",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Q"
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Type"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "title": "Offset"
             }
           }
         ],

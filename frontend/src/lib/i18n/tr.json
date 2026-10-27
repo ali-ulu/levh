@@ -219,7 +219,7 @@
   "commandPalette.results.one": "{count} sonuç",
   "commandPalette.results.other": "{count} sonuç",
   "commandPalette.searchFailed": "Arama başarısız. Tekrar deneyin.",
-  "commandPalette.noMatch": "“{query}” ile eşleşen bellek yok.",
+  "commandPalette.noMatch": "“{query}” ile eşleşen bir şey yok.",
   "commandPalette.empty": "Bellek deponuzda aramak için yazın.",
   "app.meetingPrep.title": "Toplantı Hazırlığı",
   "app.meetingPrep.subtitle": "Toplantıya girmeden önceki proaktif özetiniz: sıradaki toplantı, katılımcılar, her biriyle en son ne konuştuğunuz ve önemli açık taahhütler ile kararlar. Deterministik ve çevrimdışı.",
@@ -817,5 +817,15 @@
   "settings.federation.redacted": "sansürlendi",
   "settings.federation.duplicates": "kopya",
   "settings.federation.held": "incelemeye alındı",
-  "settings.federation.errors": "hata"
+  "settings.federation.errors": "hata",
+  "app.graph.searchPlaceholder": "Varlık ara…",
+  "app.graph.searchLabel": "Varlık ara",
+  "app.graph.noMatch": "“{query}” ile eşleşen varlık yok.",
+  "commandPalette.group.entities": "Varlıklar",
+  "commandPalette.group.projects": "Projeler",
+  "commandPalette.group.sessions": "Oturumlar",
+  "commandPalette.group.memories": "Anılar",
+  "commandPalette.entityHint": "Grafta aç",
+  "commandPalette.projectHint": "Bu projedeki anılara göz at",
+  "commandPalette.sessionHint": "Bu oturumdaki anılara göz at"
 }
