@@ -81,6 +81,11 @@ _PINNED_BASE_NAMES = (_PINNED_ENV,)
 _FLAG_ENV = (
     "LEVH_RECALL_LOG",
     "LEVH_RECALL_LOG_DAYS",
+    # Read per request by the public-demo guard (server/routes/deps.py). A
+    # developer serving a read-only demo exports it; every route test that
+    # writes — the wiki build, memory store, connector sync — then gets a 403
+    # for a reason unrelated to the change under test.
+    "LEVH_PUBLIC_DEMO",
 )
 
 # Every name through which a developer's environment could redirect the suite
@@ -118,6 +123,37 @@ def _neutral_flag_environment(monkeypatch: pytest.MonkeyPatch) -> None:
     """
     for name in _FLAG_ENV:
         monkeypatch.delenv(name, raising=False)
+
+
+@pytest.fixture(autouse=True)
+def _neutral_doctor_probe_environment(
+    monkeypatch: pytest.MonkeyPatch, tmp_path_factory: pytest.TempPathFactory
+) -> None:
+    """Keep ``levh doctor`` from reading the developer's real machine.
+
+    Doctor probes two things outside the store the suite already pins: the
+    interpreter's own ``site-packages`` (for interrupted-install ``~`` debris)
+    and the supervisor's update state under the real user profile. On a
+    developer machine that has a wedged pip or a checkout the supervisor
+    stopped updating, doctor correctly reports FAIL — and every test asserting
+    a clean doctor verdict turns red for a reason unrelated to the change
+    under test. CI never sees it: Actions machines carry neither.
+
+    Both probes are pointed at empty directories, so the code's own default
+    (nothing found) is the baseline. A test that wants debris or a stuck state
+    sets it itself; its monkeypatch runs later and wins. The directories live
+    in a session temp root, not in ``tmp_path``, so a test that lists
+    ``tmp_path`` still sees only what it created.
+    """
+    from server.core import pip_debris
+
+    isolation_root = tmp_path_factory.mktemp("doctor-probe-isolation")
+    empty_site = isolation_root / "site-packages"
+    empty_site.mkdir(exist_ok=True)
+    monkeypatch.setenv(pip_debris.SITE_PACKAGES_OVERRIDE_ENV, str(empty_site))
+    log_dir = isolation_root / "supervisor-logs"
+    log_dir.mkdir(exist_ok=True)
+    monkeypatch.setenv("LEVH_SUPERVISOR_LOG_DIR", str(log_dir))
 
 
 @pytest.fixture

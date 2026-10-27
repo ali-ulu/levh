@@ -138,9 +138,11 @@ def test_the_suite_scrubs_the_behaviour_flags():
 
     ``LEVH_RECALL_LOG`` is not a path, so the store pin does not touch it, yet
     it decides whether recalls are recorded and reddens the recall-log tests
-    when a developer exports it. The autouse scrub is the fix; this asserts the
-    flag is actually absent from the suite's environment, so an edit that drops
-    the tuple from conftest fails here.
+    when a developer exports it. ``LEVH_PUBLIC_DEMO`` is the same trap one
+    layer up: exported to serve a read-only demo, it turns every writing route
+    test into a 403. The autouse scrub is the fix; this asserts each flag is
+    actually absent from the suite's environment, so an edit that drops one
+    from the tuple fails here.
     """
     from tests.conftest import _FLAG_ENV
 
@@ -150,6 +152,42 @@ def test_the_suite_scrubs_the_behaviour_flags():
             "a developer who exports it reddens the suite locally while CI "
             "stays green"
         )
+
+
+def test_the_suite_pins_the_doctor_probe_environment():
+    """Doctor's two out-of-store probes must not reach the developer's machine.
+
+    ``levh doctor`` inspects the interpreter's own site-packages for ``~``
+    debris and the supervisor's update state under the real user profile.
+    Neither is the store the suite pins, so a developer with a wedged pip or a
+    checkout the supervisor stopped updating reddens every test asserting a
+    clean verdict — the 2026-10-27 report. conftest points both at empty temp
+    paths; this holds that in place, and keeps the pinned site-packages
+    unreachable from inside the workspace.
+    """
+    from server.core import pip_debris
+
+    override = os.environ.get(pip_debris.SITE_PACKAGES_OVERRIDE_ENV, "")
+    assert override, (
+        "tests/conftest.py must set "
+        f"{pip_debris.SITE_PACKAGES_OVERRIDE_ENV}: doctor inspects the real "
+        "site-packages otherwise, and a developer's `~` debris reddens the suite"
+    )
+    assert REPO_ROOT not in Path(override).resolve().parents, (
+        f"the doctor debris probe points at {override}, inside the workspace; "
+        "the developer's real site-packages must be unreachable from a test"
+    )
+
+    log_dir = os.environ.get("LEVH_SUPERVISOR_LOG_DIR", "")
+    assert log_dir, (
+        "tests/conftest.py must set LEVH_SUPERVISOR_LOG_DIR: doctor reads the "
+        "supervisor state under the real user profile otherwise, and a stuck "
+        "auto-update reddens every clean-verdict test"
+    )
+    assert REPO_ROOT not in Path(log_dir).resolve().parents, (
+        f"the auto-update state probe points at {log_dir}, inside the "
+        "workspace; the developer's real state must be unreachable from a test"
+    )
 
 
 def test_a_subprocess_with_the_flag_exported_still_sees_the_default():

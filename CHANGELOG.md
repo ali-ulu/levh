@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### fix: keep `levh doctor` and the route tests off the developer's real machine
+
+- The suite pins the store, but two probes still read the machine it runs on: `levh doctor` inspects the interpreter's own `site-packages` for interrupted-install `~` debris, and the supervisor's update state under the user profile. A developer with a wedged pip or a checkout the supervisor stopped updating saw every "doctor is clean" test fail for a reason unrelated to the change under test — invisible in CI, which carries neither.
+- The same class of leak reached the route tests: exporting `LEVH_PUBLIC_DEMO=true` to serve a read-only demo turned every writing route test into a `403`. On a stock checkout that is **124 failing tests**, not one.
+- `pip_debris.target_site_packages()` now honours `LEVH_SITE_PACKAGES_OVERRIDE` (the escape-hatch shape `LEVH_DOCTOR_NO_LIVE_PROBE` already uses); unset in production, where the interpreter's real `purelib` is the only correct answer. `tests/conftest.py` pins both probes at empty session-temp directories and scrubs `LEVH_PUBLIC_DEMO` alongside the existing behaviour flags, so the suite defines its own environment. The `hostile-env` CI job now plants all three decoys, so a regression fails the gate instead of staying green where CI has no debris.
+
 ### feat: bulk actions for the memories and graph lists (#562)
 
 - Pin, unpin and delete were one row at a time, which is unusable over a few dozen memories. Every row now carries a checkbox, the header a "select all", and a floating toolbar appears once anything is selected with `Pin (N)`, `Unpin (N)`, `Delete (N)`, `Export JSON` and `Export CSV`. Each mutation is its own API call — so each still produces its own trust receipt, as the fail-closed path requires — and the bar reports progress (`{verb}: {ok} done, {failed} failed`) instead of going silent on a partial failure. Shift+click selects a range, Ctrl/⌘+A selects the filtered set while the list has focus, and delete asks first. The same bar drives the `/graph` entity grid, where the index is read-only so it offers export alone.

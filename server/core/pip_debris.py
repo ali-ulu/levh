@@ -21,6 +21,8 @@ import time
 from pathlib import Path
 from typing import Sequence
 
+from server.core.env import get_env
+
 #: pip's own marker for "I was renaming this when I stopped". A real
 #: distribution name starts with an alphanumeric (PEP 508), so a top-level
 #: entry beginning with `~` can only be an unfinished rename — including
@@ -31,9 +33,21 @@ DEBRIS_PREFIX = "~"
 #: the backup must survive independently of the directory it was rescued from.
 BACKUP_DIR_PREFIX = "levh-pip-debris-backup"
 
+#: Test-isolation override for the inspected directory. Both ``levh doctor``
+#: and ``levh update`` report on the interpreter they run under, so a
+#: developer whose own site-packages carry ``~`` debris reddens every test that
+#: asserts a clean verdict — the machine-specific failure
+#: ``LEVH_DOCTOR_NO_LIVE_PROBE`` exists to prevent for the live probe. The
+#: suite points this at an empty directory; unset in production, where the
+#: interpreter's real ``purelib`` is the only correct answer.
+SITE_PACKAGES_OVERRIDE_ENV = "LEVH_SITE_PACKAGES_OVERRIDE"
+
 
 def target_site_packages() -> Path:
     """The directory this interpreter's pip writes to (its ``purelib``)."""
+    override = get_env(SITE_PACKAGES_OVERRIDE_ENV, "").strip()
+    if override:
+        return Path(override)
     return Path(sysconfig.get_paths()["purelib"])
 
 

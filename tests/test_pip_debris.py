@@ -13,6 +13,8 @@ from __future__ import annotations
 import argparse
 import contextlib
 import io
+import sysconfig
+from pathlib import Path
 
 from server.core import pip_debris
 
@@ -153,3 +155,20 @@ def test_doctor_fails_on_rename_debris_and_prints_the_recovery(tmp_path, monkeyp
     assert "~umpy.libs" in out
     assert pip_debris.BACKUP_DIR_PREFIX in out
     assert code == 1  # a wedged pip must not pass silently
+
+
+def test_target_site_packages_honours_the_isolation_override(tmp_path, monkeypatch):
+    """The suite's pin, not the interpreter's real purelib, decides the probe.
+
+    ``levh doctor`` inspects the interpreter it runs under; on a developer
+    machine with interrupted-install ``~`` debris that makes every clean-verdict
+    test fail. The override is what conftest sets to break the dependency — and
+    unset, the real ``purelib`` must still be the answer, or production would
+    inspect the wrong directory.
+    """
+    monkeypatch.delenv(pip_debris.SITE_PACKAGES_OVERRIDE_ENV, raising=False)
+    assert pip_debris.target_site_packages() == Path(sysconfig.get_paths()["purelib"])
+
+    pinned = tmp_path / "pinned-site-packages"
+    monkeypatch.setenv(pip_debris.SITE_PACKAGES_OVERRIDE_ENV, str(pinned))
+    assert pip_debris.target_site_packages() == pinned

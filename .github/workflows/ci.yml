@@ -143,6 +143,22 @@ jobs:
         run: |
           echo "LEVH_RECALL_LOG=0" >> "$GITHUB_ENV"
           echo "LEVH_RECALL_LOG_DAYS=1" >> "$GITHUB_ENV"
+          # Read per request by the public-demo guard. A developer serving a
+          # read-only demo exports it; without conftest's scrub it turns every
+          # writing route test into a 403, the wiki build included.
+          echo "LEVH_PUBLIC_DEMO=true" >> "$GITHUB_ENV"
+      - name: Plant the decoy doctor-probe state
+        run: |
+          # Doctor reads the interpreter's real site-packages (for
+          # interrupted-install `~` debris) and the supervisor's update state
+          # under the user profile. Both are outside the store the suite pins;
+          # without conftest's pins a developer-shaped machine reddens every
+          # test asserting a clean verdict.
+          mkdir -p "$HOME/.local/state/levh"
+          printf '%s' '{"status":"skipped","reason":"canary","needs_attention":true,"interval_hours":6.0}' \
+            > "$HOME/.local/state/levh/update-state.json"
+          SITE="$(uv run --frozen python -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')"
+          mkdir -p "$SITE/~canary-0.0.0.dist-info"
       - name: Test against the canary
         env:
           EMBEDDER_MODE: hash
