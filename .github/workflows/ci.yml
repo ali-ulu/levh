@@ -119,10 +119,12 @@ jobs:
   # database while CI stayed green, because Actions machines have no such
   # variable. LEVH_RECALL_LOG is the same trap without a path: logging is on by
   # default (#376), so a developer who exports the flag to turn it off locally
-  # reddens tests/test_recall_log.py while CI stays green. This job plants
-  # decoys for both and runs the full suite against them: a leak or an
-  # unscrubbed flag now fails loudly here instead of silently writing to
-  # production memory or flaking on a developer's machine.
+  # reddens tests/test_recall_log.py while CI stays green. A machine-level
+  # LEVH_EMBEDDER_MODE is the same trap over a config value rather than a path
+  # (2026-10-27). This job plants decoys for all of them and runs the full
+  # suite against them: a leak or an unscrubbed value now fails loudly here
+  # instead of silently writing to production memory or flaking on a
+  # developer's machine.
   hostile-env:
     runs-on: ubuntu-latest
     steps:
@@ -147,6 +149,14 @@ jobs:
           # read-only demo exports it; without conftest's scrub it turns every
           # writing route test into a 403, the wiki build included.
           echo "LEVH_PUBLIC_DEMO=true" >> "$GITHUB_ENV"
+      - name: Plant the decoy config override
+        run: |
+          # get_env prefers the LEVH_-prefixed spelling, so a machine-level
+          # embedder mode outranks the embedder_mode a config test writes and
+          # deletes under its bare name. These tests reddened locally on
+          # 2026-10-27 while this job — carrying no such variable — stayed
+          # green.
+          echo "LEVH_EMBEDDER_MODE=local" >> "$GITHUB_ENV"
       - name: Plant the decoy doctor-probe state
         run: |
           # Doctor reads the interpreter's real site-packages (for
