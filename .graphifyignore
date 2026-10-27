@@ -1,0 +1,9 @@
+# Build output that is tracked on purpose (see AGENTS.md): `frontend/out/` is
+# the Next.js static export and `server/dashboard/` its packaged copy that
+# `scripts/release.py` ships in the wheel. Both are minified and regenerated
+# wholesale by the next build, so indexing them adds ~30% noise to a Graphify
+# graph — minified identifiers become the top "god nodes" and swamp the real
+# architecture. Graphify reads .gitignore too; this entry survives
+# `graphify extract --no-gitignore`, which only stops .gitignore being read.
+frontend/out/
+server/dashboard/

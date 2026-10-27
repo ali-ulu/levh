@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### chore: keep checked-in build output out of Graphify graphs
+
+- `.graphifyignore` now lists `frontend/out/` and `server/dashboard/`. Both are tracked on purpose (the static export and its packaged copy that ships in the wheel), so `.gitignore` does not hide them from Graphify — a tracked path is matched by neither the default read nor `--no-gitignore`. Indexing the minified bundles made them ~30% of the graph and put mangled identifiers at the top of the god-node list. `tests/test_repo_process_files.py` guards the list.
+
 ### feat: bulk actions for the memories and graph lists (#562)
 
 - Pin, unpin and delete were one row at a time, which is unusable over a few dozen memories. Every row now carries a checkbox, the header a "select all", and a floating toolbar appears once anything is selected with `Pin (N)`, `Unpin (N)`, `Delete (N)`, `Export JSON` and `Export CSV`. Each mutation is its own API call — so each still produces its own trust receipt, as the fail-closed path requires — and the bar reports progress (`{verb}: {ok} done, {failed} failed`) instead of going silent on a partial failure. Shift+click selects a range, Ctrl/⌘+A selects the filtered set while the list has focus, and delete asks first. The same bar drives the `/graph` entity grid, where the index is read-only so it offers export alone.
