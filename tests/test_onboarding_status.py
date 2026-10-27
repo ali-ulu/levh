@@ -56,11 +56,11 @@ async def test_status_uses_live_profile_registry_and_safe_journal_summary(tmp_pa
     try:
         status = await eng.onboarding_status()
         assert status["profile_counts"] == {
-            "read_only": 36,
+            "read_only": 39,
             "minimal": 6,
-            "work": 29,
-            "admin": 69,
-            "full": 74,
+            "work": 32,
+            "admin": 73,
+            "full": 78,
         }
         assert status["mcp_default_profile"] == "work"
         assert status["profiles_are_security_boundary"] is False

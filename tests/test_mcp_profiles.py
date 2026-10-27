@@ -34,11 +34,11 @@ def test_counts_are_the_expected_bands():
     # The permission profile, then small minimal, tight work, broad admin,
     # complete full.
     assert profile_counts() == {
-        "read_only": 36,
+        "read_only": 39,
         "minimal": 6,
-        "work": 29,
-        "admin": 69,
-        "full": 74,
+        "work": 32,
+        "admin": 73,
+        "full": 78,
     }
 
 
@@ -130,7 +130,7 @@ async def test_full_registration_has_no_drift(engine):
     register_all_tools(mcp, engine, profile="full")
     advertised = await _advertised(mcp)
     assert advertised == set(TOOL_TIERS)
-    assert len(advertised) == 74
+    assert len(advertised) == 78
 
 
 @pytest.mark.asyncio

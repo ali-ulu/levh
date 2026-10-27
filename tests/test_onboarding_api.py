@@ -30,7 +30,7 @@ async def test_onboarding_api_status_and_config(tmp_path, monkeypatch):
             assert config.status_code == 200
             body = config.json()
             assert body["profile"] == "work"
-            assert body["tool_count"] == 29
+            assert body["tool_count"] == 32
             assert body["profiles_are_security_boundary"] is False
             assert body["onboarding_receipt_written"] is True
             assert body["onboarding_ready"] is False
@@ -55,7 +55,7 @@ async def test_onboarding_api_status_and_config(tmp_path, monkeypatch):
             assert read_only.status_code == 200
             ro_body = read_only.json()
             assert ro_body["profile"] == "read_only"
-            assert ro_body["tool_count"] == 36
+            assert ro_body["tool_count"] == 39
             assert ro_body["profiles_are_security_boundary"] is True
             assert "server-enforced" in ro_body["warning"]
     finally:

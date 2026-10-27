@@ -10,11 +10,13 @@ import hashlib
 import json
 import os
 import re
+import sys
 import tempfile
 import unicodedata
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
-from typing import Any
+from typing import Any, Iterator
 from urllib.parse import urlsplit, urlunsplit
 
 from server.core.admission import redact_secrets
@@ -112,6 +114,38 @@ def _atomic_write(path: Path, content: str) -> bool:
     return True
 
 
+@contextmanager
+def _exclusive_build_lock(lock_path: Path) -> Iterator[None]:
+    """Serialize builds for one Wiki root across processes.
+
+    Two builds racing on the same root would interleave page writes, log
+    appends and the final manifest update. A second caller fails clearly rather
+    than corrupting the manifest. Where the platform offers no advisory lock
+    (non-POSIX), builds proceed unserialized as before.
+    """
+    if not hasattr(os, "O_CREAT") or sys.platform == "win32":
+        yield
+        return
+    import fcntl
+
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    handle = os.open(lock_path, os.O_CREAT | os.O_RDWR, 0o600)
+    try:
+        try:
+            fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError as exc:
+            raise WikiError(
+                "Another Wiki build is already running for this root. Wait for it to "
+                "finish instead of racing it."
+            ) from exc
+        try:
+            yield
+        finally:
+            fcntl.flock(handle, fcntl.LOCK_UN)
+    finally:
+        os.close(handle)
+
+
 def _read_json(path: Path, default: dict[str, Any]) -> dict[str, Any]:
     if not path.exists():
         return dict(default)
@@ -124,6 +158,20 @@ def _read_json(path: Path, default: dict[str, Any]) -> dict[str, Any]:
             "Wiki manifest has an unknown or invalid version. Preserve it and inspect it "
             "before rebuilding rather than overwriting it."
         )
+    for field in ("sources", "snapshots", "pages", "llm_summaries"):
+        value = payload.get(field)
+        if value is None:
+            continue
+        if not isinstance(value, dict):
+            raise WikiError(
+                f"Wiki manifest field {field!r} is malformed: expected a JSON object. "
+                "Preserve the file and inspect it before rebuilding rather than overwriting it."
+            )
+        if any(not isinstance(record, dict) for record in value.values()):
+            raise WikiError(
+                f"Wiki manifest field {field!r} contains a malformed record. "
+                "Preserve the file and inspect it before rebuilding rather than overwriting it."
+            )
     return payload
 
 
@@ -528,8 +576,16 @@ numbered Evidence list. A failed or uncited summary never blocks the evidence Wi
         return answer or None
 
     async def build(self, *, llm_summaries: bool = False) -> dict[str, Any]:
-        """Build snapshots and generated Wiki pages; never edits LEVH memory rows."""
+        """Build snapshots and generated Wiki pages; never edits LEVH memory rows.
+
+        Concurrent builds for one root are serialized; a second concurrent
+        caller fails clearly rather than racing page writes or the manifest.
+        """
         authorize("store", self.workspace_id)
+        with _exclusive_build_lock(self.root / ".build.lock"):
+            return await self._build_locked(llm_summaries=llm_summaries)
+
+    async def _build_locked(self, *, llm_summaries: bool = False) -> dict[str, Any]:
         from server.core import llm_policy
 
         if llm_summaries and not llm_policy.use_llm("auto", llm_policy.ANSWER_FEATURE):

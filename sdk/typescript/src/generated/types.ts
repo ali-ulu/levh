@@ -1401,3 +1401,78 @@ export type VerifyAllAttachmentsResponse = {
   missing: number;
   changed: number;
 };
+
+export type WikiBuildRequest = {
+  llm_summaries?: boolean;
+};
+
+export type WikiBuildResponse = {
+  ok: boolean;
+  root_name: string;
+  index: string;
+  log: string;
+  memories: number;
+  snapshots_current: number;
+  snapshots_added_or_changed: number;
+  snapshots_removed_for_forgotten_memories: number;
+  pages: number;
+  pages_created: number;
+  pages_changed: number;
+  pages_unchanged: number;
+  pages_removed: number;
+  llm_summaries_created: number;
+  llm_summary_failures: number;
+  llm_summary_limit_skips: number;
+  llm_summaries_enabled: boolean;
+};
+
+export type WikiLintIssue = {
+  code: string;
+  path: string;
+  detail: string;
+};
+
+export type WikiLintResponse = {
+  ok: boolean;
+  root_name: string;
+  source_count: number;
+  snapshot_count: number;
+  page_count: number;
+  issue_count: number;
+  issues?: WikiLintIssue[];
+  truncated?: boolean;
+};
+
+export type WikiPageResponse = {
+  id: string;
+  title: string;
+  kind: string;
+  path: string;
+  content: string;
+};
+
+export type WikiSearchHit = {
+  id: string;
+  title: string;
+  path: string;
+  snippet: string;
+  kind: string;
+};
+
+export type WikiSearchResponse = {
+  query: string;
+  count: number;
+  results?: WikiSearchHit[];
+};
+
+export type WikiStatusResponse = {
+  ready: boolean;
+  root_name: string;
+  index: string;
+  log: string;
+  memories: number;
+  snapshots: number;
+  pages: number;
+  built_at?: string | null;
+  llm_backend_enabled: boolean;
+};
