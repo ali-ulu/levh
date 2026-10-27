@@ -30,7 +30,7 @@ MAX_MEMORIES = 1_000_000
 MAX_LLM_SUMMARIES_PER_BUILD = 12
 SUMMARY_SOURCE_LIMIT = 8
 SUMMARY_PROMPT_VERSION = 1
-_WIKI_LINK_RE = re.compile(r"\[[^\]]+\]\(([^)]+)\)")
+_WIKI_LINK_RE = re.compile(r"(?<!\\)\[[^\[\]\n]+\]\(([^()\n]+)\)")
 _CITATION_RE = re.compile(r"(?<!\w)\[(\d+)\]")
 _SAFE_META_FIELDS = (
     "source_identity", "source_revision", "relative_path", "file_name",
@@ -727,7 +727,7 @@ numbered Evidence list. A failed or uncited summary never blocks the evidence Wi
                 memory_id = str(memory.id)
                 record = snapshot_by_memory[memory_id]
                 link = self._source_link(page_path, record["path"])
-                excerpt = " ".join(safe_contents[memory_id].split())[:240]
+                excerpt = _md_inline(" ".join(safe_contents[memory_id].split())[:240])
                 date = str(getattr(memory, "created_at", "") or "")[:10] or "unknown date"
                 source = _md_inline(getattr(memory, "source", None) or "unknown source")
                 project = _md_inline(getattr(memory, "project", None) or "")
@@ -798,7 +798,7 @@ numbered Evidence list. A failed or uncited summary never blocks the evidence Wi
                 record = snapshot_by_memory[str(memory.id)]
                 link = self._source_link(page_path, record["path"])
                 safe_content, _ = redact_secrets(str(memory.content or ""))
-                excerpt = " ".join(safe_content.split())[:240]
+                excerpt = _md_inline(" ".join(safe_content.split())[:240])
                 date = str(getattr(memory, "created_at", "") or "")[:10] or "unknown date"
                 source = _md_inline(getattr(memory, "source", None) or "unknown source")
                 evidence_lines.append(
@@ -847,7 +847,7 @@ numbered Evidence list. A failed or uncited summary never blocks the evidence Wi
             source = _md_inline(getattr(memory, "source", None) or "unknown source")
             project = _md_inline(getattr(memory, "project", None) or "")
             safe_content, _ = redact_secrets(str(memory.content or ""))
-            excerpt = " ".join(safe_content.split())[:180]
+            excerpt = _md_inline(" ".join(safe_content.split())[:180])
             catalog_lines.append(
                 f"- **{date} · {source}**"
                 + (f" · project: {project}" if project else "")

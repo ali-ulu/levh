@@ -91,6 +91,28 @@ async def test_build_creates_raw_snapshots_and_linked_evidence_pages(
 
 
 @pytest.mark.asyncio
+async def test_lint_ignores_markdown_links_embedded_in_source_excerpts(
+    wiki_engine: MemoryEngine, tmp_path: Path
+):
+    await wiki_engine.store(
+        content=(
+            "Reference [upstream](../README.md) and a malformed source link "
+            "[that spans\nlines](missing.md)."
+        ),
+        memory_type="episodic",
+        source="local_files",
+        project="Atlas",
+    )
+    wiki = LLMWiki(wiki_engine, root=tmp_path / "wiki")
+    await wiki.build()
+
+    result = wiki.lint()
+    assert result["ok"] is True, json.dumps(result["issues"], indent=2)
+    generated_pages = list((tmp_path / "wiki" / "wiki").rglob("*.md"))
+    assert any(r"\[upstream\]" in page.read_text(encoding="utf-8") for page in generated_pages)
+
+
+@pytest.mark.asyncio
 async def test_build_is_idempotent_and_does_not_rewrite_identical_pages(
     wiki_engine: MemoryEngine, tmp_path: Path
 ):
