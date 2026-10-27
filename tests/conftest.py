@@ -1,6 +1,6 @@
 """Shared test setup.
 
-The suite must describe its own environment. It did not, in four ways.
+The suite must describe its own environment. It did not, in five ways.
 
 Several tests assert what happens with *no* LLM configuration but read the
 developer's real environment, so on a machine with OPENAI_BASE_URL pointed at
@@ -43,6 +43,16 @@ scrubbed so the code's own default applies. Since issue #376 that default is
 to record, so the hostile export is the one that turns logging *off*; either
 way a test that wants a value sets it with monkeypatch, which runs after this
 fixture and wins.
+
+It happened a fifth way, on 2026-10-27: ``LEVH_EMBEDDER_MODE=local`` exported
+on a developer's machine reddened seven config tests that write
+``embedder_mode="hash"`` into a temp config and then delete only the bare
+``EMBEDDER_MODE``. ``get_env`` prefers the ``LEVH_``-prefixed spelling, so the
+deletion missed and the resolver answered ``local``. No path was involved, so
+neither the store pin nor the flag scrub covered it — every accepted spelling
+of the setting must be scrubbed, not just the one the test happens to delete.
+The suite then sets its own baseline (``hash``, the mode CI uses) so the
+resolved mode cannot depend on the machine at all.
 """
 
 from __future__ import annotations
@@ -88,6 +98,14 @@ _FLAG_ENV = (
     "LEVH_PUBLIC_DEMO",
 )
 
+# Runtime-config settings whose accepted spellings must be scrubbed even though
+# they name no path. ``get_env`` reads a canonical ``LEVH_*`` name, the bare
+# name and the legacy ``STACKMEMORY_*`` name, and prefers the first — so a test
+# that deletes only the bare name still reads the developer's prefixed one.
+# Derived from the same acceptance rules get_env implements, so a new spelling
+# cannot silently bypass the scrub.
+_CONFIG_ENV = tuple(accepted_env_var_names("EMBEDDER_MODE"))
+
 # Every name through which a developer's environment could redirect the suite
 # (or the CLI/server/MCP subprocesses it spawns) at the real memory store.
 # Derived from accepted_env_var_names — the same acceptance rules get_env
@@ -123,6 +141,22 @@ def _neutral_flag_environment(monkeypatch: pytest.MonkeyPatch) -> None:
     """
     for name in _FLAG_ENV:
         monkeypatch.delenv(name, raising=False)
+
+
+@pytest.fixture(autouse=True)
+def _neutral_runtime_config_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Make the suite's own baseline the only embedder mode a test resolves.
+
+    An exported embedder mode outranks the config a test writes, and the
+    prefixed spelling wins over the bare one a test deletes. Clearing every
+    accepted spelling and pinning the plain name to ``hash`` — the mode CI
+    runs the suite in, and the one generated MCP configs advertise — makes the
+    machine irrelevant. A test that wants another mode sets it with
+    monkeypatch, which runs after this fixture and wins.
+    """
+    for name in _CONFIG_ENV:
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("EMBEDDER_MODE", "hash")
 
 
 @pytest.fixture(autouse=True)

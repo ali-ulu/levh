@@ -154,6 +154,67 @@ def test_the_suite_scrubs_the_behaviour_flags():
         )
 
 
+def test_the_suite_scrubs_every_embedder_mode_spelling():
+    """A machine-level embedder mode must not outrank the config a test writes.
+
+    The 2026-10-27 report: ``LEVH_EMBEDDER_MODE=local`` reddened seven config
+    tests that write ``embedder_mode="hash"`` into a temp config and delete
+    only the bare ``EMBEDDER_MODE``. ``get_env`` prefers the prefixed spelling,
+    so the deletion missed. No path is involved, so the store pin does not
+    cover it; CI carries no such variable, so the suite stayed green exactly
+    where it is trusted most.
+    """
+    from server.core.env import accepted_env_var_names
+    from tests.conftest import _CONFIG_ENV
+
+    spellings = accepted_env_var_names("EMBEDDER_MODE")
+    assert set(spellings) <= set(_CONFIG_ENV), (
+        f"tests/conftest.py scrubs {sorted(_CONFIG_ENV)} but get_env reads "
+        f"{sorted(spellings)}; a machine setting the missing spelling outranks "
+        "the embedder mode a config test writes"
+    )
+    # The prefixed and legacy spellings must be gone; the bare name carries
+    # the suite's own baseline, which a machine export must not change.
+    for name in spellings:
+        if name != "EMBEDDER_MODE":
+            assert name not in os.environ, (
+                f"{name} outranks the bare EMBEDDER_MODE a test sets; "
+                "tests/conftest.py must scrub every accepted spelling"
+            )
+    assert os.environ.get("EMBEDDER_MODE") == "hash", (
+        "tests/conftest.py must pin the suite's own embedder baseline (hash) "
+        "instead of inheriting the machine's value"
+    )
+
+
+def test_a_subprocess_with_a_prefixed_embedder_mode_keeps_the_config():
+    """End to end: the child inherits the hostile spelling and must ignore it.
+
+    Reproduces the 2026-10-27 report with the exact pair that failed: the test
+    writes ``embedder_mode="hash"`` into a temp config and deletes only the
+    bare name. conftest's scrub is the only thing that can make it pass.
+    """
+    env = dict(os.environ)
+    env.pop("EMBEDDER_MODE", None)
+    env["LEVH_EMBEDDER_MODE"] = "local"
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            "-q",
+            "tests/test_runtime_config.py::test_memory_engine_defaults_use_canonical_config",
+        ],
+        cwd=str(REPO_ROOT),
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
 def test_the_suite_pins_the_doctor_probe_environment():
     """Doctor's two out-of-store probes must not reach the developer's machine.
 
