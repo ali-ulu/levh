@@ -2,6 +2,27 @@
 
 ## Unreleased
 
+### feat: add a toast surface for API failures and user actions (#555)
+
+- A failed write used to disappear into `console.error` — the pin, delete, save, reinforce and mark-stale paths on the memories page and the detail drawer all swallowed their errors. A new `components/ui/toast.tsx` renders a portal-based stack with success/error/info variants, and every one of those call sites now reports success or the server's message. The store lives outside React (`useSyncExternalStore`) because it is called from non-component code; the live region is `aria-live="polite"` so a screen reader hears the outcome.
+- Deliberately **not** a blanket `api.ts` interceptor: a fetch-level toast would fire on the health poll and on every keystroke of recall. Toasts are raised where a user action has an outcome.
+
+### fix: remember onboarding completion across a server restart (#565)
+
+- The getting-started card re-appeared on every `levh serve` restart because completion was only tracked in the readiness response. It now records a local flag once every readiness check passes, and Settings gains a "Reset onboarding" control to bring the walkthrough back. Reads and writes are wrapped because `localStorage` throws in some private-browsing contexts, and a failure degrades to "not dismissed" rather than breaking the page.
+
+### feat: add a mobile navigation drawer below `lg` (#557)
+
+- The sidebar was `hidden lg:flex`, so on a phone there was no way to reach any route. A new `components/ui/sheet.tsx` (Radix Dialog, same focus trap/Escape/backdrop guarantees as the app's modals) holds the same nav, opened from a hamburger in the header. The nav body is shared between the fixed desktop sidebar and the mobile Sheet, and following a link or pressing Escape closes it.
+
+### fix: apply the saved theme before first paint (#567)
+
+- `next-themes` writes the theme to `localStorage` after hydration, so a returning dark-theme user saw a light flash on every load. A small blocking script in `layout.tsx` now reads the same key and puts `class="dark"` on `<html>` before the browser paints, and the resolved theme is mirrored into a cookie so the choice survives a context where `localStorage` is unavailable. The default moved from a forced `light` to `system`.
+
+### feat: add a keyboard shortcuts help modal on `?` (#568)
+
+- The dashboard had ⌘K, ⌘⇧A and Escape and no way to discover them. Pressing `?` (outside a text field) now opens a categorised list showing the macOS chord and its Windows/Linux equivalent. The list is data-driven, so a new shortcut is a row rather than new markup.
+
 ### fix: load the local embedder before the stdio reader starts on Windows
 
 - On Windows, `levh mcp stdio` hung forever on the first recall or store with a local embedder. Loading torch/scipy's DLLs deadlocks while another thread is blocked in a synchronous read on the stdin pipe, and the stdio transport keeps exactly such a thread. `py-spy --native` showed the process at 0% CPU inside `LoadLibraryExW(libscipy_openblas…)`. A plain `import scipy.linalg` with a thread blocked on piped stdin reproduces it, with or without the C runtime's `read` and with `OPENBLAS_NUM_THREADS=1`. Moving the load into a worker thread (#525) does not avoid it.

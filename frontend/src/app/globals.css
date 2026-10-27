@@ -306,6 +306,12 @@
 @keyframes wave-breathe { from { transform:scale(1.32) translateX(-1%); opacity:.58; } to { transform:scale(1.48) translateX(2%); opacity:.9; } }
 @keyframes orbit-spin { to { transform:rotate(360deg); } }
 @keyframes pulse-halo { 0%,100%{transform:scale(.92);opacity:.35}50%{transform:scale(1.08);opacity:.8} }
+@keyframes toast-enter { from { opacity:0; transform:translateY(8px) scale(.98); } to { opacity:1; transform:none; } }
+
+/* Toast (#555). The enter animation is short and is neutralised by the
+   prefers-reduced-motion block below, which zeroes every animation. */
+.toast-item { animation: toast-enter .18s ease-out; }
+.toast-error { border-color: hsl(var(--destructive) / .4); }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration:.01ms !important; animation-iteration-count:1 !important; scroll-behavior:auto !important; transition-duration:.01ms !important; }

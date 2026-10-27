@@ -11,6 +11,7 @@ import { ConnectClient } from "./_sections/connect-client";
 import { Connectors } from "./_sections/connectors";
 import { DataManagement } from "./_sections/data-management";
 import { FileImport } from "./_sections/file-import";
+import { Onboarding } from "./_sections/onboarding";
 import { Federation } from "./_sections/federation";
 import { PrivacyRedaction } from "./_sections/privacy-redaction";
 import { RecallQuality } from "./_sections/recall-quality";
@@ -56,6 +57,7 @@ export default function SettingsPage() {
       <DataManagement />
       <FileImport />
       <BackupRestore />
+      <Onboarding />
     </div>
   );
 }

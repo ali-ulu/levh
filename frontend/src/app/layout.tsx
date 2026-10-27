@@ -3,8 +3,9 @@ import Script from "next/script";
 import "./globals.css";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
-import { ThemeProvider } from "@/components/theme-provider";
+import { ThemeProvider, THEME_STORAGE_KEY } from "@/components/theme-provider";
 import { AuthGate } from "@/components/auth-gate";
+import { Toaster } from "@/components/ui/toast";
 import { DEFAULT_LOCALE, translate } from "@/lib/i18n/translate";
 import { LocaleProvider } from "@/lib/i18n";
 
@@ -29,9 +30,29 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang={DEFAULT_LOCALE} suppressHydrationWarning>
+      {/* Theme persistence (#567). next-themes writes the theme to
+          localStorage *after* hydration, so a returning dark-theme user saw a
+          light flash on every load. This blocking script runs before paint,
+          reads the same key, and puts `class="dark"` on <html> first. It also
+          mirrors the value into a cookie so the choice survives a context where
+          localStorage is unavailable. Kept inline and tiny on purpose: it must
+          run synchronously, before the browser paints anything. */}
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var m=document.cookie.match(/(?:^|; )${THEME_STORAGE_KEY}=([^;]+)/);var t=m?decodeURIComponent(m[1]):null;if(!t){t=localStorage.getItem('${THEME_STORAGE_KEY}')}if(t==='dark'||(!t&&window.matchMedia('(prefers-color-scheme: dark)').matches)){document.documentElement.classList.add('dark')}else{document.documentElement.classList.remove('dark')}}catch(e){}})();`,
+          }}
+        />
+      </head>
       <body className="antialiased">
         <LocaleProvider>
-          <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} disableTransitionOnChange={false}>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+            storageKey={THEME_STORAGE_KEY}
+          >
             <div className="app-canvas min-h-screen">
               <div className="ambient ambient-one" />
               <div className="ambient ambient-two" />
@@ -43,6 +64,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 </main>
               </div>
             </div>
+            <Toaster />
           </ThemeProvider>
         </LocaleProvider>
         <Script id="levh-pwa-register" strategy="afterInteractive" src="/pwa-register.js" />
