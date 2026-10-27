@@ -2,9 +2,9 @@
 
 The complete MCP tool surface. See the [README](../README.md) for an overview.
 
-> **Tool profiles.** Advertising all 74 tools to a client hurts tool-selection
+> **Tool profiles.** Advertising all 78 tools to a client hurts tool-selection
 > accuracy, so LEVH groups them into cumulative size profiles —
-> `minimal` (6) ⊂ `work` (29) ⊂ `admin` (69) ⊂ `full` (74). Generated configs
+> `minimal` (6) ⊂ `work` (32) ⊂ `admin` (73) ⊂ `full` (78). Generated configs
 > default to **`work`**; run `levh mcp profiles` to see the bands, or set
 > `LEVH_MCP_PROFILE` / `mcp config --profile <name>` to change it. The
 > full table below is the `full` surface.
@@ -93,3 +93,7 @@ The complete MCP tool surface. See the [README](../README.md) for an overview.
 | 72 | `import_from_app` | Import from registered connectors (Calendar/Email/Transcripts/Notion/Obsidian/GitHub/Jira/Linear/Slack/Git/local files) |
 | 73 | `sync_connector` | Connector v2 — fetch + gate-filtered incremental ingest |
 | 74 | `connector_sync_status` | Per-source sync bookkeeping (last synced, totals, run count) |
+| 75 | `build_knowledge_wiki` | Build a local Markdown Wiki from stored evidence; LLM summaries require explicit opt-in |
+| 76 | `lint_knowledge_wiki` | Validate Wiki source digests, evidence links, page hashes and manifest |
+| 77 | `search_knowledge_wiki` | Search generated Wiki pages and return IDs, snippets and paths |
+| 78 | `get_knowledge_wiki_page` | Read a manifest-indexed Wiki page by page ID |

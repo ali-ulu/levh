@@ -20,6 +20,12 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 CONTRACT = REPO_ROOT / "openapi.json"
+# When launched as a script, Python puts `scripts/` at sys.path[0]. A globally
+# installed editable LEVH checkout can otherwise win the import and regenerate
+# this worktree's contract from unrelated source. Pin imports to this tree.
+if str(REPO_ROOT) in sys.path:
+    sys.path.remove(str(REPO_ROOT))
+sys.path.insert(0, str(REPO_ROOT))
 
 
 def _current() -> dict:

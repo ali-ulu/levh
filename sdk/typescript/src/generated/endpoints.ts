@@ -145,6 +145,11 @@ export const OPERATIONS = {
   "accept_handoff_api_team_handoffs__handoff_id__accept_post_v1": { method: "POST", path: "/api/v1/team/handoffs/{handoff_id}/accept", pathParams: ["handoff_id"], query: [], body: "never" },
   "complete_handoff_api_team_handoffs__handoff_id__complete_post_v1": { method: "POST", path: "/api/v1/team/handoffs/{handoff_id}/complete", pathParams: ["handoff_id"], query: [], body: "never" },
   "get_timeline_api_timeline_get_v1": { method: "GET", path: "/api/v1/timeline", pathParams: [], query: [{ name: "days", required: false, type: "number" }, { name: "project", required: false, type: "string" }], body: "never" },
+  "build_wiki_api_wiki_build_post_v1": { method: "POST", path: "/api/v1/wiki/build", pathParams: [], query: [], body: "WikiBuildRequest" },
+  "lint_wiki_api_wiki_lint_get_v1": { method: "GET", path: "/api/v1/wiki/lint", pathParams: [], query: [], body: "never" },
+  "get_wiki_page_api_wiki_pages__page_id__get_v1": { method: "GET", path: "/api/v1/wiki/pages/{page_id}", pathParams: ["page_id"], query: [], body: "never" },
+  "search_wiki_api_wiki_search_get_v1": { method: "GET", path: "/api/v1/wiki/search", pathParams: [], query: [{ name: "q", required: true, type: "string" }, { name: "limit", required: false, type: "number" }], body: "never" },
+  "wiki_status_api_wiki_status_get_v1": { method: "GET", path: "/api/v1/wiki/status", pathParams: [], query: [], body: "never" },
   "librarian_chat_page_librarian_get": { method: "GET", path: "/librarian", pathParams: [], query: [], body: "never" },
   "librarian_widget_js_librarian_js_get": { method: "GET", path: "/librarian.js", pathParams: [], query: [], body: "never" },
 } as const satisfies Record<string, Operation>;

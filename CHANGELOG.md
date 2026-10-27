@@ -8,6 +8,14 @@
 - The same class of leak reached the route tests: exporting `LEVH_PUBLIC_DEMO=true` to serve a read-only demo turned every writing route test into a `403`. On a stock checkout that is **124 failing tests**, not one.
 - `pip_debris.target_site_packages()` now honours `LEVH_SITE_PACKAGES_OVERRIDE` (the escape-hatch shape `LEVH_DOCTOR_NO_LIVE_PROBE` already uses); unset in production, where the interpreter's real `purelib` is the only correct answer. `tests/conftest.py` pins both probes at empty session-temp directories and scrubs `LEVH_PUBLIC_DEMO` alongside the existing behaviour flags, so the suite defines its own environment. The `hostile-env` CI job now plants all three decoys, so a regression fails the gate instead of staying green where CI has no debris.
 
+### feat: add a local source-linked LLM Wiki foundation
+
+- Adds an opt-in Markdown knowledge Wiki over the existing LEVH memory store: credential-redacted source snapshots, generated entity/project evidence pages, a source catalog, `wiki/index.md`, an append-only build log and a digest-checked manifest.
+- Exposes build/status/search/page/lint routes under `/api/v1/wiki/*` and MCP tools. Read-only MCP profiles can search, read and lint; building is admin-tier because it writes files.
+- Optional cited LLM summaries remain disabled by default, use the existing explicit `ANSWER_MODE=llm` policy, are limited per build and remain review-required drafts. The default Wiki build runs locally without remote LLM calls.
+- Documents the source/deletion/privacy contract and adds tests for redaction, idempotency, snapshot tampering and default-off LLM behavior.
+- Hardens the rebuild boundary: a malformed or unknown-version manifest is reported and preserved instead of being overwritten or crashing a reader, concurrent builds for one root are serialized, and `tests/test_llm_wiki_hardening.py` covers path/symlink escape, source update/forget lineage, deterministic page bytes, REST/MCP authorization and the mocked LLM draft boundary.
+
 ### chore: keep checked-in build output out of Graphify graphs
 
 - `.graphifyignore` now lists `frontend/out/` and `server/dashboard/`. Both are tracked on purpose (the static export and its packaged copy that ships in the wheel), so `.gitignore` does not hide them from Graphify — a tracked path is matched by neither the default read nor `--no-gitignore`. Indexing the minified bundles made them ~30% of the graph and put mangled identifiers at the top of the god-node list. `tests/test_repo_process_files.py` guards the list.

@@ -286,6 +286,7 @@ from server.routes import (
     sessions,
     system,
     team_memory,
+    wiki,
 )
 
 app.include_router(memories.router)
@@ -300,6 +301,7 @@ app.include_router(system.router)
 app.include_router(data_transfer.router)
 app.include_router(connectors.router)
 app.include_router(entities.router)
+app.include_router(wiki.router)
 app.include_router(guard.router)
 app.include_router(conflicts.router)
 app.include_router(team_memory.router)
