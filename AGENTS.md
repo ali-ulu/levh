@@ -121,6 +121,11 @@ reproduces the extraction and fails if the suffix returns.
   output, not corruption — but it is not part of a feature change. Run
   `git checkout -- frontend/next-env.d.ts frontend/tsconfig.json frontend/out`
   before staging, or the diff carries hundreds of regenerated files.
+- `.graphifyignore` lists those same two build-output directories. Graphify
+  indexes tracked files, so `.gitignore` does not hide them (a tracked path is
+  matched by neither the default read nor `--no-gitignore`), and the minified
+  bundles otherwise make up ~30% of the graph — their mangled identifiers
+  become the top god nodes. `tests/test_repo_process_files.py` guards the list.
 - Root-level and `docs/*.md` files are checked by
   `tests/test_docs_match_code.py`: relative links must resolve, prose references
   to `tests/<file>.py` must exist, and internal debt inventories belong under
