@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### fix: escape source excerpts in the generated Wiki pages
+
+- Source-memory excerpts were written into generated entity pages, project pages and the source catalog without Markdown escaping, so a Markdown link inside a memory became a live link and `lint` reported it as a broken Wiki link. Excerpts now pass through `_md_inline`, and the link-lint regex matches only single-line, simple-label links, so escaped or multiline Markdown in source-derived text is no longer mistaken for a generated link. `tests/test_llm_wiki.py` covers an ordinary and a malformed multiline link in a source memory.
+
 ### fix: keep a developer's embedder mode out of the test suite
 
 - Seven config tests write `embedder_mode="hash"` into a temp config and delete only the bare `EMBEDDER_MODE`, but `get_env` prefers the `LEVH_`-prefixed spelling: a machine exporting `LEVH_EMBEDDER_MODE=local` resolved `local` and reddened the suite for a reason unrelated to the change under test, while CI — carrying no such variable — stayed green. `tests/conftest.py` now scrubs every accepted spelling of `EMBEDDER_MODE`, derived from `accepted_env_var_names`, and the `hostile-env` job plants the decoy so a regression fails there instead of staying invisible.
