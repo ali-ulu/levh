@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### feat: bulk actions for the memories and graph lists (#562)
+
+- Pin, unpin and delete were one row at a time, which is unusable over a few dozen memories. Every row now carries a checkbox, the header a "select all", and a floating toolbar appears once anything is selected with `Pin (N)`, `Unpin (N)`, `Delete (N)`, `Export JSON` and `Export CSV`. Each mutation is its own API call — so each still produces its own trust receipt, as the fail-closed path requires — and the bar reports progress (`{verb}: {ok} done, {failed} failed`) instead of going silent on a partial failure. Shift+click selects a range, Ctrl/⌘+A selects the filtered set while the list has focus, and delete asks first. The same bar drives the `/graph` entity grid, where the index is read-only so it offers export alone.
+
+### perf: virtualize the memories list (#561)
+
+- `/memories` rendered every fetched row (`limit=200`) as its own card, so scrolling a large set meant 200+ live DOM subtrees and visible jank. The list is now windowed with `@tanstack/react-virtual`: only the viewport plus five overscan rows are mounted, measured off the scroll container. Keyboard navigation is unchanged — the row actions stay real buttons, so Tab and Enter reach them as before — and Ctrl/⌘+A still selects the whole filtered set.
+
 ### feat: force-directed, keyboard-accessible relationship map (#559)
 
 - The entity relationship map on `/graph` was a fixed `viewBox="0 0 280 280"` circle: up to eight satellites at hardcoded angles, no zoom, no pan, and a `role="button"` with no `tabIndex` or `aria-label`. It is now `EntityRelationshipMap`, its own component: a deterministic Fruchterman-Reingold layout (seeded PRNG, so the prerendered markup and the first client paint agree and `prefers-reduced-motion` needs no special case), wheel/drag/touch zoom and pan with reset, full keyboard navigation (Tab between nodes, arrow keys to move, Enter/Space to open, Escape to reset) and lazy multi-depth expansion up to three hops. Node radius tracks mention count and edge thickness the shared co-occurrence count.

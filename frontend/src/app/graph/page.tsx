@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { useT } from "@/lib/i18n";
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MemoryDetailDrawer } from "@/components/memory-detail-drawer";
 import { EntityRelationshipMap } from "@/app/graph/entity-relationship-map";
+import { BulkActionBar } from "@/components/bulk-action-bar";
+import { downloadJson, downloadCsv, toCsv } from "@/lib/download";
+import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import type { EntityRow, Memory } from "@/types";
 import {
@@ -164,6 +167,52 @@ export default function GraphPage() {
   };
 
   const totalEntities = Object.values(byType).reduce((a, b) => a + b, 0);
+
+  // ── Multi-select + export (#562). The entity index is read-only server-side
+  // (no pin/delete endpoints), so the bulk bar offers export alone here. ──
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const anchor = useRef<number | null>(null);
+
+  const toggleSelect = (e: EntityRow, index: number, shiftKey: boolean) => {
+    const from = anchor.current;
+    const range =
+      shiftKey && from !== null
+        ? entities.slice(Math.min(from, index), Math.max(from, index) + 1)
+        : [e];
+    const shouldSelect = !selectedIds.has(e.id);
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      for (const item of range) {
+        if (shouldSelect) next.add(item.id);
+        else next.delete(item.id);
+      }
+      return next;
+    });
+    anchor.current = index;
+  };
+
+  const selectAllEntities = (checked: boolean) => {
+    setSelectedIds(checked ? new Set(entities.map((e) => e.id)) : new Set());
+    anchor.current = null;
+  };
+
+  const selectedEntities = () => entities.filter((e) => selectedIds.has(e.id));
+
+  const exportEntities = (format: "json" | "csv") => {
+    const rows = selectedEntities();
+    const filename = `levh-entities-${rows.length}.${format}`;
+    if (format === "json") {
+      downloadJson(filename, rows);
+    } else {
+      downloadCsv(
+        filename,
+        toCsv(
+          ["id", "name", "type", "mentions", "updated_at"],
+          rows.map((r) => [r.id, r.name, r.type, r.mentions, r.updated_at ?? ""]),
+        ),
+      );
+    }
+  };
 
   // ── Detail view ──────────────────────────────────────────────────
   if (selected) {
@@ -354,39 +403,73 @@ export default function GraphPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {entities.map((e) => {
-            const Icon = TYPE_ICON[e.type] ?? Network;
-            return (
-              <button
-                key={e.id}
-                onClick={() => openEntity(e)}
-                className="text-left border rounded-lg p-3 bg-card hover:bg-accent/40 transition-colors"
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <span className="flex items-center gap-1.5 font-medium text-sm truncate">
-                    <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                    {e.name}
-                  </span>
-                  <Badge variant="secondary" className="text-[11px] shrink-0">
-                    {e.mentions}
-                  </Badge>
-                </div>
-                <div className="flex items-center justify-between mt-2">
-                  <Badge variant="outline" className="text-[11px]">
-                    {typeLabel(e.type)}
-                  </Badge>
-                  {e.updated_at && (
-                    <span className="text-[11px] text-muted-foreground">
-                      {e.updated_at.slice(0, 10)}
-                    </span>
+        <>
+          <div className="flex items-center gap-2 px-1">
+            <input
+              id="entities-select-all"
+              type="checkbox"
+              className="h-4 w-4 accent-primary"
+              checked={entities.length > 0 && entities.every((e) => selectedIds.has(e.id))}
+              onChange={(ev) => selectAllEntities(ev.target.checked)}
+            />
+            <label htmlFor="entities-select-all" className="text-xs text-muted-foreground">
+              {t("bulk.selectAll")}
+            </label>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {entities.map((e, index) => {
+              const Icon = TYPE_ICON[e.type] ?? Network;
+              const checked = selectedIds.has(e.id);
+              return (
+                <div
+                  key={e.id}
+                  className={cn(
+                    "relative border rounded-lg p-3 bg-card transition-colors",
+                    checked ? "ring-1 ring-primary" : "hover:bg-accent/40",
                   )}
+                >
+                  <input
+                    type="checkbox"
+                    className="absolute right-2 top-2 h-4 w-4 accent-primary"
+                    checked={checked}
+                    aria-label={t("bulk.selectRow", { preview: e.name })}
+                    onChange={() => {}}
+                    onClick={(ev) => toggleSelect(e, index, ev.shiftKey)}
+                  />
+                  <button onClick={() => openEntity(e)} className="w-full text-left">
+                    <div className="flex items-center justify-between gap-2 pr-6">
+                      <span className="flex items-center gap-1.5 font-medium text-sm truncate">
+                        <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                        {e.name}
+                      </span>
+                      <Badge variant="secondary" className="text-[11px] shrink-0">
+                        {e.mentions}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center justify-between mt-2">
+                      <Badge variant="outline" className="text-[11px]">
+                        {typeLabel(e.type)}
+                      </Badge>
+                      {e.updated_at && (
+                        <span className="text-[11px] text-muted-foreground">
+                          {e.updated_at.slice(0, 10)}
+                        </span>
+                      )}
+                    </div>
+                  </button>
                 </div>
-              </button>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        </>
       )}
+
+      <BulkActionBar
+        count={selectedIds.size}
+        onExportJson={() => exportEntities("json")}
+        onExportCsv={() => exportEntities("csv")}
+        onClear={() => setSelectedIds(new Set())}
+      />
     </div>
   );
 }

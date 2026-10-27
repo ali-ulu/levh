@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { useT } from "@/lib/i18n";
 import { Badge } from "@/components/ui/badge";
@@ -24,36 +24,18 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/toast";
 import { MemoryDetailDrawer } from "@/components/memory-detail-drawer";
+import { BulkActionBar } from "@/components/bulk-action-bar";
+import { VirtualMemoryList } from "@/app/memories/virtual-memory-list";
+import { downloadJson, downloadCsv, memoriesToCsv } from "@/lib/download";
 import type { Memory, Project, Source } from "@/types";
 import {
-  Clock,
-  Eye,
-  FolderGit2,
   Loader2,
-  Pencil,
   Pin,
-  PinOff,
   Search,
-  Sparkles,
   Tag,
-  Trash2,
 } from "lucide-react";
 
 const ALL = "__all__";
-
-function relativeTime(dateStr: string, t: ReturnType<typeof useT>) {
-  const time = new Date(dateStr).getTime();
-  if (!Number.isFinite(time)) return "";
-  const delta = Math.max(0, Date.now() - time);
-  const minutes = Math.floor(delta / 60000);
-  if (minutes < 1) return t("app.memories.relative.justNow");
-  if (minutes < 60) return t("app.memories.relative.minutes", { count: minutes });
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return t("app.memories.relative.hours", { count: hours });
-  const days = Math.floor(hours / 24);
-  if (days < 30) return t("app.memories.relative.days", { count: days });
-  return new Date(dateStr).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
-}
 
 export default function MemoriesPage() {
   const t = useT();
@@ -86,6 +68,12 @@ export default function MemoriesPage() {
   }, []);
 
   const [selectedMemory, setSelectedMemory] = useState<Memory | null>(null);
+
+  // Multi-select for bulk actions (#562). `anchor` is the last clicked index,
+  // so Shift+click can select the range between it and the new click.
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const anchor = useRef<number | null>(null);
 
   // Edit dialog
   const [editMemory, setEditMemory] = useState<Memory | null>(null);
@@ -188,6 +176,75 @@ export default function MemoriesPage() {
       });
     }
     setSaving(false);
+  };
+
+  // ── Multi-select + bulk actions (#562) ────────────────────────────
+  const toggleSelect = (m: Memory, index: number, shiftKey: boolean) => {
+    // Resolve the range before touching state: a `setState` updater runs during
+    // the next render, by which point `anchor.current` has already advanced to
+    // this click and the range would collapse to a single row.
+    const from = anchor.current;
+    const range =
+      shiftKey && from !== null
+        ? displayed.slice(Math.min(from, index), Math.max(from, index) + 1)
+        : [m];
+    const shouldSelect = !selectedIds.has(m.id);
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      for (const item of range) {
+        if (shouldSelect) next.add(item.id);
+        else next.delete(item.id);
+      }
+      return next;
+    });
+    anchor.current = index;
+  };
+
+  const selectAll = (checked: boolean) => {
+    setSelectedIds(checked ? new Set(displayed.map((m) => m.id)) : new Set());
+    anchor.current = null;
+  };
+
+  // Each id is its own request, so one failure does not silently drop the rest;
+  // the toast reports the count that actually succeeded.
+  const runBulk = async (verb: string, fn: (m: Memory) => Promise<unknown>) => {
+    const targets = displayed.filter((m) => selectedIds.has(m.id));
+    if (targets.length === 0 || bulkBusy) return;
+    setBulkBusy(true);
+    const results = await Promise.allSettled(targets.map(fn));
+    const ok = results.filter((r) => r.status === "fulfilled").length;
+    const failed = results.length - ok;
+    if (failed === 0) {
+      toast.success(t("app.memories.bulk.done", { verb, count: ok }));
+    } else {
+      toast.error(t("app.memories.bulk.partial", { verb, ok, failed }));
+    }
+    setSelectedIds(new Set());
+    setBulkBusy(false);
+    load();
+  };
+
+  const bulkPin = (pinned: boolean) =>
+    runBulk(pinned ? t("app.memories.bulk.verbPin") : t("app.memories.bulk.verbUnpin"), (m) =>
+      api.pinMemory(m.id, pinned),
+    );
+
+  const bulkDelete = () => {
+    const count = selectedIds.size;
+    if (!confirm(t("app.memories.bulk.deleteConfirm", { count }))) return;
+    runBulk(t("app.memories.bulk.verbDelete"), (m) => api.deleteMemory(m.id));
+  };
+
+  const selectedMemories = () => displayed.filter((m) => selectedIds.has(m.id));
+
+  const bulkExportJson = () => {
+    const rows = selectedMemories();
+    downloadJson(`levh-memories-${rows.length}.json`, rows);
+  };
+
+  const bulkExportCsv = () => {
+    const rows = selectedMemories();
+    downloadCsv(`levh-memories-${rows.length}.csv`, memoriesToCsv(rows));
   };
 
   // Collect top tags from displayed memories for the tag cloud
@@ -332,120 +389,29 @@ export default function MemoriesPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-2">
-          {displayed.map((m) => (
-            <div
-              key={m.id}
-              className={`memory-card group ${m.pinned ? "pinned" : ""}`}
-            >
-              <div className="flex items-start gap-3">
-                {/* Memory type indicator */}
-                <div
-                  className={`memory-type-indicator ${
-                    m.memory_type === "episodic" ? "episodic" : "short-term"
-                  }`}
-                />
-
-                {/* Content */}
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm leading-relaxed line-clamp-2">
-                    {m.content}
-                  </p>
-                  <div className="flex flex-wrap items-center gap-1.5 mt-2">
-                    {m.pinned && (
-                      <Badge
-                        variant="secondary"
-                        className="text-[11px] bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
-                      >
-                        <Pin className="h-2.5 w-2.5 mr-1" />
-                        {t("app.memories.pinned")}
-                      </Badge>
-                    )}
-                    {m.project && (
-                      <Badge variant="outline" className="text-[11px]">
-                        <FolderGit2 className="h-2.5 w-2.5 mr-1" />
-                        {m.project}
-                      </Badge>
-                    )}
-                    {m.source && (
-                      <Badge variant="outline" className="text-[11px]">
-                        {m.source}
-                      </Badge>
-                    )}
-                    {m.tags.slice(0, 4).map((t) => (
-                      <button
-                        key={t}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedTag(t);
-                        }}
-                        className="inline-flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded border border-dashed border-muted-foreground/30 text-muted-foreground hover:border-primary/50 hover:text-primary transition-colors"
-                      >
-                        {t}
-                      </button>
-                    ))}
-                    {m.tags.length > 4 && (
-                      <span className="text-[10px] text-muted-foreground/60">
-                        +{m.tags.length - 4}
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Meta + actions */}
-                <div className="flex flex-col items-end gap-1 shrink-0">
-                  <span className="flex items-center gap-1 text-[11px] text-muted-foreground tabular-nums">
-                    <Clock className="h-3 w-3" />
-                    {relativeTime(m.created_at, t)}
-                  </span>
-                  <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7"
-                      onClick={() => togglePin(m)}
-                      aria-label={m.pinned ? t("app.memories.action.unpin") : t("app.memories.action.pin")}
-                    >
-                      {m.pinned ? (
-                        <PinOff className="h-3.5 w-3.5" />
-                      ) : (
-                        <Pin className="h-3.5 w-3.5" />
-                      )}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7"
-                      onClick={() => setSelectedMemory(m)}
-                      aria-label={t("app.memories.action.view")}
-                    >
-                      <Eye className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7"
-                      onClick={() => openEdit(m)}
-                      aria-label={t("app.memories.action.edit")}
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7"
-                      onClick={() => remove(m)}
-                      aria-label={t("app.memories.action.delete")}
-                    >
-                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+        <VirtualMemoryList
+          memories={displayed}
+          selectedIds={selectedIds}
+          onToggleSelect={toggleSelect}
+          onOpen={setSelectedMemory}
+          onPin={togglePin}
+          onEdit={openEdit}
+          onDelete={remove}
+          onTagClick={setSelectedTag}
+          onSelectAll={selectAll}
+        />
       )}
+
+      <BulkActionBar
+        count={selectedIds.size}
+        busy={bulkBusy}
+        onPin={() => bulkPin(true)}
+        onUnpin={() => bulkPin(false)}
+        onDelete={bulkDelete}
+        onExportJson={bulkExportJson}
+        onExportCsv={bulkExportCsv}
+        onClear={() => setSelectedIds(new Set())}
+      />
 
       {/* Edit dialog */}
       <Dialog open={!!editMemory} onOpenChange={(open) => !open && setEditMemory(null)}>
