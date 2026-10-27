@@ -1,7 +1,7 @@
 # LEVH LLM Wiki — Implementation Plan
 
-**Status:** Active implementation plan; core feature and repository contracts are in the review branch, but release acceptance is not complete.
-**Base:** origin/main in the isolated feat/llm-wiki-foundation worktree.
+**Status:** Phases A-E complete; GitHub Actions passed all 13 jobs on feature commit `a4bc1f7`. Draft PR #578 remains unmerged pending review and its plan-only follow-up run.
+**Base:** `main@87d8d13`; feature branch `feat/llm-wiki-foundation`.
 **Last reviewed:** 2026-10-27.
 
 ## 1. Goal
@@ -90,25 +90,28 @@ The following implementation is present on `feat/llm-wiki-foundation`; local tes
 - OpenAPI export updated to pin imports to the current repository root, and
   openapi.json regenerated from this worktree.
 
-Verified on this worktree at the time of writing:
+Verified on the feature commit `a4bc1f7` on 2026-10-27:
 
-- Python compile check: passed.
-- Ruff on touched Python files: passed.
-- Wiki tests: 7 passed, including REST integration, secret redaction,
-  idempotency, explicit LLM opt-in, workspace separation and snapshot tampering.
-- MCP profile boundary tests: 11 passed.
-- OpenAPI contract tests: 8 passed.
-- OpenAPI export --check: passed.
-- Documentation consistency tests: 34 passed. REST endpoint and MCP tool tables,
-  profile-band counts, and published tool-count prose have been brought in sync.
-  Current code counts are read_only=39, minimal=6, work=32, admin=73, full=78.
-- Combined targeted verification: 60 tests passed across Wiki, MCP profile
-  boundaries, OpenAPI contract and docs consistency suites.
+- Local quality gates passed: `uv lock --check`, `ruff check .`, `mypy` (41 source files),
+  Python `compileall`, OpenAPI export `--check`, TypeScript SDK generation `--check`,
+  and `scripts/release.py --check`.
+- Hash-embedder recall quality gate passed; API smoke tests passed (2/2).
+- TypeScript SDK tests passed (12/12), `tsc --noEmit` passed, and package build plus
+  `twine check` passed for both wheel and source distribution.
+- GitHub Actions CI run #1081 (run ID `40469057773`) passed all 13 jobs on this
+  feature commit: backend Python 3.11/3.12/3.13 (including the 3.12 coverage gate),
+  frontend, E2E, hostile-env, coarse-clock, lint, types, pip-audit, SAST, SBOM and
+  TypeScript SDK. Run details: https://github.com/ali-ulu/levh/actions/runs/40469057773.
+- The feature regression suites include `tests/test_llm_wiki.py` and
+  `tests/test_llm_wiki_hardening.py`; coverage spans malformed/nested manifests,
+  path/symlink attacks, source update/forget lineage, determinism, authorization,
+  and fully mocked LLM success, failure, caching and sanitization boundaries.
+- Profile counts are `read_only=39`, `minimal=6`, `work=32`, `admin=73`, `full=78`;
+  API/SDK and repository documentation checks are synchronized.
 
-These are local test results only; no CI run, pull request, merge or production
-deployment has occurred. The feat/llm-wiki-foundation branch is based on
-origin/main and is intended for agent/reviewer inspection.
-
+Draft PR #578: https://github.com/ali-ulu/levh/pull/578. The branch is not merged or
+released. This plan-evidence follow-up changes documentation only; its new CI run
+must pass before the PR is marked ready for review.
 ## 5. Remaining implementation plan
 
 ### Phase A — Finish repository contracts and operator documentation
@@ -225,6 +228,8 @@ prove opt-in, bounded requests and citation filtering with no live API key.
 
 ### Phase F — End-to-end and CI gate
 
+Status: **Passed on feature code commit `a4bc1f7`; plan-evidence follow-up is documentation-only and will rerun CI.**
+
 - Run the new Wiki test module, MCP profile boundary tests, OpenAPI contract,
   docs consistency checks, relevant engine/entity tests, and the project's
   full required CI-equivalent gate.
@@ -237,9 +242,9 @@ prove opt-in, bounded requests and citation filtering with no live API key.
 - Update this plan's status and the user guide only after the acceptance
   criteria pass.
 
-Acceptance: all required local gates pass, OpenAPI is deterministic, no
-unrelated changes are present, and CI evidence is available before proposing
-a pull request.
+Acceptance: GitHub Actions run #1081 passed all 13 jobs on the feature code commit.
+PR #578 remains Draft and unmerged. The follow-up changes only this plan's evidence;
+review its new CI result before marking the PR ready or merging.
 
 ## 6. Explicit non-goals for this first delivery
 
@@ -256,13 +261,13 @@ a pull request.
 
 ## 7. Execution order and release gate
 
-1. Phase A: **complete**; docs consistency is green (34 passed).
-2. Phase B: close filesystem, manifest and concurrency edge cases.
-3. Phase C: verify source update and deletion semantics.
-4. Phase D: prove REST/MCP authorization and no-write read paths.
-5. Phase E: add fully mocked LLM boundary tests and adversarial-output checks.
-6. Phase F: run the complete quality gate, inspect the final diff and prepare
-   review evidence.
+1. Phase A: **complete**; docs consistency passed (34 tests).
+2. Phase B: **complete**; path, manifest, symlink and concurrency hardening is covered.
+3. Phase C: **complete**; update/forget lineage, determinism and source catalog are covered.
+4. Phase D: **complete**; REST/MCP authorization and no-write read paths are covered.
+5. Phase E: **complete**; mocked LLM opt-in, budget, cache and adversarial-output cases are covered.
+6. Phase F: **feature code passed all 13 GitHub Actions jobs**. Keep PR #578 Draft until
+   the documentation-only evidence follow-up's CI run is confirmed.
 
 Do not mark the feature complete or create a release/PR until every phase's
 acceptance criteria has evidence. Any deferred criterion must be named in the
