@@ -129,6 +129,29 @@ def test_generic_hooks_skip_checked_in_build_output(hook_id: str):
         assert not compiled.search(path), f"{hook_id} unexpectedly skips source: {path}"
 
 
+def test_graphify_ignore_covers_the_checked_in_build_output():
+    """Graphify indexes tracked files, and `.gitignore` does not hide them: a
+    tracked path is matched by neither the default read nor `--no-gitignore`.
+    Without `.graphifyignore` the minified `frontend/out/` and
+    `server/dashboard/` bundles are ~30% of the graph and their mangled
+    identifiers become the top god nodes, burying the real architecture. This
+    asserts both directories stay listed, so a dropped entry fails loudly
+    instead of silently bloating the next graph.
+    """
+    ignore = ROOT / ".graphifyignore"
+    assert ignore.is_file(), "missing .graphifyignore; Graphify will index build output"
+    patterns = [
+        line.strip()
+        for line in ignore.read_text(encoding="utf-8").splitlines()
+        if line.strip() and not line.lstrip().startswith("#")
+    ]
+    for directory in ("frontend/out/", "server/dashboard/"):
+        assert directory in patterns, f".graphifyignore no longer excludes {directory}"
+        assert any(
+            path.startswith(directory) for path in BUILD_OUTPUT_PATHS
+        ), f"BUILD_OUTPUT_PATHS no longer samples {directory}"
+
+
 def test_ruff_hook_is_scoped_to_python():
     """The config's comment promises ruff never touches the frontend. Ruff's
     `extend-exclude` only covers `ruff check .`; the hook needs its own scope so
