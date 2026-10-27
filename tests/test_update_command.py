@@ -243,6 +243,17 @@ def test_not_a_checkout_on_a_mount_boundary_is_skipped(tmp_path, monkeypatch):
     assert "not a git checkout" in result.reason
 
 
+def test_an_unreadable_checkout_is_an_error(tmp_path):
+    # A directory that looks like a checkout but cannot be read is a real
+    # failure, not a wheel install: it must stay an error so an unattended
+    # caller does not silently skip it. A malformed `.git` file produces a
+    # filesystem-independent message, so this is not the mount-boundary case.
+    (tmp_path / ".git").write_text("garbage, not a gitfile\n", encoding="utf-8")
+    result = update_checkout(tmp_path)
+    assert result.status == "error"
+    assert "cannot read the checkout" in result.reason
+
+
 def test_unreachable_remote_is_an_error(repos):
     _, local = repos
     _git(local, "remote", "set-url", "origin", str(local.parent / "missing.git"))
