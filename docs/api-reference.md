@@ -94,6 +94,7 @@ because it is a read that has to POST to carry its query.
 | GET | `/api/v1/entities` | Persisted entities (optionally filtered by type), most-mentioned first |
 | POST | `/api/v1/entities/reindex` | Rebuild the persistent entity graph from every stored memory |
 | GET | `/api/v1/entities/stats` | Counts of persisted entities by type |
+| GET | `/api/v1/entities/search` | Search persisted entities by name or key (`q`), for the graph page's search box |
 | GET | `/api/v1/entities/{entity_id}` | An entity's profile: the memories that mention it and the entities it co-occurs with. ``entity_id`` may be a full id… |
 | POST | `/api/v1/guard/check` | Judge a proposed action against the recorded rules before it runs. Advisory: `warn` or `allow`, never `block` |
 | POST | `/api/v1/guard/mistakes` | Record a mistake as a pinned rule plus a violation row |
