@@ -1,7 +1,7 @@
 # LEVH LLM Wiki — Implementation Plan
 
-**Status:** Phases A-E complete; GitHub Actions passed all 13 jobs on feature commit `a4bc1f7`. Draft PR #578 remains unmerged pending review and its plan-only follow-up run.
-**Base:** `main@87d8d13`; feature branch `feat/llm-wiki-foundation`.
+**Status:** Implemented and merged via PR #578. GitHub Actions passed all 13 jobs on feature commit `a4bc1f7`; post-merge CI passed on `main@74b9a94` (run #1090). This plan update records the merged state; it does not change runtime code.
+**Implementation branch:** `feat/llm-wiki-foundation`; merged PR: https://github.com/ali-ulu/levh/pull/578.
 **Last reviewed:** 2026-10-27.
 
 ## 1. Goal
@@ -109,9 +109,7 @@ Verified on the feature commit `a4bc1f7` on 2026-10-27:
 - Profile counts are `read_only=39`, `minimal=6`, `work=32`, `admin=73`, `full=78`;
   API/SDK and repository documentation checks are synchronized.
 
-Draft PR #578: https://github.com/ali-ulu/levh/pull/578. The branch is not merged or
-released. This plan-evidence follow-up changes documentation only; its new CI run
-must pass before the PR is marked ready for review.
+PR #578 was merged: https://github.com/ali-ulu/levh/pull/578. The feature is now on `main`; no separate release or production deployment is implied by the merge. Post-merge CI on `main@74b9a94` passed all jobs (run #1090): https://github.com/ali-ulu/levh/actions/runs/40505565955. This plan-evidence follow-up is documentation-only.
 ## 5. Remaining implementation plan
 
 ### Phase A — Finish repository contracts and operator documentation
@@ -228,7 +226,7 @@ prove opt-in, bounded requests and citation filtering with no live API key.
 
 ### Phase F — End-to-end and CI gate
 
-Status: **Passed on feature code commit `a4bc1f7`; plan-evidence follow-up is documentation-only and will rerun CI.**
+Status: **Passed.** Feature code passed all 13 jobs on `a4bc1f7`; post-merge CI passed on `main@74b9a94` in run #1090.
 
 - Run the new Wiki test module, MCP profile boundary tests, OpenAPI contract,
   docs consistency checks, relevant engine/entity tests, and the project's
@@ -242,9 +240,7 @@ Status: **Passed on feature code commit `a4bc1f7`; plan-evidence follow-up is do
 - Update this plan's status and the user guide only after the acceptance
   criteria pass.
 
-Acceptance: GitHub Actions run #1081 passed all 13 jobs on the feature code commit.
-PR #578 remains Draft and unmerged. The follow-up changes only this plan's evidence;
-review its new CI result before marking the PR ready or merging.
+Acceptance: GitHub Actions run #1081 passed all 13 jobs on the feature code commit; post-merge run #1090 passed on `main@74b9a94`. PR #578 is merged. This follow-up changes only this plan's status/evidence; its own CI must pass before merge.
 
 ## 6. Explicit non-goals for this first delivery
 
@@ -266,8 +262,7 @@ review its new CI result before marking the PR ready or merging.
 3. Phase C: **complete**; update/forget lineage, determinism and source catalog are covered.
 4. Phase D: **complete**; REST/MCP authorization and no-write read paths are covered.
 5. Phase E: **complete**; mocked LLM opt-in, budget, cache and adversarial-output cases are covered.
-6. Phase F: **feature code passed all 13 GitHub Actions jobs**. Keep PR #578 Draft until
-   the documentation-only evidence follow-up's CI run is confirmed.
+6. Phase F: **feature code passed all 13 GitHub Actions jobs; post-merge main CI run #1090 passed.** The remaining step is to merge this documentation-only plan correction after its CI passes.
 
 Do not mark the feature complete or create a release/PR until every phase's
 acceptance criteria has evidence. Any deferred criterion must be named in the
