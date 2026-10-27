@@ -14,6 +14,11 @@
 
 - `GET /api/entities` gains `offset` and `q` (case-insensitive substring over the name or entity key), and a thin alias `GET /api/entities/search` exposes the same query under a search-shaped path for the graph page. The literal path is registered above the `/api/entities/{entity_id}` catch-all for the same reason `/stats` is. Existing callers are unchanged: `offset` defaults to 0 and an absent `q` filters nothing.
 
+### fix: clear the two advisories and the mount-boundary probe that held CI red
+
+- **`levh update` read a non-checkout on a mount boundary as an error.** git words the same failure two ways: `not a git repository (or any of the parent directories): .git` when the walk reaches the filesystem root, and a two-line `…up to mount point /)\nStopping at filesystem boundary…` pair when it stops at a mount point first. Which one you get depends on whether the directory shares a filesystem with its parents, so `tmp_path` under `/tmp` read as a clean skip while the same directory on a mounted volume read as `error`. `_precheck` now matches `not a git repository` against the whole stderr instead of its last line. The test that pinned the skip passed on `/tmp` and failed on the runner's filesystem, which is why `main` was red on 2026-10-27.
+- **`fastmcp` 3.4.7 → 3.4.11** (GHSA-7xgj-8392-5q4r) and **`zod` → 4.6.7** (GHSA-mrhx-c7xc-m3w5), the two `pip-audit`/`npm audit` findings that failed the `pip-audit` and `frontend` jobs. Both are patch bumps within the existing ranges; the `zod` bump is pinned with an `overrides` entry because it is a transitive dependency of `@opengeni/contracts`, not a direct one.
+
 ### fix: load the local embedder before the stdio reader starts on Windows
 
 - On Windows, `levh mcp stdio` hung forever on the first recall or store with a local embedder. Loading torch/scipy's DLLs deadlocks while another thread is blocked in a synchronous read on the stdin pipe, and the stdio transport keeps exactly such a thread. `py-spy --native` showed the process at 0% CPU inside `LoadLibraryExW(libscipy_openblas…)`. A plain `import scipy.linalg` with a thread blocked on piped stdin reproduces it, with or without the C runtime's `read` and with `OPENBLAS_NUM_THREADS=1`. Moving the load into a worker thread (#525) does not avoid it.
