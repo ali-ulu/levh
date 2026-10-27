@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### docs: rewrite the README around the five-minute path
+
+- The README had grown into a design essay — the same point argued in three sections, and a feature list long enough that the install steps scrolled off the first screen. It is now a short overview, a quick start, a one-line-per-feature list and a docs index. The Knowledge Wiki and its dashboard page are listed for the first time.
+
 ### feat: browse the knowledge Wiki in the dashboard
 
 - Adds a `/wiki` page and a sidebar entry so the source-linked Markdown projection is reachable without the CLI or MCP: it shows the build status (memories, snapshots, pages, workspace root, LLM-summary state), searches generated pages through `GET /api/wiki/search`, reads a page's Markdown through `GET /api/wiki/pages/{id}`, and lists `GET /api/wiki/lint` issues in a table. The page is read-only — building stays admin-tier and is deliberately not exposed here, so a viewer principal cannot write Wiki files from the browser.

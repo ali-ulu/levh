@@ -16,81 +16,19 @@
 
 ## What is LEVH?
 
-Your AI tools are stateless. Every session starts from zero.
+Your AI tools are stateless — every session starts from zero. LEVH gives them a
+persistent, searchable memory that lives on your machine. Plug it into Claude
+Desktop, Cursor, Claude Code, VS Code, or any MCP client, and it remembers your
+decisions, projects and people across sessions.
 
-LEVH gives them a **persistent, searchable memory** that lives on your machine — plug it into Claude Desktop, Cursor, Claude Code, VS Code, or any MCP client and it remembers your decisions, your projects, and your people across sessions.
-
-Most memory tools optimize for perfect recall: store everything, retrieve everything, let the noise pile up. **LEVH forgets on purpose.** Every memory has its own decay curve; unused memories fade; the ones you actually rely on get reinforced automatically. Signal rises to the top without manual curation.
+Most memory tools store everything and retrieve everything. **LEVH forgets on
+purpose:** every memory has its own decay curve, unused ones fade, and the ones
+you actually rely on are reinforced automatically. Signal rises to the top
+without manual curation.
 
 Everything runs locally on SQLite. No accounts, no cloud, no external services.
 
----
-
-## One memory, every agent on your machine
-
-Most memory layers are built for one client. LEVH is not — it is one SQLite
-file that any number of MCP-speaking agents read and write concurrently,
-because they are separate processes talking to the same database, not
-separate memories synced after the fact.
-
-In daily use on one machine that means Claude Code, Claude Desktop, Cursor,
-Windsurf, VS Code (Cline), opencode, jcode, Codex, Hermes, kilocode and
-oh-my-cli all resolve the same query the same way — an agent never re-solves
-a problem another agent already closed, and never asks you to repeat
-something you already said to a different tool. `Cross-process coherence`
-below is not a footnote; it is the property that makes this safe under
-concurrent writers.
-
-Two things make this workable instead of noisy at that scale:
-
-- **The admission gate has a fourth verdict.** Store / reject / update are
-  obvious. The fourth is *review*: a candidate close enough to something you
-  already have that auto-storing risks a duplicate, but different enough that
-  discarding risks losing the one detail that mattered. It used to be
-  dropped silently. Now it is held — visible, admittable, discardable — so no
-  agent's write is ever the one that vanishes.
-- **Sessions start with multiple continuity paths, and the defaults are
-  explicit.** Every generated MCP client config starts LEVH's stdio server,
-  which advertises `get_continuity_brief` in the minimal tool surface and a
-  server instruction to call it at work-session start. The stdio server also
-  emits the brief on stderr by default, although whether a client displays or
-  consumes stderr is outside LEVH's control. Claude Code additionally has an
-  opt-in native `SessionStart` hook installed by
-  `levh hook install --client claude-code`; the other generated clients do
-  not currently have an installer-owned native session-start hook. The
-  code-backed client/channel matrix is in
-  [Platform Setup](docs/mcp-client-config.md#continuity-delivery-inventory), so
-  this claim cannot drift from the installer registries.
-
-This isn't the first shared-MCP-memory idea — mem0's OpenMemory does the same
-loopback-server pattern for a smaller client set. What's specific to LEVH is
-combining that breadth with the decay model above and the hold-don't-drop
-gate: memory that stays *useful* across a dozen concurrently-running agents,
-not just present.
-
----
-
-## How memory works here
-
-This is the core mechanic, not a footnote:
-
-- **Every memory has its own half-life.** New memories start at 168h and fade fast unless something happens.
-- **Recall reinforces.** Retrieving a memory resets its clock and grows its half-life — the same spaced-repetition effect Anki uses.
-- **Importance accelerates it.** A `0.9`-importance memory consolidates far faster per recall than a `0.1` one.
-- **Feedback closes the loop.** Mark a memory unhelpful and its stability drops, so stale information fades instead of resurfacing.
-- **New information interferes with old.** "The deploy branch is prod" naturally supersedes "the deploy branch is main" — no one has to delete anything.
-- **Pinning is permanent.** Rules and facts that must never be forgotten skip decay entirely.
-- **Fading memories surface for review** — rescue what still matters with one click, let the rest go.
-
-```
-retention(t) = 0.5 ^ (hours_since_last_recall / stability_hours)
-```
-
-Memories are ranked by an explainable multi-factor score, `H(x,ψ)` — semantic similarity, decay, importance and access frequency, each weight configurable and every score breakable into its components in the UI. See [Architecture](docs/ARCHITECTURE.md).
-
----
-
-## Quick Start
+## Quick start
 
 ```bash
 pip install levh
@@ -99,131 +37,74 @@ levh capture "Atlas uses PostgreSQL in production."
 levh serve
 ```
 
-`setup` prepares an empty local store and a focused MCP client config. Dashboard
-and API come up on <http://localhost:8000>.
-
-Then open **Settings** in the dashboard for copy-paste MCP configs, or run
-`levh mcp config cursor` for any supported client.
+Dashboard and API come up on <http://localhost:8000>. Open **Settings** for
+copy-paste MCP configs, or run `levh mcp config cursor` for any supported client.
 
 Optional, once you are set up:
 
 ```bash
 levh hook install --client claude-code   # every new session starts with your memory
-levh hook install               # capture every git commit message
-levh context -o CLAUDE.md       # compile memory into a context file
-levh mcp init my-server --with-memory   # scaffold an MCP server on this database
+levh hook install                        # capture every git commit message
+levh context -o CLAUDE.md                # compile memory into a context file
 ```
 
-→ [Getting Started](docs/getting-started.md) · [Installing from source](docs/installation.md) · [Architecture](docs/ARCHITECTURE.md)
+## How it works
 
----
+Every memory has its own half-life. Recalling it resets the clock and grows it,
+negative feedback shrinks it, and pinning skips decay entirely.
+
+```
+retention(t) = 0.5 ^ (hours_since_last_recall / stability_hours)
+```
+
+Memories are ranked by an explainable multi-factor score — semantic similarity,
+decay, importance and access frequency, each weight configurable. See
+[Architecture](docs/ARCHITECTURE.md).
 
 ## What you get
 
-- **Adaptive decay** — per-memory half-life, reinforced by recall, weakened by negative feedback, visualized as a forgetting curve.
-- **Ask your memory** — natural-language questions return an answer that cites the exact memories it drew from. Deterministic and offline by default.
-- **People, organizations & timeline** — who you interact with and what happened when, extracted automatically from calendars, email and transcripts. No manual tagging.
-- **Daily briefing & meeting prep** — today's events, open commitments detected from your own words, and who you're about to meet. Fully offline.
-- **Decisions & conflicts** — decision statements pulled out of your memories, and a review signal when two memories appear to disagree. A signal, never a verdict; nothing is auto-deleted.
-- **Admission gate** — every incoming memory is screened before storage, on create *and* on update: duplicates flagged, secrets like API keys redacted before they are ever embedded. Deterministic, offline. When the gate declines to decide — close to something you already have, but not identical — the candidate is **held for you** rather than dropped, to admit or discard later. A refusal the gate cannot justify never costs you the content.
-- **Trust & provenance** — an explainable reliability score per memory from source type, corroboration and review history. Separate from ranking; not a truth claim.
-- **Entity knowledge graph** — memories indexed into real entity tables, so "which memories mention X" is a join, not a search.
-- **Remembers you without being asked** — a SessionStart hook puts your rules, your pinned facts and where you left off into every new Claude Code session automatically. A memory the assistant has to be told to consult is a filing cabinet, not a memory.
-- **Mistake guard** — a corrected mistake becomes a pinned rule plus an incident record. Pinned memories never decay, so the rule is still there weeks later, in a different session, and it leads the generated context file where the next session reads it before working.
-- **Encrypted backup & restore** — a full portable snapshot including decay state and the bytes of every attachment LEVH uploaded, so a restore on another machine produces readable files rather than dangling paths. Files you attached from your own disk stay references — your original is the copy that matters. Optionally encrypted with a passphrase (PBKDF2 + AES).
-- **Consolidation & review** — aged clusters collapse into durable summaries; the fading queue becomes a keep / reinforce / forget flow.
-- **78 MCP tools**, a REST API, a WebSocket feed, and a live Next.js dashboard served by the API itself — one process, one port.
-- **4 embedding modes** — OpenAI, local `all-MiniLM-L6-v2`, Ollama (fully offline), or a deterministic hash fallback. The system always works.
-- **Connectors** for Calendar, Email, transcripts, Notion, Obsidian, GitHub, Jira, Linear, Slack, local git history and local files — all routed through the admission gate. Calendar, mail and transcript files are uploaded from the dashboard; there is no filesystem path to type.
-- **Signed federation** — explicit, pull-first peer exchange of memory between two LEVH instances. The envelope is ed25519-signed and verified before a single row is opened locally, then imported through the same admission gate; there is no background polling, push, or automatic conflict merge. Pull from a peer three ways: the `levh federation-pull` CLI, `POST /api/v1/federation/pull`, or the dashboard's Settings → Federation card. The dashboard endpoint builds its request URL only from the operator-approved `LEVH_FEDERATION_PEERS` allowlist, so a browser session can never point the server at an arbitrary host.
-- **Scaffold your own MCP server** — `levh mcp init my-server --with-memory` writes a working server that shares this database, optionally with a deploy config for Fly, Railway, Render or Docker.
-
-→ [Full MCP tool list](docs/mcp-tools.md) · [REST API](docs/api-reference.md) · [CLI](docs/cli.md) · [Connectors](docs/connectors.md)
-
----
+- **Adaptive decay** — per-memory half-life, reinforced by recall and weakened by feedback.
+- **Ask your memory** — natural-language answers that cite the memories they came from. Offline by default.
+- **People, projects & timeline** — entities extracted from your memories automatically. No manual tagging.
+- **Daily briefing & meeting prep** — today's events and who you are about to meet.
+- **Decisions & conflicts** — decisions pulled from your memories, with a review signal when two disagree. A signal, never a verdict.
+- **Knowledge Wiki** — a source-linked Markdown wiki built from your memories, browsable in the dashboard.
+- **Admission gate** — every memory screened before storage; duplicates flagged and secrets redacted. An ambiguous candidate is held for you, never dropped.
+- **Trust & provenance** — an explainable reliability score per memory. Separate from ranking; not a truth claim.
+- **Mistake guard** — a corrected mistake becomes a pinned rule that never decays.
+- **Encrypted backup & restore** — one portable snapshot, optionally encrypted.
+- **Connectors** — Calendar, Email, transcripts, Notion, Obsidian, GitHub, Jira, Linear, Slack, git history and local files.
+- **Signed federation** — explicit, pull-first memory exchange between two LEVH instances.
+- **78 MCP tools**, a REST API, a WebSocket feed, and a Next.js dashboard served by the API itself — one process, one port.
 
 ## Documentation
 
 | | |
 |---|---|
 | [Getting Started](docs/getting-started.md) | First run and local setup |
-| [Memory Assistant](docs/opengeni-assistant.md) | Optional chat that answers from your store |
-| [Platform Setup](docs/mcp-client-config.md) | Claude Desktop, Claude Code, Cursor, Windsurf, VS Code (Cline), jcode, omp, opencode, Codex, Hermes |
-| [Configuration](docs/configuration.md) | Environment variables, precedence, Docker |
-| [Architecture](docs/ARCHITECTURE.md) | Layers, engine, scoring internals |
+| [Platform Setup](docs/mcp-client-config.md) | Claude, Cursor, VS Code, Codex and the rest |
 | [MCP Tools](docs/mcp-tools.md) | All 78 tools and the profile bands |
 | [REST API](docs/api-reference.md) | Every endpoint |
-| [TypeScript SDK](docs/typescript-sdk.md) | Typed client, generated from the contract |
-| [DeepSeek Harness plugin](docs/dsh-plugin.md) | Decision, guard, and memory tools for DSH agents |
-| [Cognition Engine plugin](docs/cog-engine.md) | Reasoning, logic, and decision tools for DSH agents |
 | [CLI](docs/cli.md) | Every command |
-| [Evaluation](docs/memory-evaluation.md) | Recall benchmark, golden fixtures, dogfood |
-| [Testing](docs/testing.md) | Running the suite |
-| [Error Handling](docs/error-handling.md) | When `except Exception` is allowed, and `ARG` exemptions |
+| [Knowledge Wiki](docs/llm-wiki.md) | The source-linked wiki over your memories |
+| [Architecture](docs/ARCHITECTURE.md) | Layers, engine, scoring internals |
 | [Releasing](docs/releasing.md) | Version bump, tag, automated publish |
 
----
-
-## Measuring recall quality
-
-Recall quality is measured, not claimed:
-
-```bash
-levh benchmark     # hit@1 / hit@3 / hit@5 / MRR on a labelled query set
-levh eval run      # golden-fixture run through the full pipeline
-levh tune          # fit the H(x,ψ) weights and report what it's worth
-```
-
-`levh tune` searches for better `HSCORE_*` weights against a labelled set and
-reports the gain **cross-validated** — weights are fitted on some query groups
-and scored on a group they never saw. On the small built-in corpus the fitted
-weights do not generalise, and the command says so and recommends keeping the
-defaults rather than printing an overfitted result. It is offline analysis: it
-changes no runtime behaviour and only prints values for you to adopt.
-
-Please don't quote hit@k or MRR numbers from anywhere other than a real run on
-your own corpus and embedder mode — the hash fallback is non-semantic and will
-understate quality. → [Evaluation](docs/memory-evaluation.md)
-
----
+→ [Installing from source](docs/installation.md) · [Configuration](docs/configuration.md)
 
 ## Security
 
-LEVH is a **local, single-user tool** — no accounts, no multi-tenancy.
+LEVH is a local, single-user tool — no accounts, no multi-tenancy.
 
-- **Tokenless means loopback-only.** Without `LEVH_TOKEN`, remote peers are rejected — by `levh serve`, by the MCP SSE server, and by the ASGI apps directly, so bypassing the CLI does not bypass the boundary. Docker Compose opts into bridge traffic explicitly, and only because it publishes `127.0.0.1:8000`.
-- **Shared-secret token** (`LEVH_TOKEN`) gates `/api/*`, the WebSocket and the MCP SSE transport, with in-process rate limiting on failed attempts. Set it before widening any bind.
-- **CORS defaults to localhost origins**, not `*` — otherwise any site open in your browser could read your entire memory store. CORS is not an authorization boundary.
-- **Nothing leaves the machine without an explicit opt-in.** An `OPENAI_API_KEY` in your environment is treated as a credential, never as permission — Ask, session summaries, consolidation and transcript ingest all run their offline backends until you set `ANSWER_MODE=llm` or `SUMMARY_MODE=llm`. `GET /api/config` reports the effective posture.
-- **Secrets are redacted** by the admission gate before storage — on every write path, including updates, and before the text reaches the embedder. `audit-secrets` / `redact-secrets` find and strip anything stored before the gate existed.
+- **Tokenless means loopback-only.** Without `LEVH_TOKEN`, remote peers are rejected.
+- **`LEVH_TOKEN`** gates `/api/*`, the WebSocket and the MCP SSE transport. Set it before widening any bind.
+- **Nothing leaves the machine without an explicit opt-in.** Ask, summaries and transcript ingest stay offline until you set `ANSWER_MODE=llm` or `SUMMARY_MODE=llm`.
+- **Secrets are redacted** before storage, on every write path.
 
-This is not per-user auth, and it is not a substitute for your own reverse proxy
-if you expose the service beyond localhost.
-
-**Cross-process coherence.** Two processes sharing one database (for example
-Claude Desktop and the dashboard) see each other's writes without a restart —
-`recall()` checks SQLite's own `PRAGMA data_version` before scoring and
-refreshes its in-memory caches if a peer wrote since the last check. `GET
-/api/memories/{id}` and list/search endpoints read straight from SQLite on
-every call and were never affected.
+The MCP size profiles narrow tool *discovery*; `read_only` is enforced
+server-side at call time. The size profiles are not a security boundary.
 
 Found a vulnerability? See [SECURITY.md](SECURITY.md).
-
----
-
-## Tech Stack
-
-| Component | Technology |
-|-----------|-----------|
-| MCP Server | Python `mcp` SDK + `FastMCP` |
-| API | FastAPI + Uvicorn |
-| Database | SQLite via `aiosqlite` (auto-migrating schema) |
-| Embeddings | OpenAI / sentence-transformers / Ollama / hash |
-| Vector Search | NumPy cosine similarity |
-| Frontend | Next.js 16 + React 19 (static export) + shadcn/ui + Recharts |
-| Container | Docker (single image: API + dashboard) |
-
----
 
 ## Contributing
 
