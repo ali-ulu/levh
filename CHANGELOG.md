@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### fix: keep a developer's embedder mode out of the test suite
+
+- Seven config tests write `embedder_mode="hash"` into a temp config and delete only the bare `EMBEDDER_MODE`, but `get_env` prefers the `LEVH_`-prefixed spelling: a machine exporting `LEVH_EMBEDDER_MODE=local` resolved `local` and reddened the suite for a reason unrelated to the change under test, while CI — carrying no such variable — stayed green. `tests/conftest.py` now scrubs every accepted spelling of `EMBEDDER_MODE`, derived from `accepted_env_var_names`, and the `hostile-env` job plants the decoy so a regression fails there instead of staying invisible.
+
 ### fix: keep `levh doctor` and the route tests off the developer's real machine
 
 - The suite pins the store, but two probes still read the machine it runs on: `levh doctor` inspects the interpreter's own `site-packages` for interrupted-install `~` debris, and the supervisor's update state under the user profile. A developer with a wedged pip or a checkout the supervisor stopped updating saw every "doctor is clean" test fail for a reason unrelated to the change under test — invisible in CI, which carries neither.
