@@ -223,6 +223,26 @@ def test_not_a_checkout_is_skipped(tmp_path):
     assert "not a git checkout" in result.reason
 
 
+def test_not_a_checkout_on_a_mount_boundary_is_skipped(tmp_path, monkeypatch):
+    # git stops at the first mount point it meets while walking up, and words
+    # the failure as "…up to mount point /)\nStopping at filesystem boundary…"
+    # instead of the plain "not a git repository" line. Reading only the last
+    # stderr line saw "Stopping at…" and reported an error, which is what turned
+    # CI red on a runner whose tmp_path sits on a different filesystem. Drive the
+    # exact stderr the mount-boundary walk produces.
+    stderr = (
+        "fatal: not a git repository (or any parent up to mount point /)\n"
+        "Stopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set).\n"
+    )
+    monkeypatch.setattr(
+        update_mod, "run_bounded",
+        lambda *a, **k: update_mod._Output(128, "", stderr),
+    )
+    result = update_checkout(tmp_path)
+    assert result.status == "skipped"
+    assert "not a git checkout" in result.reason
+
+
 def test_unreachable_remote_is_an_error(repos):
     _, local = repos
     _git(local, "remote", "set-url", "origin", str(local.parent / "missing.git"))
