@@ -196,10 +196,18 @@ def _precheck(repo: Path) -> UpdateResult | str:
     """The current HEAD when the checkout may be updated, else the verdict."""
     probe = git(repo, "rev-parse", "--show-toplevel", check=False)
     if probe.returncode != 0:
-        detail = _last_line(probe.stderr)
-        if "not a git repository" in detail:
+        # git words the same failure two ways: "not a git repository (or any of
+        # the parent directories): .git" when it reaches the filesystem root,
+        # and a "…(or any parent up to mount point /)\nStopping at filesystem
+        # boundary…" pair when it stops at a mount point first. Which one you
+        # get depends on whether the directory shares a filesystem with its
+        # parents — /tmp does, a mounted workspace does not — so the check has
+        # to read the whole stderr, not just its last line, or a non-checkout on
+        # a mount boundary reads as an error.
+        if "not a git repository" in probe.stderr:
             return UpdateResult("skipped", "", "", "not a git checkout (a wheel install updates with "
                                 "`pip install -U levh`)")
+        detail = _last_line(probe.stderr)
         return UpdateResult("error", "", "", f"git cannot read the checkout: {detail}")
     # Rooted at ``repo`` itself: a wheel install that happens to sit inside some
     # unrelated repository (a home directory under version control) must not
