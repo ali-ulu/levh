@@ -132,7 +132,7 @@ levh mcp init my-server --with-memory   # scaffold an MCP server on this databas
 - **Mistake guard** — a corrected mistake becomes a pinned rule plus an incident record. Pinned memories never decay, so the rule is still there weeks later, in a different session, and it leads the generated context file where the next session reads it before working.
 - **Encrypted backup & restore** — a full portable snapshot including decay state and the bytes of every attachment LEVH uploaded, so a restore on another machine produces readable files rather than dangling paths. Files you attached from your own disk stay references — your original is the copy that matters. Optionally encrypted with a passphrase (PBKDF2 + AES).
 - **Consolidation & review** — aged clusters collapse into durable summaries; the fading queue becomes a keep / reinforce / forget flow.
-- **74 MCP tools**, a REST API, a WebSocket feed, and a live Next.js dashboard served by the API itself — one process, one port.
+- **78 MCP tools**, a REST API, a WebSocket feed, and a live Next.js dashboard served by the API itself — one process, one port.
 - **4 embedding modes** — OpenAI, local `all-MiniLM-L6-v2`, Ollama (fully offline), or a deterministic hash fallback. The system always works.
 - **Connectors** for Calendar, Email, transcripts, Notion, Obsidian, GitHub, Jira, Linear, Slack, local git history and local files — all routed through the admission gate. Calendar, mail and transcript files are uploaded from the dashboard; there is no filesystem path to type.
 - **Signed federation** — explicit, pull-first peer exchange of memory between two LEVH instances. The envelope is ed25519-signed and verified before a single row is opened locally, then imported through the same admission gate; there is no background polling, push, or automatic conflict merge. Pull from a peer three ways: the `levh federation-pull` CLI, `POST /api/v1/federation/pull`, or the dashboard's Settings → Federation card. The dashboard endpoint builds its request URL only from the operator-approved `LEVH_FEDERATION_PEERS` allowlist, so a browser session can never point the server at an arbitrary host.
@@ -151,7 +151,7 @@ levh mcp init my-server --with-memory   # scaffold an MCP server on this databas
 | [Platform Setup](docs/mcp-client-config.md) | Claude Desktop, Claude Code, Cursor, Windsurf, VS Code (Cline), jcode, omp, opencode, Codex, Hermes |
 | [Configuration](docs/configuration.md) | Environment variables, precedence, Docker |
 | [Architecture](docs/ARCHITECTURE.md) | Layers, engine, scoring internals |
-| [MCP Tools](docs/mcp-tools.md) | All 74 tools and the profile bands |
+| [MCP Tools](docs/mcp-tools.md) | All 78 tools and the profile bands |
 | [REST API](docs/api-reference.md) | Every endpoint |
 | [TypeScript SDK](docs/typescript-sdk.md) | Typed client, generated from the contract |
 | [DeepSeek Harness plugin](docs/dsh-plugin.md) | Decision, guard, and memory tools for DSH agents |

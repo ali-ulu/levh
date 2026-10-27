@@ -58,6 +58,7 @@ TOOL_MODULES: tuple[str, ...] = (
     "server.tools.connector_sync",
     "server.tools.privacy",
     "server.tools.entities",
+    "server.tools.wiki",
     "server.tools.trust",
     "server.tools.conflicts",
     "server.tools.continuity",

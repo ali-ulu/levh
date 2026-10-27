@@ -168,4 +168,9 @@ because it is a read that has to POST to carry its query.
 | DELETE | `/api/v1/opengeni/{path}` | Opengeni session proxy: forwarded for the routes the contract allows (nothing else is served) |
 | WS | `/ws/agents` | WebSocket for real-time agent presence updates |
 | WS | `/ws/memory` | Real-time event stream + RPC actions (recall/stats/ping; writes blocked in public demo mode) |
+| GET | `/api/v1/wiki/status` | Report generated Wiki state without changing files |
+| POST | `/api/v1/wiki/build` | Build the local Markdown Wiki from stored memories; LLM summaries are explicitly opt-in |
+| GET | `/api/v1/wiki/lint` | Verify source digests, page hashes, manifest entries and internal Markdown links |
+| GET | `/api/v1/wiki/search` | Search generated Wiki pages with a query and bounded result count |
+| GET | `/api/v1/wiki/pages/{page_id}` | Read a manifest-indexed Wiki page by opaque page ID |
 | SSE | `/api/mcp/sse` | MCP SSE stream endpoint |

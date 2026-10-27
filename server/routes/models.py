@@ -1515,3 +1515,84 @@ class OnboardingMcpConfigResponse(BaseModel):
     config: dict[str, Any] = Field(default_factory=dict)
     config_text: str = ""
     config_path: Optional[str] = None
+
+
+
+# ── Response models: LLM Wiki ─────────────────────────────────────────
+
+
+class WikiBuildRequest(BaseModel):
+    """Explicit switches for building the local source-linked Wiki."""
+
+    llm_summaries: bool = False
+
+
+class WikiBuildResponse(BaseModel):
+    ok: bool
+    root_name: str
+    index: str
+    log: str
+    memories: int
+    snapshots_current: int
+    snapshots_added_or_changed: int
+    snapshots_removed_for_forgotten_memories: int
+    pages: int
+    pages_created: int
+    pages_changed: int
+    pages_unchanged: int
+    pages_removed: int
+    llm_summaries_created: int
+    llm_summary_failures: int
+    llm_summary_limit_skips: int
+    llm_summaries_enabled: bool
+
+
+class WikiStatusResponse(BaseModel):
+    ready: bool
+    root_name: str
+    index: str
+    log: str
+    memories: int
+    snapshots: int
+    pages: int
+    built_at: Optional[str] = None
+    llm_backend_enabled: bool
+
+
+class WikiSearchHit(BaseModel):
+    id: str
+    title: str
+    path: str
+    snippet: str
+    kind: str
+
+
+class WikiSearchResponse(BaseModel):
+    query: str
+    count: int
+    results: list[WikiSearchHit] = Field(default_factory=list)
+
+
+class WikiPageResponse(BaseModel):
+    id: str
+    title: str
+    kind: str
+    path: str
+    content: str
+
+
+class WikiLintIssue(BaseModel):
+    code: str
+    path: str
+    detail: str
+
+
+class WikiLintResponse(BaseModel):
+    ok: bool
+    root_name: str
+    source_count: int
+    snapshot_count: int
+    page_count: int
+    issue_count: int
+    issues: list[WikiLintIssue] = Field(default_factory=list)
+    truncated: bool = False

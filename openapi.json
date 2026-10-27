@@ -3935,6 +3935,173 @@
         }
       }
     },
+    "/api/v1/wiki/status": {
+      "get": {
+        "summary": "Wiki Status",
+        "description": "Report Wiki state without creating or changing any files.",
+        "operationId": "wiki_status_api_wiki_status_get_v1",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WikiStatusResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/wiki/build": {
+      "post": {
+        "summary": "Build Wiki",
+        "description": "Generate source snapshots and Markdown evidence pages; LLM drafts are opt-in.",
+        "operationId": "build_wiki_api_wiki_build_post_v1",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WikiBuildRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WikiBuildResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/wiki/lint": {
+      "get": {
+        "summary": "Lint Wiki",
+        "description": "Check evidence digests, page manifests and internal Markdown links.",
+        "operationId": "lint_wiki_api_wiki_lint_get_v1",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WikiLintResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/wiki/search": {
+      "get": {
+        "summary": "Search Wiki",
+        "description": "Search the generated Markdown pages without changing memories or Wiki files.",
+        "operationId": "search_wiki_api_wiki_search_get_v1",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Q"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 10,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WikiSearchResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/wiki/pages/{page_id}": {
+      "get": {
+        "summary": "Get Wiki Page",
+        "description": "Read one manifest-indexed Wiki page by its opaque page ID.",
+        "operationId": "get_wiki_page_api_wiki_pages__page_id__get_v1",
+        "parameters": [
+          {
+            "name": "page_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Page Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WikiPageResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/guard/violations": {
       "get": {
         "summary": "List Guard Violations",
@@ -12411,13 +12578,6 @@
           "type": {
             "type": "string",
             "title": "Error Type"
-          },
-          "input": {
-            "title": "Input"
-          },
-          "ctx": {
-            "type": "object",
-            "title": "Context"
           }
         },
         "type": "object",
@@ -12450,6 +12610,334 @@
           "changed"
         ],
         "title": "VerifyAllAttachmentsResponse"
+      },
+      "WikiBuildRequest": {
+        "properties": {
+          "llm_summaries": {
+            "type": "boolean",
+            "title": "Llm Summaries",
+            "default": false
+          }
+        },
+        "type": "object",
+        "title": "WikiBuildRequest",
+        "description": "Explicit switches for building the local source-linked Wiki."
+      },
+      "WikiBuildResponse": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "title": "Ok"
+          },
+          "root_name": {
+            "type": "string",
+            "title": "Root Name"
+          },
+          "index": {
+            "type": "string",
+            "title": "Index"
+          },
+          "log": {
+            "type": "string",
+            "title": "Log"
+          },
+          "memories": {
+            "type": "integer",
+            "title": "Memories"
+          },
+          "snapshots_current": {
+            "type": "integer",
+            "title": "Snapshots Current"
+          },
+          "snapshots_added_or_changed": {
+            "type": "integer",
+            "title": "Snapshots Added Or Changed"
+          },
+          "snapshots_removed_for_forgotten_memories": {
+            "type": "integer",
+            "title": "Snapshots Removed For Forgotten Memories"
+          },
+          "pages": {
+            "type": "integer",
+            "title": "Pages"
+          },
+          "pages_created": {
+            "type": "integer",
+            "title": "Pages Created"
+          },
+          "pages_changed": {
+            "type": "integer",
+            "title": "Pages Changed"
+          },
+          "pages_unchanged": {
+            "type": "integer",
+            "title": "Pages Unchanged"
+          },
+          "pages_removed": {
+            "type": "integer",
+            "title": "Pages Removed"
+          },
+          "llm_summaries_created": {
+            "type": "integer",
+            "title": "Llm Summaries Created"
+          },
+          "llm_summary_failures": {
+            "type": "integer",
+            "title": "Llm Summary Failures"
+          },
+          "llm_summary_limit_skips": {
+            "type": "integer",
+            "title": "Llm Summary Limit Skips"
+          },
+          "llm_summaries_enabled": {
+            "type": "boolean",
+            "title": "Llm Summaries Enabled"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ok",
+          "root_name",
+          "index",
+          "log",
+          "memories",
+          "snapshots_current",
+          "snapshots_added_or_changed",
+          "snapshots_removed_for_forgotten_memories",
+          "pages",
+          "pages_created",
+          "pages_changed",
+          "pages_unchanged",
+          "pages_removed",
+          "llm_summaries_created",
+          "llm_summary_failures",
+          "llm_summary_limit_skips",
+          "llm_summaries_enabled"
+        ],
+        "title": "WikiBuildResponse"
+      },
+      "WikiLintIssue": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "path": {
+            "type": "string",
+            "title": "Path"
+          },
+          "detail": {
+            "type": "string",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "path",
+          "detail"
+        ],
+        "title": "WikiLintIssue"
+      },
+      "WikiLintResponse": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "title": "Ok"
+          },
+          "root_name": {
+            "type": "string",
+            "title": "Root Name"
+          },
+          "source_count": {
+            "type": "integer",
+            "title": "Source Count"
+          },
+          "snapshot_count": {
+            "type": "integer",
+            "title": "Snapshot Count"
+          },
+          "page_count": {
+            "type": "integer",
+            "title": "Page Count"
+          },
+          "issue_count": {
+            "type": "integer",
+            "title": "Issue Count"
+          },
+          "issues": {
+            "items": {
+              "$ref": "#/components/schemas/WikiLintIssue"
+            },
+            "type": "array",
+            "title": "Issues"
+          },
+          "truncated": {
+            "type": "boolean",
+            "title": "Truncated",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "ok",
+          "root_name",
+          "source_count",
+          "snapshot_count",
+          "page_count",
+          "issue_count"
+        ],
+        "title": "WikiLintResponse"
+      },
+      "WikiPageResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "path": {
+            "type": "string",
+            "title": "Path"
+          },
+          "content": {
+            "type": "string",
+            "title": "Content"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "kind",
+          "path",
+          "content"
+        ],
+        "title": "WikiPageResponse"
+      },
+      "WikiSearchHit": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "path": {
+            "type": "string",
+            "title": "Path"
+          },
+          "snippet": {
+            "type": "string",
+            "title": "Snippet"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "path",
+          "snippet",
+          "kind"
+        ],
+        "title": "WikiSearchHit"
+      },
+      "WikiSearchResponse": {
+        "properties": {
+          "query": {
+            "type": "string",
+            "title": "Query"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/WikiSearchHit"
+            },
+            "type": "array",
+            "title": "Results"
+          }
+        },
+        "type": "object",
+        "required": [
+          "query",
+          "count"
+        ],
+        "title": "WikiSearchResponse"
+      },
+      "WikiStatusResponse": {
+        "properties": {
+          "ready": {
+            "type": "boolean",
+            "title": "Ready"
+          },
+          "root_name": {
+            "type": "string",
+            "title": "Root Name"
+          },
+          "index": {
+            "type": "string",
+            "title": "Index"
+          },
+          "log": {
+            "type": "string",
+            "title": "Log"
+          },
+          "memories": {
+            "type": "integer",
+            "title": "Memories"
+          },
+          "snapshots": {
+            "type": "integer",
+            "title": "Snapshots"
+          },
+          "pages": {
+            "type": "integer",
+            "title": "Pages"
+          },
+          "built_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Built At"
+          },
+          "llm_backend_enabled": {
+            "type": "boolean",
+            "title": "Llm Backend Enabled"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ready",
+          "root_name",
+          "index",
+          "log",
+          "memories",
+          "snapshots",
+          "pages",
+          "llm_backend_enabled"
+        ],
+        "title": "WikiStatusResponse"
       }
     }
   }
