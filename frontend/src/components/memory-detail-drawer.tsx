@@ -7,6 +7,7 @@ import { trustLabelColor } from "@/lib/trust-ui";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { toast } from "@/components/ui/toast";
 import type { ForgettingCurve, Memory, RelatedMemory, ScoreBreakdown, TrustBreakdown } from "@/types";
 import {
   Activity,
@@ -209,9 +210,16 @@ export function MemoryDetailDrawer({
     try {
       const updated = await api.pinMemory(memory.id, !pinned);
       setPinned(updated.pinned);
+      toast.success(
+        updated.pinned ? t("app.memories.toast.pinned") : t("app.memories.toast.unpinned"),
+      );
       loadTrust();
       onChanged?.();
-    } catch {}
+    } catch (e) {
+      toast.error(t("app.memories.toast.pinFailed"), {
+        description: e instanceof Error ? e.message : undefined,
+      });
+    }
     setBusy(false);
   };
 
@@ -219,10 +227,15 @@ export function MemoryDetailDrawer({
     setReinforcing(true);
     try {
       await api.reinforceMemory(memory.id);
+      toast.success(t("memoryDetail.toast.reinforced"));
       loadCurve();
       loadTrust();
       onChanged?.();
-    } catch {}
+    } catch (e) {
+      toast.error(t("memoryDetail.toast.reinforceFailed"), {
+        description: e instanceof Error ? e.message : undefined,
+      });
+    }
     setReinforcing(false);
   };
 
@@ -230,10 +243,15 @@ export function MemoryDetailDrawer({
     setReinforcing(true);
     try {
       await api.memoryFeedback(memory.id, false);
+      toast.success(t("memoryDetail.toast.markedStale"));
       loadCurve();
       loadTrust();
       onChanged?.();
-    } catch {}
+    } catch (e) {
+      toast.error(t("memoryDetail.toast.markStaleFailed"), {
+        description: e instanceof Error ? e.message : undefined,
+      });
+    }
     setReinforcing(false);
   };
 
@@ -242,9 +260,13 @@ export function MemoryDetailDrawer({
     setBusy(true);
     try {
       await api.deleteMemory(memory.id);
+      toast.success(t("memoryDetail.toast.deleted"));
       onChanged?.();
       onClose();
-    } catch {
+    } catch (e) {
+      toast.error(t("memoryDetail.toast.deleteFailed"), {
+        description: e instanceof Error ? e.message : undefined,
+      });
       setBusy(false);
     }
   };

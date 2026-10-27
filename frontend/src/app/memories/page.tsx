@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { toast } from "@/components/ui/toast";
 import { MemoryDetailDrawer } from "@/components/memory-detail-drawer";
 import type { Memory, Project, Source } from "@/types";
 import {
@@ -39,8 +40,6 @@ import {
 } from "lucide-react";
 
 const ALL = "__all__";
-
-const MEMORIES_LOAD_ERROR = "Memories load error:";
 
 function relativeTime(dateStr: string, t: ReturnType<typeof useT>) {
   const time = new Date(dateStr).getTime();
@@ -117,9 +116,13 @@ export default function MemoriesPage() {
       setProjects(projs.projects);
       setSources(srcs.sources);
       setAllTags(tags.tags.map((t) => t.name));
-    } catch (e) { console.error(MEMORIES_LOAD_ERROR, e); }
+    } catch (e) {
+      toast.error(t("app.memories.loadError"), {
+        description: e instanceof Error ? e.message : undefined,
+      });
+    }
     setLoading(false);
-  }, [q, typeFilter, projectFilter, sourceFilter, sessionFilter, pinnedOnly]);
+  }, [q, typeFilter, projectFilter, sourceFilter, sessionFilter, pinnedOnly, t]);
 
   useEffect(() => {
     const t = setTimeout(load, q ? 300 : 0);
@@ -134,16 +137,28 @@ export default function MemoriesPage() {
   const togglePin = async (m: Memory) => {
     try {
       await api.pinMemory(m.id, !m.pinned);
+      toast.success(
+        m.pinned ? t("app.memories.toast.unpinned") : t("app.memories.toast.pinned"),
+      );
       load();
-    } catch (e) { console.error(MEMORIES_LOAD_ERROR, e); }
+    } catch (e) {
+      toast.error(t("app.memories.toast.pinFailed"), {
+        description: e instanceof Error ? e.message : undefined,
+      });
+    }
   };
 
   const remove = async (m: Memory) => {
     if (!confirm(t("app.memories.deleteConfirm", { preview: m.content.slice(0, 80) }))) return;
     try {
       await api.deleteMemory(m.id);
+      toast.success(t("app.memories.toast.deleted"));
       load();
-    } catch (e) { console.error(MEMORIES_LOAD_ERROR, e); }
+    } catch (e) {
+      toast.error(t("app.memories.toast.deleteFailed"), {
+        description: e instanceof Error ? e.message : undefined,
+      });
+    }
   };
 
   const openEdit = (m: Memory) => {
@@ -165,8 +180,13 @@ export default function MemoriesPage() {
         project: editProject.trim() || undefined,
       });
       setEditMemory(null);
+      toast.success(t("app.memories.toast.saved"));
       load();
-    } catch (e) { console.error(MEMORIES_LOAD_ERROR, e); }
+    } catch (e) {
+      toast.error(t("app.memories.toast.saveFailed"), {
+        description: e instanceof Error ? e.message : undefined,
+      });
+    }
     setSaving(false);
   };
 

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import {
   BarChart3,
   BrainCircuit,
@@ -78,13 +79,16 @@ function LogoMark() {
   );
 }
 
-export function Sidebar() {
+/** The nav list + status card. Rendered in two places: the fixed desktop
+ * sidebar and, below `lg`, inside a Sheet the header's hamburger opens (#557).
+ * `onNavigate` lets the mobile copy close the sheet when a link is followed. */
+function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   const t = useT();
   return (
-    <aside className="premium-sidebar fixed left-0 top-0 z-40 hidden h-screen w-[248px] flex-col lg:flex">
+    <>
       <div className="px-5 pb-5 pt-6">
-        <Link href="/" className="flex items-center gap-3">
+        <Link href="/" className="flex items-center gap-3" onClick={onNavigate}>
           <LogoMark />
           <div>
             <div className="text-[17px] font-semibold tracking-[-0.02em]">LEVH</div>
@@ -104,6 +108,7 @@ export function Sidebar() {
                   <Link
                     key={item.href}
                     href={item.href}
+                    onClick={onNavigate}
                     className={cn("premium-nav-item", active && "is-active")}
                   >
                     <span className="nav-icon"><item.icon className="h-4 w-4" /></span>
@@ -133,6 +138,31 @@ export function Sidebar() {
           </div>
         </div>
       </div>
+    </>
+  );
+}
+
+/** Desktop sidebar — fixed, `lg` and up. The mobile equivalent is a Sheet
+ * mounted by the header (see `MobileSidebar`). */
+export function Sidebar() {
+  return (
+    <aside className="premium-sidebar fixed left-0 top-0 z-40 hidden h-screen w-[248px] flex-col lg:flex">
+      <SidebarBody />
     </aside>
+  );
+}
+
+/** Mobile sidebar — the same nav inside a Sheet, opened from the header's
+ * hamburger. `open`/`onOpenChange` are owned by the header so the trigger and
+ * the panel stay in sync. */
+export function MobileSidebar({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+  const t = useT();
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="left" className="premium-sidebar p-0 lg:hidden" aria-describedby={undefined}>
+        <SheetTitle className="sr-only">{t("sidebar.nav.overview")}</SheetTitle>
+        <SidebarBody onNavigate={() => onOpenChange(false)} />
+      </SheetContent>
+    </Sheet>
   );
 }

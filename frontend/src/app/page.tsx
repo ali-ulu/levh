@@ -10,6 +10,7 @@ import { LiveFeed } from "@/components/live-feed";
 import { MemoryDetailDrawer } from "@/components/memory-detail-drawer";
 import { MemoryQuickAdd } from "@/components/memory-quick-add";
 import { OnboardingEmptyState } from "@/components/onboarding-empty-state";
+import { isOnboardingDismissed, dismissOnboarding } from "@/lib/onboarding";
 import type {
   Briefing,
   ConflictCandidate,
@@ -71,6 +72,13 @@ export default function Dashboard() {
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [syncState, setSyncState] = useState<SyncState[]>([]);
   const [selectedMemory, setSelectedMemory] = useState<Memory | null>(null);
+  // Read on mount, not during render: the static export prerenders with no
+  // `window`, so the first paint must not depend on localStorage (#565).
+  const [onboardingDismissed, setOnboardingDismissed] = useState(true);
+
+  useEffect(() => {
+    setOnboardingDismissed(isOnboardingDismissed());
+  }, []);
 
   const load = useCallback(async () => {
     const [s, m, o, b, c, r, e, p, org, sync] = await Promise.all([
@@ -146,8 +154,15 @@ export default function Dashboard() {
         </div>
       </section>
 
-      {onboarding && !onboarding.ready && (
-        <OnboardingEmptyState status={onboarding} onChanged={load} />
+      {onboarding && !onboarding.ready && !onboardingDismissed && (
+        <OnboardingEmptyState
+          status={onboarding}
+          onChanged={load}
+          onDismiss={() => {
+            dismissOnboarding();
+            setOnboardingDismissed(true);
+          }}
+        />
       )}
 
       <section className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">

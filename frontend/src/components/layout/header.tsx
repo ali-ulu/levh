@@ -6,7 +6,9 @@ import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { ThemeSwitcher } from "@/components/layout/theme-switcher";
 import { LocaleSwitcher } from "@/components/layout/locale-switcher";
+import { MobileSidebar } from "@/components/layout/sidebar";
 import { CommandPalette } from "@/components/command-palette";
+import { KeyboardShortcutsHelp } from "@/components/keyboard-shortcuts-help";
 import { useT } from "@/lib/i18n";
 import {
   Dialog,
@@ -14,7 +16,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Bell, CircleHelp, ExternalLink, Plus, Search, Wifi, WifiOff, X } from "lucide-react";
+import { Bell, CircleHelp, ExternalLink, Menu, Plus, Search, Wifi, WifiOff, X } from "lucide-react";
 
 // How often the online badge re-checks the core. The badge tolerates being a
 // few seconds stale, so this is deliberately slower than a UI-critical poll.
@@ -23,8 +25,10 @@ const HEALTH_POLL_MS = 30000;
 export function Header() {
   const [online, setOnline] = useState<boolean | null>(null);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const router = useRouter();
   const t = useT();
 
@@ -63,6 +67,16 @@ export function Header() {
 
     const onKeyDown = (event: KeyboardEvent) => {
       const mod = event.metaKey || event.ctrlKey;
+
+      // `?` (Shift+/) opens the shortcuts help whenever the palette is not
+      // already open (#568). Typing it in a field must not steal the
+      // keystroke, so editable targets are exempt.
+      if (!mod && event.key === "?" && !isEditable(event.target) && !paletteOpen) {
+        event.preventDefault();
+        setShortcutsOpen(true);
+        return;
+      }
+
       if (!mod) return;
 
       const key = event.key.toLowerCase();
@@ -80,11 +94,24 @@ export function Header() {
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [router]);
+  }, [router, paletteOpen]);
 
   return (
     <>
     <header className="premium-header sticky top-0 z-30 flex h-[68px] items-center gap-4 px-4 sm:px-6 lg:px-8">
+      {/* Mobile navigation (#557): below `lg` the sidebar is hidden, so this is
+          the only way to reach it. The Sheet it opens traps focus and closes on
+          Escape, backdrop click or a followed link. */}
+      <button
+        type="button"
+        className="icon-button -ml-1 lg:hidden"
+        aria-label={t("header.action.openMenu")}
+        aria-expanded={mobileNavOpen}
+        onClick={() => setMobileNavOpen(true)}
+      >
+        <Menu className="h-4 w-4" />
+      </button>
+
       {/* One search surface, not two. This was a real <form> that navigated to
           /memories?q= on Enter while the ⌘K badge beside it promised a palette
           that did not exist. It is now a button that opens the palette, which
@@ -174,6 +201,8 @@ export function Header() {
     </Dialog>
 
     <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
+    <MobileSidebar open={mobileNavOpen} onOpenChange={setMobileNavOpen} />
+    <KeyboardShortcutsHelp open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
     </>
   );
 }

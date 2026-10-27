@@ -31,10 +31,13 @@ import {
 interface OnboardingEmptyStateProps {
   status: OnboardingStatus;
   onChanged: () => void | Promise<void>;
+  /** Called once the walkthrough is finished or skipped, so the parent can
+   * record the flag and stop rendering this card (#565). */
+  onDismiss?: () => void;
 }
 
 
-export function OnboardingEmptyState({ status, onChanged }: OnboardingEmptyStateProps) {
+export function OnboardingEmptyState({ status, onChanged, onDismiss }: OnboardingEmptyStateProps) {
   const t = useT();
   const [loading, setLoading] = useState<"memory" | "config" | "">("");
   const [error, setError] = useState("");
@@ -54,6 +57,16 @@ export function OnboardingEmptyState({ status, onChanged }: OnboardingEmptyState
     () => status.checks.filter((check) => check.status === "pass").length,
     [status.checks]
   );
+
+  // Finishing every readiness check is completion; record the flag so the card
+  // does not return on the next server restart. Guarded on a non-empty list so
+  // a server reporting zero checks never counts as "done".
+  useEffect(() => {
+    if (onDismiss && status.checks.length > 0 && completed === status.checks.length) {
+      onDismiss();
+    }
+  }, [completed, status.checks.length, onDismiss]);
+
 
   const run = async (kind: typeof loading, fn: () => Promise<void>) => {
     if (loading) return;
