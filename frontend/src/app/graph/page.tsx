@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MemoryDetailDrawer } from "@/components/memory-detail-drawer";
+import { EntityRelationshipMap } from "@/app/graph/entity-relationship-map";
 import { Input } from "@/components/ui/input";
 import type { EntityRow, Memory } from "@/types";
 import {
@@ -50,99 +51,11 @@ function typeLabel(t: string): string {
   return t.charAt(0).toUpperCase() + t.slice(1);
 }
 
-function truncateLabel(s: string, max = 12): string {
-  return s.length > max ? `${s.slice(0, max - 1)}…` : s;
-}
-
 interface RelatedEntity {
   id: string;
   type: string;
   name: string;
   shared: number;
-}
-
-/** Small inline-SVG relationship map: center = selected entity, satellites =
- * up to 8 related entities on a circle, connected by lines whose
- * thickness/opacity scale with the `shared` co-occurrence count. */
-function RelationshipMiniGraph({
-  center,
-  related,
-  onSelect,
-  ariaLabel,
-}: {
-  center: EntityRow;
-  related: RelatedEntity[];
-  onSelect?: (id: string) => void;
-  ariaLabel: string;
-}) {
-  const satellites = related.slice(0, 8);
-  const size = 280;
-  const cx = size / 2;
-  const cy = size / 2;
-  const radius = 100;
-  const maxShared = Math.max(1, ...satellites.map((r) => r.shared));
-
-  return (
-    <svg
-      viewBox={`0 0 ${size} ${size}`}
-      width="100%"
-      style={{ maxHeight: 280 }}
-      role="img"
-      aria-label={ariaLabel}
-    >
-      {satellites.map((r, i) => {
-        const angle = (2 * Math.PI * i) / satellites.length - Math.PI / 2;
-        const x = cx + radius * Math.cos(angle);
-        const y = cy + radius * Math.sin(angle);
-        const weight = r.shared / maxShared;
-        return (
-          <line
-            key={`edge-${r.id}`}
-            x1={cx}
-            y1={cy}
-            x2={x}
-            y2={y}
-            stroke="currentColor"
-            strokeOpacity={0.15 + weight * 0.45}
-            strokeWidth={1 + weight * 3}
-            className="text-muted-foreground"
-          />
-        );
-      })}
-
-      {satellites.map((r, i) => {
-        const angle = (2 * Math.PI * i) / satellites.length - Math.PI / 2;
-        const x = cx + radius * Math.cos(angle);
-        const y = cy + radius * Math.sin(angle);
-        return (
-          <g
-            key={`node-${r.id}`}
-            transform={`translate(${x}, ${y})`}
-            onClick={() => onSelect?.(r.id)}
-            style={{ cursor: onSelect ? "pointer" : "default" }}
-          >
-            <circle r={14} fill={typeHex(r.type)} fillOpacity={0.85} stroke="white" strokeWidth={1.5} />
-            <text
-              y={26}
-              textAnchor="middle"
-              fontSize={10}
-              className="fill-foreground"
-            >
-              {truncateLabel(r.name)}
-            </text>
-          </g>
-        );
-      })}
-
-      {/* Center node drawn last so it sits above edge lines */}
-      <g transform={`translate(${cx}, ${cy})`}>
-        <circle r={20} fill={typeHex(center.type)} stroke="white" strokeWidth={2} />
-        <text y={34} textAnchor="middle" fontSize={11} fontWeight={600} className="fill-foreground">
-          {truncateLabel(center.name, 16)}
-        </text>
-      </g>
-    </svg>
-  );
 }
 
 export default function GraphPage() {
@@ -225,7 +138,7 @@ export default function GraphPage() {
     setDetailLoading(false);
   };
 
-  // Used by the mini relationship graph — a satellite node only carries
+  // Used by the relationship map — a satellite node only carries
   // {id, type, name, shared}, not a full EntityRow, so re-fetch by id and
   // use the returned `entity` as the new selection.
   const openEntityById = async (id: string) => {
@@ -240,6 +153,14 @@ export default function GraphPage() {
       setRelated([]);
     }
     setDetailLoading(false);
+  };
+
+  // Multi-depth expansion for the relationship map (#559): fetch a node's
+  // neighbors without changing the selection, so the map can grow two or three
+  // hops while the detail panel stays on the entity the user opened.
+  const expandNeighbors = async (id: string): Promise<RelatedEntity[]> => {
+    const result = await api.getEntity(id);
+    return result.related;
   };
 
   const totalEntities = Object.values(byType).reduce((a, b) => a + b, 0);
@@ -290,16 +211,14 @@ export default function GraphPage() {
                   </p>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="flex justify-center">
-                    <div className="w-full max-w-xs">
-                      <RelationshipMiniGraph
-                        center={selected}
-                        related={related}
-                        onSelect={(id) => openEntityById(id)}
-                        ariaLabel={t("app.graph.relationshipMap", { name: selected.name })}
-                      />
-                    </div>
-                  </div>
+                  <EntityRelationshipMap
+                    center={selected}
+                    related={related}
+                    expand={expandNeighbors}
+                    onSelect={(id) => openEntityById(id)}
+                    typeHex={typeHex}
+                    ariaLabel={t("app.graph.relationshipMap", { name: selected.name })}
+                  />
                   <div className="flex flex-wrap gap-2">
                     {related.map((r) => (
                       <Badge key={r.id} variant="outline" className="text-xs font-normal">

@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### feat: force-directed, keyboard-accessible relationship map (#559)
+
+- The entity relationship map on `/graph` was a fixed `viewBox="0 0 280 280"` circle: up to eight satellites at hardcoded angles, no zoom, no pan, and a `role="button"` with no `tabIndex` or `aria-label`. It is now `EntityRelationshipMap`, its own component: a deterministic Fruchterman-Reingold layout (seeded PRNG, so the prerendered markup and the first client paint agree and `prefers-reduced-motion` needs no special case), wheel/drag/touch zoom and pan with reset, full keyboard navigation (Tab between nodes, arrow keys to move, Enter/Space to open, Escape to reset) and lazy multi-depth expansion up to three hops. Node radius tracks mention count and edge thickness the shared co-occurrence count.
+
+### fix: build the knowledge constellation from real entity counts (#558)
+
+- The dashboard constellation hardcoded six nodes with fixed `x`/`y`, two of which (`project`, `decision`) the entity index never emits — so they read 0 forever while the real `event` count was never shown. The nodes now come from the five server entity types, sorted by mention count, positioned on a computed ring (no hardcoded coordinates), and a zero-count type is dimmed rather than hidden.
+
 ### feat: add cross-entity search to the command palette (#564)
 
 - The ⌘K palette searched memories only, so an entity, project or session the user knew by name was unreachable from the keyboard. A query now fans out across four sources — memories (recall), entities (`/api/entities/search`), projects and sessions — and each hit is grouped under a labelled section. An entity row deep-links to `/graph/?q=<name>`, a project row to `/memories/?project=<name>`, a session row to `/memories/?session=<id>`; memory rows keep the existing content-query link. The calls settle independently (`Promise.allSettled`), so a missing entity index does not blank the memory hits, and the "search failed" state only appears when every source rejected.
