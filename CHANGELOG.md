@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+### Placeholder for future changes (#103)
+
+- TBD
+
+## 2.37.0
+
+### Upgrade notes
+
+- **The dashboard now has a `/wiki` page.** The knowledge Wiki — a source-linked Markdown projection of your memories — is readable in the browser instead of only over the API. It is read-only: building stays an admin-tier action. If you run an older packaged dashboard, rebuild or upgrade to see it.
+
 ### docs: rewrite the README around the five-minute path
 
 - The README had grown into a design essay — the same point argued in three sections, and a feature list long enough that the install steps scrolled off the first screen. It is now a short overview, a quick start, a one-line-per-feature list and a docs index. The Knowledge Wiki and its dashboard page are listed for the first time.
