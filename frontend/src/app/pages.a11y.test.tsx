@@ -10,6 +10,10 @@ import type {
   Source,
   TagCount,
   TimelineDay,
+  WikiLintResponse,
+  WikiPage,
+  WikiSearchHit,
+  WikiStatus,
 } from "@/types";
 
 // Page-level accessibility. `ui.a11y.test.tsx` gates the primitives; this file
@@ -36,6 +40,10 @@ const mocks = vi.hoisted(() => ({
   listEntities: vi.fn(),
   searchEntities: vi.fn(),
   getEntity: vi.fn(),
+  wikiStatus: vi.fn(),
+  wikiLint: vi.fn(),
+  wikiSearch: vi.fn(),
+  wikiPage: vi.fn(),
 }));
 
 vi.mock("@/lib/api", () => ({
@@ -51,6 +59,10 @@ vi.mock("@/lib/api", () => ({
     listEntities: mocks.listEntities,
     searchEntities: mocks.searchEntities,
     getEntity: mocks.getEntity,
+    wikiStatus: mocks.wikiStatus,
+    wikiLint: mocks.wikiLint,
+    wikiSearch: mocks.wikiSearch,
+    wikiPage: mocks.wikiPage,
     // The drawer is reachable from several of these pages; leaving its loaders
     // pending keeps the assertion on the page, not on drawer internals.
     memoryTrust: () => new Promise(() => {}),
@@ -65,6 +77,7 @@ import FindingsPage from "./findings/page";
 import GraphPage from "./graph/page";
 import MemoriesPage from "./memories/page";
 import TimelinePage from "./timeline/page";
+import WikiPageView from "./wiki/page";
 
 const memory: Memory = {
   id: "m-1",
@@ -126,6 +139,43 @@ const entity: EntityRow = {
   mentions: 5,
 };
 
+const wikiStatus: WikiStatus = {
+  ready: true,
+  root_name: "wiki-workspace",
+  index: "wiki/index.md",
+  log: "wiki/log.md",
+  memories: 42,
+  snapshots: 45,
+  pages: 12,
+  built_at: "2026-09-20T10:00:00Z",
+  llm_backend_enabled: false,
+};
+
+const wikiHit: WikiSearchHit = {
+  id: "entity:person:ali",
+  title: "Ali",
+  path: "wiki/entities/person/ali.md",
+  snippet: "Ali works on Atlas and the PostgreSQL migration.",
+  kind: "entity",
+};
+
+const wikiLint: WikiLintResponse = {
+  ok: false,
+  root_name: "wiki-workspace",
+  source_count: 42,
+  snapshot_count: 45,
+  page_count: 12,
+  issue_count: 1,
+  issues: [
+    {
+      code: "broken-link",
+      path: "wiki/entities/person/ali.md",
+      detail: "link target does not exist",
+    },
+  ],
+  truncated: false,
+};
+
 describe("Page shells are accessible", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -171,6 +221,42 @@ describe("Page shells are accessible", () => {
     const { container } = render(<FindingsPage />);
 
     expect(await screen.findByText(finding.title)).toBeInTheDocument();
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it("wiki, built with search results", async () => {
+    mocks.wikiStatus.mockResolvedValue(wikiStatus);
+    mocks.wikiSearch.mockResolvedValue({ query: "atlas", count: 1, results: [wikiHit] });
+    const { container } = render(<WikiPageView />);
+
+    // The status card renders first; then a search surfaces a result row.
+    expect(await screen.findByText("wiki-workspace")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Search the Wiki…"), {
+      target: { value: "atlas" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Search/ }));
+
+    expect(await screen.findByText(wikiHit.title)).toBeInTheDocument();
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it("wiki, not built yet", async () => {
+    mocks.wikiStatus.mockResolvedValue({ ...wikiStatus, ready: false });
+    const { container } = render(<WikiPageView />);
+
+    expect(await screen.findByText(/has not been built yet/i)).toBeInTheDocument();
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it("wiki, lint issues are listed with headers", async () => {
+    mocks.wikiStatus.mockResolvedValue(wikiStatus);
+    mocks.wikiLint.mockResolvedValue(wikiLint);
+    const { container } = render(<WikiPageView />);
+
+    await screen.findByText("wiki-workspace");
+    fireEvent.click(screen.getByRole("button", { name: /Run lint/ }));
+
+    expect(await screen.findByText(wikiLint.issues[0].code)).toBeInTheDocument();
     expect(await axe(container)).toHaveNoViolations();
   });
 

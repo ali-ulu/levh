@@ -7,6 +7,7 @@ import { useT } from "@/lib/i18n";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import {
   BarChart3,
+  BookOpen,
   BrainCircuit,
   Building2,
   CalendarClock,
@@ -37,6 +38,7 @@ const groups = [
       { href: "/graph", labelKey: "sidebar.nav.graph", icon: Network },
       { href: "/timeline", labelKey: "sidebar.nav.timeline", icon: Clock3 },
       { href: "/projects", labelKey: "sidebar.nav.projects", icon: FolderGit2 },
+      { href: "/wiki", labelKey: "sidebar.nav.wiki", icon: BookOpen },
     ],
   },
   {

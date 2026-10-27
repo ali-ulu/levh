@@ -120,6 +120,27 @@ describe("api client", () => {
     expect(url).toBe("/api/connectors/sync-jobs");
   });
 
+  it("reads the Wiki status", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ ready: true }));
+    await api.wikiStatus();
+    const [url] = lastCall(fetchMock);
+    expect(url).toBe("/api/wiki/status");
+  });
+
+  it("searches the Wiki with an encoded query", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ query: "a b", count: 0, results: [] }));
+    await api.wikiSearch("a b", 5);
+    const [url] = lastCall(fetchMock);
+    expect(url).toBe("/api/wiki/search?q=a%20b&limit=5");
+  });
+
+  it("reads one Wiki page by id", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ id: "entity:person:ali" }));
+    await api.wikiPage("entity:person:ali");
+    const [url] = lastCall(fetchMock);
+    expect(url).toBe("/api/wiki/pages/entity%3Aperson%3Aali");
+  });
+
   it("builds the WebSocket URL with the token as a query param", () => {
     setToken("secret-token");
     const url = wsUrl();

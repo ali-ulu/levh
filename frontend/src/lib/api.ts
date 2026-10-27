@@ -31,6 +31,10 @@ import type {
   TagCount,
   TimelineDay,
   TrustBreakdown,
+  WikiLintResponse,
+  WikiPage,
+  WikiSearchResponse,
+  WikiStatus,
 } from "@/types";
 import { getToken, TOKEN_HEADER } from "./token";
 
@@ -608,4 +612,15 @@ export const api = {
     fetchApi<SyncJob>(`/api/connectors/sync-jobs/${encodeURIComponent(jobId)}`),
   connectorSyncState: () =>
     fetchApi<{ sync_state: SyncState[] }>("/api/connectors/sync-state"),
+
+  // LLM Wiki — a derived, source-linked Markdown projection. Reads only; the
+  // build is admin-tier and stays out of the dashboard.
+  wikiStatus: () => fetchApi<WikiStatus>("/api/wiki/status"),
+  wikiLint: () => fetchApi<WikiLintResponse>("/api/wiki/lint"),
+  wikiSearch: (q: string, limit = 20) =>
+    fetchApi<WikiSearchResponse>(
+      `/api/wiki/search?q=${encodeURIComponent(q)}&limit=${limit}`
+    ),
+  wikiPage: (pageId: string) =>
+    fetchApi<WikiPage>(`/api/wiki/pages/${encodeURIComponent(pageId)}`),
 };

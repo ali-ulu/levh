@@ -429,3 +429,55 @@ export interface GuardViolation {
   resolved: number;
   resolution: string | null;
 }
+
+// LLM Wiki — a derived, source-linked Markdown projection of the memory store.
+export interface WikiStatus {
+  ready: boolean;
+  root_name: string;
+  index: string;
+  log: string;
+  memories: number;
+  snapshots: number;
+  pages: number;
+  built_at: string | null;
+  llm_backend_enabled: boolean;
+}
+
+export interface WikiSearchHit {
+  id: string;
+  title: string;
+  path: string;
+  snippet: string;
+  kind: string;
+}
+
+export interface WikiSearchResponse {
+  query: string;
+  count: number;
+  results: WikiSearchHit[];
+}
+
+export interface WikiPage {
+  id: string;
+  title: string;
+  kind: string;
+  path: string;
+  content: string;
+}
+
+export interface WikiLintIssue {
+  code: string;
+  path: string;
+  detail: string;
+}
+
+export interface WikiLintResponse {
+  ok: boolean;
+  root_name: string;
+  source_count: number;
+  snapshot_count: number;
+  page_count: number;
+  issue_count: number;
+  issues: WikiLintIssue[];
+  truncated: boolean;
+}

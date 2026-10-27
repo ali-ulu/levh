@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### feat: browse the knowledge Wiki in the dashboard
+
+- Adds a `/wiki` page and a sidebar entry so the source-linked Markdown projection is reachable without the CLI or MCP: it shows the build status (memories, snapshots, pages, workspace root, LLM-summary state), searches generated pages through `GET /api/wiki/search`, reads a page's Markdown through `GET /api/wiki/pages/{id}`, and lists `GET /api/wiki/lint` issues in a table. The page is read-only — building stays admin-tier and is deliberately not exposed here, so a viewer principal cannot write Wiki files from the browser.
+
 ### fix: escape source excerpts in the generated Wiki pages
 
 - Source-memory excerpts were written into generated entity pages, project pages and the source catalog without Markdown escaping, so a Markdown link inside a memory became a live link and `lint` reported it as a broken Wiki link. Excerpts now pass through `_md_inline`, and the link-lint regex matches only single-line, simple-label links, so escaped or multiline Markdown in source-derived text is no longer mistaken for a generated link. `tests/test_llm_wiki.py` covers an ordinary and a malformed multiline link in a source memory.
