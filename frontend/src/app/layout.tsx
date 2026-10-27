@@ -3,7 +3,8 @@ import Script from "next/script";
 import "./globals.css";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
-import { ThemeProvider, THEME_STORAGE_KEY } from "@/components/theme-provider";
+import { ThemeProvider } from "@/components/theme-provider";
+import { THEME_STORAGE_KEY, themeBootstrapScript } from "@/lib/theme";
 import { AuthGate } from "@/components/auth-gate";
 import { Toaster } from "@/components/ui/toast";
 import { DEFAULT_LOCALE, translate } from "@/lib/i18n/translate";
@@ -38,11 +39,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           localStorage is unavailable. Kept inline and tiny on purpose: it must
           run synchronously, before the browser paints anything. */}
       <head>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `(function(){try{var m=document.cookie.match(/(?:^|; )${THEME_STORAGE_KEY}=([^;]+)/);var t=m?decodeURIComponent(m[1]):null;if(!t){t=localStorage.getItem('${THEME_STORAGE_KEY}')}if(t==='dark'||(!t&&window.matchMedia('(prefers-color-scheme: dark)').matches)){document.documentElement.classList.add('dark')}else{document.documentElement.classList.remove('dark')}}catch(e){}})();`,
-          }}
-        />
+        <script dangerouslySetInnerHTML={{ __html: themeBootstrapScript() }} />
       </head>
       <body className="antialiased">
         <LocaleProvider>

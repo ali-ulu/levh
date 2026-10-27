@@ -2,12 +2,9 @@
 
 import * as React from "react";
 import { ThemeProvider as NextThemesProvider, useTheme } from "next-themes";
+import { THEME_STORAGE_KEY } from "@/lib/theme";
 
 type ThemeProviderProps = React.ComponentProps<typeof NextThemesProvider>;
-
-/** The single storage key for the theme. `layout.tsx` reads the same value in
- * its pre-paint script, so the two must not drift (#567). */
-export const THEME_STORAGE_KEY = "levh-theme";
 
 /**
  * Mirrors the resolved theme into a cookie. `next-themes` only persists to
