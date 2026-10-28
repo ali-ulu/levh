@@ -57,8 +57,10 @@ resolved mode cannot depend on the machine at all.
 
 from __future__ import annotations
 
+import logging
 import os
 import sys
+from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
@@ -84,11 +86,12 @@ _PINNED_ENV = "SQLITE_DB_PATH"
 _PINNED_BASE_NAMES = (_PINNED_ENV,)
 
 # Behaviour flags that steer the suite without naming a path, so the store pin
-# does not cover them. Read by server.core.engine.recall at call time; a
-# developer who exports one to exercise the feature reddens the suite locally
-# while CI stays green. Unlike the path names these have no accepted spellings
-# to derive — they are the flag and its retention window, scrubbed verbatim.
-_FLAG_ENV = (
+# does not cover them. A developer who exports one to exercise the feature
+# reddens the suite locally while CI stays green. Each base is expanded to
+# every spelling ``get_env`` accepts (``LEVH_*`` and the legacy
+# ``STACKMEMORY_*``), and a name read through a bare ``os.getenv`` carries its
+# own bare spelling in that set, so the expansion covers both readers.
+_FLAG_BASE_NAMES = (
     "LEVH_RECALL_LOG",
     "LEVH_RECALL_LOG_DAYS",
     # Read per request by the public-demo guard (server/routes/deps.py). A
@@ -96,6 +99,39 @@ _FLAG_ENV = (
     # writes — the wiki build, memory store, connector sync — then gets a 403
     # for a reason unrelated to the change under test.
     "LEVH_PUBLIC_DEMO",
+    # Read by server.core.logging.json_enabled. A developer who runs the
+    # server with structured logs exports it; install_logging then routes the
+    # root logger through JsonFormatter, and every test that asserts on a
+    # captured record's text fails for a reason unrelated to the change under
+    # test (2026-10-27).
+    "LEVH_LOG_JSON",
+    # Read by server.core.dogfood.dogfood_enabled. A developer instrumenting a
+    # local dogfood run exports it; onboarding_status then reports
+    # dogfood_enabled=True and the status tests fail (2026-10-27).
+    "LEVH_DOGFOOD_ENABLED",
+    # Read by server.commands.doctor. Exported to skip the live probe on a
+    # developer machine; the remote-access boundary tests then see a clean
+    # verdict instead of the fault they plant (2026-10-27).
+    "LEVH_DOCTOR_NO_LIVE_PROBE",
+    # Read by server.core.onboarding.receipt_path. Exported to keep the
+    # onboarding receipt out of the home directory; the status tests then read
+    # a receipt the developer wrote instead of the suite's own default
+    # (2026-10-27).
+    "LEVH_ONBOARDING_RECEIPT_PATH",
+    # Read by server.core.engine.write. A prototype flag an operator turns on
+    # deliberately; with it on, every near-identical store retires its
+    # predecessor and 25 decision/consolidation/context tests fail (2026-10-27).
+    "LEVH_SUPERSESSION",
+    # Read by server.core.engine_factory through a bare ``os.getenv``. Turns on
+    # session distillation; the session-lifecycle tests then see a summary row
+    # they did not ask for (2026-10-27).
+    "AUTO_SUMMARIZE_SESSIONS",
+)
+
+_FLAG_ENV = tuple(
+    spelling
+    for base in _FLAG_BASE_NAMES
+    for spelling in accepted_env_var_names(base)
 )
 
 # Runtime-config settings whose accepted spellings must be scrubbed even though
@@ -141,6 +177,45 @@ def _neutral_flag_environment(monkeypatch: pytest.MonkeyPatch) -> None:
     """
     for name in _FLAG_ENV:
         monkeypatch.delenv(name, raising=False)
+
+
+@pytest.fixture(autouse=True)
+def _restore_logging_state() -> Iterator[None]:
+    """Undo the global logging reconfiguration a test may trigger.
+
+    ``install_logging`` (``LEVH_LOG_JSON=1``) does not merely set a formatter
+    on its own handler — it rewrites the *root* logger's handlers and the
+    uvicorn loggers, which monkeypatch does not undo. A test that drives the
+    server entry point therefore leaves every later test's records rendered by
+    ``JsonFormatter``: a test asserting on a captured record's text then fails
+    for a reason unrelated to the change under test, and only when an earlier
+    test happened to run first. Snapshotting and restoring the root logger and
+    the uvicorn loggers per test makes the suite's logging state its own.
+    """
+    root = logging.getLogger()
+    saved_root = (list(root.handlers), root.level, root.filters[:], root.propagate)
+    saved_handlers = [
+        (handler, handler.formatter) for handler in root.handlers
+    ]
+    uvicorn_names = ("uvicorn", "uvicorn.error", "uvicorn.access")
+    saved_uvicorn = {
+        name: (
+            list(logging.getLogger(name).handlers),
+            logging.getLogger(name).propagate,
+        )
+        for name in uvicorn_names
+    }
+    yield
+    for handler, formatter in saved_handlers:
+        handler.setFormatter(formatter)
+    root.handlers[:] = saved_root[0]
+    root.level = saved_root[1]
+    root.filters[:] = saved_root[2]
+    root.propagate = saved_root[3]
+    for name, (handlers, propagate) in saved_uvicorn.items():
+        logger = logging.getLogger(name)
+        logger.handlers[:] = handlers
+        logger.propagate = propagate
 
 
 @pytest.fixture(autouse=True)

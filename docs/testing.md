@@ -281,6 +281,24 @@ suite without naming a path are scrubbed too: `LEVH_RECALL_LOG` and
 exports them to exercise the recall log — now usually to turn it *off* — would
 otherwise redden `tests/test_recall_log.py` while CI stayed green.
 
+The same trap runs through the rest of the feature flags. A developer who
+exports `LEVH_LOG_JSON=1` to read structured logs, `LEVH_DOGFOOD_ENABLED=1` to
+instrument a local run, `LEVH_DOCTOR_NO_LIVE_PROBE=1` to skip the live probe,
+`LEVH_ONBOARDING_RECEIPT_PATH` to keep the receipt out of `$HOME`,
+`LEVH_SUPERSESSION=1` to try the prototype retirement path, or
+`AUTO_SUMMARIZE_SESSIONS=1` to distill sessions, reddens a different set of
+tests locally while CI — carrying none of them — stays green. `conftest.py`
+scrubs each through *every* spelling `get_env` accepts (the `LEVH_` name, the
+bare name and the legacy `STACKMEMORY_` name), derived from
+`accepted_env_var_names`, so a new accepted spelling cannot silently bypass it.
+
+`LEVH_LOG_JSON` is the one that is not merely a value: `install_logging`
+rewrites the root logger's handlers and formatters, which `monkeypatch` does
+not undo. `conftest.py` therefore snapshots and restores the root and uvicorn
+loggers around every test, and `JsonFormatter` sets `record.message` the way
+`logging.Formatter` does — otherwise a test that reads a captured record's text
+fails only when an earlier test happened to turn JSON logging on.
+
 This is not paranoia: on 2026-09-13 a developer-level `LEVH_SQLITE_DB_PATH`
 made 28 subprocess tests write fixture rows into the *real* memory database
 while CI stayed green, because Actions machines have no such variable.

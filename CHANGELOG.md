@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### fix: keep six more developer flags out of the test suite
+
+- The suite owned the store, the LLM variables and the behaviour flags it knew about, but six more variables a developer exports to exercise a feature still reached it and reddened tests for a reason unrelated to the change under test — while CI, carrying none of them, stayed green. `LEVH_SUPERSESSION=1` had the widest blast radius (it retires every near-identical predecessor on write, flipping 25 decision, consolidation and context assertions); `LEVH_LOG_JSON=1`, `LEVH_DOGFOOD_ENABLED=1`, `LEVH_DOCTOR_NO_LIVE_PROBE=1`, `LEVH_ONBOARDING_RECEIPT_PATH` and `AUTO_SUMMARIZE_SESSIONS=1` each reddened a smaller set. `tests/conftest.py` now scrubs every one of them through *every* spelling `get_env` accepts, derived from `accepted_env_var_names`, so the bare and legacy `STACKMEMORY_` spellings cannot bypass it. `LEVH_LOG_JSON` needed more than a scrub: `install_logging` rewrites the root logger's handlers and formatters, which `monkeypatch` does not undo, so `conftest.py` snapshots and restores the root and uvicorn loggers per test, and `server/core/logging.py`'s `JsonFormatter` sets `record.message` the way `logging.Formatter` does — without it, any test reading a captured record's text failed only when an earlier test happened to turn JSON logging on. The `hostile-env` job plants all six as decoys.
+
 ### Placeholder for future changes (#103)
 
 - TBD

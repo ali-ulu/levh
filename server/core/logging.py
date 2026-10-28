@@ -97,13 +97,21 @@ class JsonFormatter(logging.Formatter):
     """
 
     def format(self, record: logging.LogRecord) -> str:
+        # ``logging.Formatter.format`` sets ``record.message`` as a documented
+        # side effect, and anything else holding the record reads it back —
+        # pytest's ``caplog``, a second handler on the same record, a log
+        # shipper. Overriding ``format`` without keeping that contract made
+        # ``record.message`` raise AttributeError the moment JSON mode was on,
+        # so a test that asserts on a record's text failed only because some
+        # earlier test had turned ``LEVH_LOG_JSON`` on.
+        record.message = record.getMessage()
         structured = getattr(record, "structured", None)
         if structured is None:
             structured = {
                 "ts": datetime.fromtimestamp(record.created, timezone.utc).isoformat(),
                 "level": record.levelname,
                 "event": record.funcName,
-                "message": record.getMessage(),
+                "message": record.message,
             }
         # Tracebacks are multi-line text; keep them as a field rather than
         # letting them break the one-object-per-line contract.

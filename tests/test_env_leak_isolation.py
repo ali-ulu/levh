@@ -36,6 +36,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 # Must match tests/conftest.py. get_env() accepts plain, LEVH_-prefixed and
@@ -152,6 +154,166 @@ def test_the_suite_scrubs_the_behaviour_flags():
             "a developer who exports it reddens the suite locally while CI "
             "stays green"
         )
+
+
+def test_the_suite_scrubs_every_accepted_spelling_of_every_flag():
+    """A flag read through ``get_env`` has more than one spelling.
+
+    The 2026-10-27 report, six flags wide: a developer exports ``LEVH_LOG_JSON``
+    (structured logs), ``LEVH_DOGFOOD_ENABLED`` (local instrumentation),
+    ``LEVH_DOCTOR_NO_LIVE_PROBE`` (skip the live probe),
+    ``LEVH_ONBOARDING_RECEIPT_PATH`` (keep the receipt out of ``$HOME``) or
+    ``LEVH_SUPERSESSION`` (prototype retirement), and the suite reddens locally
+    while CI — carrying none of them — stays green. ``get_env`` also accepts
+    the bare and legacy ``STACKMEMORY_*`` spellings, so scrubbing only the
+    ``LEVH_`` name would leave two live bypasses. Each base must be scrubbed
+    through every accepted spelling, derived from the same source of truth.
+    """
+    from server.core.env import accepted_env_var_names
+    from tests.conftest import _FLAG_ENV, _FLAG_BASE_NAMES
+
+    for base in _FLAG_BASE_NAMES:
+        for spelling in accepted_env_var_names(base):
+            assert spelling in _FLAG_ENV, (
+                f"{spelling} is an accepted spelling of {base} that get_env "
+                "reads, but tests/conftest.py does not scrub it; a developer "
+                "exporting it steers the suite"
+            )
+
+
+def test_a_subprocess_with_a_supersession_flag_stays_off():
+    """End to end: the prototype flag must not reach the child.
+
+    Reproduces the 2026-10-27 report with the flag whose blast radius is
+    largest: ``LEVH_SUPERSESSION=1`` retires every near-identical predecessor
+    on write, which flips 25 decision/consolidation/context assertions. The
+    child inherits the flag; conftest's scrub is the only thing that can make
+    it pass.
+    """
+    env = dict(os.environ)
+    env["LEVH_SUPERSESSION"] = "1"
+    env["EMBEDDER_MODE"] = "hash"
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            "-q",
+            "tests/test_decisions.py::test_decisions_most_recent_first",
+        ],
+        cwd=str(REPO_ROOT),
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_a_subprocess_with_json_logging_on_still_reads_record_text():
+    """End to end: ``LEVH_LOG_JSON`` must not leak into a child either.
+
+    The same report, over the flag that reconfigures the root logger rather
+    than a value: with JSON on, ``install_logging`` renders records with
+    ``JsonFormatter``, and a test that reads ``record.message`` must still see
+    the text. conftest scrubs the flag and the formatter honours the stdlib
+    contract; this holds both in place from a child process.
+    """
+    env = dict(os.environ)
+    env["LEVH_LOG_JSON"] = "1"
+    env["EMBEDDER_MODE"] = "hash"
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            "-q",
+            "tests/test_derived_rebuild_resilience.py::test_failure_logged_with_traceback",
+        ],
+        cwd=str(REPO_ROOT),
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_json_formatter_keeps_the_record_message_contract():
+    """``JsonFormatter`` must set ``record.message`` like the base formatter.
+
+    ``logging.Formatter.format`` sets ``record.message`` as a documented side
+    effect; pytest's ``caplog`` and any second handler read it back. Overriding
+    ``format`` without preserving that contract made ``record.message`` raise
+    ``AttributeError`` whenever JSON mode was on — the failure surfaced only
+    when an earlier test had turned ``LEVH_LOG_JSON`` on, so the suite was
+    green or red depending on test order.
+    """
+    import logging
+
+    from server.core.logging import JsonFormatter
+
+    record = logging.LogRecord(
+        name="levh.test",
+        level=logging.WARNING,
+        pathname=__file__,
+        lineno=1,
+        msg="derived-state rebuild failed",
+        args=(),
+        exc_info=None,
+    )
+    rendered = JsonFormatter().format(record)
+
+    assert record.message == "derived-state rebuild failed", (
+        "JsonFormatter must set record.message; caplog and other handlers read "
+        "it back and otherwise raise AttributeError"
+    )
+    assert json.loads(rendered)["message"] == "derived-state rebuild failed"
+
+
+def test_install_logging_does_not_leak_into_the_next_test(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """A test that turns JSON logging on must not reconfigure later tests.
+
+    ``install_logging`` rewrites the root logger's handlers and formatters,
+    which monkeypatch does not undo. Without the conftest snapshot/restore, the
+    formatter stays installed for the rest of the session, and a later test
+    that asserts on captured record text fails for a reason unrelated to its
+    own change. This caches the hostile state and the next test asserts the
+    suite restored it — the same first-half/second-half shape the engine cache
+    tests use.
+    """
+    import logging
+
+    from server.core import logging as levh_logging
+
+    monkeypatch.setenv(levh_logging.LOG_JSON_ENV, "1")
+    root = logging.getLogger()
+    handler = logging.StreamHandler()
+    root.addHandler(handler)
+    levh_logging.install_logging()
+    assert isinstance(handler.formatter, levh_logging.JsonFormatter)
+
+
+def test_the_next_test_sees_the_original_logging_state():
+    """Second half: the root logger must be back to what conftest saved."""
+    import logging
+
+    from server.core.logging import JsonFormatter
+
+    root = logging.getLogger()
+    leaked = [
+        handler
+        for handler in root.handlers
+        if isinstance(handler.formatter, JsonFormatter)
+    ]
+    assert not leaked, (
+        "install_logging's formatter survived a test boundary; the suite's "
+        "logging state is not its own"
+    )
 
 
 def test_the_suite_scrubs_every_embedder_mode_spelling():

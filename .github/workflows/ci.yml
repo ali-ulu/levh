@@ -149,6 +149,20 @@ jobs:
           # read-only demo exports it; without conftest's scrub it turns every
           # writing route test into a 403, the wiki build included.
           echo "LEVH_PUBLIC_DEMO=true" >> "$GITHUB_ENV"
+          # The 2026-10-27 batch: every one of these is a flag an operator or
+          # developer exports to exercise a feature, and each reddened a set of
+          # tests locally while this job — carrying none of them — stayed green.
+          # LEVH_LOG_JSON reconfigures the root logger, so it also reached the
+          # tests that read a captured record's text. LEVH_SUPERSESSION has the
+          # widest blast radius: on, it retires every near-identical predecessor
+          # on write, flipping 25 decision/consolidation/context assertions.
+          echo "LEVH_LOG_JSON=1" >> "$GITHUB_ENV"
+          echo "LEVH_DOGFOOD_ENABLED=1" >> "$GITHUB_ENV"
+          echo "LEVH_DOCTOR_NO_LIVE_PROBE=1" >> "$GITHUB_ENV"
+          echo "LEVH_ONBOARDING_RECEIPT_PATH=${{ github.workspace }}/canary/onboarding-receipt.json" >> "$GITHUB_ENV"
+          echo "LEVH_SUPERSESSION=1" >> "$GITHUB_ENV"
+          # Read through a bare os.getenv, so only the bare spelling matters.
+          echo "AUTO_SUMMARIZE_SESSIONS=1" >> "$GITHUB_ENV"
       - name: Plant the decoy config override
         run: |
           # get_env prefers the LEVH_-prefixed spelling, so a machine-level
