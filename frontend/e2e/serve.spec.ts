@@ -37,6 +37,7 @@ test("every top-level page renders without a client-side crash", async ({ page }
     "/findings/",
     "/settings/",
     "/projects/",
+    "/wiki/",
   ];
 
   for (const route of routes) {

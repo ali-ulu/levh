@@ -21,6 +21,17 @@ Use **GET /api/v1/wiki/status** to inspect the last build. A build never
 changes the memory rows in SQLite. The root can be browsed with any Markdown
 viewer, and **wiki/index.md** is the entry point.
 
+## Browsing in the dashboard
+
+The packaged dashboard has a **/wiki** page (sidebar: *Knowledge Wiki*) so the
+projection is reachable without the CLI, REST or MCP. It is read-only: it shows
+the build status (memories, snapshots, pages, workspace root, LLM-summary
+state), searches generated pages, opens one page's Markdown, and lists lint
+issues. Building stays an admin-tier action and is deliberately **not** exposed
+in the UI, so a viewer principal cannot write Wiki files from the browser. The
+page reads through the same routes below; the build itself still runs over REST
+(**POST /api/v1/wiki/build**) or MCP (**build_knowledge_wiki**).
+
 ## Output layout
 
 - **raw/<memory-key>/<snapshot-digest>.md**: immutable snapshots of current and

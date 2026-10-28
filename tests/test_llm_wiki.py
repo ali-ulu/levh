@@ -128,6 +128,40 @@ async def test_build_is_idempotent_and_does_not_rewrite_identical_pages(
 
 
 @pytest.mark.asyncio
+async def test_build_page_counters_match_the_registry_and_the_log(
+    wiki_engine: MemoryEngine, tmp_path: Path
+):
+    """The page counters must partition the page registry and match the log.
+
+    ``index.md`` is written outside the manifest ``pages`` registry, so folding
+    its change into ``pages_changed`` used to report more changed pages than
+    existed (5 changed against 4 pages on a first build). Every counter has to
+    describe the same page set, and the append-only log has to agree with the
+    API response for the same run.
+    """
+    await _seed(wiki_engine)
+    root = tmp_path / "wiki"
+    wiki = LLMWiki(wiki_engine, root=root)
+
+    first = await wiki.build()
+    assert first["pages_changed"] + first["pages_unchanged"] == first["pages"]
+    assert first["pages_created"] == first["pages"]
+    assert first["pages_changed"] == first["pages"]
+
+    log_line = (root / "wiki" / "log.md").read_text(encoding="utf-8").strip().splitlines()[-1]
+    assert f"pages changed: {first['pages_changed']};" in log_line
+    assert f"{first['pages']} generated pages" in log_line
+
+    # A rebuild that changes nothing must keep the invariant and report zero
+    # changed pages, with the log agreeing again.
+    second = await wiki.build()
+    assert second["pages_changed"] + second["pages_unchanged"] == second["pages"]
+    assert second["pages_changed"] == 0
+    log_line = (root / "wiki" / "log.md").read_text(encoding="utf-8").strip().splitlines()[-1]
+    assert f"pages changed: {second['pages_changed']};" in log_line
+
+
+@pytest.mark.asyncio
 async def test_lint_detects_snapshot_tampering(wiki_engine: MemoryEngine, tmp_path: Path):
     await _seed(wiki_engine)
     wiki = LLMWiki(wiki_engine, root=tmp_path / "wiki")

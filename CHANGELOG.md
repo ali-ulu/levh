@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### fix: report accurate Wiki build page counters
+
+- A first Wiki build reported more changed pages than it had: `pages_changed` folded in the `wiki/index.md` write, which is not part of the manifest `pages` registry, so a build with four pages answered `pages: 4, pages_changed: 5, pages_unchanged: 0` — an invariant (`changed + unchanged == pages`) that no longer held. The append-only build log disagreed with the API for the same run, since it printed the registry count while the response printed the inflated one. `pages_changed` now describes exactly the registry pages, and `index.md`'s change is logged as its own `index changed: yes|no` field, so every counter and the log agree. `tests/test_llm_wiki.py` pins the partition and the log/API agreement across a first and an idempotent rebuild.
+
+### docs: document the dashboard Wiki page
+
+- `docs/llm-wiki.md` described the REST and MCP surfaces but not the read-only `/wiki` dashboard page added in 2.37.0, so the guide never mentioned how to browse the projection in the browser. The guide now has a *Browsing in the dashboard* section that names the page, its read-only scope and the fact that building stays an admin-tier REST/MCP action. The E2E render suite also walks `/wiki/` alongside the other top-level pages, so a hydration error there fails the gate instead of shipping green.
+
 ### fix: keep six more developer flags out of the test suite
 
 - The suite owned the store, the LLM variables and the behaviour flags it knew about, but six more variables a developer exports to exercise a feature still reached it and reddened tests for a reason unrelated to the change under test — while CI, carrying none of them, stayed green. `LEVH_SUPERSESSION=1` had the widest blast radius (it retires every near-identical predecessor on write, flipping 25 decision, consolidation and context assertions); `LEVH_LOG_JSON=1`, `LEVH_DOGFOOD_ENABLED=1`, `LEVH_DOCTOR_NO_LIVE_PROBE=1`, `LEVH_ONBOARDING_RECEIPT_PATH` and `AUTO_SUMMARIZE_SESSIONS=1` each reddened a smaller set. `tests/conftest.py` now scrubs every one of them through *every* spelling `get_env` accepts, derived from `accepted_env_var_names`, so the bare and legacy `STACKMEMORY_` spellings cannot bypass it. `LEVH_LOG_JSON` needed more than a scrub: `install_logging` rewrites the root logger's handlers and formatters, which `monkeypatch` does not undo, so `conftest.py` snapshots and restores the root and uvicorn loggers per test, and `server/core/logging.py`'s `JsonFormatter` sets `record.message` the way `logging.Formatter` does — without it, any test reading a captured record's text failed only when an earlier test happened to turn JSON logging on. The `hostile-env` job plants all six as decoys.

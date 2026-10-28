@@ -925,6 +925,11 @@ numbered Evidence list. A failed or uncited summary never blocks the evidence Wi
             self._write(
                 "wiki/log.md", "# Wiki build log\n\nEach row records a local build. It is append-only.\n"
             )
+        # The counters describe the same page set as ``pages`` (the manifest
+        # registry): ``pages_changed + pages_unchanged == pages`` must hold so
+        # the numbers stay auditable. index.md is a fixed entry point written
+        # outside the registry, so its change is logged separately instead of
+        # inflating ``pages_changed`` past ``pages``.
         pages_created = sum(1 for page_id in pages if page_id not in previous_pages)
         pages_changed = sum(1 for page in pages.values() if page["changed"])
         pages_unchanged = len(pages) - pages_changed
@@ -932,7 +937,8 @@ numbered Evidence list. A failed or uncited summary never blocks the evidence Wi
             stream.write(
                 f"- {now} — build: {len(memories)} memories; {len(current_snapshots)} current "
                 f"snapshots; {len(pages)} generated pages; snapshots added/changed: "
-                f"{snapshot_created}; pages changed: {pages_changed}; pages removed: "
+                f"{snapshot_created}; pages changed: {pages_changed}; index changed: "
+                f"{'yes' if index_changed else 'no'}; pages removed: "
                 f"{removed_pages}; forgotten-source snapshots removed: {snapshots_removed}; "
                 f"LLM drafts created: {llm_generated}; LLM failures: {llm_failures}; "
                 f"LLM cap skips: {llm_skipped_limit}.\n"
@@ -963,7 +969,7 @@ numbered Evidence list. A failed or uncited summary never blocks the evidence Wi
             "snapshots_added_or_changed": snapshot_created,
             "snapshots_removed_for_forgotten_memories": snapshots_removed,
             "pages": len(pages), "pages_created": pages_created,
-            "pages_changed": pages_changed + int(index_changed),
+            "pages_changed": pages_changed,
             "pages_unchanged": pages_unchanged,
             "pages_removed": removed_pages,
             "llm_summaries_created": llm_generated, "llm_summary_failures": llm_failures,
