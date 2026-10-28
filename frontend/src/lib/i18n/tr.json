@@ -922,6 +922,7 @@
   "app.wiki.status.memories": "Anılar",
   "app.wiki.status.snapshots": "Anlık görüntüler",
   "app.wiki.status.pages": "Sayfalar",
+  "app.wiki.status.conflicts": "Çelişkiler",
   "app.wiki.status.builtAt": "Derlenme zamanı",
   "app.wiki.status.llmOn": "LLM özetleri açık",
   "app.wiki.status.llmOff": "LLM özetleri kapalı",

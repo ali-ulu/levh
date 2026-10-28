@@ -102,6 +102,7 @@ export default function WikiPageView() {
         { labelKey: "app.wiki.status.memories", value: status.memories },
         { labelKey: "app.wiki.status.snapshots", value: status.snapshots },
         { labelKey: "app.wiki.status.pages", value: status.pages },
+        { labelKey: "app.wiki.status.conflicts", value: status.conflicts },
       ]
     : [];
 

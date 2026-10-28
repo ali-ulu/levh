@@ -148,6 +148,7 @@ const wikiStatus: WikiStatus = {
   snapshots: 45,
   pages: 12,
   built_at: "2026-09-20T10:00:00Z",
+  conflicts: 0,
   llm_backend_enabled: false,
 };
 
