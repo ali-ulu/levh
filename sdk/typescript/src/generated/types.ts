@@ -1420,6 +1420,8 @@ export type WikiBuildResponse = {
   pages_changed: number;
   pages_unchanged: number;
   pages_removed: number;
+  conflict_candidates?: number;
+  conflict_read_error?: string | null;
   llm_summaries_created: number;
   llm_summary_failures: number;
   llm_summary_limit_skips: number;
@@ -1474,5 +1476,6 @@ export type WikiStatusResponse = {
   snapshots: number;
   pages: number;
   built_at?: string | null;
+  conflicts?: number;
   llm_backend_enabled: boolean;
 };

@@ -1541,6 +1541,8 @@ class WikiBuildResponse(BaseModel):
     pages_changed: int
     pages_unchanged: int
     pages_removed: int
+    conflict_candidates: int = 0
+    conflict_read_error: Optional[str] = None
     llm_summaries_created: int
     llm_summary_failures: int
     llm_summary_limit_skips: int
@@ -1556,6 +1558,7 @@ class WikiStatusResponse(BaseModel):
     snapshots: int
     pages: int
     built_at: Optional[str] = None
+    conflicts: int = 0
     llm_backend_enabled: bool
 
 

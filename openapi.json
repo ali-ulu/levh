@@ -12684,6 +12684,22 @@
             "type": "integer",
             "title": "Pages Removed"
           },
+          "conflict_candidates": {
+            "type": "integer",
+            "title": "Conflict Candidates",
+            "default": 0
+          },
+          "conflict_read_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conflict Read Error"
+          },
           "llm_summaries_created": {
             "type": "integer",
             "title": "Llm Summaries Created"
@@ -12927,6 +12943,11 @@
               }
             ],
             "title": "Built At"
+          },
+          "conflicts": {
+            "type": "integer",
+            "title": "Conflicts",
+            "default": 0
           },
           "llm_backend_enabled": {
             "type": "boolean",

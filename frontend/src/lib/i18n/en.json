@@ -922,6 +922,7 @@
   "app.wiki.status.memories": "Memories",
   "app.wiki.status.snapshots": "Snapshots",
   "app.wiki.status.pages": "Pages",
+  "app.wiki.status.conflicts": "Conflicts",
   "app.wiki.status.builtAt": "Built at",
   "app.wiki.status.llmOn": "LLM summaries on",
   "app.wiki.status.llmOff": "LLM summaries off",

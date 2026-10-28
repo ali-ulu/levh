@@ -267,3 +267,42 @@ Acceptance: GitHub Actions run #1081 passed all 13 jobs on the feature code comm
 Do not mark the feature complete or create a release/PR until every phase's
 acceptance criteria has evidence. Any deferred criterion must be named in the
 PR description, not hidden behind a passing happy-path test.
+
+## 8. Extension: "compounding artifact" review (Karpathy LLM knowledge-base pattern)
+
+A reviewer compared the merged Wiki against the widely shared "LLM knowledge
+base" pattern (Karpathy gist, `442a6bf555914893e9891c11519de94f`). The pattern
+describes a *compounding artifact*: an LLM that reads a source, updates 10–15
+related pages, flags contradictions and revises its own synthesis, and files
+each query answer back into the Wiki as a new page. The comparison found that
+the deterministic three-layer idea (raw source → derived pages → links) already
+exists, but the "compounding" half is intentionally absent. This section records
+how far that gap can be closed **without breaking the frozen contracts** in §2
+and the non-goals in §6.
+
+Mapping, item by item:
+
+| Gist idea | LEVH Wiki today | Decision |
+| --- | --- | --- |
+| Continuously enriching pages the LLM rewrites | Deterministic rebuild from LEVH state; LLM only drafts entity summaries | Partial: extend LLM drafts to more page kinds (PR-2). A build still regenerates from source, never hand-edits. |
+| Query answers filed back as new Wiki pages | Read path is read-only (`search`/`page`/`lint` cannot write) | Non-goal: filing a read-path answer would make a read a write (§2.9) and let unverified text into the evidence set (§2.2). Deferred with rationale. |
+| Contradiction surfacing | Not wired | Done (PR-1): reads the candidates LEVH already flagged, cites both snapshots, never decides truth. |
+| Semantic lint (orphans, gaps, staleness) | Digest/hash/link lint only | Partial (PR-1): `unreachable_page`, `conflict_source_missing`. Orphan/gap/staleness checks in PR-2. |
+| Concept/topic pages, not just people/orgs/docs | Entity types are connector-derived | PR-2: add a derived `concept`/`topic` page kind + overview. |
+| Incremental ingest of upstream sources | Connector sync owns ingest; Wiki rebuilds from the store | Non-goal (§6): Wiki code does not crawl. |
+| Parseable build history | Flat log bullets | Done (PR-1): `## [<ts>] build` header + one `- build:` detail line. |
+
+Staged delivery:
+
+- **PR-1 (this change).** Conflict-candidate surface (`wiki/conflicts.md`, entity
+  sections, manifest `conflicts`), semantic lint (`unreachable_page`,
+  `conflict_source_missing`) and a greppable build log. No new route, no
+  OpenAPI change beyond additive response fields.
+- **PR-2.** `concept`/`topic` page kind with an overview page, extension of the
+  optional LLM draft from entity-only to project/topic pages, and further
+  semantic lint (orphan pages, missing cross-references, stale/superseded
+  sources). Each still gated on the explicit LLM opt-in.
+
+Acceptance for the extension keeps every §2 constraint: reads never write,
+build stays the only mutation, the LLM never becomes a truth authority, and any
+deferred gist idea is named here rather than hidden behind a happy-path test.

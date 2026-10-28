@@ -13,6 +13,7 @@ import re
 import sys
 import tempfile
 import unicodedata
+from collections import defaultdict
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
@@ -30,8 +31,13 @@ MAX_MEMORIES = 1_000_000
 MAX_LLM_SUMMARIES_PER_BUILD = 12
 SUMMARY_SOURCE_LIMIT = 8
 SUMMARY_PROMPT_VERSION = 1
+# Conflict rows read into the Wiki per build. A large store can hold thousands
+# of open candidates; the page only needs the ones whose memories are in this
+# workspace's manifest, and the cap keeps one build bounded.
+MAX_WIKI_CONFLICTS = 500
 _WIKI_LINK_RE = re.compile(r"(?<!\\)\[[^\[\]\n]+\]\(([^()\n]+)\)")
 _CITATION_RE = re.compile(r"(?<!\w)\[(\d+)\]")
+_LOG_PREFIX_RE = re.compile(r"^- (\[[^\]\n]+\] )?build:")
 _SAFE_META_FIELDS = (
     "source_identity", "source_revision", "relative_path", "file_name",
     "filename", "title", "url", "repo", "issue_number", "pull_number",
@@ -158,7 +164,7 @@ def _read_json(path: Path, default: dict[str, Any]) -> dict[str, Any]:
             "Wiki manifest has an unknown or invalid version. Preserve it and inspect it "
             "before rebuilding rather than overwriting it."
         )
-    for field in ("sources", "snapshots", "pages", "llm_summaries"):
+    for field in ("sources", "snapshots", "pages", "llm_summaries", "conflicts"):
         value = payload.get(field)
         if value is None:
             continue
@@ -417,6 +423,108 @@ numbered Evidence list. A failed or uncited summary never blocks the evidence Wi
                 return memories
             offset += len(batch)
 
+    async def _load_conflicts(self, memory_ids: set[str]) -> tuple[list[dict[str, Any]], str | None]:
+        """Read open conflict candidates another LEVH pass already flagged.
+
+        The Wiki never *detects* conflicts: detection writes rows to the store,
+        and a build must stay a read of LEVH state. Reading the candidates that
+        another part of LEVH already flagged is enough for a review surface. Only
+        candidates whose two memories are both in this build's snapshot set are
+        kept, so every row can cite a snapshot; a read failure degrades to an
+        empty list and is reported in the build result instead of failing the
+        evidence Wiki.
+        """
+        service = getattr(self.engine, "conflict_service", None)
+        if service is None or not memory_ids:
+            return [], None
+        try:
+            rows = await service.list_conflict_candidates(
+                status="open", limit=MAX_WIKI_CONFLICTS
+            )
+        except Exception as exc:  # noqa: BLE001 - a conflict read must never fail the evidence build
+            return [], f"{type(exc).__name__}: {exc}"
+        scoped = [
+            row for row in rows
+            if str(row.get("memory_id_a")) in memory_ids
+            and str(row.get("memory_id_b")) in memory_ids
+        ]
+        return scoped, None
+
+    def _conflict_page(
+        self,
+        conflicts: list[dict[str, Any]],
+        error: str | None,
+        memory_by_id: dict[str, Any],
+        snapshot_by_memory: dict[str, dict[str, Any]],
+        entity_paths: dict[str, str],
+        entity_values: dict[str, dict[str, Any]],
+    ) -> tuple[str, dict[str, dict[str, Any]], dict[str, list[str]]]:
+        """Render the conflict-candidate catalog and index it by shared entity.
+
+        The page reports candidates as candidates. It never scores truth, marks a
+        winner or copies conflict state back into LEVH — it only makes what LEVH
+        already flagged visible next to the snapshots it cites.
+        """
+        page_path = "wiki/conflicts.md"
+        lines = [
+            "# Conflict candidates", "",
+            "> Review candidates flagged elsewhere in LEVH, not verdicts. The Wiki does "
+            "not detect conflicts or decide which memory is true; open each snapshot and "
+            "review it in LEVH.", "",
+        ]
+        records: dict[str, dict[str, Any]] = {}
+        by_entity: dict[str, list[str]] = defaultdict(list)
+        if error:
+            lines.append(f"- Conflict candidates could not be read this build: `{error}`")
+        elif not conflicts:
+            lines.append("- No open conflict candidates among the indexed memories.")
+        for row in sorted(conflicts, key=lambda item: str(item.get("id") or "")):
+            conflict_id = str(row.get("id") or "")
+            shared = [str(value) for value in (row.get("shared_entities") or [])]
+            records[conflict_id] = {
+                "id": conflict_id,
+                "signal_type": str(row.get("signal_type") or "unknown"),
+                "confidence": row.get("confidence"),
+                "status": str(row.get("status") or "open"),
+                "memory_ids": [str(row.get("memory_id_a")), str(row.get("memory_id_b"))],
+                "shared_entities": sorted(shared),
+                "created_at": row.get("created_at"),
+            }
+            for entity_id in shared:
+                by_entity[entity_id].append(conflict_id)
+            confidence = row.get("confidence")
+            confidence_text = f"{confidence:.2f}" if isinstance(confidence, (int, float)) else "n/a"
+            lines.extend([
+                "", f"## {_md_inline(row.get('signal_type') or 'unknown')} · "
+                f"confidence {confidence_text} · {_md_inline(row.get('status') or 'open')}", "",
+            ])
+            for label, memory_id in (("A", str(row.get("memory_id_a"))), ("B", str(row.get("memory_id_b")))):
+                memory = memory_by_id.get(memory_id)
+                if memory is None:
+                    lines.append(f"- **{label}** · memory {_md_inline(memory_id)} is not in this workspace.")
+                    continue
+                record = snapshot_by_memory[memory_id]
+                link = self._source_link(page_path, record["path"])
+                date = str(getattr(memory, "created_at", "") or "")[:10] or "unknown date"
+                source = _md_inline(getattr(memory, "source", None) or "unknown source")
+                safe_content, _ = redact_secrets(str(memory.content or ""))
+                preview = _md_inline(" ".join(safe_content.split())[:200])
+                lines.append(
+                    f"- **{label}** · {date} · {source} · memory {_md_inline(memory_id)}"
+                    f" · [raw snapshot]({link})" + (f"\n  {preview}" if preview else "")
+                )
+            if shared:
+                links = []
+                for entity_id in sorted(shared):
+                    entity, target = entity_values.get(entity_id), entity_paths.get(entity_id)
+                    if entity and target:
+                        link = _relative_link(self.root / page_path, self.root / target)
+                        links.append(f"[{_md_inline(entity['name'])}]({link})")
+                    else:
+                        links.append(f"`{_md_inline(entity_id)}`")
+                lines.append("- Shared entities: " + ", ".join(links))
+        return "\n".join(lines) + "\n", records, by_entity
+
     def _snapshot(self, memory: Any) -> tuple[str, dict[str, Any], str]:
         original = str(getattr(memory, "content", "") or "")
         safe_content, secret_types = redact_secrets(original)
@@ -630,7 +738,6 @@ numbered Evidence list. A failed or uncited summary never blocks the evidence Wi
                     pass
         all_snapshots = {**retained_snapshots, **current_snapshots}
 
-        from collections import defaultdict
         entity_memory_ids: dict[str, list[Any]] = defaultdict(list)
         entity_values: dict[str, dict[str, Any]] = {}
         memory_entities: dict[str, list[str]] = {}
@@ -663,6 +770,13 @@ numbered Evidence list. A failed or uncited summary never blocks the evidence Wi
                 for other in ids:
                     if other != entity_id:
                         cooccurrence[entity_id][other] += 1
+
+        memory_by_id = {str(memory.id): memory for memory in memories}
+        conflict_rows, conflict_read_error = await self._load_conflicts(source_ids)
+        conflict_text, conflict_records, conflicts_by_entity = self._conflict_page(
+            conflict_rows, conflict_read_error, memory_by_id,
+            snapshot_by_memory, entity_paths, entity_values,
+        )
 
         new_summaries: dict[str, dict[str, Any]] = {}
         pages: dict[str, dict[str, Any]] = {}
@@ -753,6 +867,19 @@ numbered Evidence list. A failed or uncited summary never blocks the evidence Wi
                     f"co-occurs in {count} source(s)"
                 )
 
+            conflict_ids = conflicts_by_entity.get(entity_id, [])
+            conflict_lines = []
+            for conflict_id in sorted(conflict_ids):
+                record = conflict_records.get(conflict_id)
+                if not record:
+                    continue
+                confidence = record.get("confidence")
+                confidence_text = f"{confidence:.2f}" if isinstance(confidence, (int, float)) else "n/a"
+                conflict_lines.append(
+                    f"- {_md_inline(record['signal_type'])} · confidence {confidence_text}"
+                    f" · conflict `{_md_inline(conflict_id)}` — review in LEVH"
+                )
+
             page_lines = [
                 f"# {_md_inline(entity['name'])}", "",
                 f"> Entity type: {entity['type']}",
@@ -770,6 +897,13 @@ numbered Evidence list. A failed or uncited summary never blocks the evidence Wi
                 "## Related entities", "",
                 *(related_lines or ["- No co-occurring entities found."]), "",
             ])
+            if conflict_lines:
+                page_lines.extend([
+                    "## Conflict candidates — review required", "",
+                    "> Flagged elsewhere in LEVH. Candidates, not verdicts; this page does "
+                    "not decide which memory is true.", "",
+                    *conflict_lines, "",
+                ])
             page_text = "\n".join(page_lines)
             old_page = previous_pages.get(page_id, {})
             page_changed = self._write(page_path, page_text)
@@ -866,6 +1000,18 @@ numbered Evidence list. A failed or uncited summary never blocks the evidence Wi
             "previous_sha256": (previous_pages.get("source-catalog") or {}).get("content_sha256"),
         }
 
+        conflicts_changed = self._write("wiki/conflicts.md", conflict_text)
+        pages["conflict-candidates"] = {
+            "id": "conflict-candidates", "kind": "conflicts", "title": "Conflict candidates",
+            "path": "wiki/conflicts.md", "content_sha256": _sha256(conflict_text),
+            "source_memory_ids": sorted({
+                memory_id for record in conflict_records.values()
+                for memory_id in record["memory_ids"]
+            }),
+            "summary_source_ids": [], "changed": conflicts_changed,
+            "previous_sha256": (previous_pages.get("conflict-candidates") or {}).get("content_sha256"),
+        }
+
         removed_pages = 0
         current_page_paths = {record["path"] for record in pages.values()}
         for old_page in previous_pages.values():
@@ -899,6 +1045,7 @@ numbered Evidence list. A failed or uncited summary never blocks the evidence Wi
             "remains authoritative; generated pages are rebuildable.", "",
             "## Start here", "",
             "- [Source catalog](sources.md)",
+            "- [Conflict candidates](conflicts.md)",
             "- [Build log](log.md)",
             "- [Wiki writing rules](../AGENTS.md)",
             "- [Wiki schema](../schema.md)", "",
@@ -933,13 +1080,18 @@ numbered Evidence list. A failed or uncited summary never blocks the evidence Wi
         pages_created = sum(1 for page_id in pages if page_id not in previous_pages)
         pages_changed = sum(1 for page in pages.values() if page["changed"])
         pages_unchanged = len(pages) - pages_changed
+        # A leading "## [<timestamp>] build" header makes the append-only log
+        # greppable with plain unix tools (`grep '^## \[' wiki/log.md | tail -5`),
+        # while the detail bullet keeps every counter on one parseable line.
         with log_path.open("a", encoding="utf-8", newline="\n") as stream:
             stream.write(
-                f"- {now} — build: {len(memories)} memories; {len(current_snapshots)} current "
+                f"\n## [{now}] build | {len(memories)} memories | {len(pages)} pages\n"
+                f"- build: {len(memories)} memories; {len(current_snapshots)} current "
                 f"snapshots; {len(pages)} generated pages; snapshots added/changed: "
                 f"{snapshot_created}; pages changed: {pages_changed}; index changed: "
                 f"{'yes' if index_changed else 'no'}; pages removed: "
                 f"{removed_pages}; forgotten-source snapshots removed: {snapshots_removed}; "
+                f"conflict candidates: {len(conflict_records)}; "
                 f"LLM drafts created: {llm_generated}; LLM failures: {llm_failures}; "
                 f"LLM cap skips: {llm_skipped_limit}.\n"
             )
@@ -959,6 +1111,7 @@ numbered Evidence list. A failed or uncited summary never blocks the evidence Wi
                 for memory in memories
             },
             "snapshots": all_snapshots, "pages": pages, "llm_summaries": new_summaries,
+            "conflicts": conflict_records,
         }
         manifest_text = json.dumps(new_manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
         self._write("manifest.json", manifest_text)
@@ -972,6 +1125,8 @@ numbered Evidence list. A failed or uncited summary never blocks the evidence Wi
             "pages_changed": pages_changed,
             "pages_unchanged": pages_unchanged,
             "pages_removed": removed_pages,
+            "conflict_candidates": len(conflict_records),
+            "conflict_read_error": conflict_read_error,
             "llm_summaries_created": llm_generated, "llm_summary_failures": llm_failures,
             "llm_summary_limit_skips": llm_skipped_limit,
             "llm_summaries_enabled": llm_summaries,
@@ -986,6 +1141,7 @@ numbered Evidence list. A failed or uncited summary never blocks the evidence Wi
             "memories": int(manifest.get("source_count") or 0),
             "snapshots": len(manifest.get("snapshots") or {}),
             "pages": len(manifest.get("pages") or {}), "built_at": manifest.get("built_at"),
+            "conflicts": len(manifest.get("conflicts") or {}),
             "llm_backend_enabled": self._llm_enabled(),
         }
 
@@ -1114,6 +1270,31 @@ numbered Evidence list. A failed or uncited summary never blocks the evidence Wi
                     issue("index_link_escapes_root", "wiki/index.md", f"Link leaves Wiki root: {target}")
                 elif not resolved.exists():
                     issue("broken_index_link", "wiki/index.md", f"Internal link target does not exist: {target}")
+            # Semantic reachability: a registered page nothing links to from the
+            # entry point is invisible to a reader even though its bytes are fine.
+            # The target substring is matched directly, not through the link
+            # regex: index labels are Markdown-escaped, and the regex only
+            # matches simple single-line labels.
+            for page_id, record in pages.items():
+                if page_id in {"source-catalog", "conflict-candidates"}:
+                    continue
+                try:
+                    relative = Path(str(record.get("path") or "")).relative_to("wiki").as_posix()
+                except ValueError:
+                    continue
+                if f"]({relative})" not in index_text:
+                    issue(
+                        "unreachable_page", str(record.get("path") or ""),
+                        f"Page {page_id} is not linked from wiki/index.md.",
+                    )
+
+        for conflict_id, record in (manifest.get("conflicts") or {}).items():
+            for memory_id in record.get("memory_ids") or []:
+                if str(memory_id) not in sources:
+                    issue(
+                        "conflict_source_missing", conflict_id,
+                        f"Conflict candidate points at memory {memory_id}, which is not indexed.",
+                    )
 
         return {
             "ok": not issues, "root_name": self.root.name, "source_count": len(sources),

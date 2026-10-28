@@ -38,15 +38,23 @@ page reads through the same routes below; the build itself still runs over REST
   historical LEVH memory records. They retain the LEVH memory ID, timestamp,
   source, project and a carefully selected set of source metadata.
 - **wiki/index.md**: a starting point linking to project hubs, entity pages,
-  source catalog, build log and writing rules.
+  the source catalog, the conflict-candidate catalog, the build log and writing
+  rules.
 - **wiki/sources.md**: a complete catalog linking stored memories to snapshots,
   including records from which no typed entity was extracted.
 - **wiki/entities/**: evidence pages for people, organizations, documents,
-  tasks and other entity types extracted by LEVH.
+  tasks and other entity types extracted by LEVH. A page whose entity appears in
+  an open conflict candidate also carries a **Conflict candidates** section.
 - **wiki/projects/**: project hubs linking source evidence to entities.
-- **wiki/log.md**: append-only build log.
-- **manifest.json**: source/page IDs, snapshot paths, hashes and optional LLM
-  draft cache.
+- **wiki/conflicts.md**: the catalog of open conflict candidates LEVH already
+  flagged, each linking to the two raw snapshots it compares. The Wiki does not
+  detect conflicts and does not decide which memory is true.
+- **wiki/log.md**: append-only build log. Each entry starts with a
+  `## [<timestamp>] build | ...` header and keeps its counters on one
+  `- build: ...` line, so plain tools like
+  `grep '^## \[' wiki/log.md | tail -5` read the history.
+- **manifest.json**: source/page IDs, snapshot paths, hashes, the conflict
+  candidates shown this build, and the optional LLM draft cache.
 - **AGENTS.md** and **schema.md**: local Wiki writing rules and output contract.
 
 The manifest is written last so an interrupted build can be rerun. Generated
@@ -104,9 +112,31 @@ linked sources.
   manifest-indexed page.
 - **GET /api/v1/wiki/lint** (MCP: **lint_knowledge_wiki**) verifies source snapshot
   SHA-256 digests, source/page manifest mappings, generated page hashes, required
-  evidence sections and internal Markdown links. Lint is read-only and does
-  not repair files; use a new build after reviewing a failure.
+  evidence sections and internal Markdown links. It also reports semantic
+  problems: a registered page no index link reaches (**unreachable_page**) and a
+  conflict candidate that points at a memory no longer indexed
+  (**conflict_source_missing**). Lint is read-only and does not repair files;
+  use a new build after reviewing a failure.
 
 REST endpoints are also available through LEVH's versioned /api/v1 surface.
 The corresponding MCP page-read/search/lint tools are available to read_only
 profiles; building the Wiki is an admin-tier mutation because it writes files.
+
+## What this is, and what it is not
+
+The Wiki is a **derived, rebuildable projection** of LEVH's stored memory. Every
+build regenerates the pages from LEVH's current state, so the Wiki reflects
+updates, deletions and new conflict candidates on the next build rather than
+drifting as a hand-edited document. The compounding value is deliberate and
+bounded:
+
+- Evidence, snapshot hashes and links are deterministic and regenerated every
+  build; unchanged inputs do not rewrite bytes.
+- Conflict candidates that LEVH already flagged are pulled in and cited next to
+  the snapshots they compare.
+- LLM summaries are optional, review-marked drafts layered over the evidence,
+  never a replacement for it.
+
+The Wiki is not an automatic crawler (run the normal connector sync first), not a
+second memory database (build and read paths never change LEVH rows), and not an
+authority on truth (conflicts are candidates; summaries require review).

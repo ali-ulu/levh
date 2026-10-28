@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+### feat: surface conflict candidates in the generated Wiki
+
+- The Wiki showed evidence and co-occurrence but had no view of the contradictions LEVH had already flagged, so the one place a reader looks for "what disagrees here" was silent. A build now reads the **open conflict candidates another LEVH pass recorded** — it never runs detection, because detection writes rows and a build must stay a read of LEVH state — and renders them three ways: a new `wiki/conflicts.md` catalog, a *Conflict candidates* section on each shared entity's page, and a `conflicts` map in `manifest.json`. Every row links to both raw snapshots and is labelled a candidate, not a verdict; the Wiki still never decides which memory is true. The read is bounded (500 candidates) and a failure degrades to an empty list reported in the build result (`conflict_read_error`) instead of failing the evidence build. `wiki/conflicts.md` is linked from `wiki/index.md`, and `GET /api/v1/wiki/status` and the build response expose the count.
+
+### feat: report semantic problems in `lint`
+
+- `lint` caught digests, hashes, missing files and broken links, but a page that no index link reached and a conflict candidate pointing at a since-forgotten memory both passed as "ok". Lint now adds **`unreachable_page`** (a registered page `wiki/index.md` does not link to) and **`conflict_source_missing`** (a candidate whose memory is no longer indexed), so a reader cannot be silently walled off from a page and a stale contradiction cannot outlive its source. Both checks stay read-only.
+
+### feat: make the Wiki build log greppable
+
+- The append-only `wiki/log.md` was a flat run of `- <timestamp> — build: ...` bullets, so `tail -1` was the only easy way to read it and `grep` had nothing stable to anchor on. Each entry now starts with a `## [<timestamp>] build | N memories | N pages` header and keeps its counters on a single `- build: ...` detail line, so `grep '^## \[' wiki/log.md | tail -5` lists recent builds. The `conflict candidates: N` counter joins the line.
+
 ### fix: report accurate Wiki build page counters
 
 - A first Wiki build reported more changed pages than it had: `pages_changed` folded in the `wiki/index.md` write, which is not part of the manifest `pages` registry, so a build with four pages answered `pages: 4, pages_changed: 5, pages_unchanged: 0` — an invariant (`changed + unchanged == pages`) that no longer held. The append-only build log disagreed with the API for the same run, since it printed the registry count while the response printed the inflated one. `pages_changed` now describes exactly the registry pages, and `index.md`'s change is logged as its own `index changed: yes|no` field, so every counter and the log agree. `tests/test_llm_wiki.py` pins the partition and the log/API agreement across a first and an idempotent rebuild.

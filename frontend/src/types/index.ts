@@ -440,6 +440,7 @@ export interface WikiStatus {
   snapshots: number;
   pages: number;
   built_at: string | null;
+  conflicts: number;
   llm_backend_enabled: boolean;
 }
 
