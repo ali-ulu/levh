@@ -68,7 +68,7 @@ decay, importance and access frequency, each weight configurable. See
 - **People, projects & timeline** — entities extracted from your memories automatically. No manual tagging.
 - **Daily briefing & meeting prep** — today's events and who you are about to meet.
 - **Decisions & conflicts** — decisions pulled from your memories, with a review signal when two disagree. A signal, never a verdict.
-- **Knowledge Wiki** — a source-linked Markdown wiki built from your memories, browsable in the dashboard.
+- **Knowledge Wiki** — a source-linked Markdown wiki built from your memories, browsable in the dashboard. It surfaces the conflict candidates LEVH already flagged, each linked to both snapshots — a candidate, never a verdict.
 - **Admission gate** — every memory screened before storage; duplicates flagged and secrets redacted. An ambiguous candidate is held for you, never dropped.
 - **Trust & provenance** — an explainable reliability score per memory. Separate from ranking; not a truth claim.
 - **Mistake guard** — a corrected mistake becomes a pinned rule that never decays.

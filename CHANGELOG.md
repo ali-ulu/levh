@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+### Placeholder for future changes (#103)
+
+- TBD
+
+## 2.38.0
+
+### Upgrade notes
+
+- **The Wiki now surfaces conflict candidates.** A build reads the open conflict candidates LEVH already flagged and adds `wiki/conflicts.md`, a *Conflict candidates* section on each shared entity page, and a `conflicts` map in `manifest.json`. It never runs detection itself — a build stays a read of LEVH state — and it labels each row a candidate, not a verdict. The `/wiki` dashboard page shows the count. `lint` gains `unreachable_page` and `conflict_source_missing`. Rebuild your Wiki after upgrading to generate the new page.
+
 ### feat: surface conflict candidates in the generated Wiki
 
 - The Wiki showed evidence and co-occurrence but had no view of the contradictions LEVH had already flagged, so the one place a reader looks for "what disagrees here" was silent. A build now reads the **open conflict candidates another LEVH pass recorded** — it never runs detection, because detection writes rows and a build must stay a read of LEVH state — and renders them three ways: a new `wiki/conflicts.md` catalog, a *Conflict candidates* section on each shared entity's page, and a `conflicts` map in `manifest.json`. Every row links to both raw snapshots and is labelled a candidate, not a verdict; the Wiki still never decides which memory is true. The read is bounded (500 candidates) and a failure degrades to an empty list reported in the build result (`conflict_read_error`) instead of failing the evidence build. `wiki/conflicts.md` is linked from `wiki/index.md`, and `GET /api/v1/wiki/status` and the build response expose the count.
@@ -25,10 +35,6 @@
 ### fix: keep six more developer flags out of the test suite
 
 - The suite owned the store, the LLM variables and the behaviour flags it knew about, but six more variables a developer exports to exercise a feature still reached it and reddened tests for a reason unrelated to the change under test — while CI, carrying none of them, stayed green. `LEVH_SUPERSESSION=1` had the widest blast radius (it retires every near-identical predecessor on write, flipping 25 decision, consolidation and context assertions); `LEVH_LOG_JSON=1`, `LEVH_DOGFOOD_ENABLED=1`, `LEVH_DOCTOR_NO_LIVE_PROBE=1`, `LEVH_ONBOARDING_RECEIPT_PATH` and `AUTO_SUMMARIZE_SESSIONS=1` each reddened a smaller set. `tests/conftest.py` now scrubs every one of them through *every* spelling `get_env` accepts, derived from `accepted_env_var_names`, so the bare and legacy `STACKMEMORY_` spellings cannot bypass it. `LEVH_LOG_JSON` needed more than a scrub: `install_logging` rewrites the root logger's handlers and formatters, which `monkeypatch` does not undo, so `conftest.py` snapshots and restores the root and uvicorn loggers per test, and `server/core/logging.py`'s `JsonFormatter` sets `record.message` the way `logging.Formatter` does — without it, any test reading a captured record's text failed only when an earlier test happened to turn JSON logging on. The `hostile-env` job plants all six as decoys.
-
-### Placeholder for future changes (#103)
-
-- TBD
 
 ## 2.37.0
 

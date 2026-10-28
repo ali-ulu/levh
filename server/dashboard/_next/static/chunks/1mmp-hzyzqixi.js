@@ -1,0 +1,1 @@
+(globalThis.TURBOPACK||(globalThis.TURBOPACK=[])).push(["object"==typeof document?document.currentScript:void 0,91484,e=>{"use strict";e.S([6754,"OpenGeniToolsClient,E"])}]);
