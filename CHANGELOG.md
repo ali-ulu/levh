@@ -2,13 +2,23 @@
 
 ## Unreleased
 
+### Placeholder for future changes (#103)
+
+- TBD
+
+## 2.38.2
+
+### Upgrade notes
+
+- **The `/wiki` page can build now.** It gains **Build Wiki / Rebuild Wiki**, calling the server-authorized build endpoint. The build runs the deterministic default with LLM summaries off and never mutates the authoritative memory rows; server-side authorization still stops a read-only principal from writing Wiki files. The packaged dashboard under `server/dashboard/` is regenerated, so an upgraded install shows the button — this is the copy that was missing, because the feature merged after v2.38.1 and no release had repackaged the dashboard since.
+
 ### feat: build the source-linked Wiki from the dashboard
 
 - The `/wiki` page can now create or rebuild the derived Wiki directly in the application through the existing server-authorized endpoint. The action keeps LLM summaries disabled by default, refreshes the build status, and reports page counts. Backend authorization remains in force, and the build does not modify the underlying memory records.
 
-### Placeholder for future changes (#103)
+### docs: add Deploy on Hostinger button
 
-- TBD
+- The README links a one-click Hostinger deployment template next to the PyPI badge.
 
 ## 2.38.1
 
