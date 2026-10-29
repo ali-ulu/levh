@@ -6,6 +6,21 @@
 
 - TBD
 
+## 2.38.1
+
+### Upgrade notes
+
+- **Three dashboard pages are gone.** `meeting-prep`, `people` and `organizations` are removed from the dashboard, the sidebar and the home page; their routes 404. The REST endpoints behind them (`GET /api/v1/people`, `/api/v1/organizations`, `/api/v1/meeting-prep`) and the `meeting_prep` MCP tool are unchanged, so API and MCP clients keep working.
+- **The token screen now tells you where the token comes from.** If `LEVH_TOKEN` is set, `levh serve` prints a line saying the dashboard and every `/api/*` call need it, and the token prompt names the variable, explains it is a value you choose, and shows the command to generate one. The server never prints the token itself.
+
+### fix: give the token gate a recovery path instead of a dead end
+
+- A dashboard behind `LEVH_TOKEN` opened into a token prompt that only said to ask the server administrator. On a local, single-user tool the administrator is the reader, and the server never prints the token, so the screen was a dead end: nothing said where the value came from or how to make one. The prompt now names `LEVH_TOKEN` as the source, states the value is whatever the server was started with (shell, `.env` or Docker environment — `.env` is not auto-loaded), says there is no default and the server never prints it, and shows the command that generates a value. `levh serve` announces the gate in its banner, and the non-loopback refusal prints the generation command instead of only telling the operator to set a strong token. The token value is never echoed on any of these paths, and `README`/`docs/configuration.md` document the same recovery path.
+
+### refactor: drop the meeting-prep, people and organizations dashboard pages
+
+- Three dashboard pages shipped before the memory-backed briefs behind them were trustworthy, so they rendered empty shells and put unproven surfaces in the nav. The pages, their sidebar entries, their API client methods and their catalogue keys are removed, and the home page drops the corresponding cards. The REST endpoints and the `meeting_prep` MCP tool stay.
+
 ## 2.38.0
 
 ### Upgrade notes
