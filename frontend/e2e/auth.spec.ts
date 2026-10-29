@@ -27,6 +27,13 @@ test("a gated server locks the page content and unlocks with the token", async (
   await expect(card).toBeVisible();
   await expect(page.getByRole("heading", { name: "Memories" })).toHaveCount(0);
 
+  // A locked screen must not be a dead end: the card has to name the variable
+  // the value came from and show how to generate one. This is the recovery
+  // path a first-time operator needs, and it is the whole reason the gate is
+  // not just a bare password box.
+  await expect(page.getByText(/LEVH_TOKEN/)).toBeVisible();
+  await expect(page.getByText(/secrets\.token_urlsafe\(32\)/)).toBeVisible();
+
   // Scope to the gate's own field by its placeholder: the header's search box
   // is also a textbox and comes earlier in the DOM.
   await page.getByPlaceholder("Access token").fill(AUTH_TOKEN);

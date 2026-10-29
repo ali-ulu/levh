@@ -456,7 +456,7 @@ def test_structured_log_record_is_json(monkeypatch, capsys):
     assert payload["level"] == "INFO"
 
 
-def _run_serve_banner(monkeypatch, capsys, tmp_path, *, json_mode):
+def _run_serve_banner(monkeypatch, capsys, tmp_path, *, json_mode, token=None):
     """Drive cmd_serve up to the banner, stubbing out uvicorn."""
     import argparse
 
@@ -469,6 +469,12 @@ def _run_serve_banner(monkeypatch, capsys, tmp_path, *, json_mode):
         monkeypatch.setenv("LEVH_LOG_JSON", "1")
     else:
         monkeypatch.delenv("LEVH_LOG_JSON", raising=False)
+    # Pin the token explicitly. The suite does not scrub LEVH_TOKEN (it is not
+    # a store/flag setting), so a developer who exported it would otherwise get
+    # an extra banner line and a green-in-CI / red-locally split.
+    monkeypatch.delenv("LEVH_TOKEN", raising=False)
+    if token is not None:
+        monkeypatch.setenv("LEVH_TOKEN", token)
     monkeypatch.setattr(uvicorn, "run", lambda *a, **k: None)
 
     args = argparse.Namespace(host="127.0.0.1", port=9123, reload=False)
@@ -495,3 +501,70 @@ def test_serve_banner_stays_plaintext_when_log_json_unset(monkeypatch, capsys, t
     assert "Dashboard: http://127.0.0.1:9123/" in out
     for line in out.strip().splitlines():
         assert not line.lstrip().startswith("{"), line
+
+
+def test_serve_banner_announces_the_token_gate_without_the_value(
+    monkeypatch, capsys, tmp_path
+):
+    """A gated dashboard is a locked screen on first open.
+
+    The banner must say a token is required and that it is the operator's own
+    LEVH_TOKEN — and must never echo the value, which would put the shared
+    secret in the terminal scrollback and any captured log.
+    """
+    secret = "s3cret-token-value"
+    out = _run_serve_banner(
+        monkeypatch, capsys, tmp_path, json_mode=False, token=secret
+    )
+
+    assert "LEVH_TOKEN is set" in out
+    assert "Enter the value you launched LEVH with" in out
+    assert secret not in out
+
+
+def test_serve_banner_says_nothing_about_tokens_when_ungated(
+    monkeypatch, capsys, tmp_path
+):
+    out = _run_serve_banner(monkeypatch, capsys, tmp_path, json_mode=False)
+
+    assert "LEVH_TOKEN is set" not in out
+
+
+def test_serve_token_gate_is_a_structured_event_in_json_mode(
+    monkeypatch, capsys, tmp_path
+):
+    out = _run_serve_banner(
+        monkeypatch, capsys, tmp_path, json_mode=True, token="s3cret-token-value"
+    )
+
+    payloads = [json.loads(line) for line in out.strip().splitlines() if line.strip()]
+    events = {payload["event"] for payload in payloads}
+    assert "serve_token_gate" in events
+    assert "s3cret-token-value" not in out
+
+
+def test_non_loopback_bind_without_token_explains_how_to_make_one(
+    monkeypatch, capsys, tmp_path
+):
+    """The refusal is the first thing a LAN-exposed operator hits.
+
+    It used to say "set a strong token" and nothing else, so the operator was
+    left to discover the variable name and the generation command elsewhere.
+    """
+    import argparse
+
+    import uvicorn
+
+    from server.commands import diagnostics
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("LEVH_TOKEN", raising=False)
+    # If the guard fails to trip, uvicorn must not actually bind the port.
+    monkeypatch.setattr(uvicorn, "run", lambda *a, **k: None)
+
+    args = argparse.Namespace(host="0.0.0.0", port=9123, reload=False)
+    assert diagnostics.cmd_serve(args) == 1
+    err = capsys.readouterr().err
+    assert "Refusing non-loopback bind without LEVH_TOKEN" in err
+    assert 'python -c "import secrets; print(secrets.token_urlsafe(32))"' in err
+    assert "LEVH_TOKEN=<that value> levh serve" in err

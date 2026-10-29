@@ -80,6 +80,9 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
             <p className="text-sm text-muted-foreground">
               {t("auth.gate.help")}
             </p>
+            <code className="block overflow-x-auto rounded-md bg-muted px-3 py-2 font-mono text-xs">
+              {t("auth.gate.help.command")}
+            </code>
             <form
               className="flex items-center gap-2"
               onSubmit={(e) => {
