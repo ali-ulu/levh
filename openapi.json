@@ -3,7 +3,7 @@
   "info": {
     "title": "LEVH API",
     "description": "Local-first memory layer for AI agents and humans",
-    "version": "2.38.0"
+    "version": "2.38.1"
   },
   "paths": {
     "/api/health": {

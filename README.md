@@ -66,7 +66,7 @@ decay, importance and access frequency, each weight configurable. See
 - **Adaptive decay** — per-memory half-life, reinforced by recall and weakened by feedback.
 - **Ask your memory** — natural-language answers that cite the memories they came from. Offline by default.
 - **People, projects & timeline** — entities extracted from your memories automatically. No manual tagging.
-- **Daily briefing & meeting prep** — today's events and who you are about to meet.
+- **Daily briefing** — what's on today, what you recently committed to, and what you're about to forget.
 - **Decisions & conflicts** — decisions pulled from your memories, with a review signal when two disagree. A signal, never a verdict.
 - **Knowledge Wiki** — a source-linked Markdown wiki built from your memories, browsable in the dashboard. It surfaces the conflict candidates LEVH already flagged, each linked to both snapshots — a candidate, never a verdict.
 - **Admission gate** — every memory screened before storage; duplicates flagged and secrets redacted. An ambiguous candidate is held for you, never dropped.
