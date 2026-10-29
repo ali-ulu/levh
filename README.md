@@ -12,7 +12,7 @@
   <a href="https://github.com/ali-ulu/levh#readme"><img src="https://img.shields.io/badge/docs-README-0D1117?logo=readme&logoColor=white" alt="LEVH documentation"></a>
 </p>
 
-[![Deploy on Hostinger](https://assets.hostinger.com/vps/deploy.svg)](https://www.hostinger.com/deploy?template=ali-ulu/levh)
+[![Deploy on Hostinger](https://assets.hostinger.com/vps/deploy.svg)](https://www.hostinger.com/docker-hosting?compose_url=https%3A%2F%2Fraw.githubusercontent.com%2Fali-ulu%2Flevh%2Frefs%2Fheads%2Fmain%2Fdocker-compose.yml)
 
 ---
 
