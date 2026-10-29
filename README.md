@@ -12,6 +12,8 @@
   <a href="https://github.com/ali-ulu/levh#readme"><img src="https://img.shields.io/badge/docs-README-0D1117?logo=readme&logoColor=white" alt="LEVH documentation"></a>
 </p>
 
+[![Deploy on Hostinger](https://assets.hostinger.com/vps/deploy.svg)](https://www.hostinger.com/deploy?template=ali-ulu/levh)
+
 ---
 
 ## What is LEVH?
