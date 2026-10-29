@@ -444,6 +444,28 @@ export interface WikiStatus {
   llm_backend_enabled: boolean;
 }
 
+export interface WikiBuildResponse {
+  ok: boolean;
+  root_name: string;
+  index: string;
+  log: string;
+  memories: number;
+  snapshots_current: number;
+  snapshots_added_or_changed: number;
+  snapshots_removed_for_forgotten_memories: number;
+  pages: number;
+  pages_created: number;
+  pages_changed: number;
+  pages_unchanged: number;
+  pages_removed: number;
+  conflict_candidates: number;
+  conflict_read_error: string | null;
+  llm_summaries_created: number;
+  llm_summary_failures: number;
+  llm_summary_limit_skips: number;
+  llm_summaries_enabled: boolean;
+}
+
 export interface WikiSearchHit {
   id: string;
   title: string;

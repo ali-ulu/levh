@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import type {
+  WikiBuildResponse,
   WikiLintResponse,
   WikiPage,
   WikiSearchHit,
@@ -21,6 +22,7 @@ import {
   CheckCircle2,
   FileText,
   Loader2,
+  RefreshCw,
   Search,
 } from "lucide-react";
 
@@ -29,6 +31,7 @@ export default function WikiPageView() {
 
   const [status, setStatus] = useState<WikiStatus | null>(null);
   const [statusLoading, setStatusLoading] = useState(true);
+  const [building, setBuilding] = useState(false);
 
   const [query, setQuery] = useState("");
   const [searching, setSearching] = useState(false);
@@ -55,6 +58,33 @@ export default function WikiPageView() {
   useEffect(() => {
     loadStatus();
   }, [loadStatus]);
+
+  const runBuild = useCallback(async () => {
+    setBuilding(true);
+    try {
+      const result: WikiBuildResponse = await api.wikiBuild();
+      setResults(null);
+      setSearchedFor("");
+      setPage(null);
+      setLint(null);
+      await loadStatus();
+      toast.success(
+        t("app.wiki.build.success", {
+          pages: result.pages,
+          created: result.pages_created,
+          changed: result.pages_changed,
+        }),
+      );
+    } catch (error) {
+      toast.error(
+        t("app.wiki.build.failed", {
+          error: error instanceof Error ? error.message : t("app.wiki.loadError"),
+        }),
+      );
+    } finally {
+      setBuilding(false);
+    }
+  }, [loadStatus, t]);
 
   const runSearch = useCallback(async () => {
     const q = query.trim();
@@ -115,6 +145,18 @@ export default function WikiPageView() {
             {t("app.wiki.subtitle")}
           </p>
         </div>
+        <Button onClick={runBuild} disabled={building || statusLoading}>
+          {building ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <RefreshCw className="h-4 w-4" />
+          )}
+          {building
+            ? t("app.wiki.build.running")
+            : status?.ready
+              ? t("app.wiki.build.rebuild")
+              : t("app.wiki.build.button")}
+        </Button>
       </div>
 
       {statusLoading ? (

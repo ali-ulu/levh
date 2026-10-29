@@ -28,6 +28,7 @@ import type {
   TagCount,
   TimelineDay,
   TrustBreakdown,
+  WikiBuildResponse,
   WikiLintResponse,
   WikiPage,
   WikiSearchResponse,
@@ -591,8 +592,14 @@ export const api = {
   connectorSyncState: () =>
     fetchApi<{ sync_state: SyncState[] }>("/api/connectors/sync-state"),
 
-  // LLM Wiki — a derived, source-linked Markdown projection. Reads only; the
-  // build is admin-tier and stays out of the dashboard.
+  // LLM Wiki — a derived, source-linked Markdown projection. The build
+  // endpoint enforces the server-side store/admin permission; LLM summaries
+  // remain opt-in and are disabled by the dashboard's default build action.
+  wikiBuild: () =>
+    fetchApi<WikiBuildResponse>("/api/wiki/build", {
+      method: "POST",
+      body: JSON.stringify({ llm_summaries: false }),
+    }),
   wikiStatus: () => fetchApi<WikiStatus>("/api/wiki/status"),
   wikiLint: () => fetchApi<WikiLintResponse>("/api/wiki/lint"),
   wikiSearch: (q: string, limit = 20) =>
