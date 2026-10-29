@@ -38,6 +38,22 @@ describe("AuthGate", () => {
     expect(screen.queryByText("secret dashboard")).not.toBeInTheDocument();
   });
 
+  it("tells the user where the token comes from and how to make one", async () => {
+    // A locked screen with no recovery path is a dead end: the operator has to
+    // learn that the value is the LEVH_TOKEN they launched with, and how to
+    // generate one if they never set it.
+    health.mockResolvedValue({ status: "ok", auth_required: true });
+    render(
+      <AuthGate>
+        <div>secret dashboard</div>
+      </AuthGate>
+    );
+    expect(await screen.findByText(/LEVH_TOKEN/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/secrets\.token_urlsafe\(32\)/)
+    ).toBeInTheDocument();
+  });
+
   it("renders children when a token is required and one is already stored", async () => {
     window.localStorage.setItem("levh_token", "stored-token");
     health.mockResolvedValue({ status: "ok", auth_required: true });

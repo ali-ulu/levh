@@ -160,7 +160,10 @@ def cmd_serve(args: argparse.Namespace) -> int:
     if not is_loopback and not get_env("LEVH_TOKEN", "").strip():
         print(
             "  Refusing non-loopback bind without LEVH_TOKEN. "
-            "Set a strong token or bind to 127.0.0.1.",
+            "Set a strong token or bind to 127.0.0.1.\n"
+            "  Generate one with: "
+            'python -c "import secrets; print(secrets.token_urlsafe(32))"\n'
+            "  then restart with LEVH_TOKEN=<that value> levh serve.",
             file=sys.stderr,
         )
         return 1
@@ -182,6 +185,21 @@ def cmd_serve(args: argparse.Namespace) -> int:
         port=port,
         message=f"  Dashboard: http://{host}:{port}/   API docs: http://{host}:{port}/docs",
     )
+    # A token gate turns the dashboard into a prompt the moment the browser
+    # opens it. The value is whatever the operator exported, and LEVH never
+    # prints it, so say where it came from instead of leaving a locked screen
+    # with no explanation. The value itself is never echoed.
+    if get_env("LEVH_TOKEN", "").strip():
+        emit(
+            logger,
+            "serve_token_gate",
+            host=host,
+            port=port,
+            message=(
+                "  LEVH_TOKEN is set: the dashboard and every /api/* call require it. "
+                "Enter the value you launched LEVH with."
+            ),
+        )
     install_logging()
     install_access_log_filters()
     # Windows: the default proactor loop closes its listener on the first
