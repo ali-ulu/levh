@@ -212,7 +212,7 @@ async def lifespan(_app: FastAPI):
 
 app = FastAPI(
     title="LEVH API",
-    version="2.38.1",
+    version="2.38.2",
     description="Local-first memory layer for AI agents and humans",
     lifespan=lifespan,
 )

@@ -1466,7 +1466,7 @@ wheels = [
 
 [[package]]
 name = "levh"
-version = "2.38.1"
+version = "2.38.2"
 source = { editable = "." }
 dependencies = [
     { name = "aiosqlite" },
