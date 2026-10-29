@@ -9,8 +9,6 @@ import {
   BarChart3,
   BookOpen,
   BrainCircuit,
-  Building2,
-  CalendarClock,
   Clock3,
   Database,
   FolderGit2,
@@ -25,7 +23,6 @@ import {
   Sparkles,
   Sunrise,
   Bot,
-  Users,
 } from "lucide-react";
 
 const groups = [
@@ -49,7 +46,6 @@ const groups = [
       { href: "/conflicts", labelKey: "sidebar.nav.conflicts", icon: GitCompareArrows },
       { href: "/guard", labelKey: "sidebar.nav.guard", icon: ShieldAlert },
       { href: "/findings", labelKey: "sidebar.nav.findings", icon: Inbox },
-      { href: "/meeting-prep", labelKey: "sidebar.nav.meetingPrep", icon: CalendarClock },
       { href: "/decisions", labelKey: "sidebar.nav.decisions", icon: Gavel },
       { href: "/visualize", labelKey: "sidebar.nav.insights", icon: BarChart3 },
     ],
@@ -57,8 +53,6 @@ const groups = [
   {
     labelKey: "sidebar.group.workspace",
     items: [
-      { href: "/people", labelKey: "sidebar.nav.people", icon: Users },
-      { href: "/organizations", labelKey: "sidebar.nav.organizations", icon: Building2 },
       { href: "/sessions", labelKey: "sidebar.nav.sessions", icon: History },
       { href: "/agents", labelKey: "sidebar.nav.agents", icon: Bot },
       { href: "/settings", labelKey: "sidebar.nav.settings", icon: Settings },

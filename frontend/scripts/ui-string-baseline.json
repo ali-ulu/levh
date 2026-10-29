@@ -7,8 +7,6 @@
   "src/app/layout.tsx": 1,
   "src/app/memories/page.tsx": 1,
   "src/app/memories/virtual-memory-list.tsx": 3,
-  "src/app/organizations/page.tsx": 1,
-  "src/app/people/page.tsx": 5,
   "src/app/projects/page.tsx": 7,
   "src/app/review/page.tsx": 1,
   "src/app/sessions/page.tsx": 4,

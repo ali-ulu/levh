@@ -16,15 +16,12 @@ import type {
   ConflictCandidate,
   Memory,
   OnboardingStatus,
-  Organization,
-  Person,
   ReviewItem,
   Stats,
   SyncState,
 } from "@/types";
 import {
   ArrowRight,
-  Building2,
   CheckCircle2,
   CircleAlert,
   Database,
@@ -37,7 +34,6 @@ import {
   RefreshCw,
   ShieldCheck,
   Sparkles,
-  Users,
   Waves,
 } from "lucide-react";
 
@@ -68,8 +64,6 @@ export default function Dashboard() {
   const [conflicts, setConflicts] = useState<ConflictCandidate[]>([]);
   const [review, setReview] = useState<ReviewItem[]>([]);
   const [entityCounts, setEntityCounts] = useState<Record<string, number>>({});
-  const [people, setPeople] = useState<Person[]>([]);
-  const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [syncState, setSyncState] = useState<SyncState[]>([]);
   const [selectedMemory, setSelectedMemory] = useState<Memory | null>(null);
   // Read on mount, not during render: the static export prerenders with no
@@ -81,7 +75,7 @@ export default function Dashboard() {
   }, []);
 
   const load = useCallback(async () => {
-    const [s, m, o, b, c, r, e, p, org, sync] = await Promise.all([
+    const [s, m, o, b, c, r, e, sync] = await Promise.all([
       api.getStats().catch(() => null),
       api.listMemories({ limit: 8 }).catch(() => [] as Memory[]),
       api.onboardingStatus().catch(() => null),
@@ -89,8 +83,6 @@ export default function Dashboard() {
       api.listConflicts("open", 4).catch(() => ({ conflicts: [] as ConflictCandidate[] })),
       api.reviewQueue(0.5, 6).catch(() => ({ review: [] as ReviewItem[] })),
       api.entityStats().catch(() => ({ by_type: {} as Record<string, number> })),
-      api.listPeople().catch(() => ({ people: [] as Person[] })),
-      api.listOrganizations().catch(() => ({ organizations: [] as Organization[] })),
       api.connectorSyncState().catch(() => ({ sync_state: [] as SyncState[] })),
     ]);
     setStats(s);
@@ -100,8 +92,6 @@ export default function Dashboard() {
     setConflicts(c.conflicts);
     setReview(r.review);
     setEntityCounts(e.by_type);
-    setPeople(p.people.slice(0, 4));
-    setOrganizations(org.organizations.slice(0, 3));
     setSyncState(sync.sync_state);
   }, []);
 
@@ -235,42 +225,6 @@ export default function Dashboard() {
               <KnowledgeConstellation memories={stats?.total_memories ?? 0} entityCounts={entityCounts} />
             </article>
           </div>
-
-          <article className="premium-card rounded-[22px] border p-5 sm:p-6">
-            <div className="mb-4 flex items-center justify-between">
-              <div>
-                <h2 className="text-base font-semibold tracking-[-0.02em]">{t("app.home.network.title")}</h2>
-                <p className="mt-1 text-xs text-muted-foreground">{t("app.home.network.subtitle")}</p>
-              </div>
-              <div className="flex gap-2">
-                <Link href="/people" className="mini-action"><Users className="h-3.5 w-3.5" /> {t("app.home.network.people")}</Link>
-                <Link href="/organizations" className="mini-action"><Building2 className="h-3.5 w-3.5" /> {t("app.home.network.organizations")}</Link>
-              </div>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              {people.map((person, index) => (
-                <Link key={person.key} href={`/people/?person=${encodeURIComponent(person.key)}`} className="identity-card">
-                  <span className={`identity-avatar avatar-${index % 4}`}>{(person.name || "?").slice(0, 2).toUpperCase()}</span>
-                  <span className="min-w-0">
-                    <strong className="block truncate text-sm">{person.name}</strong>
-                    <small className="text-[10px] text-muted-foreground">{t("app.home.memoryCount", { count: person.memory_count })}</small>
-                  </span>
-                </Link>
-              ))}
-              {people.length === 0 && organizations.slice(0, 4).map((org, index) => (
-                <Link key={org.key} href="/organizations" className="identity-card">
-                  <span className={`identity-avatar avatar-${index % 4}`}>{(org.name || "?").slice(0, 2).toUpperCase()}</span>
-                  <span className="min-w-0">
-                    <strong className="block truncate text-sm">{org.name}</strong>
-                    <small className="text-[10px] text-muted-foreground">{t("app.home.memoryCount", { count: org.memory_count })}</small>
-                  </span>
-                </Link>
-              ))}
-              {people.length === 0 && organizations.length === 0 && (
-                <div className="empty-panel col-span-full">{t("app.home.network.empty")}</div>
-              )}
-            </div>
-          </article>
         </div>
 
         <aside className="space-y-5">

@@ -11,11 +11,8 @@ import type {
   Finding,
   ForgettingCurve,
   FederationPullResult,
-  MeetingPrep,
   Memory,
-  Organization,
   OnboardingStatus,
-  Person,
   ReviewAction,
   ReviewItem,
   Project,
@@ -320,17 +317,6 @@ export const api = {
   listProjects: () => fetchApi<{ projects: Project[] }>("/api/projects"),
   listSources: () => fetchApi<{ sources: Source[] }>("/api/sources"),
   listTags: () => fetchApi<{ tags: TagCount[] }>("/api/tags"),
-  listPeople: () => fetchApi<{ people: Person[] }>("/api/people"),
-  getPerson: (key: string) =>
-    fetchApi<{ person: Person; memories: Memory[] }>(`/api/people/${encodeURIComponent(key)}`),
-
-  // Organizations
-  listOrganizations: () =>
-    fetchApi<{ organizations: Organization[] }>("/api/organizations"),
-  getOrganization: (key: string) =>
-    fetchApi<{ organization: Organization; memories: Memory[] }>(
-      `/api/organizations/${encodeURIComponent(key)}`
-    ),
 
   // Decisions
   listDecisions: (days = 90) =>
@@ -419,14 +405,6 @@ export const api = {
 
   // Briefing
   briefing: (days = 7) => fetchApi<{ briefing: Briefing }>(`/api/briefing?days=${days}`),
-
-  // Meeting prep
-  meetingPrep: (query = "", withinDays = 14) => {
-    const qs = new URLSearchParams();
-    if (query) qs.set("query", query);
-    qs.set("within_days", String(withinDays));
-    return fetchApi<{ meeting_prep: MeetingPrep }>(`/api/meeting-prep?${qs.toString()}`);
-  },
 
   // Backup / Restore — backup returns a binary blob, so raw fetch (not fetchApi).
   backup: async (passphrase?: string): Promise<{ blob: Blob; filename: string }> => {
