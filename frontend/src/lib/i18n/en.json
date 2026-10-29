@@ -860,7 +860,7 @@
   "memoryDetail.toast.deleted": "Memory deleted",
   "memoryDetail.toast.deleteFailed": "Could not delete memory",
   "app.wiki.title": "Knowledge Wiki",
-  "app.wiki.subtitle": "A derived, source-linked Markdown projection of your memories. Read-only; the memory store stays authoritative.",
+  "app.wiki.subtitle": "A source-linked Markdown Wiki derived from your memories. Building refreshes Wiki files only; the memory store remains authoritative.",
   "app.wiki.loadError": "Could not load the Wiki status.",
   "app.wiki.status.title": "Build status",
   "app.wiki.status.ready": "Built",
@@ -890,6 +890,11 @@
   "app.wiki.lint.col.code": "Code",
   "app.wiki.lint.col.path": "Path",
   "app.wiki.lint.col.detail": "Detail",
+  "app.wiki.build.button": "Build Wiki",
+  "app.wiki.build.rebuild": "Rebuild Wiki",
+  "app.wiki.build.running": "Building Wiki…",
+  "app.wiki.build.success": "Wiki built: {pages} pages, {created} created, {changed} changed.",
+  "app.wiki.build.failed": "Wiki build failed: {error}",
   "app.wiki.notReady.title": "The Wiki has not been built yet",
-  "app.wiki.notReady.hint": "Run a build from the CLI or the admin MCP profile, then reload this page."
+  "app.wiki.notReady.hint": "Use Build Wiki above to generate the source-linked pages. This does not modify your underlying memories."
 }

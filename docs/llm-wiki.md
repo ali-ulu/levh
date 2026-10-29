@@ -24,13 +24,14 @@ viewer, and **wiki/index.md** is the entry point.
 ## Browsing in the dashboard
 
 The packaged dashboard has a **/wiki** page (sidebar: *Knowledge Wiki*) so the
-projection is reachable without the CLI, REST or MCP. It is read-only: it shows
-the build status (memories, snapshots, pages, workspace root, LLM-summary
-state), searches generated pages, opens one page's Markdown, and lists lint
-issues. Building stays an admin-tier action and is deliberately **not** exposed
-in the UI, so a viewer principal cannot write Wiki files from the browser. The
-page reads through the same routes below; the build itself still runs over REST
-(**POST /api/v1/wiki/build**) or MCP (**build_knowledge_wiki**).
+projection is reachable without the CLI, REST or MCP. It shows the build status
+(memories, snapshots, pages, workspace root and LLM-summary state), searches
+generated pages, opens one page's Markdown, and lists lint issues. The page also
+exposes **Build Wiki / Rebuild Wiki**, which calls the existing server-authorized
+build endpoint. The dashboard uses the deterministic default build with LLM
+summaries disabled; server-side authorization still prevents a read-only
+principal from writing Wiki files. A build regenerates only the derived Wiki
+projection and never mutates the authoritative LEVH memory rows.
 
 ## Output layout
 

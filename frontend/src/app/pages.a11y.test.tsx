@@ -10,6 +10,7 @@ import type {
   Source,
   TagCount,
   TimelineDay,
+  WikiBuildResponse,
   WikiLintResponse,
   WikiPage,
   WikiSearchHit,
@@ -40,6 +41,7 @@ const mocks = vi.hoisted(() => ({
   listEntities: vi.fn(),
   searchEntities: vi.fn(),
   getEntity: vi.fn(),
+  wikiBuild: vi.fn(),
   wikiStatus: vi.fn(),
   wikiLint: vi.fn(),
   wikiSearch: vi.fn(),
@@ -59,6 +61,7 @@ vi.mock("@/lib/api", () => ({
     listEntities: mocks.listEntities,
     searchEntities: mocks.searchEntities,
     getEntity: mocks.getEntity,
+    wikiBuild: mocks.wikiBuild,
     wikiStatus: mocks.wikiStatus,
     wikiLint: mocks.wikiLint,
     wikiSearch: mocks.wikiSearch,
@@ -150,6 +153,28 @@ const wikiStatus: WikiStatus = {
   built_at: "2026-09-20T10:00:00Z",
   conflicts: 0,
   llm_backend_enabled: false,
+};
+
+const wikiBuild: WikiBuildResponse = {
+  ok: true,
+  root_name: "wiki-workspace",
+  index: "wiki/index.md",
+  log: "wiki/log.md",
+  memories: 42,
+  snapshots_current: 45,
+  snapshots_added_or_changed: 45,
+  snapshots_removed_for_forgotten_memories: 0,
+  pages: 12,
+  pages_created: 12,
+  pages_changed: 0,
+  pages_unchanged: 0,
+  pages_removed: 0,
+  conflict_candidates: 0,
+  conflict_read_error: null,
+  llm_summaries_created: 0,
+  llm_summary_failures: 0,
+  llm_summary_limit_skips: 0,
+  llm_summaries_enabled: false,
 };
 
 const wikiHit: WikiSearchHit = {
@@ -246,6 +271,21 @@ describe("Page shells are accessible", () => {
     const { container } = render(<WikiPageView />);
 
     expect(await screen.findByText(/has not been built yet/i)).toBeInTheDocument();
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it("builds the source-linked Wiki from the dashboard", async () => {
+    mocks.wikiStatus
+      .mockResolvedValueOnce({ ...wikiStatus, ready: false })
+      .mockResolvedValueOnce(wikiStatus);
+    mocks.wikiBuild.mockResolvedValue(wikiBuild);
+    const { container } = render(<WikiPageView />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Build Wiki" }));
+
+    await waitFor(() => expect(mocks.wikiBuild).toHaveBeenCalledTimes(1));
+    expect(mocks.wikiBuild).toHaveBeenCalledWith();
+    expect(await screen.findByRole("button", { name: "Rebuild Wiki" })).toBeInTheDocument();
     expect(await axe(container)).toHaveNoViolations();
   });
 

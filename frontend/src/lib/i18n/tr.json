@@ -860,7 +860,7 @@
   "memoryDetail.toast.deleted": "Bellek silindi",
   "memoryDetail.toast.deleteFailed": "Bellek silinemedi",
   "app.wiki.title": "Bilgi Wiki",
-  "app.wiki.subtitle": "Anılarınızdan türetilen, kaynağa bağlı Markdown projeksiyonu. Salt okunur; yetkili kaynak anı deposudur.",
+  "app.wiki.subtitle": "Anılarınızdan üretilen, kaynağa bağlı Markdown Wiki. Oluşturma yalnızca Wiki dosyalarını yeniler; asıl kaynak bellek deposudur.",
   "app.wiki.loadError": "Wiki durumu yüklenemedi.",
   "app.wiki.status.title": "Derleme durumu",
   "app.wiki.status.ready": "Derlendi",
@@ -890,6 +890,11 @@
   "app.wiki.lint.col.code": "Kod",
   "app.wiki.lint.col.path": "Yol",
   "app.wiki.lint.col.detail": "Ayrıntı",
+  "app.wiki.build.button": "Wiki oluştur",
+  "app.wiki.build.rebuild": "Wiki'yi yeniden oluştur",
+  "app.wiki.build.running": "Wiki oluşturuluyor…",
+  "app.wiki.build.success": "Wiki oluşturuldu: {pages} sayfa, {created} yeni, {changed} güncellendi.",
+  "app.wiki.build.failed": "Wiki oluşturulamadı: {error}",
   "app.wiki.notReady.title": "Wiki henüz derlenmedi",
-  "app.wiki.notReady.hint": "CLI'dan veya admin MCP profilinden bir derleme çalıştırın, sonra bu sayfayı yenileyin."
+  "app.wiki.notReady.hint": "Kaynağa bağlı Wiki sayfalarını oluşturmak için yukarıdaki Wiki oluştur düğmesini kullanın. Bu işlem asıl bellek kayıtlarını değiştirmez."
 }

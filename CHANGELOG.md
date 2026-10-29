@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### feat: build the source-linked Wiki from the dashboard
+
+- The `/wiki` page can now create or rebuild the derived Wiki directly in the application through the existing server-authorized endpoint. The action keeps LLM summaries disabled by default, refreshes the build status, and reports page counts. Backend authorization remains in force, and the build does not modify the underlying memory records.
+
 ### Placeholder for future changes (#103)
 
 - TBD
