@@ -40,7 +40,7 @@ levh serve
 ```
 
 Dashboard and API come up on <http://localhost:8000>. Open **Settings** for
-copy-paste MCP configs, or run `levh mcp config cursor` for any supported client.
+copy and paste MCP configs, or run `levh mcp config cursor` for any supported client.
 
 Optional, once you are set up:
 
@@ -100,7 +100,7 @@ LEVH is a local, single-user tool — no accounts, no multi-tenancy.
 
 - **Tokenless means loopback-only.** Without `LEVH_TOKEN`, remote peers are rejected.
 - **`LEVH_TOKEN`** gates `/api/*`, the WebSocket and the MCP SSE transport. Set it before widening any bind. Generate one with `python -c "import secrets; print(secrets.token_urlsafe(32))"`; it is a value you choose, not one the server hands out.
-  - **If the dashboard asks you for a token**, paste the same value you started the server with — whatever `LEVH_TOKEN` held in the shell, `.env` or Docker environment that ran `levh serve`. The server never prints it, so it is not shown anywhere; if you never set one, pick a value with the command above and restart with `LEVH_TOKEN=<value> levh serve`. Once set, *every* call needs it, including from the same machine — the token is what the dashboard is gated on, not the network distance.
+  - **If the dashboard asks you for a token**, paste the same value you started the server with — whatever `LEVH_TOKEN` held in the shell, `.env` or Docker environment that ran `levh serve`. The server never prints it, so it is not shown anywhere; if you never set one, pick a value with the command above and restart with `LEVH_TOKEN=<value> levh serve`. Once set, *every* call needs it, including from the same machine — the token is what the dashboard is gated by, not the network distance.
 - **Nothing leaves the machine without an explicit opt-in.** Ask, summaries and transcript ingest stay offline until you set `ANSWER_MODE=llm` or `SUMMARY_MODE=llm`.
 - **Secrets are redacted** before storage, on every write path.
 
