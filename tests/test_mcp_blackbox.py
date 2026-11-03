@@ -299,6 +299,10 @@ def test_mcp_stdio_loads_the_embedder_before_reading_stdin_on_windows(tmp_path):
         "    calls.append('warm')\n"
         "Embedder.warm = _warm\n"
         "FastMCP.run = lambda self, transport='stdio': calls.append('run')\n"
+        # Python 3.14 picks the event loop policy lazily from sys.platform, so
+        # build the real loop first; only the product's own check sees win32.
+        "import asyncio\n"
+        "asyncio.run(asyncio.sleep(0))\n"
         "sys.platform = 'win32'\n"
         "runpy.run_module('server.mcp_stdio', run_name='__main__')\n"
         "print(calls)\n"
