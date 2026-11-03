@@ -12,6 +12,7 @@ fallback the function exists for never ran.
 from __future__ import annotations
 
 import json
+import os
 import stat
 import sys
 
@@ -30,8 +31,11 @@ RECEIPT_FIELDS = dict(
 
 # chmod on a directory does not remove write access for the owner on Windows,
 # so the read-only cases can only be exercised where POSIX permissions apply.
+# Root bypasses them too: a 0555 directory stays writable for UID 0, so the
+# fallback correctly never triggers. The mocked cases below cover that wiring.
 posix_only = pytest.mark.skipif(
-    sys.platform == "win32", reason="directory permissions are not enforced this way on Windows"
+    sys.platform == "win32" or os.geteuid() == 0,
+    reason="directory permissions are not enforced on Windows or for root",
 )
 
 
