@@ -161,17 +161,17 @@ class TestMcpConfig:
     def test_config_claude_valid_json(self):
         result = _run_cli("mcp", "config", "claude")
         assert result.returncode == 0, f"claude config failed:\n{result.stderr}"
-        server = self._assert_valid_mcp_config(result.stdout)
+        self._assert_valid_mcp_config(result.stdout)
 
     def test_config_cursor_valid_json(self):
         result = _run_cli("mcp", "config", "cursor")
         assert result.returncode == 0, f"cursor config failed:\n{result.stderr}"
-        server = self._assert_valid_mcp_config(result.stdout)
+        self._assert_valid_mcp_config(result.stdout)
 
     def test_config_windsurf_valid_json(self):
         result = _run_cli("mcp", "config", "windsurf")
         assert result.returncode == 0, f"windsurf config failed:\n{result.stderr}"
-        server = self._assert_valid_mcp_config(result.stdout)
+        self._assert_valid_mcp_config(result.stdout)
 
     def test_config_contains_embedder_mode_hash(self):
         """All generated configs should default to EMBEDDER_MODE=hash."""

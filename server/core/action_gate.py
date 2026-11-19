@@ -135,7 +135,7 @@ def check_action(
     the output is byte-stable for a given store state — the same determinism
     contract the evaluation harness holds.
     """
-    proposed = action_terms(tool_name, action_text)
+    action_terms(tool_name, action_text)
     matched: list[dict] = []
 
     checked = 0
