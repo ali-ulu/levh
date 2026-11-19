@@ -192,7 +192,7 @@ async def test_an_overlong_query_is_truncated_not_stored_whole(engine, monkeypat
     monkeypatch.setenv("LEVH_RECALL_LOG", "1")
 
     await engine.recall("z" * (MAX_QUERY_CHARS + 500), top_k=3)
-    rows = await engine.db.list_recall_log(limit=5)
+    await engine.db.list_recall_log(limit=5)
 
 
 @pytest.mark.asyncio
