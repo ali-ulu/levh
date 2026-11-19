@@ -237,7 +237,7 @@ async def test_rescan_prunes_stale_unanchored_noise(engine):
 @pytest.mark.asyncio
 async def test_same_source_confidence_le_cross_source(engine):
     await _seed_opposing(engine, source_a="connector:calendar", source_b="connector:calendar")
-    result_same = await engine.detect_conflict_candidates()
+    await engine.detect_conflict_candidates()
     same_candidates = await engine.list_conflict_candidates(status=None)
     assert len(same_candidates) == 1
     same_conf = same_candidates[0]["confidence"]

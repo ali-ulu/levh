@@ -715,9 +715,9 @@ async def test_store_special_characters(engine):
 @pytest.mark.asyncio
 async def test_strict_session_isolation(engine):
     """Session-specific recall returns ONLY that session's memories (Fix 5)."""
-    m1 = await engine.store(content="Session 1 memory", session_id="s1", memory_type="episodic")
-    m2 = await engine.store(content="Session 2 memory", session_id="s2", memory_type="episodic")
-    m3 = await engine.store(content="No session memory", session_id=None, memory_type="episodic")
+    await engine.store(content="Session 1 memory", session_id="s1", memory_type="episodic")
+    await engine.store(content="Session 2 memory", session_id="s2", memory_type="episodic")
+    await engine.store(content="No session memory", session_id=None, memory_type="episodic")
 
     result = await engine.recall(query="memory", session_id="s1")
     for mem in result.memories:

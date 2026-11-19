@@ -166,7 +166,7 @@ async def test_stale_revision_is_reported_as_a_duplicate_not_an_error(engine):
         ],
         connector="github",
     )
-    result = await engine.ingest_items(
+    await engine.ingest_items(
         [
             _item(
                 "Older version of the issue body",

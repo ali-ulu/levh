@@ -33,7 +33,7 @@ async def wired(tmp_path):
         connectors_tool.register(mcp, engine)
 
         # The tool is registered under the same name as the MCP export.
-        tool = await mcp.call_tool("import_from_app", {"connector": "local_files"})
+        await mcp.call_tool("import_from_app", {"connector": "local_files"})
         # call_tool requires a real connection; instead grab the closure by
         # re-registering and reading the underlying function directly.
         yield engine, mcp
