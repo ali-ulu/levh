@@ -806,7 +806,7 @@ nvtx = [
 
 [[package]]
 name = "cyclonedx-bom"
-version = "8.0.1"
+version = "9.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "chardet" },
@@ -815,9 +815,9 @@ dependencies = [
     { name = "packaging" },
     { name = "pip-requirements-parser" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/4d/20/f17c18aadc522a0ff1c12692c45218d7cca4417798864c6b345f98c44459/cyclonedx_bom-8.0.1.tar.gz", hash = "sha256:a32c8bb2c4b436e0d6b7ee3b9f0899efdfc91e8f5d9652975467d31e4c20b900", size = 4423291, upload-time = "2026-11-04T13:40:21.794Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/13/91/f1a2a75a5dbbada2404de3117f0a0c544727382bc1352013ee1ba15ec015/cyclonedx_bom-9.0.0.tar.gz", hash = "sha256:23394e24ff47bbf4c614e8a7d5ca5e18c64869a091f7e35f3baa2faea2390972", size = 4424455, upload-time = "2026-11-19T14:47:55.549Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/85/3c/fd91f7bf66f7b5d79a8353b7a962a78a444799664c4726eac8c4ebd8c00c/cyclonedx_bom-8.0.1-py3-none-any.whl", hash = "sha256:b91ac00e0d031aaee0bc69fd3851384b2c36e569859df13b2a564b5d2d67aab3", size = 61664, upload-time = "2026-11-04T13:40:19.864Z" },
+    { url = "https://files.pythonhosted.org/packages/37/bb/d6867a1222f4db2b7c775b98caf8ac9344ec79be67c7594529f6a62bf9a2/cyclonedx_bom-9.0.0-py3-none-any.whl", hash = "sha256:15ccb78616831688cab1d1ddd5e0ba2e7886cd83462f63d11d1b922f43a294c0", size = 62120, upload-time = "2026-11-19T14:47:53.863Z" },
 ]
 
 [[package]]
@@ -1521,7 +1521,7 @@ requires-dist = [
     { name = "build", marker = "extra == 'dev'" },
     { name = "cryptography", specifier = ">=42" },
     { name = "cryptography", marker = "extra == 'secure'", specifier = ">=42" },
-    { name = "cyclonedx-bom", marker = "extra == 'dev'", specifier = "==8.0.1" },
+    { name = "cyclonedx-bom", marker = "extra == 'dev'", specifier = "==9.0.0" },
     { name = "diff-cover", marker = "extra == 'dev'", specifier = ">=9.0" },
     { name = "dnspython", specifier = ">=2.9.2" },
     { name = "fastapi", specifier = ">=0.115" },
