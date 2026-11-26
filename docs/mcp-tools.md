@@ -12,9 +12,11 @@ The complete MCP tool surface. See the [README](../README.md) for an overview.
 > **`read_only` is a different kind of profile.** It is an explicit allowlist
 > of recall/search/context/metadata reads for an external or cloud agent that
 > must never write. It is enforced **server-side at call time**: a write tool is
-> refused even if a client invokes a hidden name directly. The size profiles
-> (`minimal`/`work`/`admin`/`full`) still only filter discovery; only
-> `read_only` is an authorization boundary. See
+> refused even if a client invokes a hidden name directly. Reads that would
+> otherwise leave a trace — the recall log, the derived-state rebuild behind
+> `memory_trust` — are suppressed too, so a `read_only` session leaves the store
+> unchanged. The size profiles (`minimal`/`work`/`admin`/`full`) still only
+> filter discovery; only `read_only` is an authorization boundary. See
 > [MCP client configuration](mcp-client-config.md#read-only-external-agents).
 
 | # | Tool | Description |

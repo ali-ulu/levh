@@ -86,12 +86,21 @@ class MemoryEngine(
     db: Database
     episodic: EpisodicMemory
 
+    #: Set by ``server.tools.register.register_all_tools`` when the MCP server
+    #: runs the ``read_only`` permission profile. Internal side effects that a
+    #: *read* tool would otherwise cause — the recall-log row, the derived-state
+    #: rebuild — check it and stay silent, because "no write path is reachable"
+    #: is the profile's whole contract and the tool-call guard cannot see work
+    #: done inside an allowed tool.
+    read_only: bool = False
+
     def __init__(
         self,
         db_path: str | None = None,
         embedder_mode: str | None = None,
         short_term_max: int | None = None,
     ):
+        self.read_only = False
         self.config = EngineConfig(db_path, embedder_mode, short_term_max)
         wire_engine(self)
 

@@ -16,7 +16,7 @@ from mcp.server.fastmcp import FastMCP
 
 from server.core.memory_engine import MemoryEngine
 from server.tools.access import install_tool_access_guard
-from server.tools.profiles import resolve_profile, tools_for_profile
+from server.tools.profiles import READ_ONLY_PROFILE, resolve_profile, tools_for_profile
 
 # Every tool module, by import path. One line per tool module; the order is
 # presentation-only (it is the order tools appear in unfiltered listings).
@@ -117,6 +117,10 @@ def register_all_tools(
     """
     resolved = "full" if profile is None else resolve_profile(profile)
     install_tool_access_guard(mcp, resolved)
+    # The call guard only sees tool *names*. The two internal side effects a
+    # read tool can still cause — the recall-log row and the derived-state
+    # rebuild — check this flag instead, so ``read_only`` really is no writes.
+    engine.read_only = resolved == READ_ONLY_PROFILE
     if resolved == "full":
         # Fast path: no filtering, register every decorated tool directly.
         _register(mcp, engine)

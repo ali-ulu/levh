@@ -38,6 +38,23 @@ DESTRUCTIVE_ADMIN_TOOLS = {
     "set_importance",
 }
 
+#: The only writes the small profiles may carry: capture and the daily-driver
+#: bookkeeping an ordinary session does. Everything else that mutates is admin.
+#: Kept as an allowlist (not a denylist) so a *new* destructive tool tiered into
+#: minimal/work fails here instead of shipping quietly — the hand-written
+#: ``DESTRUCTIVE_ADMIN_TOOLS`` set above cannot see a tool nobody added to it.
+SMALL_PROFILE_WRITES = {
+    "store_memory",
+    "reinforce_memory",
+    "pin_memory",
+    "attach_file",
+    "record_mistake",
+    "agent_connect",
+    "agent_heartbeat",
+    "agent_disconnect",
+    "create_checkpoint",
+}
+
 
 def test_minimal_profile_excludes_destructive_admin_tools():
     assert tools_for_profile("minimal").isdisjoint(DESTRUCTIVE_ADMIN_TOOLS)
@@ -90,6 +107,25 @@ def test_read_only_never_advertises_a_write():
     assert exposed == set(READ_ONLY_TOOLS)
     assert exposed.isdisjoint(MUTATING_TOOLS)
     assert "store_memory" not in exposed
+
+
+def test_small_profiles_carry_only_allowlisted_writes():
+    """minimal/work may write, but only through the small allowlist.
+
+    This is the invariant the hand-written destructive set cannot enforce: a
+    new tool that mutates is admin-tier by default, and tiering it lower has to
+    pass through this assertion.
+    """
+    for profile in ("minimal", "work"):
+        writes = tools_for_profile(profile) & MUTATING_TOOLS
+        assert writes <= SMALL_PROFILE_WRITES, sorted(writes - SMALL_PROFILE_WRITES)
+
+
+def test_every_destructive_tool_is_admin_only():
+    """The hand-written destructive set and the tier table must not disagree."""
+    assert DESTRUCTIVE_ADMIN_TOOLS <= tools_for_profile("admin")
+    for profile in ("minimal", "work", READ_ONLY_PROFILE):
+        assert tools_for_profile(profile).isdisjoint(DESTRUCTIVE_ADMIN_TOOLS)
 
 
 def test_every_registered_tool_is_classified():
