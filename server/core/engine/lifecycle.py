@@ -352,6 +352,12 @@ class MemoryLifecycleMixin:
         rebuilt the same thing again. "Fresh" is what this contract asks for,
         and a clean flag plus an unchanged store version IS fresh.
         """
+        if self.read_only:
+            # The rebuild DELETEs and re-INSERTs the entity, trust and conflict
+            # tables, so it is a write. A read-only MCP server still answers
+            # these reads — from the rows already stored — but it must not be
+            # the thing that writes them (see ``MemoryEngine.read_only``).
+            return
         if not self._derived_dirty and await self._derived_store_unchanged():
             return
         self._derived_dirty = True

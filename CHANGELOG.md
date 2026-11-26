@@ -2,9 +2,10 @@
 
 ## Unreleased
 
-### Placeholder for future changes (#103)
+### fix: make the read-only MCP profile stop writing
 
-- TBD
+- `read_only` was enforced at the tool dispatcher, but two writes happened *below* it, inside allowed read tools: every `recall_memory` / `ask_memory` inserted a `recall_log` row (and pruned older ones), and the freshness-required graph reads — `memory_trust`, `list_low_trust_memories`, `list_conflict_candidates`, `list_entities`, `about_entity` — rebuilt the entity, trust and conflict tables. `MemoryEngine.read_only` is now set from the resolved profile, and all three effects (recall-log row, derived-state rebuild, reinforcement) are suppressed, so a `read_only` session leaves the store byte-for-byte unchanged. The profile's own tests now measure that on the database with a SQL write spy, not on the advertised tool list.
+- The profile-boundary suite gains an allowlist for the writes `minimal`/`work` may carry, so a new destructive tool tiered below `admin` fails the suite instead of shipping quietly.
 
 ## 2.38.2
 

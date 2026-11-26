@@ -17,6 +17,13 @@ Two layers, on purpose:
 The active profile is also bound for the duration of the call. Read tools that
 have internal side effects (recall reinforcement, continuity emission) use
 ``read_only_active`` to skip the write and stay genuinely read-only.
+
+Two write paths sit *below* the tool surface, inside the engine, and the guard
+above cannot see them: the recall-log row a recall writes, and the derived-state
+rebuild a freshness-required read triggers (both write rows). Those check
+``MemoryEngine.read_only``, which ``register_all_tools`` sets from the resolved
+profile — so "no write path is reachable" holds end to end, not just at the
+dispatcher.
 """
 
 from __future__ import annotations

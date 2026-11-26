@@ -149,6 +149,11 @@ class MemoryRecallMixin:
         enabled, retention_days = self._recall_log_config()
         if not enabled:
             return
+        if self.read_only:
+            # The log row is a write (plus a retention DELETE). A read-only
+            # MCP server may recall, but it may not leave a trace in the store
+            # it is only allowed to read (see ``MemoryEngine.read_only``).
+            return
         try:
             # Imported lazily: admission pulls the write path, and a read path
             # that has not opted into logging should not pay for it.
@@ -417,7 +422,7 @@ class MemoryRecallMixin:
         # is explicitly a read/recall role in Phase 2 (#377), so its ordinary
         # recall must degrade to read-only instead of failing because the
         # historical default is reinforce=True.
-        effective_reinforce = reinforce and not as_of
+        effective_reinforce = reinforce and not as_of and not self.read_only
         if effective_reinforce:
             try:
                 authorize("update", current_workspace_id())

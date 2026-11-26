@@ -1,9 +1,9 @@
 """MCP tool profiles — control how many tools a client actually sees.
 
-Advertising all 74 tools to every AI client hurts tool-selection accuracy:
-selection quality falls off as the tool list grows, so a public demo where the
-agent must pick the right tool from 61 is a reliability risk. Profiles let a
-client mount a focused subset instead.
+Advertising the whole tool list to every AI client hurts tool-selection
+accuracy: selection quality falls off as the list grows, so a public demo where
+the agent must pick the right tool from dozens is a reliability risk. Profiles
+let a client mount a focused subset instead.
 
 Every tool is assigned to the *smallest* profile it belongs to; the size
 profiles are cumulative in the order minimal ⊂ work ⊂ admin ⊂ full:
@@ -28,7 +28,10 @@ external/cloud agents that may read memory but must never write it:
     read_only — an explicit allowlist of recall/search/context/metadata reads.
                 It is enforced server-side at tool-call time (see
                 :mod:`server.tools.access`), so a client cannot reach a write
-                path by invoking a tool it was not advertised. It is not part
+                path by invoking a tool it was not advertised. The engine is
+                told too (``MemoryEngine.read_only``): the recall-log row and
+                the derived-state rebuild are suppressed, so the profile's
+                reads leave the store byte-for-byte unchanged. It is not part
                 of the cumulative size ladder, because "fewer tools" and
                 "no writes" are different questions.
 
